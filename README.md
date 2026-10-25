@@ -37,7 +37,12 @@ avec le total (« Pause. Total : 18 »). Le son fonctionne en mode silencieux et
 - Plus de cycle pendant environ 3 périodes : pause, la source sera recherchée à nouveau.
 
 ## Validation
-Logique testée en simulation (capteurs synthétiques, 5 tirages aléatoires par scénario) :
+Logique testée en simulation (capteurs synthétiques, 5 tirages aléatoires par scénario).
+`Simulation/simulate_counter.py` reproduit `AutoCounter.swift` en Python (numpy) ; à relancer
+après toute modification du compteur, en gardant les deux en phase :
+
+    python3 Simulation/simulate_counter.py --seeds 5
+
 
 | Scénario | Résultat |
 |---|---|
