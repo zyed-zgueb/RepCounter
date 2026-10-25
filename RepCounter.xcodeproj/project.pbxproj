@@ -1,0 +1,260 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B00000000000000000000001 /* RepCounterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000001 /* RepCounterApp.swift */; };
+		B00000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000002 /* ContentView.swift */; };
+		B00000000000000000000003 /* WorkoutModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000003 /* WorkoutModel.swift */; };
+		B00000000000000000000004 /* AutoCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000004 /* AutoCounter.swift */; };
+		B00000000000000000000005 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000005 /* SensorHub.swift */; };
+		B00000000000000000000006 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000006 /* PoseFeatures.swift */; };
+		B00000000000000000000007 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000007 /* SignalMath.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		F00000000000000000000001 /* RepCounterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepCounterApp.swift; sourceTree = "<group>"; };
+		F00000000000000000000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		F00000000000000000000003 /* WorkoutModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutModel.swift; sourceTree = "<group>"; };
+		F00000000000000000000004 /* AutoCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoCounter.swift; sourceTree = "<group>"; };
+		F00000000000000000000005 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
+		F00000000000000000000006 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
+		F00000000000000000000007 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
+		F00000000000000000000099 /* RepCounter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RepCounter.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C00000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				C00000000000000000000002 /* RepCounter */,
+				C00000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C00000000000000000000002 /* RepCounter */ = {
+			isa = PBXGroup;
+			children = (
+				F00000000000000000000001 /* RepCounterApp.swift */,
+				F00000000000000000000002 /* ContentView.swift */,
+				F00000000000000000000003 /* WorkoutModel.swift */,
+				F00000000000000000000004 /* AutoCounter.swift */,
+				F00000000000000000000005 /* SensorHub.swift */,
+				F00000000000000000000006 /* PoseFeatures.swift */,
+				F00000000000000000000007 /* SignalMath.swift */,
+			);
+			path = RepCounter;
+			sourceTree = "<group>";
+		};
+		C00000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F00000000000000000000099 /* RepCounter.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D00000000000000000000001 /* RepCounter */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 800000000000000000000002 /* Build configuration list for PBXNativeTarget "RepCounter" */;
+			buildPhases = (
+				A00000000000000000000001 /* Sources */,
+				A00000000000000000000002 /* Frameworks */,
+				A00000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RepCounter;
+			productName = RepCounter;
+			productReference = F00000000000000000000099 /* RepCounter.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = 800000000000000000000001 /* Build configuration list for PBXProject "RepCounter" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = fr;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				fr,
+				en,
+				Base,
+			);
+			mainGroup = C00000000000000000000001;
+			productRefGroup = C00000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D00000000000000000000001 /* RepCounter */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A00000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A00000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B00000000000000000000001 /* RepCounterApp.swift in Sources */,
+				B00000000000000000000002 /* ContentView.swift in Sources */,
+				B00000000000000000000003 /* WorkoutModel.swift in Sources */,
+				B00000000000000000000004 /* AutoCounter.swift in Sources */,
+				B00000000000000000000005 /* SensorHub.swift in Sources */,
+				B00000000000000000000006 /* PoseFeatures.swift in Sources */,
+				B00000000000000000000007 /* SignalMath.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		900000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		900000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		900000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Reps;
+				INFOPLIST_KEY_NSCameraUsageDescription = "La caméra sert à suivre tes mouvements pour compter tes répétitions. Rien n'est enregistré.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.RepCounter;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		900000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Reps;
+				INFOPLIST_KEY_NSCameraUsageDescription = "La caméra sert à suivre tes mouvements pour compter tes répétitions. Rien n'est enregistré.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.example.RepCounter;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		800000000000000000000001 /* Build configuration list for PBXProject "RepCounter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				900000000000000000000001 /* Debug */,
+				900000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		800000000000000000000002 /* Build configuration list for PBXNativeTarget "RepCounter" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				900000000000000000000003 /* Debug */,
+				900000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E00000000000000000000001 /* Project object */;
+}
