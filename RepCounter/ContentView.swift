@@ -1,7 +1,9 @@
 import SwiftUI
 import AVFoundation
 
-private let brandColor = Color(red: 0.78, green: 1.0, blue: 0.25)
+// Couleurs de l'icône : anneau violet (#AB64FA) vers bleu (#3DC1FE)
+private let ringStartColor = Color(red: 0.67, green: 0.39, blue: 0.98)
+private let brandColor = Color(red: 0.24, green: 0.76, blue: 1.0)
 
 struct ContentView: View {
     @StateObject private var model = WorkoutModel()
@@ -147,8 +149,11 @@ struct ContentView: View {
             // Anneau de phase : suit le mouvement en direct
             Circle()
                 .trim(from: 0, to: CGFloat(model.phase))
-                .stroke(brandColor, style: StrokeStyle(lineWidth: 16, lineCap: .round))
+                .stroke(AngularGradient(colors: [ringStartColor, brandColor], center: .center,
+                                        startAngle: .degrees(0), endAngle: .degrees(360)),
+                        style: StrokeStyle(lineWidth: 16, lineCap: .round))
                 .rotationEffect(.degrees(-90))
+                .shadow(color: brandColor.opacity(0.5), radius: 10)
                 .animation(.linear(duration: 0.1), value: model.phase)
             Text("\(model.count)")
                 .font(.system(size: 220, weight: .black, design: .rounded))
