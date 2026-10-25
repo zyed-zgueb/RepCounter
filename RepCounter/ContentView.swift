@@ -19,12 +19,18 @@ struct ContentView: View {
 
             VStack {
                 HStack(alignment: .center) {
+                    diagnosticsButton
                     sourceLabel
                     Spacer()
                     announceButton
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
+                if model.showsDiagnostics {
+                    diagnosticsPanel
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                }
                 Spacer()
                 counter
                 Spacer()
@@ -54,6 +60,46 @@ struct ContentView: View {
         Text(model.source.map { "Capteur : \($0.label)" } ?? " ")
             .font(.footnote.weight(.medium))
             .foregroundStyle(.white.opacity(0.6))
+    }
+
+    private var diagnosticsButton: some View {
+        Button { model.showsDiagnostics.toggle() } label: {
+            Image(systemName: "waveform.path.ecg")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(model.showsDiagnostics ? Color.black : Color.white)
+                .frame(width: 40, height: 40)
+                .background(model.showsDiagnostics ? AnyShapeStyle(brandColor) : AnyShapeStyle(Material.ultraThinMaterial),
+                            in: Circle())
+        }
+    }
+
+    /// Ce que voit chaque capteur : amplitude du mouvement par rapport au seuil,
+    /// cycles détectés, note de régularité (il faut ≥ 0,60 pour démarrer).
+    private var diagnosticsPanel: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("\(Int(model.framesPerSecond.rounded())) images/s")
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(model.framesPerSecond < 20 ? Color.orange : Color.white)
+            ForEach(model.diagnostics, id: \.source) { item in
+                HStack(spacing: 8) {
+                    Text(item.source.label)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("ampl. \(Int((100 * item.amplitude / item.source.minAmplitude).rounded())) %")
+                        .foregroundStyle(item.amplitude >= item.source.minAmplitude ? brandColor : Color.white.opacity(0.5))
+                    Text("\(item.cycles) cyc.")
+                    Text(String(format: "rég. %.2f", item.regularity))
+                        .foregroundStyle(item.regularity >= 0.6 ? brandColor : Color.white.opacity(0.5))
+                }
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.white)
+                .opacity(item.source == model.source ? 1 : 0.85)
+            }
+            Text("ampl. : mouvement mesuré / seuil (≥ 100 % pour compter)")
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.5))
+        }
+        .padding(12)
+        .background(Color.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
     }
 
     /// Fréquence des annonces vocales ; un bip marque les autres répétitions.

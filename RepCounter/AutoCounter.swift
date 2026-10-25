@@ -7,6 +7,7 @@ enum SignalSource: String, CaseIterable {
     case face     // rectangle du visage
     case pose     // squelette Vision
     case motion   // gravité dans le repère du téléphone (téléphone porté sur soi)
+    case vertical // accélération verticale (téléphone tenu qui monte et descend : squats)
 
     var label: String {
         switch self {
@@ -14,7 +15,8 @@ enum SignalSource: String, CaseIterable {
         case .pixels: return "Image"
         case .face: return "Visage"
         case .pose: return "Squelette"
-        case .motion: return "Mouvement du téléphone"
+        case .motion: return "Inclinaison du téléphone"
+        case .vertical: return "Montée-descente du téléphone"
         }
     }
 
@@ -26,11 +28,12 @@ enum SignalSource: String, CaseIterable {
         case .face: return 0.03
         case .pose: return 0.2
         case .motion: return 0.1
+        case .vertical: return 0.08
         }
     }
 
     /// À régularité égale, on préfère les mesures les plus directes du mouvement.
-    static let preference: [SignalSource] = [.depth, .motion, .pose, .face, .pixels]
+    static let preference: [SignalSource] = [.depth, .motion, .vertical, .pose, .face, .pixels]
 }
 
 private enum Tuning {
@@ -43,6 +46,16 @@ private enum Tuning {
     static let highThreshold: Float = 0.75
     static let lowThreshold: Float = 0.25
     static let minRegularity: Float = 0.6
+    static let maxRoughness: Float = 0.12   // au-delà, signal trop saccadé : du bruit, pas un geste
+    static let keptCycles = 30
+}
+
+/// État d'une source, pour l'écran de diagnostic.
+struct SourceDiagnostic {
+    var source: SignalSource
+    var amplitude: Float
+    var cycles: Int
+    var regularity: Float
 }
 
 /// Suit une source : ACP glissante → signal 1D → cycles par hystérésis adaptative.
@@ -50,14 +63,18 @@ final class SignalTracker {
     let source: SignalSource
     private(set) var cycles: [Double] = []
     private(set) var phase: Float = 0
+    private(set) var amplitude: Float = 0
+    /// Dernière note de régularité calculée (diagnostic).
+    private(set) var lastRegularity: Float = 0
 
+    /// Amplitude du signal au moment de chaque cycle.
+    private var cycleAmplitudes: [Float] = []
     private var times: [Double] = []
     private var rows: [[Float]] = []
     private var signal: [Float] = []
     private var axis: [Float]?
     private var frameIndex = 0
     private var isHigh = false
-    private var amplitude: Float = 0
     private var ignoreBefore = -Double.infinity
 
     init(source: SignalSource) {
@@ -67,6 +84,7 @@ final class SignalTracker {
     /// Oublie les cycles passés (remise à zéro du compteur).
     func forgetCycles(before t: Double) {
         cycles = []
+        cycleAmplitudes = []
         ignoreBefore = t
     }
 
@@ -112,7 +130,11 @@ final class SignalTracker {
             isHigh = false
             if let last = cycles.last, t - last < Tuning.minPeriod { return false }
             cycles.append(t)
-            if cycles.count > 6 { cycles.removeFirst(cycles.count - 6) }
+            cycleAmplitudes.append(amplitude)
+            if cycles.count > Tuning.keptCycles {
+                cycles.removeFirst(cycles.count - Tuning.keptCycles)
+                cycleAmplitudes.removeFirst(cycleAmplitudes.count - Tuning.keptCycles)
+            }
             return true
         }
         return false
@@ -127,6 +149,11 @@ final class SignalTracker {
 
     /// Note de 0 à 1 : est-ce un rythme net ? 0 si ce n'est pas un vrai mouvement répétitif.
     func regularity(at t: Double) -> Float {
+        lastRegularity = computeRegularity(at: t)
+        return lastRegularity
+    }
+
+    private func computeRegularity(at t: Double) -> Float {
         guard cycles.count >= 3, amplitude > 0 else { return 0 }
         let last = Array(cycles.suffix(3))
         let p1 = last[1] - last[0], p2 = last[2] - last[1]
@@ -147,21 +174,32 @@ final class SignalTracker {
         let fullPeriod = lagCorrelation(segment, lag: lag)
         let halfPeriod = lagCorrelation(segment, lag: max(1, lag / 2))
         guard fullPeriod >= Tuning.minRegularity, halfPeriod <= -0.2,
-              roughness(segment, amplitude: amplitude) <= 0.18 else { return 0 }
+              roughness(segment, amplitude: amplitude) <= Tuning.maxRoughness else { return 0 }
         return fullPeriod
     }
 
-    /// Cycles manqués juste avant la série régulière, quand la mise en place
-    /// (téléphone manipulé, placement) faussait encore les seuils.
+    /// Cycles faits avant que la série soit jugée régulière : ceux déjà détectés qui
+    /// s'enchaînent au même rythme avec une amplitude comparable (le rythme d'un humain
+    /// varie, la note de régularité peut tarder), puis ceux manqués pendant la mise en
+    /// place, quand le téléphone manipulé faussait encore les seuils.
     func missedCyclesBeforeRegularRun() -> Int {
         guard let period, cycles.count >= 3 else { return 0 }
-        let runStart = cycles[cycles.count - 3]
+        var chainStart = cycles.count - 3
+        while chainStart > 0 {
+            let gap = cycles[chainStart] - cycles[chainStart - 1]
+            guard gap >= 0.7 * period, gap <= 1.4 * period,
+                  cycleAmplitudes[chainStart - 1] >= 0.5 * amplitude else { break }
+            chainStart -= 1
+        }
+        let detected = cycles.count - 3 - chainStart
+
+        let runStart = cycles[chainStart]
         let start = max(runStart - 1.3 * period, ignoreBefore)
-        guard let startIndex = times.firstIndex(where: { $0 >= start }) else { return 0 }
+        guard let startIndex = times.firstIndex(where: { $0 >= start }) else { return detected }
         let segment = signal[startIndex...]
         let low = percentile(segment, 0.05)
         let range = percentile(segment, 0.95) - low
-        guard range > 0 else { return 0 }
+        guard range > 0 else { return detected }
 
         var high = false
         var missed = 0
@@ -174,12 +212,17 @@ final class SignalTracker {
                 if times[i] < runStart - 0.5 * period { missed += 1 }
             }
         }
-        return missed
+        return detected + missed
+    }
+
+    var diagnostic: SourceDiagnostic {
+        SourceDiagnostic(source: source, amplitude: amplitude, cycles: cycles.count, regularity: lastRegularity)
     }
 }
 
 /// Compteur automatique : toutes les sources sont suivies en parallèle ; dès que l'une
-/// montre 3 cycles réguliers, elle devient la référence et le compteur s'affiche.
+/// montre 3 cycles réguliers, elle devient la référence et le compteur s'affiche
+/// (avec les répétitions faites avant, retrouvées dans son historique).
 /// Utilisé uniquement sur la file des capteurs.
 final class AutoCounter {
     enum State { case searching, counting, resting }
@@ -190,6 +233,7 @@ final class AutoCounter {
         var didCount: Bool
         var state: State
         var source: SignalSource?
+        var diagnostics: [SourceDiagnostic]
     }
 
     private var trackers: [SignalSource: SignalTracker] = [:]
@@ -225,7 +269,7 @@ final class AutoCounter {
             // Plus de cycle depuis un moment : fin de série, on cherchera à nouveau
             if t - lastCountTime > max(4, 3 * (tracker.period ?? 2)) { self.leader = nil }
         } else if let best = bestRegularSource(among: completed, at: t), let tracker = trackers[best] {
-            // Les 3 cycles réguliers comptent, plus ceux manqués pendant la mise en place
+            // Les 3 cycles réguliers comptent, plus ceux faits avant
             leader = best
             count += 3 + tracker.missedCyclesBeforeRegularRun()
             lastCountTime = t
@@ -234,7 +278,9 @@ final class AutoCounter {
 
         let state: State = leader != nil ? .counting : (count == 0 ? .searching : .resting)
         let phase = leader.flatMap { trackers[$0]?.phase } ?? 0
-        return Output(count: count, phase: phase, didCount: didCount, state: state, source: leader)
+        let diagnostics = SignalSource.preference.compactMap { trackers[$0]?.diagnostic }
+        return Output(count: count, phase: phase, didCount: didCount, state: state, source: leader,
+                      diagnostics: diagnostics)
     }
 
     private func bestRegularSource(among sources: Set<SignalSource>, at t: Double) -> SignalSource? {

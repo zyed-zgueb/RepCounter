@@ -128,8 +128,13 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
 
         if let depth = latestDepth { values[.depth] = depth }
         if let thumbnail = thumbnail(pixelBuffer) { values[.pixels] = thumbnail }
-        if let gravity = motion.deviceMotion?.gravity {
+        if let deviceMotion = motion.deviceMotion {
+            let gravity = deviceMotion.gravity
+            let acceleration = deviceMotion.userAcceleration
             values[.motion] = [Float(gravity.x), Float(gravity.y), Float(gravity.z)]
+            // Accélération le long de la verticale, quelle que soit l'orientation du téléphone
+            let vertical = acceleration.x * gravity.x + acceleration.y * gravity.y + acceleration.z * gravity.z
+            values[.vertical] = [Float(vertical)]
         }
 
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up)

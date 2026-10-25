@@ -59,6 +59,10 @@ final class WorkoutModel: ObservableObject {
     @Published private(set) var source: SignalSource?
     @Published private(set) var repPulse = 0
     @Published private(set) var cameraDenied = false
+    /// Écran de diagnostic : images par seconde et état de chaque capteur.
+    @Published var showsDiagnostics = false
+    @Published private(set) var framesPerSecond: Double = 0
+    @Published private(set) var diagnostics: [SourceDiagnostic] = []
     /// Annonce vocale toutes les N répétitions (1, 5 ou 10) ; bip pour les autres.
     @Published var announceEvery = 1 {
         didSet { UserDefaults.standard.set(announceEvery, forKey: "announceEvery") }
@@ -69,6 +73,9 @@ final class WorkoutModel: ObservableObject {
     private let counter = AutoCounter()   // utilisé uniquement sur sensors.queue
     private let announcer = Announcer()
     private let haptic = UIImpactFeedbackGenerator(style: .heavy)
+    // Mesure du débit d'images (sensors.queue)
+    private var frameTimes: [Double] = []
+    private var frameIndex = 0
 
     init() {
         let saved = UserDefaults.standard.integer(forKey: "announceEvery")
@@ -111,6 +118,18 @@ final class WorkoutModel: ObservableObject {
     // Appelé sur sensors.queue
     private func handle(_ frame: SensorFrame) {
         let output = counter.process(frame)
+        frameTimes.append(frame.time)
+        if frameTimes.count > 30 { frameTimes.removeFirst(frameTimes.count - 30) }
+        frameIndex += 1
+        // Diagnostic rafraîchi 3 fois par seconde environ
+        if frameIndex % 10 == 0, let first = frameTimes.first, let last = frameTimes.last, last > first {
+            let fps = Double(frameTimes.count - 1) / (last - first)
+            let diagnostics = output.diagnostics
+            DispatchQueue.main.async {
+                self.framesPerSecond = fps
+                self.diagnostics = diagnostics
+            }
+        }
         DispatchQueue.main.async {
             self.phase = output.phase
             if output.count != self.count {
