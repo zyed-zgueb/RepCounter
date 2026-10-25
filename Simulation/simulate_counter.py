@@ -24,7 +24,7 @@ import numpy as np
 # --- Réglages : identiques à `Tuning` et `SignalSource` dans AutoCounter.swift ---------------
 
 HISTORY = 16.0          # s d'historique
-STATS_WINDOW = 10.0     # s pour les seuils adaptatifs
+STATS_WINDOW = 6.0      # s pour les seuils adaptatifs
 PCA_FRAMES = 120        # ~4 s pour l'ACP
 AXIS_REFRESH = 10       # recalcul de l'axe toutes les 10 images
 MIN_PERIOD = 0.4
@@ -33,8 +33,22 @@ HIGH, LOW = 0.75, 0.25
 MIN_REGULARITY = 0.6
 MAX_ROUGHNESS = 0.12   # au-delà, signal trop saccadé : du bruit, pas un geste
 
-MIN_AMPLITUDE = {"depth": 0.04, "pixels": 0.05, "face": 0.03, "pose": 0.2, "motion": 0.1, "vertical": 0.08}
-PREFERENCE = ["depth", "motion", "vertical", "pose", "face", "pixels"]
+MIN_AMPLITUDE = {"depth": 0.04, "pixels": 0.05, "face": 0.03, "pose": 0.2, "motion": 0.1,
+                 "vertical": 0.08, "rotation": 0.25}
+WEAK_CYCLE_RATIO = 0.4   # en série, un cycle plus faible que 40 % des précédents ne compte pas
+
+# Profils d'exercice : identiques à `Exercise` dans Exercise.swift.
+# sources : capteurs écoutés, par ordre de préférence ; max_period : écart max entre deux reps.
+PROFILES = {
+    "auto": dict(sources=["depth", "motion", "vertical", "pose", "face", "pixels"]),
+    "pushups": dict(sources=["depth", "face", "pixels"]),
+    # Abdos dynamiques, téléphone sur la poitrine : le gyroscope voit un petit basculement
+    # rapide des épaules ~7 fois plus fort qu'une respiration de même angle
+    "crunches": dict(sources=["rotation"], max_period=3.0),
+    "squats": dict(sources=["vertical", "motion"]),
+    "curls": dict(sources=["motion", "rotation"]),
+    "press": dict(sources=["vertical", "motion"]),
+}
 
 
 # --- Outils de signal : équivalents de SignalMath.swift --------------------------------------
@@ -103,10 +117,13 @@ def principal_axis(samples, seed):
 class SignalTracker:
     """Une source : ACP glissante → signal 1D → cycles par hystérésis adaptative."""
 
-    def __init__(self, source):
+    def __init__(self, source, min_amplitude, max_period):
         self.source = source
+        self.min_amplitude = min_amplitude
+        self.max_period = max_period
         self.times, self.rows, self.cycles = [], [], []
         self.cycle_amplitudes = []   # amplitude du signal au moment de chaque cycle
+        self.cycle_swings = []       # écart max − min du signal pendant chaque cycle
         self.signal = np.zeros(0)
         self.axis = None
         self.frame_index = 0
@@ -136,7 +153,7 @@ class SignalTracker:
         recent = self.signal[np.array(self.times) >= t - STATS_WINDOW]
         low = percentile(recent, 0.05)
         self.amplitude = percentile(recent, 0.95) - low
-        if self.amplitude < MIN_AMPLITUDE[self.source]:
+        if self.amplitude < self.min_amplitude:
             self.phase = 0.0
             return False
 
@@ -148,8 +165,11 @@ class SignalTracker:
             self.is_high = False
             if self.cycles and t - self.cycles[-1] < MIN_PERIOD:
                 return False
+            since = np.array(self.times) > (self.cycles[-1] if self.cycles else t - self.max_period)
+            swing = float(self.signal[since].max() - self.signal[since].min())
             self.cycles = (self.cycles + [t])[-30:]
             self.cycle_amplitudes = (self.cycle_amplitudes + [self.amplitude])[-30:]
+            self.cycle_swings = (self.cycle_swings + [swing])[-30:]
             return True
         return False
 
@@ -163,7 +183,7 @@ class SignalTracker:
         if len(self.cycles) < 3 or self.amplitude <= 0:
             return 0.0
         p1, p2 = self.cycles[-2] - self.cycles[-3], self.cycles[-1] - self.cycles[-2]
-        if min(p1, p2) < MIN_PERIOD or max(p1, p2) > MAX_PERIOD or max(p1, p2) / min(p1, p2) > 1.5:
+        if min(p1, p2) < MIN_PERIOD or max(p1, p2) > self.max_period or max(p1, p2) / min(p1, p2) > 1.5:
             return 0.0
         period = (p1 + p2) / 2
         times = np.array(self.times)
@@ -210,33 +230,49 @@ class SignalTracker:
 
 
 class AutoCounter:
-    """Toutes les sources suivies en parallèle ; la première avec 3 cycles réguliers mène."""
+    """Les sources du profil suivies en parallèle ; la première avec 3 cycles réguliers mène."""
 
-    def __init__(self):
+    def __init__(self, profile="auto"):
+        self.profile = PROFILES[profile]
         self.trackers = {}
         self.leader = None
         self.count = 0
         self.last_count_time = -math.inf
+        self.set_swings = []    # ampleur des répétitions de la série en cours
+        self.weak_cycles = 0
         self.locks = []   # (instant, source, régularité) : pour comprendre les résultats
 
     def process(self, time, values):
         completed = set()
+        sources = self.profile["sources"]
         for source, value in values.items():
-            tracker = self.trackers.setdefault(source, SignalTracker(source))
-            if tracker.process(value, time):
+            if source not in sources:
+                continue
+            if source not in self.trackers:
+                self.trackers[source] = SignalTracker(
+                    source, MIN_AMPLITUDE[source], self.profile.get("max_period", MAX_PERIOD))
+            if self.trackers[source].process(value, time):
                 completed.add(source)
 
         if self.leader:
             tracker = self.trackers[self.leader]
             if self.leader in completed:
-                self.count += 1
-                self.last_count_time = time
-            if time - self.last_count_time > max(4, 3 * (tracker.period() or 2)):
+                # Un cycle bien plus faible que les répétitions de la série (essoufflement,
+                # téléphone qu'on repose…) ne compte pas ; deux de suite : fin de série
+                swing = tracker.cycle_swings[-1]
+                if swing >= WEAK_CYCLE_RATIO * float(np.median(self.set_swings[-5:])):
+                    self.count += 1
+                    self.last_count_time = time
+                    self.set_swings.append(swing)
+                    self.weak_cycles = 0
+                else:
+                    self.weak_cycles += 1
+            if self.weak_cycles >= 2 or time - self.last_count_time > max(4, 3 * (tracker.period() or 2)):
                 self.leader = None
             return
 
         best = None
-        for source in PREFERENCE:
+        for source in sources:
             if source not in completed:
                 continue
             score = self.trackers[source].regularity(time)
@@ -246,6 +282,8 @@ class AutoCounter:
             self.leader = best[0]
             self.count += 3 + self.trackers[best[0]].missed_cycles_before_regular_run()
             self.last_count_time = time
+            self.set_swings = self.trackers[best[0]].cycle_swings[-3:]
+            self.weak_cycles = 0
             self.locks.append((round(time, 1), best[0], round(best[1], 2)))
 
 
@@ -253,19 +291,24 @@ class AutoCounter:
 
 def synthetic_session(kind, segments, seed, pixel_count=192, fps=30):
     """Images (instant, {source: mesure}) pour une suite de segments :
-    ("rep", durée, période), ("rest", durée) ou ("walk", durée) = téléphone manipulé.
-    kind : "pushup" (téléphone au sol), "abs" (sur la poitrine), "squat" (à la main)."""
+    ("rep", durée, période), ("rest", durée), ("walk", durée) = téléphone manipulé,
+    ("pant", durée) = essoufflement (respiration rapide et ample).
+    kind : "pushup" (téléphone au sol), "abs" (sur la poitrine, grands abdos),
+    "crunch" (sur la poitrine, petits abdos rapides : seules les épaules décollent),
+    "squat" (à la main), "curl" (dans la main qui travaille)."""
     rng = np.random.default_rng(seed)
     pixel_base = rng.uniform(0.2, 0.8, pixel_count)
     frames, t = [], 0.0
+    previous_angle = None
     for segment in segments:
         kind_of_segment, duration = segment[0], segment[1]
         period = segment[2] if len(segment) > 2 else 1.0
         walking = kind_of_segment == "walk"
         for i in range(int(duration * fps)):
             t += 1 / fps
+            tt = i / fps
             # m : 0 en position de départ, 1 au point le plus éloigné du mouvement
-            m = 0.5 * (1 - math.cos(2 * math.pi * (i / fps) / period)) if kind_of_segment == "rep" else 0.0
+            m = 0.5 * (1 - math.cos(2 * math.pi * tt / period)) if kind_of_segment == "rep" else 0.0
             values = {}
             if kind == "pushup":
                 # Téléphone au sol sous la tête : distance, assombrissement, visage, téléphone immobile
@@ -276,52 +319,82 @@ def synthetic_session(kind, segments, seed, pixel_count=192, fps=30):
                 values["pixels"] = pixel_base * (1 - 0.6 * m) * light + rng.normal(0, 0.02, pixel_count)
                 if m < 0.6 and not walking:
                     values["face"] = np.array([0.5, 0.5, 0.3 + 0.4 * m]) + rng.normal(0, 0.01, 3)
-                gravity = rng.normal(0, 0.5, 3) if walking else np.array([0, 0, -1.0])
-                values["motion"] = gravity + rng.normal(0, 0.003, 3)
+                angle = rng.uniform(0, 3) if walking else 0.0
                 values["vertical"] = np.array([rng.normal(0, 0.5 if walking else 0.003)])
             elif kind == "squat":
                 # Téléphone tenu à la main devant soi : il monte et descend de 40 cm sans
                 # presque s'incliner ; seule l'accélération verticale voit bien le mouvement
                 w = 2 * math.pi / period
-                tt = i / fps
-                tilt = rng.uniform(0, 3) if walking else math.radians(5 * m)
-                values["motion"] = np.array([0, -math.cos(tilt), -math.sin(tilt)]) + rng.normal(0, 0.01, 3)
+                angle = rng.uniform(0, 3) if walking else math.radians(5 * m)
                 vertical = -0.2 * w * w * math.cos(w * tt) / 9.81 if kind_of_segment == "rep" else 0.0
                 values["vertical"] = np.array([vertical + rng.normal(0, 0.5 if walking else 0.02)])
-                values["pixels"] = rng.uniform(0, 1, pixel_count) * 0.5 + 0.3
-                values["depth"] = np.array([rng.uniform(0.3, 2), rng.uniform(0, 1)])
+            elif kind == "curl":
+                # Téléphone dans la main qui travaille : il pivote avec l'avant-bras
+                angle = rng.uniform(0, 3) if walking else math.radians(10 + 120 * m)
+                values["vertical"] = np.array([rng.normal(0, 0.5 if walking else 0.03)])
+            elif kind == "crunch":
+                # Allongé, téléphone sur la poitrine : les épaules décollent de 6° en 0,9 période,
+                # puis retour au sol ; respiration permanente, essoufflement possible
+                move = 0.9 * period
+                p = tt % period
+                lift = 0.5 * (1 - math.cos(2 * math.pi * p / move)) if kind_of_segment == "rep" and p < move else 0.0
+                breath = (2.0 * math.sin(2 * math.pi * t / 2.0) if kind_of_segment == "pant"
+                          else 1.5 * math.sin(2 * math.pi * t / 4.0))
+                angle = rng.uniform(0, 3) if walking else math.radians(5 + 6 * lift + breath)
+                values["vertical"] = np.array([rng.normal(0, 0.5 if walking else 0.01)])
             else:
-                # Téléphone contre la poitrine : inclinaison du buste + respiration ;
-                # la caméra et la profondeur ne voient que du bruit
+                # Téléphone contre la poitrine, grands abdos : inclinaison du buste + respiration
                 angle = rng.uniform(0, 3) if walking else math.radians(20 + 60 * (1 - m))
                 angle += 0.03 * math.sin(2 * math.pi * t / 4)
-                values["motion"] = np.array([0, -math.sin(angle), -math.cos(angle)]) + rng.normal(0, 0.01, 3)
                 values["vertical"] = np.array([rng.normal(0, 0.5 if walking else 0.02)])
+            if kind != "pushup":
+                # La caméra et la profondeur d'un téléphone porté ne voient que du bruit
                 values["pixels"] = rng.uniform(0, 1, pixel_count) * 0.5 + 0.3
                 values["depth"] = np.array([rng.uniform(0.3, 2), rng.uniform(0, 1)])
+            # Gravité (inclinaison) et gyroscope (vitesse de rotation, rad/s)
+            values["motion"] = np.array([0, -math.sin(angle), -math.cos(angle)]) + rng.normal(0, 0.005, 3)
+            rate = 0.0 if previous_angle is None else (angle - previous_angle) * fps
+            previous_angle = angle
+            values["rotation"] = np.array([rate, 0, 0]) + rng.normal(0, 0.01, 3)
             frames.append((t, values))
     return frames
 
 
 SCENARIOS = [
+    # (nom, capteurs simulés, segments, répétitions attendues, profil d'exercice)
     ("Pompes 15, après 3 s de mise en place", "pushup",
-     [("walk", 3), ("rest", 2), ("rep", 15 * 1.6, 1.6), ("rest", 2)], 15),
+     [("walk", 3), ("rest", 2), ("rep", 15 * 1.6, 1.6), ("rest", 2)], 15, "auto"),
     ("Pompes rapides 20 (1 s)", "pushup",
-     [("rest", 2), ("rep", 20 * 1.0, 1.0), ("rest", 2)], 20),
+     [("rest", 2), ("rep", 20 * 1.0, 1.0), ("rest", 2)], 20, "auto"),
     ("Abdos 12, téléphone sur la poitrine, après manipulation", "abs",
-     [("walk", 3), ("rest", 3), ("rep", 12 * 2.5, 2.5), ("rest", 2)], 12),
+     [("walk", 3), ("rest", 3), ("rep", 12 * 2.5, 2.5), ("rest", 2)], 12, "auto"),
     ("Abdos lents 8 (4 s par rep)", "abs",
-     [("rest", 3), ("rep", 8 * 4, 4.0), ("rest", 2)], 8),
+     [("rest", 3), ("rep", 8 * 4, 4.0), ("rest", 2)], 8, "auto"),
     ("Squats 10, téléphone tenu à la main", "squat",
-     [("walk", 3), ("rest", 2), ("rep", 10 * 2.5, 2.5), ("rest", 3)], 10),
+     [("walk", 3), ("rest", 2), ("rep", 10 * 2.5, 2.5), ("rest", 3)], 10, "auto"),
     ("Squats rapides 12 (1,8 s)", "squat",
-     [("rest", 2), ("rep", 12 * 1.8, 1.8), ("rest", 3)], 12),
+     [("rest", 2), ("rep", 12 * 1.8, 1.8), ("rest", 3)], 12, "auto"),
     ("2 séries de pompes : 10 + pause 15 s + 8", "pushup",
-     [("rest", 2), ("rep", 10 * 1.6, 1.6), ("rest", 15), ("rep", 8 * 1.6, 1.6), ("rest", 2)], 18),
-    ("Téléphone posé, personne, 60 s", "pushup", [("rest", 60)], 0),
-    ("Allongé immobile en respirant, téléphone sur la poitrine, 60 s", "abs", [("rest", 60)], 0),
-    ("Téléphone manipulé, 20 s", "abs", [("walk", 20)], 0),
-    ("Debout immobile, téléphone à la main, 60 s", "squat", [("rest", 60)], 0),
+     [("rest", 2), ("rep", 10 * 1.6, 1.6), ("rest", 15), ("rep", 8 * 1.6, 1.6), ("rest", 2)], 18, "auto"),
+    ("Téléphone posé, personne, 60 s", "pushup", [("rest", 60)], 0, "auto"),
+    ("Allongé immobile en respirant, téléphone sur la poitrine, 60 s", "abs", [("rest", 60)], 0, "auto"),
+    ("Téléphone manipulé, 20 s", "abs", [("walk", 20)], 0, "auto"),
+    ("Debout immobile, téléphone à la main, 60 s", "squat", [("rest", 60)], 0, "auto"),
+    # Profils choisis par l'utilisateur
+    ("[Pompes] 15 pompes", "pushup",
+     [("walk", 3), ("rest", 2), ("rep", 15 * 1.6, 1.6), ("rest", 2)], 15, "pushups"),
+    ("[Abdos] 15 petits abdos rapides (6°, 1,2 s) puis essoufflement 20 s", "crunch",
+     [("walk", 3), ("rest", 3), ("rep", 15 * 1.2, 1.2), ("pant", 20)], 15, "crunches"),
+    ("[Abdos] 20 petits abdos très rapides (6°, 0,9 s)", "crunch",
+     [("rest", 3), ("rep", 20 * 0.9, 0.9), ("rest", 4)], 20, "crunches"),
+    ("[Abdos] 2 séries de 10 avec 20 s de repos allongé", "crunch",
+     [("rest", 3), ("rep", 12, 1.2), ("pant", 20), ("rep", 12, 1.2), ("rest", 4)], 20, "crunches"),
+    ("[Abdos] allongé, respiration puis essoufflement, 60 s", "crunch",
+     [("rest", 30), ("pant", 30)], 0, "crunches"),
+    ("[Squats] 10 squats, téléphone à la main", "squat",
+     [("walk", 3), ("rest", 2), ("rep", 10 * 2.5, 2.5), ("rest", 3)], 10, "squats"),
+    ("[Biceps] 12 flexions, téléphone dans la main qui travaille", "curl",
+     [("walk", 3), ("rest", 2), ("rep", 12 * 2.0, 2.0), ("rest", 3)], 12, "curls"),
 ]
 
 
@@ -331,10 +404,10 @@ def main():
     args = parser.parse_args()
 
     failures = exact_runs = 0
-    for name, kind, segments, expected in SCENARIOS:
+    for name, kind, segments, expected, profile in SCENARIOS:
         counts, sources = [], set()
         for seed in range(1, args.seeds + 1):
-            counter = AutoCounter()
+            counter = AutoCounter(profile)
             for time, values in synthetic_session(kind, segments, seed):
                 counter.process(time, values)
             counts.append(counter.count)

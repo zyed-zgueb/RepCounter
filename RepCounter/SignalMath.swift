@@ -10,6 +10,13 @@ func mean(_ values: ArraySlice<Float>) -> Float {
     values.isEmpty ? 0 : values.reduce(0, +) / Float(values.count)
 }
 
+func median(_ values: ArraySlice<Float>) -> Float {
+    let sorted = values.sorted()
+    guard !sorted.isEmpty else { return 0 }
+    let mid = sorted.count / 2
+    return sorted.count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+}
+
 func percentile(_ values: ArraySlice<Float>, _ p: Float) -> Float {
     let sorted = values.sorted()
     guard !sorted.isEmpty else { return 0 }

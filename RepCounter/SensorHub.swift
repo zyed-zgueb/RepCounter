@@ -11,10 +11,12 @@ struct SensorFrame {
 /// Caméra avant (TrueDepth si disponible), Vision et CoreMotion.
 final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDepthDataOutputDelegate {
     let session = AVCaptureSession()
-    /// File série des mesures, sur laquelle `onFrame` est appelé.
+    /// File série des mesures : `onFrame` y est appelé, `activeSources` doit y être modifié.
     let queue = DispatchQueue(label: "repcounter.sensors", qos: .userInteractive)
 
     var onFrame: ((SensorFrame) -> Void)?
+    /// Sources calculées à chaque image : celles de l'exercice choisi.
+    var activeSources = Set(SignalSource.allCases)
 
     private let sessionQueue = DispatchQueue(label: "repcounter.session")
     private let videoOutput = AVCaptureVideoDataOutput()
@@ -124,26 +126,36 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
+        let sources = activeSources
         var values: [SignalSource: [Float]] = [:]
 
-        if let depth = latestDepth { values[.depth] = depth }
-        if let thumbnail = thumbnail(pixelBuffer) { values[.pixels] = thumbnail }
+        if sources.contains(.depth), let depth = latestDepth { values[.depth] = depth }
+        if sources.contains(.pixels), let thumbnail = thumbnail(pixelBuffer) { values[.pixels] = thumbnail }
         if let deviceMotion = motion.deviceMotion {
             let gravity = deviceMotion.gravity
             let acceleration = deviceMotion.userAcceleration
+            let rotation = deviceMotion.rotationRate
             values[.motion] = [Float(gravity.x), Float(gravity.y), Float(gravity.z)]
             // Accélération le long de la verticale, quelle que soit l'orientation du téléphone
             let vertical = acceleration.x * gravity.x + acceleration.y * gravity.y + acceleration.z * gravity.z
             values[.vertical] = [Float(vertical)]
+            values[.rotation] = [Float(rotation.x), Float(rotation.y), Float(rotation.z)]
         }
 
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up)
-        try? handler.perform([poseRequest, faceRequest])
-        if let face = faceRequest.results?.max(by: { $0.boundingBox.width < $1.boundingBox.width }) {
+        // Vision est le calcul le plus coûteux : seulement si l'exercice en a besoin
+        var requests: [VNRequest] = []
+        if sources.contains(.pose) { requests.append(poseRequest) }
+        if sources.contains(.face) { requests.append(faceRequest) }
+        if !requests.isEmpty {
+            try? VNImageRequestHandler(cvPixelBuffer: pixelBuffer, orientation: .up).perform(requests)
+        }
+        if sources.contains(.face),
+           let face = faceRequest.results?.max(by: { $0.boundingBox.width < $1.boundingBox.width }) {
             let box = face.boundingBox
             values[.face] = [Float(box.midX), Float(box.midY), Float(box.width)]
         }
-        if let observation = poseRequest.results?.max(by: { $0.confidence < $1.confidence }),
+        if sources.contains(.pose),
+           let observation = poseRequest.results?.max(by: { $0.confidence < $1.confidence }),
            let recognized = try? observation.recognizedPoints(.all) {
             var points = [Joint: CGPoint]()
             for (joint, point) in recognized where point.confidence > 0.3 { points[joint] = point.location }

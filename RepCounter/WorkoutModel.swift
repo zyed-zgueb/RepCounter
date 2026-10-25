@@ -68,9 +68,16 @@ final class WorkoutModel: ObservableObject {
         didSet { UserDefaults.standard.set(announceEvery, forKey: "announceEvery") }
     }
     static let announceChoices = [1, 5, 10]
+    /// Exercice choisi : capteurs écoutés et placement du téléphone.
+    @Published var exercise = Exercise.auto {
+        didSet {
+            UserDefaults.standard.set(exercise.rawValue, forKey: "exercise")
+            apply(exercise)
+        }
+    }
 
     let sensors = SensorHub()
-    private let counter = AutoCounter()   // utilisé uniquement sur sensors.queue
+    private var counter = AutoCounter(exercise: .auto)   // utilisé uniquement sur sensors.queue
     private let announcer = Announcer()
     private let haptic = UIImpactFeedbackGenerator(style: .heavy)
     // Mesure du débit d'images (sensors.queue)
@@ -80,7 +87,9 @@ final class WorkoutModel: ObservableObject {
     init() {
         let saved = UserDefaults.standard.integer(forKey: "announceEvery")
         announceEvery = Self.announceChoices.contains(saved) ? saved : 1
+        exercise = UserDefaults.standard.string(forKey: "exercise").flatMap(Exercise.init(rawValue:)) ?? .auto
         sensors.onFrame = { [weak self] frame in self?.handle(frame) }
+        apply(exercise)   // didSet n'est pas appelé pendant l'init
     }
 
     func start() {
@@ -107,6 +116,19 @@ final class WorkoutModel: ObservableObject {
     func cycleAnnounceEvery() {
         let index = Self.announceChoices.firstIndex(of: announceEvery) ?? 0
         announceEvery = Self.announceChoices[(index + 1) % Self.announceChoices.count]
+    }
+
+    /// Nouveau compteur pour l'exercice ; seuls ses capteurs restent calculés.
+    private func apply(_ exercise: Exercise) {
+        sensors.queue.async {
+            self.counter = AutoCounter(exercise: exercise)
+            self.sensors.activeSources = Set(exercise.sources)
+        }
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { count = 0 }
+        phase = 0
+        state = .searching
+        source = nil
+        diagnostics = []
     }
 
     func reset() {

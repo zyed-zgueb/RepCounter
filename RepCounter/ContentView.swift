@@ -20,12 +20,14 @@ struct ContentView: View {
             VStack {
                 HStack(alignment: .center) {
                     diagnosticsButton
-                    sourceLabel
+                    exerciseMenu
                     Spacer()
                     announceButton
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 12)
+                sourceLabel
+                    .padding(.top, 6)
                 if model.showsDiagnostics {
                     diagnosticsPanel
                         .padding(.horizontal, 20)
@@ -53,6 +55,29 @@ struct ContentView: View {
         .animation(.easeInOut(duration: 0.4), value: isCounting)
         .statusBarHidden()
         .preferredColorScheme(.dark)
+    }
+
+    /// Choix de l'exercice : chacun sait où est le téléphone et quel capteur écouter.
+    private var exerciseMenu: some View {
+        Menu {
+            Picker("Exercice", selection: $model.exercise) {
+                ForEach(Exercise.allCases) { exercise in
+                    Label(exercise.title, systemImage: exercise.symbol).tag(exercise)
+                }
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: model.exercise.symbol)
+                Text(model.exercise.title)
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.bold))
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial, in: Capsule())
+        }
     }
 
     /// Capteur suivi, en petit : utile pour comprendre ce que voit l'app.
@@ -162,7 +187,7 @@ struct ContentView: View {
     private var statusHint: String {
         switch model.state {
         case .searching:
-            return "Le compteur s'affiche à la 3e.\nPompes : téléphone au sol sous ta tête. Abdos : contre la poitrine."
+            return "\(model.exercise.placement)\nLe compteur s'affiche à la 3e répétition."
         case .counting, .resting:
             return "Touche l'écran pour remettre à zéro"
         }

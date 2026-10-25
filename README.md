@@ -1,8 +1,8 @@
-# Reps — compteur de répétitions automatique
+# Reps — compteur de répétitions
 
-App iOS (SwiftUI, iOS 16+, iPhone). Tu poses le téléphone, tu fais tes répétitions :
-le compteur s'affiche à la 3e et continue seul, avec annonce vocale de chaque nombre.
-Aucun réglage, aucun exercice à choisir.
+App iOS (SwiftUI, iOS 16+, iPhone). Tu choisis l'exercice (ou « Auto »), tu places le
+téléphone comme indiqué, tu fais tes répétitions : le compteur s'affiche à la 3e et
+continue seul, avec annonce vocale.
 
 ## Lancer
 1. Ouvrir `RepCounter.xcodeproj` dans Xcode 15 ou plus récent.
@@ -10,13 +10,25 @@ Aucun réglage, aucun exercice à choisir.
    Bundle Identifier `com.example.RepCounter` par un identifiant unique.
 3. Brancher l'iPhone et lancer (⌘R). Il faut un vrai iPhone (caméra TrueDepth).
 
-## Placement
-- Pompes : téléphone posé au sol, écran vers le haut, sous ta tête.
-- Abdos : téléphone tenu contre la poitrine.
-- Squats : téléphone tenu à la main ou contre la poitrine (il monte et descend avec toi).
-- Biceps : téléphone **dans la main qui travaille** (il pivote avec l'avant-bras), ou posé
-  debout face à toi, corps entier dans le cadre. Tenu dans l'autre main, il ne voit rien.
-- Autres exercices : téléphone posé debout face à toi, corps entier dans le cadre.
+## Exercices
+Le menu en haut de l'écran choisit l'exercice ; il fixe les capteurs écoutés.
+
+| Exercice | Téléphone | Capteurs |
+|---|---|---|
+| Auto | posé face à toi, ou porté | tous, le plus régulier l'emporte |
+| Pompes | au sol, écran vers le haut, sous ta tête | profondeur, visage, image |
+| Abdos | à plat contre la poitrine | gyroscope (vitesse de rotation) |
+| Squats | à la main ou contre la poitrine | accélération verticale, inclinaison |
+| Biceps | dans la main qui travaille | inclinaison, gyroscope |
+| Développé épaules | brassard sur l'avant-bras qui pousse | accélération verticale, inclinaison |
+
+Abdos : le gyroscope mesure la vitesse de rotation. Un petit basculement rapide des
+épaules (4 à 6°) y est environ 7 fois plus fort qu'une respiration de même angle, ce que
+l'inclinaison seule ne distingue pas. Les répétitions de plus de 3 s ne sont pas comptées
+(ce serait la respiration).
+
+En série, un cycle plus faible que 40 % des répétitions précédentes ne compte pas ; deux de
+suite marquent la fin de la série. Ça évite de compter l'essoufflement après des abdos.
 
 ## Diagnostic
 Le bouton en haut à gauche (tracé de pouls) affiche ce que voit l'app : images par seconde
@@ -55,17 +67,19 @@ après toute modification du compteur, en gardant les deux en phase :
 
     python3 Simulation/simulate_counter.py --seeds 5
 
-| Scénario | Résultat |
+| Scénario | Résultat (5 tirages) |
 |---|---|
-| Pompes 15, après 3 s de mise en place | 15/15 sur 5 tirages |
-| Pompes rapides 20 (1 s) | 20/20 sur 5 tirages |
-| Abdos 12, téléphone sur la poitrine, après manipulation | 12 sur 4 tirages, 13 sur 1 |
-| Abdos lents 8 (4 s par rep) | 8/8 sur 5 tirages |
-| Squats 10, téléphone à la main | 10 sur 4 tirages, 9 sur 1 |
-| Squats rapides 12 | 12/12 sur 5 tirages |
-| 2 séries (10 + pause 15 s + 8) | 18/18 sur 5 tirages |
-| Téléphone posé, personne · allongé en respirant · debout immobile · téléphone manipulé | 0 partout |
+| Auto — pompes 15, rapides 20, 2 séries 10 + 8 | exact à chaque tirage |
+| Auto — grands abdos 12 et lents 8, téléphone sur la poitrine | exact à chaque tirage |
+| Auto — squats 10 et 12, téléphone à la main | exact à chaque tirage |
+| Pompes — 15 pompes | 15 à chaque tirage |
+| Abdos — 15 petits abdos rapides (6°) juste après manipulation, puis essoufflement | 14 à chaque tirage (−1) |
+| Abdos — 20 petits abdos très rapides · 2 séries de 10 séparées par 20 s d'essoufflement | exact à chaque tirage |
+| Squats — 10 squats · Biceps — 12 flexions | exact à chaque tirage |
 
-Faux départs mesurés sur 80 séances sans mouvement : 0 (8 avant le seuil de fluidité à 0,12).
+Faux départs : 0 sur 100 séances sans exercice (téléphone posé, allongé en respirant, debout
+immobile, téléphone manipulé, allongé essoufflé en profil Abdos ; 20 tirages chacun).
+
 Limite connue : la première répétition qui suit immédiatement une manipulation du téléphone
-peut être comptée en trop ou manquée. Le code Swift n'a pas été compilé (préparé sans Xcode).
+peut être manquée. Le profil Développé épaules n'est pas simulé. Le code Swift n'a pas été
+compilé (préparé sans Xcode).
