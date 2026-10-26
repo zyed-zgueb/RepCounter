@@ -119,8 +119,7 @@ struct WorkoutView: View {
         case .ready:
             MonitorPanel("Veille") {
                 VStack(spacing: 14) {
-                    Image(systemName: model.exercise.symbol)
-                        .font(.system(size: 54, weight: .light))
+                    ExerciseIcon(exercise: model.exercise, size: 60)
                         .foregroundStyle(theme.primary)
                     Text(model.exercise.placement)
                         .font(theme.font(13))

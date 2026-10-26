@@ -68,8 +68,7 @@ private struct ExerciseRow: View {
             Text(String(format: "%02d", index))
                 .font(theme.font(12, .semibold))
                 .foregroundStyle(theme.dim)
-            Image(systemName: exercise.symbol)
-                .font(.system(size: 20, weight: .semibold))
+            ExerciseIcon(exercise: exercise)
                 .foregroundStyle(theme.primary)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {

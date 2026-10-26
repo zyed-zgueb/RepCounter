@@ -62,6 +62,8 @@ const ICONS = {
   dumbbell: '<path d="M3 10 H17" stroke-width="2"/><rect x="4" y="6" width="3" height="8" rx="1" stroke="none"/><rect x="13" y="6" width="3" height="8" rx="1" stroke="none"/>',
   sparkles: '<path d="M10 3 L11.5 8.5 L17 10 L11.5 11.5 L10 17 L8.5 11.5 L3 10 L8.5 8.5 Z" stroke="none"/>',
   gear: '<circle cx="10" cy="10" r="2.6" fill="none" stroke-width="1.8"/><path d="M10 2.5 V5 M10 15 V17.5 M2.5 10 H5 M15 10 H17.5 M4.7 4.7 L6.5 6.5 M13.5 13.5 L15.3 15.3 M4.7 15.3 L6.5 13.5 M13.5 6.5 L15.3 4.7" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="5.6" fill="none" stroke-width="1.8"/>',
+  pushup: '<circle cx="3.4" cy="7.6" r="1.9" stroke="none"/><path d="M5.8 9.4 L18.4 16.2 M6.2 9.6 L6.6 16.2" fill="none" stroke-width="2" stroke-linecap="round"/><path d="M1.5 17.6 H18.5" stroke-width="1" stroke-linecap="round" opacity=".55"/>',
+  press: '<circle cx="10" cy="7.2" r="1.9" stroke="none"/><path d="M2.5 2.6 H17.5" stroke-width="1.6" stroke-linecap="round"/><rect x="2.6" y="0.8" width="2" height="3.6" rx=".6" stroke="none"/><rect x="15.4" y="0.8" width="2" height="3.6" rx=".6" stroke="none"/><path d="M6.2 2.8 L7.6 10 H12.4 L13.8 2.8 M10 10 V13.4 M10 13.4 L7.6 18.6 M10 13.4 L12.4 18.6" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
   star: '<path d="M10 2.5 L12.2 7.4 L17.5 7.9 L13.5 11.4 L14.7 16.6 L10 13.9 L5.3 16.6 L6.5 11.4 L2.5 7.9 L7.8 7.4 Z" stroke="none"/>',
 };
 function icon(name, color, size = 20) {
@@ -102,7 +104,7 @@ function render(t, screen) {
     const rows = EXERCISES.map(([name, place, tag], i) => `
       <div class="row" style="padding:11px 0;gap:12px;${i < EXERCISES.length - 1 ? `border-bottom:1px solid ${c.line}` : ""}">
         <span style="font-size:12px;font-weight:600;color:${c.dim}">${String(i + 1).padStart(2, "0")}</span>
-        <span style="width:28px;display:flex;justify-content:center">${icon(i === 3 ? "dumbbell" : i === 5 ? "sparkles" : "figure", c.primary, 22)}</span>
+        <span style="width:28px;display:flex;justify-content:center">${icon(["pushup", "figure", "figure", "dumbbell", "press", "sparkles"][i], c.primary, 22)}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:15px;font-weight:700;text-transform:uppercase">${name}</div>
           <div style="font-size:10px;color:${c.dim};margin-top:3px;line-height:1.3">${place}</div>
@@ -186,7 +188,7 @@ function render(t, screen) {
   function main() {
     if (s.phase === "ready") {
       return panel("Veille", "", `<div class="center grow" style="gap:14px;height:100%">
-        ${icon("figure", c.primary, 56)}
+        ${icon("pushup", c.primary, 60)}
         <div style="font-size:13px">Téléphone au sol, écran vers le haut, sous ta tête.</div>
         <div style="font-size:11px;color:${c.dim}">Vérifie le tracé ci-dessous, puis Démarrer : 5 s de mise en place, et rien ne compte avant.</div></div>`, "grow");
     }
