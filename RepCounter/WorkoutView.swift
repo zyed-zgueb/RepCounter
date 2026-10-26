@@ -375,16 +375,19 @@ struct WorkoutView: View {
         }
     }
 
-    /// Tracé du mouvement capté, pour se placer avant de démarrer. Un état, pas une alerte :
-    /// téléphone au repos, léger mouvement, ou mouvement assez net pour être compté.
+    /// Tracé du mouvement capté, pour se placer avant de démarrer, et un voyant d'état (pas une
+    /// alerte) : gris au repos, couleur principale pour un léger mouvement, vert quand il est
+    /// assez net pour être compté.
     private var signalStrip: some View {
         VStack(spacing: 4) {
-            HStack(spacing: 5) {
+            // Le voyant est collé au capteur qu'il décrit ; ses mots ne servent qu'à VoiceOver
+            HStack(spacing: 6) {
+                StatusLED(color: presenceColor)
                 MonitorLabel("Mouvement · \(model.source?.code ?? model.exercise.sensorTag)")
                 Spacer()
-                StatusLED(color: presenceColor)
-                MonitorLabel(presenceText, color: presenceColor)
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityValue(presenceText)
             SignalTrace(live: model.live)
                 .frame(height: 46)
         }

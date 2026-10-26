@@ -149,14 +149,10 @@ function render(t, s) {
   }
 
   function signalStrip(kind) {
-    const k = { ok: ["Net", c.ok], weak: ["Léger", c.primary], none: ["Au repos", c.dim] }[kind];
-    return `<div style="width:100%"><div class="row" style="justify-content:space-between;margin-bottom:4px">${label("Mouvement · " + ex[3])}
-      <span class="row" style="gap:5px">${led(k[1])}${label(k[0], k[1])}</span></div>${trace(kind)}</div>`;
+    const color = { ok: c.ok, weak: c.primary, none: c.dim }[kind];
+    return `<div style="width:100%"><div class="row" style="gap:6px;margin-bottom:4px">${led(color)}${label("Mouvement · " + ex[3])}</div>${trace(kind)}</div>`;
   }
 
-  // Veille : l'exercice se change en touchant le pictogramme au centre du cadran
-  // Veille : on glisse dans le cadran d'un exercice à l'autre ; s.drag (pt) = geste en cours.
-  // Mêmes proportions que ExerciseCarousel.swift (cadran de 330 pt).
   function ready() {
     const side = 330, page = side * 0.5, index = s.exercise ?? 0, drag = s.drag || 0;
     const items = EXERCISES.map(([ic, name], i) => {
