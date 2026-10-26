@@ -1,6 +1,8 @@
-"""Sons de l'app, synthétisés (aucun fichier source) : clochettes douces en la majeur.
+"""Sons de l'app, synthétisés (aucun fichier source) : notes brèves et feutrées en la majeur.
 
 Usage : python3 Design/sound/make_sounds.py  → Design/sound/out/*.wav (+ démos .m4a si ffmpeg)
+Deux timbres à comparer : « feutre » (marteau de feutre, corde étouffée) et « bois » (touche douce).
+Le timbre INSTALLED est aussi écrit dans RepCounter/Sounds/, embarqué dans l'app.
 Chaque son a un rôle unique, reconnaissable sans regarder l'écran :
   rep      une note (la)            répétition
   rep5     deux notes montantes     palier de 5
@@ -20,58 +22,74 @@ import numpy as np
 RATE = 44_100
 OUT = os.path.join(os.path.dirname(__file__), "out")
 
-A4, E5, A5, CS6, E6, A6 = 440.0, 659.26, 880.0, 1108.73, 1318.51, 1760.0
+A3, E4, A4, CS5, E5, A5 = 220.0, 329.63, 440.0, 554.37, 659.26, 880.0
 
 
-def bell(freq, duration=0.6, decay=0.16, level=0.5):
-    """Clochette : fondamentale + partiels qui s'éteignent plus vite, attaque de 4 ms."""
+def lowpass(signal, cutoff):
+    """Filtre passe-bas à un pôle, appliqué deux fois : enlève le brillant, rend le son mat."""
+    k = 1 - np.exp(-2 * np.pi * cutoff / RATE)
+    for _ in range(2):
+        out = np.empty_like(signal)
+        acc = 0.0
+        for i, x in enumerate(signal):
+            acc += k * (x - acc)
+            out[i] = acc
+        signal = out
+    return signal
+
+
+def felt(freq, decay=0.045, level=0.6, duration=None):
+    """Note feutrée : marteau de feutre sur une corde étouffée. Attaque arrondie de 6 ms,
+    fondamentale dominante, légère chute de hauteur, extinction en quelques dizaines de ms."""
+    duration = duration or decay * 6
     t = np.arange(int(RATE * duration)) / RATE
-    partials = [(1.0, 1.0, decay), (2.0, 0.28, decay * 0.5), (3.0, 0.10, decay * 0.3), (4.16, 0.05, 0.03)]
-    out = sum(a * np.sin(2 * np.pi * freq * k * t) * np.exp(-t / tau) for k, a, tau in partials)
-    attack = np.minimum(t / 0.004, 1.0)
-    return level * out * (0.5 - 0.5 * np.cos(np.pi * attack))
+    glide = freq * (1 + 0.03 * np.exp(-t / 0.012))          # le feutre « appuie » sur la note
+    phase = 2 * np.pi * np.cumsum(glide) / RATE
+    tone = np.sin(phase) + 0.18 * np.sin(2 * phase) * np.exp(-t / (decay * 0.4))
+    attack = 0.5 - 0.5 * np.cos(np.pi * np.minimum(t / 0.006, 1.0))
+    return lowpass(level * tone * attack * np.exp(-t / decay), 1600)
 
 
-def beep(freq, duration=0.14, level=0.42):
-    """Bip net de compte à rebours : sinus pur, attaque et extinction douces."""
-    t = np.arange(int(RATE * duration)) / RATE
-    envelope = np.minimum(t / 0.005, 1.0) * np.minimum((duration - t) / 0.03, 1.0)
-    return level * envelope * (np.sin(2 * np.pi * freq * t) + 0.12 * np.sin(4 * np.pi * freq * t))
+def tap(freq, decay=0.028, level=0.75):
+    """Touche douce : un souffle de bruit filtré qui porte une note très brève (bois étouffé)."""
+    t = np.arange(int(RATE * decay * 6)) / RATE
+    rng = np.random.default_rng(int(freq))
+    body = np.sin(2 * np.pi * freq * t) * np.exp(-t / decay)
+    breath = lowpass(rng.standard_normal(len(t)), 900) * np.exp(-t / 0.008) * 0.9
+    attack = 0.5 - 0.5 * np.cos(np.pi * np.minimum(t / 0.003, 1.0))
+    return lowpass(level * (body + breath) * attack, 2200)
 
 
 def mix(*events, length=None):
     """events : (début en s, signal)."""
     end = max(start + len(sig) / RATE for start, sig in events)
-    out = np.zeros(int(RATE * (length or end + 0.05)))
+    out = np.zeros(int(RATE * (length or end + 0.02)))
     for start, sig in events:
         i = int(start * RATE)
         out[i:i + len(sig)] += sig[: len(out) - i]
     return out
 
 
-def room(signal, wet=0.18, seconds=0.9):
-    """Petite réverbération : bruit à décroissance exponentielle, convolué par FFT."""
-    rng = np.random.default_rng(7)
-    t = np.arange(int(RATE * seconds)) / RATE
-    impulse = rng.standard_normal(len(t)) * np.exp(-t / 0.18)
-    impulse /= np.sqrt(np.sum(impulse ** 2))
-    n = len(signal) + len(impulse)
-    size = 1 << (n - 1).bit_length()
-    tail = np.fft.irfft(np.fft.rfft(signal, size) * np.fft.rfft(impulse, size), size)[:n]
-    dry = np.concatenate([signal, np.zeros(len(impulse))])
-    return dry + wet * tail
+def palette(note):
+    """Les mêmes rôles, joués avec un timbre donné (felt ou tap)."""
+    return {
+        "rep": lambda: mix((0, note(A4))),
+        "rep5": lambda: mix((0, note(A4)), (0.05, note(E5, level=0.5))),
+        "rep10": lambda: mix((0, note(A4)), (0.045, note(CS5, level=0.5)), (0.09, note(E5, level=0.5))),
+        "count": lambda: mix((0, note(E4, level=0.55))),
+        "go": lambda: mix((0, note(A4, decay=0.09, level=0.4)), (0, note(CS5, decay=0.09, level=0.3)),
+                          (0, note(E5, decay=0.09, level=0.3))),
+        "setEnd": lambda: mix((0, note(E5, level=0.45)), (0.08, note(A4, decay=0.07, level=0.55))),
+        "rest": lambda: mix((0, note(A3, level=0.35))),
+        "finish": lambda: mix(*[(0.07 * i, note(f, decay=0.06 if i < 3 else 0.12, level=0.45))
+                                for i, f in enumerate([A4, CS5, E5, A5])]),
+    }
 
 
-SOUNDS = {
-    "rep": lambda: mix((0, bell(A5))),
-    "rep5": lambda: mix((0, bell(A5)), (0.07, bell(E6, level=0.42))),
-    "rep10": lambda: mix((0, bell(A5)), (0.06, bell(CS6, level=0.42)), (0.12, bell(E6, decay=0.3, level=0.42))),
-    "count": lambda: mix((0, beep(E5))),
-    "go": lambda: mix((0, beep(A5, 0.5, 0.3)), (0, beep(CS6, 0.5, 0.22)), (0, beep(E6, 0.5, 0.22))),
-    "setEnd": lambda: mix((0, bell(E6, decay=0.25, level=0.38)), (0.16, bell(A5, decay=0.4, level=0.45))),
-    "rest": lambda: mix((0, bell(A4, decay=0.1, level=0.22))),
-    "finish": lambda: mix(*[(0.09 * i, bell(f, decay=0.6, level=0.36)) for i, f in enumerate([A5, CS6, E6, A6])]),
-}
+VARIANTS = {"feutre": felt, "bois": tap}
+# Timbre embarqué dans l'app (RepCounter/Sounds/<rôle>.wav)
+INSTALLED = "feutre"
+APP_SOUNDS = os.path.join(os.path.dirname(__file__), "../../RepCounter/Sounds")
 
 
 def write_wav(path, signal):
@@ -86,28 +104,33 @@ def write_wav(path, signal):
         f.writeframes(data.tobytes())
 
 
-def demo_set():
-    """Compte à rebours, 12 répétitions toutes les 1,7 s, fin de série, une marque de récupération."""
-    events = [(i, SOUNDS["count"]()) for i in range(3)] + [(3, SOUNDS["go"]())]
+def demo_set(sounds):
+    """Compte à rebours, 12 répétitions toutes les 1,7 s, fin de série, une marque de récupération, fin."""
+    events = [(i, sounds["count"]()) for i in range(3)] + [(3, sounds["go"]())]
     t = 4.6
     for rep in range(1, 13):
-        events.append((t, SOUNDS["rep10" if rep % 10 == 0 else "rep5" if rep % 5 == 0 else "rep"]()))
+        events.append((t, sounds["rep10" if rep % 10 == 0 else "rep5" if rep % 5 == 0 else "rep"]()))
         t += 1.7
-    events.append((t + 2.5, SOUNDS["setEnd"]()))
-    events.append((t + 6.5, SOUNDS["rest"]()))
-    events.append((t + 9, SOUNDS["finish"]()))
+    events.append((t + 2.5, sounds["setEnd"]()))
+    events.append((t + 6.5, sounds["rest"]()))
+    events.append((t + 9, sounds["finish"]()))
     return mix(*events)
 
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    for name, make in SOUNDS.items():
-        write_wav(os.path.join(OUT, f"{name}.wav"), room(make()))
-    demo = os.path.join(OUT, "demo-serie.wav")
-    write_wav(demo, room(demo_set()))
-    try:
-        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", demo, "-c:a", "aac", "-b:a", "192k",
-                        demo.replace(".wav", ".m4a")], check=True)
-    except (OSError, subprocess.CalledProcessError):
-        pass
+    for variant, note in VARIANTS.items():
+        sounds = palette(note)
+        for name, make in sounds.items():
+            write_wav(os.path.join(OUT, f"{variant}-{name}.wav"), make())
+            if variant == INSTALLED:
+                os.makedirs(APP_SOUNDS, exist_ok=True)
+                write_wav(os.path.join(APP_SOUNDS, f"{name}.wav"), make())
+        demo = os.path.join(OUT, f"demo-{variant}.wav")
+        write_wav(demo, demo_set(sounds))
+        try:
+            subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", demo, "-c:a", "aac", "-b:a", "192k",
+                            demo.replace(".wav", ".m4a")], check=True)
+        except (OSError, subprocess.CalledProcessError):
+            pass
     print("sons dans", OUT)

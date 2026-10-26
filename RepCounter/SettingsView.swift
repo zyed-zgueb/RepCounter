@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Réglages, rangés hors des écrans d'entraînement : annonce vocale, thème, outils d'analyse.
+/// Réglages, rangés hors de l'écran d'entraînement : retour sonore, thème, outils d'analyse.
 struct SettingsView: View {
     /// Mode analyse : affiche pendant la séance l'enregistrement des mesures et le diagnostic.
     static let analysisModeKey = "analysisMode"
@@ -8,7 +8,7 @@ struct SettingsView: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var themeStore: ThemeStore
-    @AppStorage(WorkoutModel.announceEveryKey) private var announceEvery = WorkoutModel.defaultAnnounceEvery
+    @AppStorage(AudioMode.key) private var audioMode = AudioMode.defaultMode
     @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
 
     var body: some View {
@@ -26,19 +26,15 @@ struct SettingsView: View {
             // Liste de réglages : défile seulement si l'écran est trop petit
             ScrollView {
                 VStack(spacing: 14) {
-                    MonitorPanel("Annonce vocale") {
+                    MonitorPanel("Retour sonore") {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 8) {
-                                ForEach(WorkoutModel.announceChoices, id: \.self) { every in
-                                    Button(Self.announceLabel(every)) {
-                                        announceEvery = every
-                                    }
-                                    .buttonStyle(MonitorButtonStyle(filled: announceEvery == every, height: 38, fontSize: 11))
+                                ForEach(AudioMode.allCases) { mode in
+                                    Button(mode.title) { audioMode = mode }
+                                        .buttonStyle(MonitorButtonStyle(filled: audioMode == mode, height: 40, fontSize: 11))
                                 }
                             }
-                            note(announceEvery == 0
-                                 ? "Aucune parole : chaque répétition fait un bip court."
-                                 : "Les répétitions non annoncées font un bip court.")
+                            note(audioNote)
                         }
                     }
 
@@ -79,11 +75,16 @@ struct SettingsView: View {
         .presentationDetents([.large])
     }
 
-    private static func announceLabel(_ every: Int) -> String {
-        switch every {
-        case 0: return "Aucune"
-        case 1: return "Chaque"
-        default: return "Par \(every)"
+    private var audioNote: String {
+        switch audioMode {
+        case .sounds:
+            return "Une note par répétition, deux notes tous les 5, trois tous les 10. Notes de départ, fin de série, fin de séance."
+        case .voice:
+            let voice = Announcer.qualityVoiceName.map { "Voix : \($0)." }
+                ?? "Pour une voix plus naturelle, télécharge une voix française Améliorée ou Premium : Réglages de l'iPhone › Accessibilité › Contenu énoncé › Voix."
+            return "Les sons, plus la voix aux paliers (5, 10, 15…) et en fin de série. " + voice
+        case .silent:
+            return "Aucun son. Les vibrations restent."
         }
     }
 

@@ -9,37 +9,41 @@
 /* Begin PBXBuildFile section */
 		B00000000000000000000001 /* RepCounterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000001 /* RepCounterApp.swift */; };
 		B00000000000000000000002 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000002 /* Theme.swift */; };
-		B00000000000000000000003 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000003 /* HomeView.swift */; };
-		B00000000000000000000004 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000004 /* SettingsView.swift */; };
-		B00000000000000000000005 /* ExerciseIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000005 /* ExerciseIcon.swift */; };
-		B00000000000000000000006 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000006 /* WorkoutView.swift */; };
-		B00000000000000000000007 /* WorkoutModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000007 /* WorkoutModel.swift */; };
-		B00000000000000000000008 /* SessionRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000008 /* SessionRecorder.swift */; };
-		B00000000000000000000009 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000009 /* Exercise.swift */; };
-		B00000000000000000000010 /* AutoCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000010 /* AutoCounter.swift */; };
-		B00000000000000000000011 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000011 /* SensorHub.swift */; };
-		B00000000000000000000012 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000012 /* PoseFeatures.swift */; };
-		B00000000000000000000013 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000013 /* SignalMath.swift */; };
+		B00000000000000000000003 /* Audio.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000003 /* Audio.swift */; };
+		B00000000000000000000004 /* ExercisePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000004 /* ExercisePicker.swift */; };
+		B00000000000000000000005 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000005 /* SettingsView.swift */; };
+		B00000000000000000000006 /* ExerciseIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000006 /* ExerciseIcon.swift */; };
+		B00000000000000000000007 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000007 /* WorkoutView.swift */; };
+		B00000000000000000000008 /* WorkoutModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000008 /* WorkoutModel.swift */; };
+		B00000000000000000000009 /* SessionRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000009 /* SessionRecorder.swift */; };
+		B00000000000000000000010 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000010 /* Exercise.swift */; };
+		B00000000000000000000011 /* AutoCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000011 /* AutoCounter.swift */; };
+		B00000000000000000000012 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000012 /* SensorHub.swift */; };
+		B00000000000000000000013 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000013 /* PoseFeatures.swift */; };
+		B00000000000000000000014 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000014 /* SignalMath.swift */; };
 		B00000000000000000000098 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000098 /* Assets.xcassets */; };
 		B00000000000000000000097 /* Themes.json in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000097 /* Themes.json */; };
+		B00000000000000000000096 /* Sounds in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000096 /* Sounds */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		F00000000000000000000001 /* RepCounterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepCounterApp.swift; sourceTree = "<group>"; };
 		F00000000000000000000002 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
-		F00000000000000000000003 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
-		F00000000000000000000004 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		F00000000000000000000005 /* ExerciseIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseIcon.swift; sourceTree = "<group>"; };
-		F00000000000000000000006 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
-		F00000000000000000000007 /* WorkoutModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutModel.swift; sourceTree = "<group>"; };
-		F00000000000000000000008 /* SessionRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecorder.swift; sourceTree = "<group>"; };
-		F00000000000000000000009 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
-		F00000000000000000000010 /* AutoCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoCounter.swift; sourceTree = "<group>"; };
-		F00000000000000000000011 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
-		F00000000000000000000012 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
-		F00000000000000000000013 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
+		F00000000000000000000003 /* Audio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Audio.swift; sourceTree = "<group>"; };
+		F00000000000000000000004 /* ExercisePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePicker.swift; sourceTree = "<group>"; };
+		F00000000000000000000005 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		F00000000000000000000006 /* ExerciseIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseIcon.swift; sourceTree = "<group>"; };
+		F00000000000000000000007 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
+		F00000000000000000000008 /* WorkoutModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutModel.swift; sourceTree = "<group>"; };
+		F00000000000000000000009 /* SessionRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecorder.swift; sourceTree = "<group>"; };
+		F00000000000000000000010 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
+		F00000000000000000000011 /* AutoCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoCounter.swift; sourceTree = "<group>"; };
+		F00000000000000000000012 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
+		F00000000000000000000013 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
+		F00000000000000000000014 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
 		F00000000000000000000098 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F00000000000000000000097 /* Themes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Themes.json; sourceTree = "<group>"; };
+		F00000000000000000000096 /* Sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Sounds; sourceTree = "<group>"; };
 		F00000000000000000000099 /* RepCounter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RepCounter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -67,19 +71,21 @@
 			children = (
 				F00000000000000000000001 /* RepCounterApp.swift */,
 				F00000000000000000000002 /* Theme.swift */,
-				F00000000000000000000003 /* HomeView.swift */,
-				F00000000000000000000004 /* SettingsView.swift */,
-				F00000000000000000000005 /* ExerciseIcon.swift */,
-				F00000000000000000000006 /* WorkoutView.swift */,
-				F00000000000000000000007 /* WorkoutModel.swift */,
-				F00000000000000000000008 /* SessionRecorder.swift */,
-				F00000000000000000000009 /* Exercise.swift */,
-				F00000000000000000000010 /* AutoCounter.swift */,
-				F00000000000000000000011 /* SensorHub.swift */,
-				F00000000000000000000012 /* PoseFeatures.swift */,
-				F00000000000000000000013 /* SignalMath.swift */,
+				F00000000000000000000003 /* Audio.swift */,
+				F00000000000000000000004 /* ExercisePicker.swift */,
+				F00000000000000000000005 /* SettingsView.swift */,
+				F00000000000000000000006 /* ExerciseIcon.swift */,
+				F00000000000000000000007 /* WorkoutView.swift */,
+				F00000000000000000000008 /* WorkoutModel.swift */,
+				F00000000000000000000009 /* SessionRecorder.swift */,
+				F00000000000000000000010 /* Exercise.swift */,
+				F00000000000000000000011 /* AutoCounter.swift */,
+				F00000000000000000000012 /* SensorHub.swift */,
+				F00000000000000000000013 /* PoseFeatures.swift */,
+				F00000000000000000000014 /* SignalMath.swift */,
 				F00000000000000000000098 /* Assets.xcassets */,
 				F00000000000000000000097 /* Themes.json */,
+				F00000000000000000000096 /* Sounds */,
 			);
 			path = RepCounter;
 			sourceTree = "<group>";
@@ -148,6 +154,7 @@
 			files = (
 				B00000000000000000000098 /* Assets.xcassets in Resources */,
 				B00000000000000000000097 /* Themes.json in Resources */,
+				B00000000000000000000096 /* Sounds in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,17 +167,18 @@
 			files = (
 				B00000000000000000000001 /* RepCounterApp.swift in Sources */,
 				B00000000000000000000002 /* Theme.swift in Sources */,
-				B00000000000000000000003 /* HomeView.swift in Sources */,
-				B00000000000000000000004 /* SettingsView.swift in Sources */,
-				B00000000000000000000005 /* ExerciseIcon.swift in Sources */,
-				B00000000000000000000006 /* WorkoutView.swift in Sources */,
-				B00000000000000000000007 /* WorkoutModel.swift in Sources */,
-				B00000000000000000000008 /* SessionRecorder.swift in Sources */,
-				B00000000000000000000009 /* Exercise.swift in Sources */,
-				B00000000000000000000010 /* AutoCounter.swift in Sources */,
-				B00000000000000000000011 /* SensorHub.swift in Sources */,
-				B00000000000000000000012 /* PoseFeatures.swift in Sources */,
-				B00000000000000000000013 /* SignalMath.swift in Sources */,
+				B00000000000000000000003 /* Audio.swift in Sources */,
+				B00000000000000000000004 /* ExercisePicker.swift in Sources */,
+				B00000000000000000000005 /* SettingsView.swift in Sources */,
+				B00000000000000000000006 /* ExerciseIcon.swift in Sources */,
+				B00000000000000000000007 /* WorkoutView.swift in Sources */,
+				B00000000000000000000008 /* WorkoutModel.swift in Sources */,
+				B00000000000000000000009 /* SessionRecorder.swift in Sources */,
+				B00000000000000000000010 /* Exercise.swift in Sources */,
+				B00000000000000000000011 /* AutoCounter.swift in Sources */,
+				B00000000000000000000012 /* SensorHub.swift in Sources */,
+				B00000000000000000000013 /* PoseFeatures.swift in Sources */,
+				B00000000000000000000014 /* SignalMath.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

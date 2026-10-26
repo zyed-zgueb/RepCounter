@@ -1,40 +1,39 @@
 # Reps — compteur de répétitions
 
-App iOS (SwiftUI, iOS 16+, iPhone). Tu choisis l'exercice sur l'accueil, tu places le
-téléphone comme indiqué, tu fais tes répétitions : le compteur s'affiche à la 3e et
-continue seul, avec annonce vocale.
+App iOS (SwiftUI, iOS 16+, iPhone). L'app s'ouvre sur le cadran, réglé sur ton dernier
+exercice. Tu places le téléphone comme indiqué, tu touches Démarrer et tu fais tes répétitions :
+le compteur s'affiche à la 3e et continue seul, avec un retour sonore bref et feutré.
 
-## Écrans
-Style « moniteur » : fond quasi noir, panneaux à liseré fin, chiffres à chasse fixe, voyants
-d'état, tracé du signal façon électrocardiogramme.
+## Écran
+Un seul écran : le cadran (60 graduations), éclairé par un halo de la couleur de l'état —
+bleu pendant l'effort, orange au repos, vert à la fin. Style « moniteur » : fond quasi noir,
+chiffres à chasse fixe, voyants d'état, tracé du signal façon électrocardiogramme.
 
-Principe : à l'écran, seulement ce qui sert pendant l'effort ; le reste est rangé dans les
-Réglages. Pas de défilement, sauf pour une liste qui dépasse l'écran.
+Principe : à l'écran, seulement ce qui sert à l'instant ; le reste est rangé dans les
+Réglages. Pas de défilement.
 
-- **Accueil** : la liste des exercices (placement du téléphone, capteur utilisé) et une roue
-  dentée. La caméra est éteinte.
-- **Réglages** (roue dentée) : annonce vocale, thème, mode analyse.
-- **Séance** :
-  1. **Veille** : les capteurs tournent (le tracé et le voyant « Signal OK » aident à se
-     placer), mais rien ne compte.
-  2. **Démarrer** : 5 s de mise en place, compte à rebours vocal (« 3, 2, 1, c'est parti »).
-     Tout ce qui précède est ignoré.
-  3. **Séries automatiques** : le compteur de la série s'affiche à la 3e répétition (les
-     premières sont rattrapées). Quand tu t'arrêtes ~4 s, la série est close (« Série 2 : 12.
-     Récupération. ») et un chronomètre de récupération s'affiche, annoncé toutes les 30 s.
-     La série suivante démarre dès que tu reprends, sans toucher l'écran.
-  4. **Annuler série** : annule la série en cours (ou la dernière, pendant la récupération).
-  5. **Terminer** : résumé de la séance (total, durée, séries, moyenne, cadence, détail par
-     série) ; « Nouvelle séance » ou « Quitter ».
-- Tableau de bord pendant la séance : total, nombre de séries, cadence (s/rep), tracé du
-  signal, journal des séries sur une ligne fixe (les 4 dernières, les plus anciennes résumées
-  par « +N » ; le détail complet est dans le résumé).
-- **Mode analyse** (Réglages) : ajoute à la séance l'enregistrement ●, le diagnostic des
-  capteurs et la régularité du signal. Désactivé par défaut.
-- **Répétitions détectées, pas encore validées** : avant le démarrage du comptage d'une
-  série, le cadran suit déjà le mouvement (graduations pâles), affiche les répétitions
-  détectées en chiffres pâles « à valider », trois témoins de validation (« Détection 2/3 »),
-  une onde et une vibration légère à chaque détection. Une fois validé, tout passe en plein.
+1. **Veille** (ouverture de l'app) : au centre du cadran, le pictogramme et le nom de
+   l'exercice. **Le toucher ouvre le choix de l'exercice** (six tuiles par-dessus le cadran) ;
+   l'app retient le dernier choisi. Le cadran suit déjà le mouvement capté ; en dessous, la
+   consigne de placement, le tracé du signal (« Signal OK ») et **Démarrer**. Roue dentée :
+   les Réglages. Rien ne compte.
+2. **Départ** : 5 s pour se mettre en position, le cadran se remplit ; une note à 3, 2 et 1,
+   un accord au départ. Tout ce qui précède est ignoré.
+3. **Série** : il ne reste que le nombre, en très grand, et une ligne discrète (total de la
+   séance, cadence). Avant la validation (3 répétitions), le cadran montre les répétitions
+   détectées en pâle « à valider », trois témoins, une onde et une vibration légère à chacune ;
+   puis tout passe en plein (les premières sont rattrapées).
+4. **Récupération** : quand tu t'arrêtes ~4 s, la série est close et le cadran devient un
+   chronomètre orange, avec les dernières séries sur une ligne fixe (« +N » pour les plus
+   anciennes). La série suivante démarre dès que tu reprends, sans toucher l'écran.
+5. **Annuler série** annule la série en cours (ou la dernière, pendant la récupération).
+   **Terminer se maintient** 0,8 s (une jauge se remplit) : pas de fin de séance par erreur.
+6. **Fin** : le total dans le cadran, l'histogramme des séries, durée, moyenne et cadence,
+   puis « Nouvelle séance ».
+
+- **Réglages** (roue dentée, en veille et à la fin) : retour sonore, thème, mode analyse.
+- **Mode analyse** : ajoute à la séance l'enregistrement ●, le diagnostic des capteurs et
+  la régularité du signal. Désactivé par défaut.
 
 ## Thèmes
 Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis, lueur,
@@ -47,7 +46,11 @@ Moniteur (gratuit), Phosphore, Clinique (clair), Néon.
 ## Maquettes
 `Design/mockups/` reproduit les écrans en HTML à partir du même `Themes.json`, pour valider
 le rendu sans Mac : `node Design/mockups/render.js` → `Design/mockups/out/*.png`. Polices
-approchées (JetBrains Mono ≈ SF Mono, Inter ≈ SF Pro), pictogrammes à la place des SF Symbols.
+approchées (JetBrains Mono ≈ SF Mono, Inter ≈ SF Pro), pictogrammes approchant les SF Symbols.
+
+## Projet Xcode
+`RepCounter.xcodeproj` est généré : après l'ajout ou le retrait d'un fichier Swift, ajouter
+son nom dans `Tools/gen_xcodeproj.py` puis `python3 Tools/gen_xcodeproj.py`.
 - La caméra ne s'allume que pour les exercices qui en ont besoin (Pompes, Autre exercice).
 
 ## Exercices
@@ -88,13 +91,23 @@ Recordings. Déposé dans `Recordings/`, il se rejoue avec `Simulation/replay.py
 les comptes (réel, app, compteur Python) et trace le signal de chaque capteur.
 
 ## Retour sonore
-Les Réglages choisissent la fréquence des annonces vocales : **chaque rep**,
-**toutes les 5**, **toutes les 10** ou **aucune**. Les répétitions non annoncées font un bip court.
-Avec « aucune », l'app ne parle plus du tout : chaque répétition fait un bip, le compte à
-rebours aussi (3 bips), et les fins de série et la récupération ne sont plus annoncées.
-Le premier nombre d'une série est toujours dit (le comptage a démarré) ; la fin de série
-est annoncée avec son nombre de répétitions, puis la récupération toutes les 30 s. Le son fonctionne en mode silencieux et se mélange
-à la musique. Le réglage est mémorisé.
+Pensé pour qui ne regarde pas l'écran : un son par événement, bref (moins de 0,1 s) et
+feutré, en la majeur — une note par répétition, deux notes montantes tous les 5, trois tous
+les 10, une note grave toutes les 30 s de récupération, deux notes descendantes en fin de série,
+un arpège en fin de séance. Chaque son s'accompagne d'une vibration.
+
+Réglages : **Sons** (par défaut), **Sons + voix** (la voix dit les paliers 5, 10, 15…, le
+premier nombre d'une série, la fin de série et la durée de récupération, avec la meilleure
+voix française installée — une voix Améliorée ou Premium se télécharge dans Réglages de
+l'iPhone › Accessibilité › Contenu énoncé › Voix), **Silence** (vibrations seules).
+Le son fonctionne en mode silencieux et se mélange à la musique.
+
+Les sons sont synthétisés par `Design/sound/make_sounds.py` (aucun fichier source) : deux
+timbres à comparer, « feutre » et « bois », avec une démo de séance pour chacun dans
+`Design/sound/out/`. Le timbre `INSTALLED` est écrit dans `RepCounter/Sounds/`, embarqué
+dans l'app.
+
+    python3 Design/sound/make_sounds.py
 
 ## Comment ça marche
 - **Mesures en parallèle** (`SensorHub`) : profondeur TrueDepth, image réduite 12×16,

@@ -1,61 +1,6 @@
 import SwiftUI
 import AVFoundation
 
-/// Retour sonore : on ne voit pas l'écran pendant des pompes ou avec le téléphone sur la poitrine.
-/// Voix pour les nombres annoncés, bip court pour les autres répétitions.
-/// Voix coupée : plus aucune parole, les bips restent.
-final class Announcer {
-    var voiceEnabled = true
-
-    private let synthesizer = AVSpeechSynthesizer()
-    private let voice = AVSpeechSynthesisVoice(language: "fr-FR")
-    private let engine = AVAudioEngine()
-    private let player = AVAudioPlayerNode()
-    private let tick: AVAudioPCMBuffer?
-
-    init() {
-        // Lecture même en mode silencieux, mélangée à la musique en cours
-        try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
-
-        let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)
-        tick = format.flatMap(Self.makeTick)
-        engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: format)
-        try? engine.start()
-    }
-
-    func say(_ text: String) {
-        guard voiceEnabled else { return }
-        synthesizer.stopSpeaking(at: .immediate)
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.voice = voice
-        utterance.rate = 0.55
-        synthesizer.speak(utterance)
-    }
-
-    func playTick() {
-        guard let tick else { return }
-        // Le moteur s'arrête lors d'une interruption audio (appel, changement d'écouteurs)
-        if !engine.isRunning { try? engine.start() }
-        player.scheduleBuffer(tick, at: nil, options: .interrupts)
-        if !player.isPlaying { player.play() }
-    }
-
-    /// Bip de 80 ms à 1 320 Hz, attaque nette et extinction rapide.
-    private static func makeTick(format: AVAudioFormat) -> AVAudioPCMBuffer? {
-        let frameCount = AVAudioFrameCount(format.sampleRate * 0.08)
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount),
-              let samples = buffer.floatChannelData?[0] else { return nil }
-        buffer.frameLength = frameCount
-        for i in 0..<Int(frameCount) {
-            let t = Double(i) / format.sampleRate
-            samples[i] = Float(sin(2 * Double.pi * 1320 * t) * exp(-t * 40) * 0.6)
-        }
-        return buffer
-    }
-}
-
 /// Ce qui change à chaque mesure (30 fois par seconde). Seuls l'anneau et la courbe
 /// l'observent : le reste de l'écran, et ses boutons, ne sont pas redessinés en continu.
 final class LiveSignal: ObservableObject {
@@ -111,7 +56,7 @@ final class WorkoutModel: ObservableObject {
     enum Presence { case absent, weak, clear }
 
     static let countdownSeconds = 5
-    /// Annonce de la récupération toutes les 30 s.
+    /// Récupération signalée toutes les 30 s.
     private static let restAnnouncementInterval = 30
 
     let exercise: Exercise
@@ -140,12 +85,6 @@ final class WorkoutModel: ObservableObject {
     @Published var showsDiagnostics = false
     @Published private(set) var framesPerSecond: Double = 0
     @Published private(set) var diagnostics: [SourceDiagnostic] = []
-    /// Annonce vocale toutes les N répétitions (1, 5 ou 10) ; bip pour les autres.
-    /// 0 : voix coupée. Réglé dans les Réglages.
-    private let announceEvery: Int
-    static let announceEveryKey = "announceEvery"
-    static let announceChoices = [1, 5, 10, 0]
-    static let defaultAnnounceEvery = 1
     /// Enregistrement des mesures, pour analyser une séance qui compte mal.
     @Published private(set) var isRecording = false
     @Published private(set) var recordingDuration: TimeInterval = 0
@@ -163,6 +102,7 @@ final class WorkoutModel: ObservableObject {
 
     let sensors: SensorHub
     private let counter: AutoCounter   // utilisé uniquement sur sensors.queue
+    /// Retour sonore, selon le réglage lu à l'ouverture de l'écran.
     private let announcer = Announcer()
     private let haptic = UIImpactFeedbackGenerator(style: .heavy)
     private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
@@ -189,9 +129,6 @@ final class WorkoutModel: ObservableObject {
         self.exercise = exercise
         sensors = SensorHub(sources: Set(exercise.sources))
         counter = AutoCounter(exercise: exercise)
-        let saved = UserDefaults.standard.object(forKey: Self.announceEveryKey) as? Int
-        announceEvery = saved.flatMap { Self.announceChoices.contains($0) ? $0 : nil } ?? Self.defaultAnnounceEvery
-        announcer.voiceEnabled = announceEvery > 0
         sensors.onFrame = { [weak self] frame in self?.handle(frame) }
     }
 
@@ -238,20 +175,21 @@ final class WorkoutModel: ObservableObject {
 
     // MARK: - Séance
 
-    /// « Démarrer » : compte à rebours, le temps de se mettre en place.
+    /// « Démarrer » : compte à rebours, le temps de se mettre en place. Silencieux, puis
+    /// une note à 3, 2 et 1, et l'accord du départ.
     func beginSession() {
         guard phase == .ready else { return }
         var remaining = Self.countdownSeconds
         phase = .countdown(remaining)
-        announcer.say("Mise en place")
+        lightHaptic.impactOccurred()
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
             guard let self else { return timer.invalidate() }
             remaining -= 1
             if remaining > 0 {
                 self.phase = .countdown(remaining)
                 if remaining <= 3 {
-                    // Voix coupée : un bip par seconde pour savoir quand ça démarre
-                    if self.announcer.voiceEnabled { self.announcer.say("\(remaining)") } else { self.announcer.playTick() }
+                    self.announcer.play(.count)
+                    self.lightHaptic.impactOccurred()
                 }
             } else {
                 timer.invalidate()
@@ -264,7 +202,6 @@ final class WorkoutModel: ObservableObject {
         guard phase.isCountdown else { return }
         countdownTimer?.invalidate()
         phase = .ready
-        announcer.say("Annulé")
     }
 
     /// Fin du compte à rebours : tout ce qui précède (mise en place) est ignoré.
@@ -281,7 +218,7 @@ final class WorkoutModel: ObservableObject {
         sessionEnd = nil
         now = Date()
         phase = .active
-        announcer.say("C'est parti")
+        announcer.play(.go)
         haptic.impactOccurred()
     }
 
@@ -311,6 +248,7 @@ final class WorkoutModel: ObservableObject {
         sessionEnd = Date()
         phase = .finished
         sensors.stop()
+        announcer.play(.finish)
         announcer.say(totalReps > 0 ? "Séance terminée. \(totalReps) répétitions." : "Séance terminée.")
     }
 
@@ -335,7 +273,8 @@ final class WorkoutModel: ObservableObject {
         setReps = 0
         restAnnouncements = 0
         if announce {
-            announcer.say("Série \(sets.count) : \(reps). Récupération.")
+            announcer.play(.setEnd)
+            announcer.say("Série \(sets.count) : \(reps).")
         }
     }
 
@@ -346,6 +285,7 @@ final class WorkoutModel: ObservableObject {
         let marks = Int(restDuration) / Self.restAnnouncementInterval
         if marks > restAnnouncements {
             restAnnouncements = marks
+            announcer.play(.rest)
             announcer.say(Self.spokenDuration(marks * Self.restAnnouncementInterval))
         }
     }
@@ -463,12 +403,10 @@ final class WorkoutModel: ObservableObject {
             lastRepDate = Date()
             repPulse += 1
             haptic.impactOccurred()
-            // Le premier nombre d'une série est toujours dit : il signale que le comptage a démarré
-            if announceEvery > 0, started || reps % announceEvery == 0 {
-                announcer.say("\(reps)")
-            } else {
-                announcer.playTick()
-            }
+            // Une note par répétition, un motif aux paliers de 5 et 10. La voix (si choisie) dit
+            // les paliers et le premier nombre d'une série, qui signale que le comptage a démarré.
+            announcer.play(Cue.forRep(reps))
+            if started || reps % 5 == 0 { announcer.say("\(reps)") }
         }
         if state == .counting, output.state != .counting {
             closeSet(announce: true)

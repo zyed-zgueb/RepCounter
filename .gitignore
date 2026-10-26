@@ -7,3 +7,4 @@ build/
 
 # Python
 __pycache__/
+Design/sound/out/*.wav

@@ -18,6 +18,15 @@ enum Exercise: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Nom court, pour le cadran et les tuiles du choix d'exercice.
+    var shortTitle: String {
+        switch self {
+        case .auto: return "Autre"
+        case .press: return "Développé"
+        default: return title
+        }
+    }
+
     var symbol: String {
         switch self {
         case .auto: return "sparkles"

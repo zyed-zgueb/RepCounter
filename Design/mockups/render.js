@@ -1,5 +1,4 @@
-// Génère les captures des maquettes (screens.html) à partir de RepCounter/Themes.json.
-// Usage : node Design/mockups/render.js   → images dans Design/mockups/out/
+// Captures des maquettes (screens.html) : node Design/mockups/render.js → Design/mockups/out/*.png
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
@@ -10,17 +9,15 @@ const out = path.join(__dirname, "out");
 fs.mkdirSync(out, { recursive: true });
 
 const SCREENS = [
-  ["01-accueil", { kind: "home", caption: "Accueil" }],
-  ["01b-reglages", { kind: "settings", themes, caption: "Réglages (roue dentée)" }],
-  ["01c-reglages-voix-coupee", { kind: "settings", themes, announce: 0, caption: "Réglages, voix coupée" }],
-  ["02-veille", { phase: "ready", signal: "ok", phase01: 0.3, caption: "Veille" }],
-  ["03-compte-a-rebours", { phase: "countdown", signal: "weak", phase01: 0, caption: "Compte à rebours" }],
-  ["04-detection-2-sur-3", { phase: "acquiring", signal: "ok", phase01: 0.55, tentative: 2, total: 0, sets: [], caption: "Détection, pas encore validé" }],
-  ["05-comptage", { phase: "counting", signal: "ok", phase01: 0.7, reps: 7, total: 19, cadence: "1.6", regularity: 97, sets: [12], caption: "Comptage validé" }],
-  ["06-recuperation", { phase: "resting", signal: "weak", phase01: 0, total: 22, cadence: "1.6", regularity: 97, sets: [12, 10], caption: "Récupération" }],
-  ["06b-recuperation-6-series", { phase: "resting", signal: "weak", phase01: 0, total: 64, cadence: "1.6", sets: [12, 11, 10, 11, 10, 10], caption: "Récupération, 6 séries" }],
-  ["08-mode-analyse", { phase: "counting", signal: "ok", phase01: 0.7, reps: 7, total: 19, cadence: "1.6", regularity: 97, sets: [12], analysis: true, caption: "Mode analyse activé" }],
-  ["07-resume", { phase: "finished", total: 34, sets: [12, 10, 12], caption: "Résumé de séance" }],
+  ["1-ouverture", { phase: "ready", signal: "ok", caption: "Ouverture de l'app (veille)" }],
+  ["2-choix-exercice", { phase: "picker", exercise: 0, caption: "Toucher le pictogramme" }],
+  ["2b-abdos", { phase: "ready", exercise: 1, signal: "weak", caption: "Abdos choisis" }],
+  ["3-depart", { phase: "countdown", caption: "Départ (bips 3, 2, 1, accord)" }],
+  ["4-detection", { phase: "acquiring", tentative: 2, caption: "Détection 2/3" }],
+  ["5-serie", { phase: "counting", reps: 7, total: 19, caption: "Pendant la série" }],
+  ["6-recuperation", { phase: "resting", sets: [12, 11, 10, 11, 10, 10], caption: "Récupération" }],
+  ["7-fin", { phase: "finished", total: 64, sets: [12, 11, 10, 11, 10, 10], caption: "Fin de séance" }],
+  ["8-reglages", { phase: "settings", audio: "sons", themes, caption: "Réglages (roue dentée)" }],
 ];
 
 (async () => {
@@ -28,12 +25,10 @@ const SCREENS = [
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   await page.goto("file://" + path.join(__dirname, "screens.html"));
   await page.evaluate(() => document.fonts.ready);
-  const shots = [];
-  for (const [name, screen] of SCREENS) shots.push([`monitor-${name}`, byId.monitor, screen]);
-  for (const id of ["phosphor", "clinic", "neon"]) {
-    shots.push([`${id}-05-comptage`, byId[id], SCREENS.find(x => x[0] === "05-comptage")[1]]);
-    shots.push([`${id}-04-detection`, byId[id], SCREENS.find(x => x[0] === "04-detection-2-sur-3")[1]]);
-    shots.push([`${id}-01b-reglages`, byId[id], SCREENS[1][1]]);
+  const shots = SCREENS.map(([name, s]) => [name, byId.monitor, s]);
+  for (const id of ["clinic", "neon"]) {
+    shots.push([`${id}-5-serie`, byId[id], SCREENS.find(x => x[0] === "5-serie")[1]]);
+    shots.push([`${id}-1-ouverture`, byId[id], SCREENS.find(x => x[0] === "1-ouverture")[1]]);
   }
   for (const [name, theme, screen] of shots) {
     await page.evaluate(([t, s]) => window.renderScreen(t, s), [theme, screen]);
