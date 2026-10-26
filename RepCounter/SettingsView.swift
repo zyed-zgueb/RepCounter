@@ -8,7 +8,7 @@ struct SettingsView: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var themeStore: ThemeStore
-    @AppStorage(WorkoutModel.announceEveryKey) private var announceEvery = 1
+    @AppStorage(WorkoutModel.announceEveryKey) private var announceEvery = WorkoutModel.defaultAnnounceEvery
     @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
 
     var body: some View {
@@ -30,13 +30,15 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack(spacing: 8) {
                                 ForEach(WorkoutModel.announceChoices, id: \.self) { every in
-                                    Button(every == 1 ? "Chaque rep" : "Toutes les \(every)") {
+                                    Button(Self.announceLabel(every)) {
                                         announceEvery = every
                                     }
                                     .buttonStyle(MonitorButtonStyle(filled: announceEvery == every, height: 38, fontSize: 11))
                                 }
                             }
-                            note("Les répétitions non annoncées font un bip court.")
+                            note(announceEvery == 0
+                                 ? "Aucune parole : chaque répétition fait un bip court."
+                                 : "Les répétitions non annoncées font un bip court.")
                         }
                     }
 
@@ -75,6 +77,14 @@ struct SettingsView: View {
         }
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.large])
+    }
+
+    private static func announceLabel(_ every: Int) -> String {
+        switch every {
+        case 0: return "Aucune"
+        case 1: return "Chaque"
+        default: return "Par \(every)"
+        }
     }
 
     private func note(_ text: String) -> some View {

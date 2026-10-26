@@ -3,7 +3,10 @@ import AVFoundation
 
 /// Retour sonore : on ne voit pas l'écran pendant des pompes ou avec le téléphone sur la poitrine.
 /// Voix pour les nombres annoncés, bip court pour les autres répétitions.
+/// Voix coupée : plus aucune parole, les bips restent.
 final class Announcer {
+    var voiceEnabled = true
+
     private let synthesizer = AVSpeechSynthesizer()
     private let voice = AVSpeechSynthesisVoice(language: "fr-FR")
     private let engine = AVAudioEngine()
@@ -23,6 +26,7 @@ final class Announcer {
     }
 
     func say(_ text: String) {
+        guard voiceEnabled else { return }
         synthesizer.stopSpeaking(at: .immediate)
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice = voice
@@ -136,10 +140,12 @@ final class WorkoutModel: ObservableObject {
     @Published var showsDiagnostics = false
     @Published private(set) var framesPerSecond: Double = 0
     @Published private(set) var diagnostics: [SourceDiagnostic] = []
-    /// Annonce vocale toutes les N répétitions (1, 5 ou 10) ; bip pour les autres. Réglé dans les Réglages.
+    /// Annonce vocale toutes les N répétitions (1, 5 ou 10) ; bip pour les autres.
+    /// 0 : voix coupée. Réglé dans les Réglages.
     private let announceEvery: Int
     static let announceEveryKey = "announceEvery"
-    static let announceChoices = [1, 5, 10]
+    static let announceChoices = [1, 5, 10, 0]
+    static let defaultAnnounceEvery = 1
     /// Enregistrement des mesures, pour analyser une séance qui compte mal.
     @Published private(set) var isRecording = false
     @Published private(set) var recordingDuration: TimeInterval = 0
@@ -183,8 +189,9 @@ final class WorkoutModel: ObservableObject {
         self.exercise = exercise
         sensors = SensorHub(sources: Set(exercise.sources))
         counter = AutoCounter(exercise: exercise)
-        let saved = UserDefaults.standard.integer(forKey: Self.announceEveryKey)
-        announceEvery = Self.announceChoices.contains(saved) ? saved : 1
+        let saved = UserDefaults.standard.object(forKey: Self.announceEveryKey) as? Int
+        announceEvery = saved.flatMap { Self.announceChoices.contains($0) ? $0 : nil } ?? Self.defaultAnnounceEvery
+        announcer.voiceEnabled = announceEvery > 0
         sensors.onFrame = { [weak self] frame in self?.handle(frame) }
     }
 
@@ -242,7 +249,10 @@ final class WorkoutModel: ObservableObject {
             remaining -= 1
             if remaining > 0 {
                 self.phase = .countdown(remaining)
-                if remaining <= 3 { self.announcer.say("\(remaining)") }
+                if remaining <= 3 {
+                    // Voix coupée : un bip par seconde pour savoir quand ça démarre
+                    if self.announcer.voiceEnabled { self.announcer.say("\(remaining)") } else { self.announcer.playTick() }
+                }
             } else {
                 timer.invalidate()
                 self.startCounting()
@@ -454,7 +464,7 @@ final class WorkoutModel: ObservableObject {
             repPulse += 1
             haptic.impactOccurred()
             // Le premier nombre d'une série est toujours dit : il signale que le comptage a démarré
-            if started || reps % announceEvery == 0 {
+            if announceEvery > 0, started || reps % announceEvery == 0 {
                 announcer.say("\(reps)")
             } else {
                 announcer.playTick()

@@ -89,7 +89,9 @@ les comptes (réel, app, compteur Python) et trace le signal de chaque capteur.
 
 ## Retour sonore
 Les Réglages choisissent la fréquence des annonces vocales : **chaque rep**,
-**toutes les 5** ou **toutes les 10**. Les répétitions non annoncées font un bip court.
+**toutes les 5**, **toutes les 10** ou **aucune**. Les répétitions non annoncées font un bip court.
+Avec « aucune », l'app ne parle plus du tout : chaque répétition fait un bip, le compte à
+rebours aussi (3 bips), et les fins de série et la récupération ne sont plus annoncées.
 Le premier nombre d'une série est toujours dit (le comptage a démarré) ; la fin de série
 est annoncée avec son nombre de répétitions, puis la récupération toutes les 30 s. Le son fonctionne en mode silencieux et se mélange
 à la musique. Le réglage est mémorisé.

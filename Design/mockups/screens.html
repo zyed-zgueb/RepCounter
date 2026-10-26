@@ -132,9 +132,10 @@ function render(t, screen) {
         <span style="width:20px;height:20px;border-radius:50%;border:2px solid ${selected ? c.primary : c.dim};display:flex;align-items:center;justify-content:center">
           ${selected ? `<span style="width:10px;height:10px;border-radius:50%;background:${c.primary}"></span>` : ""}</span></div>`;
     }).join("");
-    const announce = `<div class="row">${[["Chaque rep", true], ["Toutes les 5", false], ["Toutes les 10", false]]
-      .map(([text, on]) => btn(text, c.primary, on, 38, 11)).join("")}</div>
-      <div style="font-size:11px;color:${c.dim}">Les répétitions non annoncées font un bip court.</div>`;
+    const mute = s.announce === 0;
+    const announce = `<div class="row">${[["Chaque", 1], ["Par 5", 5], ["Par 10", 10], ["Aucune", 0]]
+      .map(([text, n]) => btn(text, c.primary, n === (s.announce ?? 1), 38, 11)).join("")}</div>
+      <div style="font-size:11px;color:${c.dim}">${mute ? "Aucune parole : chaque répétition fait un bip court." : "Les répétitions non annoncées font un bip court."}</div>`;
     const toggle = `<div class="row" style="justify-content:space-between">
         <span style="font-size:14px;font-weight:700">MODE ANALYSE</span>
         <span style="width:51px;height:31px;border-radius:16px;background:${s.analysis ? c.primary : c.line};position:relative">

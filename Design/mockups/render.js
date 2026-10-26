@@ -12,6 +12,7 @@ fs.mkdirSync(out, { recursive: true });
 const SCREENS = [
   ["01-accueil", { kind: "home", caption: "Accueil" }],
   ["01b-reglages", { kind: "settings", themes, caption: "Réglages (roue dentée)" }],
+  ["01c-reglages-voix-coupee", { kind: "settings", themes, announce: 0, caption: "Réglages, voix coupée" }],
   ["02-veille", { phase: "ready", signal: "ok", phase01: 0.3, caption: "Veille" }],
   ["03-compte-a-rebours", { phase: "countdown", signal: "weak", phase01: 0, caption: "Compte à rebours" }],
   ["04-detection-2-sur-3", { phase: "acquiring", signal: "ok", phase01: 0.55, tentative: 2, total: 0, sets: [], caption: "Détection, pas encore validé" }],
@@ -30,8 +31,8 @@ const SCREENS = [
   const shots = [];
   for (const [name, screen] of SCREENS) shots.push([`monitor-${name}`, byId.monitor, screen]);
   for (const id of ["phosphor", "clinic", "neon"]) {
-    shots.push([`${id}-05-comptage`, byId[id], SCREENS[5][1]]);
-    shots.push([`${id}-04-detection`, byId[id], SCREENS[4][1]]);
+    shots.push([`${id}-05-comptage`, byId[id], SCREENS.find(x => x[0] === "05-comptage")[1]]);
+    shots.push([`${id}-04-detection`, byId[id], SCREENS.find(x => x[0] === "04-detection-2-sur-3")[1]]);
     shots.push([`${id}-01b-reglages`, byId[id], SCREENS[1][1]]);
   }
   for (const [name, theme, screen] of shots) {
