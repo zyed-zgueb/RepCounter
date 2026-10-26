@@ -430,12 +430,13 @@ final class WorkoutModel: ObservableObject {
                 // Nouvelle série : ses premières répétitions viennent d'être rattrapées ; leurs
                 // instants sont reconstitués à la cadence mesurée
                 let cadence = output.cadence ?? 2
-                let start = Date().addingTimeInterval(-Double(max(reps - 1, 0)) * cadence)
+                let last = repDate(output)
+                let start = last.addingTimeInterval(-Double(max(reps - 1, 0)) * cadence)
                 setStart = start
                 setRepDates = (0..<reps).map { start.addingTimeInterval(Double($0) * cadence) }
                 restAnnouncements = 0
             } else {
-                while setRepDates.count < reps { setRepDates.append(Date()) }
+                while setRepDates.count < reps { setRepDates.append(repDate(output)) }
             }
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { setReps = reps }
             lastRepDate = Date()
@@ -450,6 +451,14 @@ final class WorkoutModel: ObservableObject {
             closeSet(announce: true)
         }
         if state != output.state { state = output.state }
+    }
+}
+
+extension WorkoutModel {
+    /// Instant réel du mouvement de la répétition comptée (et non celui où elle est comptée,
+    /// parfois plus tard : abdos dont le retour n'est pas vu).
+    fileprivate func repDate(_ output: AutoCounter.Output) -> Date {
+        Date().addingTimeInterval(-(output.repAge ?? 0))
     }
 }
 

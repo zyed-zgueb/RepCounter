@@ -108,6 +108,9 @@ final class SignalTracker {
     private var restInMiddle = false
     private var armed = false
     private var armedSince = -Double.infinity
+    /// Instant où le geste de la dernière répétition comptée a atteint son extrême : l'instant
+    /// réel du mouvement, même quand la répétition est comptée plus tard (retour non vu).
+    private(set) var lastRepPeak = -Double.infinity
     private var skipNext = false
     private var ignoreBefore = -Double.infinity
 
@@ -185,6 +188,7 @@ final class SignalTracker {
             // ne se voit pas. Le geste a eu lieu : on le compte ; son retour, s'il se voit
             // plus tard, ne comptera pas une seconde fois.
             skipNext = true
+            lastRepPeak = armedSince
             recordCycle(at: t)
             return true
         } else if armed, atRest {
@@ -196,6 +200,7 @@ final class SignalTracker {
                 return false
             }
             if let last = cycles.last, t - last < Tuning.minPeriod { return false }
+            lastRepPeak = armedSince
             recordCycle(at: t)
             return true
         }
@@ -381,6 +386,8 @@ final class AutoCounter {
         /// Avant le démarrage du comptage : répétitions déjà détectées mais pas encore
         /// validées (0 à cyclesToLock − 1), pour montrer que l'app suit le mouvement.
         var tentative: Int
+        /// Répétition comptée : il y a combien de secondes son mouvement a eu lieu.
+        var repAge: Double?
     }
 
     /// Cycles réguliers exigés pour démarrer le comptage d'une série.
@@ -488,7 +495,8 @@ final class AutoCounter {
                       didReset: didReset,
                       cadence: leader.flatMap { trackers[$0]?.period },
                       regularity: leader.flatMap { trackers[$0]?.lastRegularity } ?? 0,
-                      tentative: tentative(at: t))
+                      tentative: tentative(at: t),
+                      repAge: didCount ? leader.flatMap { trackers[$0] }.map { max(0, t - $0.lastRepPeak) } : nil)
     }
 
     private func tentative(at t: Double) -> Int {

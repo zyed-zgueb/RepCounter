@@ -139,6 +139,7 @@ class SignalTracker:
         self.rest_in_middle = False
         self.armed = False
         self.armed_since = -math.inf
+        self.last_rep_peak = -math.inf   # extrême du geste de la dernière répétition comptée
         self.skip_next = False
         self.ignore_before = -math.inf
         self.amplitude = 0.0
@@ -191,6 +192,7 @@ class SignalTracker:
             self.skip_next = True
             since = np.array(self.times) > self.cycles[-1]
             swing = float(self.signal[since].max() - self.signal[since].min())
+            self.last_rep_peak = self.armed_since
             self.cycles = (self.cycles + [t])[-30:]
             self.cycle_swings = (self.cycle_swings + [swing])[-30:]
             return True
@@ -206,6 +208,7 @@ class SignalTracker:
                 return False
             since = np.array(self.times) > (self.cycles[-1] if self.cycles else t - self.max_period)
             swing = float(self.signal[since].max() - self.signal[since].min())
+            self.last_rep_peak = self.armed_since
             self.cycles = (self.cycles + [t])[-30:]
             self.cycle_swings = (self.cycle_swings + [swing])[-30:]
             return True
