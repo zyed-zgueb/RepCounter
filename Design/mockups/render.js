@@ -16,7 +16,10 @@ const SCREENS = [
   ["4-detection", { phase: "acquiring", tentative: 2, caption: "Détection 2/3" }],
   ["5-serie", { phase: "counting", reps: 7, total: 19, caption: "Pendant la série" }],
   ["6-recuperation", { phase: "resting", sets: [12, 11, 10, 11, 10, 10], caption: "Récupération" }],
-  ["7-fin", { phase: "finished", total: 64, sets: [12, 11, 10, 11, 10, 10], caption: "Fin de séance" }],
+  ["7-fin", { phase: "finished", total: 60, sets: [14, 13, 12, 11, 10], recordSet: 0, caption: "Fin de séance" }],
+  ["7b-fin-correction", { phase: "finished", total: 60, sets: [14, 13, 12, 11, 10], recordSet: 0, editing: 2, caption: "Correction d'une série" }],
+  ["9-historique", { phase: "history", height: 1720, caption: "Historique (défile)" }],
+  ["10-seance", { phase: "session", caption: "Détail d'une séance" }],
   ["8-reglages", { phase: "settings", audio: "sons", themes, caption: "Réglages (roue dentée)" }],
 ];
 
@@ -33,7 +36,9 @@ const SCREENS = [
   for (const [name, theme, screen] of shots) {
     await page.evaluate(([t, s]) => window.renderScreen(t, s), [theme, screen]);
     await page.waitForTimeout(50);
-    await page.screenshot({ path: path.join(out, `${name}.png`), clip: { x: 0, y: 0, width: 390, height: 844 } });
+    const height = screen.height || 844;
+    await page.setViewportSize({ width: 390, height });
+    await page.screenshot({ path: path.join(out, `${name}.png`), clip: { x: 0, y: 0, width: 390, height } });
   }
   await browser.close();
   console.log(`${shots.length} captures dans ${out}`);

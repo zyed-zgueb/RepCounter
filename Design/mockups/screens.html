@@ -51,6 +51,11 @@ const ICONS = {
   dumbbell: '<path d="M3 10 H17" stroke-width="2"/><rect x="3.5" y="5.5" width="3.4" height="9" rx="1" stroke="none"/><rect x="13.1" y="5.5" width="3.4" height="9" rx="1" stroke="none"/>',
   sparkles: '<path d="M10 3 L11.5 8.5 L17 10 L11.5 11.5 L10 17 L8.5 11.5 L3 10 L8.5 8.5 Z" stroke="none"/>',
   gear: '<circle cx="10" cy="10" r="2.6" fill="none" stroke-width="1.8"/><path d="M10 2.5 V5 M10 15 V17.5 M2.5 10 H5 M15 10 H17.5 M4.7 4.7 L6.5 6.5 M13.5 13.5 L15.3 15.3 M4.7 15.3 L6.5 13.5 M13.5 6.5 L15.3 4.7" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="5.6" fill="none" stroke-width="1.8"/>',
+  chart: '<rect x="3" y="10" width="3" height="7" rx="1" stroke="none"/><rect x="8.5" y="6" width="3" height="11" rx="1" stroke="none"/><rect x="14" y="3" width="3" height="14" rx="1" stroke="none"/>',
+  back: '<path d="M12.5 4.5 L7 10 L12.5 15.5" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+  star: '<path d="M10 2.5 L12.2 7.4 L17.5 7.9 L13.5 11.4 L14.7 16.6 L10 13.9 L5.3 16.6 L6.5 11.4 L2.5 7.9 L7.8 7.4 Z" stroke="none"/>',
+  minus: '<path d="M5 10 H15" stroke-width="2.4" stroke-linecap="round"/>',
+  plus: '<path d="M5 10 H15 M10 5 V15" stroke-width="2.4" stroke-linecap="round"/>',
   chevron: '<path d="M5.5 8 L10 12.5 L14.5 8" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
   xmark: '<path d="M5 5 L15 15 M15 5 L5 15" stroke-width="2" stroke-linecap="round"/>',
   check: '<path d="M5 10.5 L8.5 14 L15 6.5" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -88,9 +93,11 @@ function render(t, s) {
     case "resting": html = resting(); break;
     case "finished": html = finished(); break;
     case "settings": html = settings(); break;
+    case "history": html = history(); break;
+    case "session": html = sessionDetail(); break;
   }
   document.getElementById("screen").innerHTML =
-    `<div class="phone ${t.scheme}" style="background:${backdrop};font-family:${F};color:${c.text}">
+    `<div class="phone ${t.scheme}" style="height:${s.height || 844}px;background:${backdrop};font-family:${F};color:${c.text}">
        <div class="caption">${s.caption || ""} · thème ${t.name}</div>${html}</div>`;
 
   // ——— Cadran ———
@@ -164,7 +171,7 @@ function render(t, s) {
     }).join("");
     const dots = EXERCISES.map((_, i) => `<span style="width:5px;height:5px;border-radius:50%;background:${i === index ? c.primary : hexA(c.dim, .45)}"></span>`).join("");
     const inner = side * 0.76, disc = side * 0.58;
-    return `<div class="top"><span></span>${iconBtn("gear")}</div>
+    return `<div class="top">${iconBtn("chart")}${iconBtn("gear")}</div>
       <div class="hero">
         ${ring({ lit: 60, colors: "pale", sweep: 17, content: `
           <div style="position:relative;width:${side}px;height:${side}px">
@@ -240,24 +247,168 @@ function render(t, s) {
     </div></div>`;
   }
 
+  // Fin de séance : total, comparaison avec la dernière séance, records, séries (corrigeables),
+  // et quatre mesures dont la fatigue.
   function finished() {
-    const sets = s.sets, max = Math.max(...sets);
-    const bars = sets.map((n, i) => `<div class="center" style="flex:1;gap:6px;justify-content:flex-end;height:100%">
-        <span style="font-size:13px;font-weight:700">${n}</span>
-        <div style="width:100%;max-width:38px;height:${Math.round(n / max * 70)}px;border-radius:${Math.min(r, 4)}px ${Math.min(r, 4)}px 1px 1px;
-             background:linear-gradient(180deg,${c.primary},${hexA(c.secondary, .85)});${glow ? `box-shadow:0 0 ${10 * glow}px ${hexA(c.primary, .3)}` : ""}"></div>
-        <span style="font-size:10px;color:${c.dim}">S${String(i + 1).padStart(2, "0")}</span></div>`).join("");
-    const stat = (name, value, unit = "") => `<div class="center" style="flex:1;gap:4px">${label(name)}
-        <span style="font-size:20px;font-weight:600">${value}<span style="font-size:10px;color:${c.dim};margin-left:3px">${unit}</span></span></div>`;
-    return `${status("Séance terminée", c.ok, "")}
-      <div class="hero" style="gap:20px">
-        ${ring({ lit: 60, size: 270, content: `
-          <div style="font-size:112px;font-weight:700;line-height:1;letter-spacing:-3px;background:linear-gradient(90deg,${c.secondary},${c.primary});-webkit-background-clip:text;color:transparent">${s.total}</div>
+    const sets = s.sets, max = Math.max(...sets), editing = s.editing;
+    const bars = sets.map((n, i) => {
+      const on = i === editing, record = s.recordSet === i;
+      return `<div class="center" style="flex:1;gap:6px;justify-content:flex-end;height:100%;position:relative">
+        <span class="row" style="gap:2px;font-size:13px;font-weight:700;color:${record ? c.warn : c.text}">${record ? icon("star", c.warn, 10) : ""}${n}</span>
+        <div style="width:100%;max-width:38px;height:${Math.round(n / max * 64)}px;border-radius:${Math.min(r, 4)}px ${Math.min(r, 4)}px 1px 1px;
+             background:${on ? c.text : `linear-gradient(180deg,${c.primary},${hexA(c.secondary, .85)})`};${glow ? `box-shadow:0 0 ${10 * glow}px ${hexA(c.primary, .3)}` : ""}"></div>
+        <span style="font-size:10px;color:${on ? c.text : c.dim}">S${String(i + 1).padStart(2, "0")}</span></div>`;
+    }).join("");
+    const stat = (name, value, unit = "", color = c.text) => `<div class="center" style="flex:1;gap:4px">${label(name)}
+        <span style="font-size:18px;font-weight:600;color:${color}">${value}<span style="font-size:10px;color:${c.dim};margin-left:2px">${unit}</span></span></div>`;
+    const corrector = editing != null ? `<div class="row" style="justify-content:center;gap:14px;padding:8px 12px;border:1px solid ${c.line};border-radius:${r}px;background:${c.panel}">
+        ${label(`Série ${String(editing + 1).padStart(2, "0")}`, c.text)}
+        <span style="width:36px;height:36px;border-radius:${r}px;border:1px solid ${c.line};display:flex;align-items:center;justify-content:center">${icon("minus", c.text, 14)}</span>
+        <span style="font-size:22px;font-weight:700;min-width:34px;text-align:center">${sets[editing]}</span>
+        <span style="width:36px;height:36px;border-radius:${r}px;border:1px solid ${c.line};display:flex;align-items:center;justify-content:center">${icon("plus", c.text, 14)}</span>
+        <span style="font-size:11px;color:${c.dim}">compté : ${sets[editing] + 1}</span></div>`
+      : `<div style="font-size:11px;color:${c.dim};text-align:center">Touche une série pour corriger son compte.</div>`;
+    return `${status("Séance terminée", c.ok, "T+ 12:08")}
+      <div class="hero" style="gap:14px">
+        ${ring({ lit: 60, size: 236, content: `
+          <div style="font-size:96px;font-weight:700;line-height:1;letter-spacing:-3px;background:linear-gradient(90deg,${c.secondary},${c.primary});-webkit-background-clip:text;color:transparent">${s.total}</div>
           <div style="margin-top:6px">${label(`${ex[1]} · répétitions`)}</div>` })}
-        <div class="row" style="width:100%;height:118px;gap:10px;align-items:flex-end">${bars}</div>
-        <div class="row" style="width:100%;border-top:1px solid ${c.line};padding-top:14px">${stat("Durée", "12:08")}${stat("Moyenne", (s.total / sets.length).toFixed(1), "/série")}${stat("Cadence", "1.6", "s/rep")}</div>
+        <div class="row" style="gap:10px;justify-content:center">
+          <span class="row" style="gap:5px;padding:5px 10px;border-radius:20px;background:${hexA(c.ok, .12)};color:${c.ok};font-size:12px;font-weight:700">▲ +6 vs jeudi 22</span>
+          <span class="row" style="gap:5px;padding:5px 10px;border-radius:20px;background:${hexA(c.warn, .12)};color:${c.warn};font-size:12px;font-weight:700">${icon("star", c.warn, 12)} Record de série</span>
+        </div>
+        <div class="row" style="width:100%;height:100px;gap:10px;align-items:flex-end">${bars}</div>
+        ${corrector}
+        <div class="row" style="width:100%;border-top:1px solid ${c.line};padding-top:12px">${stat("Durée", "12:08")}${stat("Moyenne", (s.total / sets.length).toFixed(1), "/série")}${stat("Cadence", "1.6", "s")}${stat("Fatigue", "−29", "%", c.warn)}</div>
       </div>
       <div class="bottom">${btn("Nouvelle séance", c.primary, true, 58)}</div>`;
+  }
+
+  // ——— Historique ———
+  function panel(title, accessory, body) {
+    return `<div style="padding:14px;border:1px solid ${c.line};border-radius:${r}px;background:${c.panel};display:flex;flex-direction:column;gap:12px">
+      <div class="row" style="justify-content:space-between">${label(title)}${accessory || ""}</div>${body}</div>`;
+  }
+
+  function exerciseBar(selected) {
+    const items = [["Σ", "Tout"], ...EXERCISES.map(e => [e[0], e[1]])];
+    return `<div class="row" style="gap:6px;justify-content:space-between">${items.map(([ic, name], i) => {
+      const on = i === selected;
+      const content = ic === "Σ" ? `<span style="font-size:18px;font-weight:700;color:${on ? c.primary : c.dim}">Σ</span>` : icon(ic, on ? c.primary : c.dim, 22);
+      return `<div style="flex:1;height:46px;border-radius:${Math.max(r, 4) * 2}px;display:flex;align-items:center;justify-content:center;
+        border:1px solid ${on ? c.primary : c.line};background:${on ? hexA(c.primary, .12) : c.panel}">${content}</div>`;
+    }).join("")}</div>
+    <div style="text-align:center;margin-top:-4px">${label(items[selected][1], c.text)}</div>`;
+  }
+
+  function history() {
+    const weeks = [60, 0, 85, 110, 95, 120, 140, 0, 130, 165, 150, 172];
+    const best = Math.max(...weeks), avg = weeks.reduce((a, b) => a + b) / weeks.length;
+    // Cette semaine : cadran + chiffres clés
+    const week = `<div class="row" style="gap:18px">
+        ${ring({ lit: 60, size: 150, content: `<div style="font-size:42px;font-weight:700;line-height:1">172</div><div style="margin-top:4px">${label("reps")}</div>` })}
+        <div style="display:flex;flex-direction:column;gap:10px;flex:1">
+          <div><span style="font-size:20px;font-weight:700;color:${c.ok}">▲ +15 %</span><div style="font-size:11px;color:${c.dim}">vs semaine dernière (150)</div></div>
+          ${[["Séances", "3"], ["Temps", "38 min"], ["Régularité", "6 sem. de suite"]].map(([k, v]) =>
+            `<div class="row" style="justify-content:space-between">${label(k)}<span style="font-size:14px;font-weight:700">${v}</span></div>`).join("")}
+        </div></div>`;
+    // Records
+    const record = (name, value, date, fresh) => `<div style="flex:1;padding:10px;border:1px solid ${fresh ? hexA(c.warn, .6) : c.line};border-radius:${r}px;background:${fresh ? hexA(c.warn, .06) : "transparent"}">
+        ${label(name)}<div class="row" style="gap:4px;margin-top:6px"><span style="font-size:24px;font-weight:700;color:${fresh ? c.warn : c.text}">${value}</span>${fresh ? icon("star", c.warn, 12) : ""}</div>
+        <div style="font-size:10px;color:${c.dim};margin-top:2px">${date}</div></div>`;
+    const records = `<div class="row" style="gap:8px;align-items:stretch">${record("Série", "14", "aujourd'hui", true)}${record("Séance", "72", "12 oct.")}${record("Semaine", "172", "cette semaine", true)}</div>`;
+    // Volume sur 12 semaines
+    const vbars = weeks.map((v, i) => {
+      const last = i === weeks.length - 1;
+      return `<div class="center" style="flex:1;gap:5px;justify-content:flex-end;height:100%">
+        ${last ? `<span style="font-size:10px;font-weight:700">${v}</span>` : ""}
+        <div style="width:100%;max-width:18px;height:${Math.max(2, Math.round(v / best * 78))}px;border-radius:2px 2px 1px 1px;
+          background:${last ? `linear-gradient(180deg,${c.primary},${c.secondary})` : hexA(c.primary, v ? .35 : .15)}"></div>
+        <span style="font-size:9px;color:${c.dim}">${i % 3 === 2 ? ["S35", "S38", "S41", "S44"][(i - 2) / 3] : "&nbsp;"}</span></div>`;
+    }).join("");
+    const volume = `<div style="position:relative;height:112px"><div class="row" style="height:100%;gap:6px;align-items:flex-end">${vbars}</div>
+        <div style="position:absolute;left:0;right:0;bottom:${20 + avg / best * 78}px;border-top:1px dashed ${hexA(c.dim, .6)}"></div>
+        <span style="position:absolute;left:0;bottom:${23 + avg / best * 78}px;font-size:9px;color:${c.dim};background:${c.panel};padding-right:4px">moy. ${Math.round(avg)}</span></div>`;
+    // Progression : moyenne par série (courbe)
+    const avgSeries = [8.2, 8.6, 9.0, 9.1, 9.6, 9.8, 10.1, 10.4, 10.3, 11.0, 11.4, 12.0];
+    const w = 310, h = 70, lo = 7.5, hi = 12.5;
+    const pts = avgSeries.map((v, i) => `${(i / 11 * w).toFixed(1)},${(h - (v - lo) / (hi - lo) * h).toFixed(1)}`);
+    const progression = `<svg width="100%" height="${h + 6}" viewBox="0 -3 ${w} ${h + 6}" preserveAspectRatio="none">
+        <polyline points="${pts.join(" ")}" fill="none" stroke="${c.primary}" stroke-width="2" stroke-linejoin="round"/>
+        ${avgSeries.map((v, i) => `<circle cx="${i / 11 * w}" cy="${h - (v - lo) / (hi - lo) * h}" r="${i === 11 ? 4 : 2}" fill="${c.primary}"/>`).join("")}</svg>
+      <div class="row" style="justify-content:space-between">${[["Moy. / série", "12,0", "+3,8"], ["Cadence", "1,5 s", "−0,2"], ["Fatigue", "−24 %", "+9 pts"]].map(([k, v, d]) =>
+        `<div>${label(k)}<div style="font-size:15px;font-weight:700;margin-top:3px">${v} <span style="font-size:10px;color:${c.ok}">${d}</span></div></div>`).join("")}</div>`;
+    // Régularité : calendrier 16 semaines
+    let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    const days = ["L", "M", "M", "J", "V", "S", "D"];
+    let grid = "";
+    for (let d = 0; d < 7; d++) {
+      grid += `<span style="font-size:9px;color:${c.dim};width:10px">${days[d]}</span>`;
+      for (let wk = 0; wk < 16; wk++) {
+        const future = wk === 15 && d > 0;
+        const v = future ? -1 : (rnd() < 0.42 ? Math.ceil(rnd() * 3) : 0);
+        const bg = v < 0 ? "transparent" : v === 0 ? hexA(c.line, .9) : hexA(c.primary, [0, .35, .65, 1][v]);
+        grid += `<span style="width:14px;height:14px;border-radius:3px;background:${bg}"></span>`;
+      }
+    }
+    const calendar = `<div style="display:grid;grid-template-columns:12px repeat(16, 14px);gap:4px;justify-content:space-between">${grid}</div>
+      <div class="row" style="justify-content:space-between;font-size:11px;color:${c.dim}"><span>41 jours actifs sur 106</span>
+        <span class="row" style="gap:3px">moins ${[0, .35, .65, 1].map(a => `<span style="width:9px;height:9px;border-radius:2px;background:${a ? hexA(c.primary, a) : c.line}"></span>`).join("")} plus</span></div>`;
+    // Séances
+    const sessions = [["Lun 26 oct", "19:40", 60, 5, "+6", true], ["Jeu 22 oct", "18:05", 54, 5, "−4"], ["Mar 20 oct", "07:30", 58, 5, "+2"],
+                      ["Sam 17 oct", "10:12", 56, 4, "−16"], ["Lun 12 oct", "19:02", 72, 6, "+14", true], ["Jeu 8 oct", "18:40", 58, 5, "+3"]];
+    const list = sessions.map(([day, hour, total, n, delta, rec], i) => `<div class="row" style="gap:12px;padding:10px 0;${i ? `border-top:1px solid ${c.line}` : ""}">
+        <div style="flex:1"><div style="font-size:14px;font-weight:700">${day}</div><div style="font-size:11px;color:${c.dim}">${hour} · ${n} séries</div></div>
+        ${rec ? icon("star", c.warn, 13) : ""}
+        <span style="font-size:11px;font-weight:700;color:${delta.startsWith("+") ? c.ok : c.dim}">${delta}</span>
+        <span style="font-size:22px;font-weight:700;min-width:36px;text-align:right">${total}</span>
+        ${icon("chevron", c.dim, 12).replace('viewBox="0 0 20 20"', 'viewBox="0 0 20 20" style="transform:rotate(-90deg)"')}</div>`).join("");
+    return `<div class="top"><span style="font-size:16px;font-weight:700;letter-spacing:3px">HISTORIQUE</span>${iconBtn("xmark", c.text)}</div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
+        ${exerciseBar(1)}
+        ${panel("Cette semaine", label("26 oct. – 1 nov."), week)}
+        ${panel("Records", "", records)}
+        ${panel("Volume · 12 semaines", label("reps / semaine"), volume)}
+        ${panel("Progression · 12 semaines", "", progression)}
+        ${panel("Régularité", label("16 semaines"), calendar)}
+        ${panel("Séances", label("42 au total"), list)}
+      </div>`;
+  }
+
+  // Détail d'une séance : séries, récupérations, rythme rep par rep
+  function sessionDetail() {
+    const sets = [[14, "0:22", "1.5", null], [13, "0:21", "1.6", "1:12"], [12, "0:20", "1.6", "1:30"], [11, "0:19", "1.7", "1:41"], [10, "0:18", "1.8", "1:55"]];
+    const rows = sets.map(([n, d, cad, rest], i) => `<div class="row" style="padding:8px 0;${i ? `border-top:1px solid ${c.line}` : ""};font-size:14px;font-weight:600">
+        <span style="flex:1;color:${c.dim}">S${String(i + 1).padStart(2, "0")}</span>
+        <span style="flex:1;text-align:right;color:${i === 0 ? c.warn : c.text}">${i === 0 ? "★ " : ""}${n}</span>
+        <span style="flex:1;text-align:right">${d}</span><span style="flex:1;text-align:right">${cad} s</span>
+        <span style="flex:1;text-align:right;color:${c.dim}">${rest || "—"}</span></div>`).join("");
+    const head = `<div class="row">${["Série", "Reps", "Durée", "Cadence", "Récup."].map((h, i) => `<span style="flex:1;text-align:${i ? "right" : "left"}">${label(h)}</span>`).join("")}</div>`;
+    // Rythme : durée de chaque rep, série par série (fatigue visible)
+    const w = 310, h = 90, lo = 1.2, hi = 2.3;
+    const series = sets.map(([n], k) => Array.from({ length: n }, (_, i) => 1.35 + k * 0.07 + 0.5 * Math.pow(i / (n - 1), 2.2) + 0.03 * Math.sin(i * 2.1 + k)));
+    let x = 0; const step = w / (sets.reduce((a, [n]) => a + n, 0) + 4);
+    const lines = series.map((reps, k) => {
+      const pts = reps.map((v, i) => `${(x + i * step).toFixed(1)},${(h - (v - lo) / (hi - lo) * h).toFixed(1)}`);
+      const start = x; x += reps.length * step + step;
+      return `<polyline points="${pts.join(" ")}" fill="none" stroke="${mixColor(c.secondary, c.primary, k / 4)}" stroke-width="2" stroke-linejoin="round"/>
+        <text x="${start}" y="${h + 12}" font-size="9" fill="${c.dim}">S${String(k + 1).padStart(2, "0")}</text>`;
+    }).join("");
+    const rhythm = `<svg width="100%" height="${h + 16}" viewBox="0 0 ${w} ${h + 16}">${lines}</svg>
+      <div style="font-size:11px;color:${c.dim};line-height:1.4">Durée de chaque répétition : elle s'allonge en fin de série quand la fatigue arrive.</div>`;
+    return `<div class="top">${iconBtn("back", c.text)}<span style="font-size:13px;font-weight:700;letter-spacing:2px">LUN 26 OCT · 19:40</span><span style="width:40px"></span></div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
+        <div class="row" style="gap:18px">
+          ${ring({ lit: 60, size: 130, content: `<div style="font-size:40px;font-weight:700;line-height:1">60</div><div style="margin-top:3px">${label("reps")}</div>` })}
+          <div style="display:flex;flex-direction:column;gap:8px;flex:1">
+            <div class="row" style="gap:6px">${icon("pushup", c.primary, 20)}<span style="font-size:14px;font-weight:700;letter-spacing:1.5px">POMPES</span></div>
+            <span style="font-size:13px;font-weight:700;color:${c.ok}">▲ +6 vs jeudi 22</span>
+            <span class="row" style="gap:4px;font-size:12px;font-weight:700;color:${c.warn}">${icon("star", c.warn, 11)} Record de série (14)</span>
+            <span style="font-size:12px;color:${c.dim}">12:08 · 5 séries · fatigue −29 %</span>
+          </div></div>
+        ${panel("Séries", "", head + `<div>${rows}</div>`)}
+        ${panel("Rythme", label("s / rep"), rhythm)}
+      </div>`;
   }
 
   function settings() {
