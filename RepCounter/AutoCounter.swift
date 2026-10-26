@@ -49,6 +49,8 @@ private enum Tuning {
     static let keptCycles = 30
     /// En série, un cycle plus faible que 40 % des précédents ne compte pas.
     static let weakCycleRatio: Float = 0.4
+    /// Rotation (rad/s) au-delà de laquelle un téléphone censé être posé est manipulé.
+    static let handlingRotation: Float = 0.5
 }
 
 /// État d'une source, pour l'écran de diagnostic.
@@ -76,8 +78,6 @@ final class SignalTracker {
     /// Dernière note de régularité calculée (diagnostic).
     private(set) var lastRegularity: Float = 0
 
-    /// Amplitude du signal au moment de chaque cycle.
-    private var cycleAmplitudes: [Float] = []
     private var times: [Double] = []
     private var rows: [[Float]] = []
     private var signal: [Float] = []
@@ -94,9 +94,20 @@ final class SignalTracker {
     /// Oublie les cycles passés (remise à zéro du compteur).
     func forgetCycles(before t: Double) {
         cycles = []
-        cycleAmplitudes = []
         cycleSwings = []
         ignoreBefore = t
+    }
+
+    /// Repart de zéro (téléphone manipulé : ce qui précède ne décrit pas l'exercice).
+    func forgetHistory() {
+        times = []
+        rows = []
+        signal = []
+        cycles = []
+        cycleSwings = []
+        axis = nil
+        isHigh = false
+        amplitude = 0
     }
 
     /// Ajoute une mesure ; renvoie true quand un cycle complet vient de se terminer.
@@ -147,11 +158,9 @@ final class SignalTracker {
             let startIndex = times.firstIndex { $0 > cycleStart } ?? 0
             let cycleSignal = signal[startIndex...]
             cycles.append(t)
-            cycleAmplitudes.append(amplitude)
             cycleSwings.append((cycleSignal.max() ?? 0) - (cycleSignal.min() ?? 0))
             if cycles.count > Tuning.keptCycles {
                 cycles.removeFirst(cycles.count - Tuning.keptCycles)
-                cycleAmplitudes.removeFirst(cycleAmplitudes.count - Tuning.keptCycles)
                 cycleSwings.removeFirst(cycleSwings.count - Tuning.keptCycles)
             }
             return true
@@ -197,41 +206,55 @@ final class SignalTracker {
         return fullPeriod
     }
 
-    /// Cycles faits avant que la série soit jugée régulière : ceux déjà détectés qui
-    /// s'enchaînent au même rythme avec une amplitude comparable (le rythme d'un humain
-    /// varie, la note de régularité peut tarder), puis ceux manqués pendant la mise en
-    /// place, quand le téléphone manipulé faussait encore les seuils.
-    func missedCyclesBeforeRegularRun() -> Int {
+    /// Répétitions faites avant que la série soit jugée régulière.
+    ///
+    /// Pendant la mise en place, l'axe de l'ACP et les seuils n'étaient pas encore justes :
+    /// les premières répétitions ont pu être mal découpées ou manquées. On relit tout
+    /// l'historique avec l'axe et les seuils de la série régulière, et on remonte les cycles
+    /// qui lui ressemblent : même rythme, ampleur comparable (ni moitié moins, ni presque le
+    /// double), tracé fluide. On s'arrête au premier qui ne ressemble pas (pause, secousses).
+    func cyclesBeforeRegularRun() -> Int {
         guard let period, cycles.count >= 3 else { return 0 }
-        var chainStart = cycles.count - 3
-        while chainStart > 0 {
-            let gap = cycles[chainStart] - cycles[chainStart - 1]
-            guard gap >= 0.7 * period, gap <= 1.4 * period,
-                  cycleAmplitudes[chainStart - 1] >= 0.5 * amplitude else { break }
-            chainStart -= 1
-        }
-        let detected = cycles.count - 3 - chainStart
+        let runStart = cycles[cycles.count - 3]
+        guard let regularStart = times.firstIndex(where: { $0 >= runStart - period }) else { return 0 }
+        let regular = signal[regularStart...]
+        let low = percentile(regular, 0.05)
+        let regularAmplitude = percentile(regular, 0.95) - low
+        guard regularAmplitude > 0 else { return 0 }
 
-        let runStart = cycles[chainStart]
-        let start = max(runStart - 1.3 * period, ignoreBefore)
-        guard let startIndex = times.firstIndex(where: { $0 >= start }) else { return detected }
-        let segment = signal[startIndex...]
-        let low = percentile(segment, 0.05)
-        let range = percentile(segment, 0.95) - low
-        guard range > 0 else { return detected }
-
+        var events: [(time: Double, swing: Float, roughness: Float)] = []
         var high = false
-        var missed = 0
-        for i in segment.indices {
-            let n = (signal[i] - low) / range
+        var previous = ignoreBefore
+        for i in signal.indices {
+            let time = times[i]
+            guard time < runStart - 0.5 * period else { break }
+            guard time >= ignoreBefore else { continue }
+            let n = (signal[i] - low) / regularAmplitude
             if !high, n > Tuning.highThreshold {
                 high = true
             } else if high, n < Tuning.lowThreshold {
                 high = false
-                if times[i] < runStart - 0.5 * period { missed += 1 }
+                // Le cycle : depuis le précédent, au plus 1,5 période (pas toute l'installation)
+                let cycleStart = max(previous, time - 1.5 * period)
+                let startIndex = times.firstIndex { $0 >= cycleStart } ?? i
+                let cycle = signal[startIndex...i]
+                events.append((time, (cycle.max() ?? 0) - (cycle.min() ?? 0),
+                               roughness(cycle, amplitude: regularAmplitude)))
+                previous = time
             }
         }
-        return detected + missed
+
+        var count = 0
+        var next = runStart
+        for event in events.reversed() {
+            let gap = next - event.time
+            guard gap >= 0.6 * period, gap <= 1.6 * period,
+                  event.swing >= 0.5 * regularAmplitude, event.swing <= 1.8 * regularAmplitude,
+                  event.roughness <= Tuning.maxRoughness else { break }
+            count += 1
+            next = event.time
+        }
+        return count
     }
 
     var diagnostic: SourceDiagnostic {
@@ -283,6 +306,12 @@ final class AutoCounter {
     func process(_ frame: SensorFrame) -> Output {
         let t = frame.time
         lastFrameTime = t
+        // Téléphone censé être posé (pompes) : s'il est manipulé, ce qui précède ne décrit
+        // pas l'exercice, on repart de zéro une fois qu'il est reposé
+        if exercise.phoneAtRest, let rotation = frame.values[.rotation],
+           innerProduct(rotation, rotation).squareRoot() > Tuning.handlingRotation {
+            for tracker in trackers.values { tracker.forgetHistory() }
+        }
         var completed = Set<SignalSource>()
         for (source, value) in frame.values where exercise.sources.contains(source) {
             let tracker = trackers[source] ?? SignalTracker(source: source, maxPeriod: exercise.maxPeriod)
@@ -310,7 +339,7 @@ final class AutoCounter {
         } else if let best = bestRegularSource(among: completed, at: t), let tracker = trackers[best] {
             // Les 3 cycles réguliers comptent, plus ceux faits avant
             leader = best
-            count += 3 + tracker.missedCyclesBeforeRegularRun()
+            count += 3 + tracker.cyclesBeforeRegularRun()
             lastCountTime = t
             didCount = true
             setSwings = Array(tracker.cycleSwings.suffix(3))

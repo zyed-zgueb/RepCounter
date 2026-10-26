@@ -65,9 +65,13 @@ avec le total (« Pause. Total : 18 »). Le son fonctionne en mode silencieux et
   la référence. Régulier = périodes cohérentes, signal semblable à lui-même à une période
   d'écart, opposé à une demi-période, et fluide. Le bruit et les manipulations du
   téléphone échouent à ces tests.
-- Au verrouillage, les 3 cycles sont comptés, plus ceux faits avant : cycles déjà détectés
-  au même rythme et avec une amplitude comparable (un rythme humain irrégulier retarde la
-  note de régularité), puis ceux manqués pendant la mise en place.
+- Au verrouillage, les 3 cycles sont comptés, plus ceux faits avant. Pendant la mise en
+  place, l'axe de l'ACP et les seuils n'étaient pas encore justes : on relit alors tout
+  l'historique (16 s) avec l'axe et les seuils de la série régulière, et on reprend les
+  cycles qui lui ressemblent (même rythme, ampleur comparable, tracé fluide) jusqu'à une
+  pause ou des secousses.
+- Pompes (téléphone posé) : si le gyroscope détecte que le téléphone est manipulé,
+  l'analyse repart de zéro une fois qu'il est reposé.
 - Plus de cycle pendant environ 3 périodes : pause, la source sera recherchée à nouveau.
 
 ## Validation
@@ -83,13 +87,13 @@ après toute modification du compteur, en gardant les deux en phase :
 | Auto — grands abdos 12 et lents 8, téléphone sur la poitrine | exact à chaque tirage |
 | Auto — squats 10 et 12, téléphone à la main | exact à chaque tirage |
 | Pompes — 15 pompes | 15 à chaque tirage |
-| Abdos — 15 petits abdos rapides (6°) juste après manipulation, puis essoufflement | 14 à chaque tirage (−1) |
+| Pompes — installation lente et agitée puis 10 · puis 12 rapides | exact à chaque tirage |
+| Abdos — 15 petits abdos rapides (6°) juste après manipulation, puis essoufflement | exact à chaque tirage |
 | Abdos — 20 petits abdos très rapides · 2 séries de 10 séparées par 20 s d'essoufflement | exact à chaque tirage |
 | Squats — 10 squats · Biceps — 12 flexions | exact à chaque tirage |
 
 Faux départs : 0 sur 100 séances sans exercice (téléphone posé, allongé en respirant, debout
 immobile, téléphone manipulé, allongé essoufflé en profil Abdos ; 20 tirages chacun).
 
-Limite connue : la première répétition qui suit immédiatement une manipulation du téléphone
-peut être manquée. Le profil Développé épaules n'est pas simulé. Le code Swift n'a pas été
+100 séances exactes sur 100. Le profil Développé épaules n'est pas simulé. Le code Swift n'a pas été
 compilé (préparé sans Xcode).

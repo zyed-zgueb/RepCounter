@@ -55,6 +55,9 @@ enum Exercise: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Téléphone posé pendant l'exercice : le manipuler remet l'analyse à zéro.
+    var phoneAtRest: Bool { self == .pushups }
+
     /// La caméra n'est allumée que si l'exercice en a besoin.
     var usesCamera: Bool {
         !Set(sources).isDisjoint(with: [.depth, .pixels, .face, .pose])

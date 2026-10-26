@@ -35,13 +35,14 @@ MAX_ROUGHNESS = 0.12   # au-delà, signal trop saccadé : du bruit, pas un geste
 
 MIN_AMPLITUDE = {"depth": 0.04, "pixels": 0.05, "face": 0.03, "pose": 0.2, "motion": 0.1,
                  "vertical": 0.08, "rotation": 0.25}
-WEAK_CYCLE_RATIO = 0.4   # en série, un cycle plus faible que 40 % des précédents ne compte pas
+WEAK_CYCLE_RATIO = 0.4
+HANDLING_ROTATION = 0.5  # rad/s : au-delà, un téléphone censé être posé est manipulé   # en série, un cycle plus faible que 40 % des précédents ne compte pas
 
 # Profils d'exercice : identiques à `Exercise` dans Exercise.swift.
 # sources : capteurs écoutés, par ordre de préférence ; max_period : écart max entre deux reps.
 PROFILES = {
     "auto": dict(sources=["depth", "motion", "vertical", "pose", "face", "pixels"]),
-    "pushups": dict(sources=["depth", "face", "pixels"]),
+    "pushups": dict(sources=["depth", "face", "pixels"], phone_at_rest=True),
     # Abdos dynamiques, téléphone sur la poitrine : le gyroscope voit un petit basculement
     # rapide des épaules ~7 fois plus fort qu'une respiration de même angle
     "crunches": dict(sources=["rotation"], max_period=3.0),
@@ -122,7 +123,6 @@ class SignalTracker:
         self.min_amplitude = min_amplitude
         self.max_period = max_period
         self.times, self.rows, self.cycles = [], [], []
-        self.cycle_amplitudes = []   # amplitude du signal au moment de chaque cycle
         self.cycle_swings = []       # écart max − min du signal pendant chaque cycle
         self.signal = np.zeros(0)
         self.axis = None
@@ -168,7 +168,6 @@ class SignalTracker:
             since = np.array(self.times) > (self.cycles[-1] if self.cycles else t - self.max_period)
             swing = float(self.signal[since].max() - self.signal[since].min())
             self.cycles = (self.cycles + [t])[-30:]
-            self.cycle_amplitudes = (self.cycle_amplitudes + [self.amplitude])[-30:]
             self.cycle_swings = (self.cycle_swings + [swing])[-30:]
             return True
         return False
@@ -200,33 +199,55 @@ class SignalTracker:
             return 0.0
         return full
 
-    def missed_cycles_before_regular_run(self):
-        """Cycles faits avant que la série soit jugée régulière : ceux déjà détectés qui
-        s'enchaînent à un rythme plausible, puis ceux manqués pendant la mise en place."""
+    def forget_history(self):
+        """Repart de zéro (téléphone manipulé : ce qui précède ne décrit pas l'exercice)."""
+        self.times, self.rows, self.cycles = [], [], []
+        self.cycle_swings = []
+        self.signal = np.zeros(0)
+        self.axis = None
+        self.is_high = False
+        self.amplitude = 0.0
+
+    def cycles_before_regular_run(self):
+        """Répétitions faites avant que la série soit jugée régulière.
+
+        Pendant la mise en place, l'axe de l'ACP et les seuils n'étaient pas encore justes :
+        les premières répétitions ont pu être mal découpées ou manquées. On relit tout
+        l'historique avec l'axe et les seuils de la série régulière, et on remonte les cycles
+        qui lui ressemblent : même rythme, ampleur comparable (ni moitié moins, ni presque le
+        double), tracé fluide. On s'arrête au premier qui ne ressemble pas (pause, secousses)."""
         period = self.period()
-        chain = len(self.cycles) - 3
-        while (chain > 0 and 0.7 * period <= self.cycles[chain] - self.cycles[chain - 1] <= 1.4 * period
-               and self.cycle_amplitudes[chain - 1] >= 0.5 * self.amplitude):
-            chain -= 1
-        detected = len(self.cycles) - 3 - chain
-        run_start = self.cycles[chain]
+        run_start = self.cycles[-3]
         times = np.array(self.times)
-        mask = times >= run_start - 1.3 * period
-        segment, segment_times = self.signal[mask], times[mask]
-        low = percentile(segment, 0.05)
-        amplitude = percentile(segment, 0.95) - low
+        regular = self.signal[times >= run_start - period]
+        low = percentile(regular, 0.05)
+        amplitude = percentile(regular, 0.95) - low
         if amplitude <= 0:
-            return detected
-        high, missed = False, 0
-        for value, time in zip(segment, segment_times):
+            return 0
+        events, high, previous = [], False, -math.inf
+        for i, (value, time) in enumerate(zip(self.signal, times)):
+            if time >= run_start - 0.5 * period:
+                break
             n = (value - low) / amplitude
             if not high and n > HIGH:
                 high = True
             elif high and n < LOW:
                 high = False
-                if time < run_start - 0.5 * period:
-                    missed += 1
-        return detected + missed
+                # Le cycle : depuis le précédent, au plus 1,5 période (pas toute l'installation)
+                cycle = self.signal[(times >= max(previous, time - 1.5 * period)) & (times <= time)]
+                swing = float(cycle.max() - cycle.min())
+                roughness = float(np.std(np.diff(cycle))) / amplitude if len(cycle) > 2 else math.inf
+                events.append((time, swing, roughness))
+                previous = time
+        count, next_time = 0, run_start
+        for time, swing, roughness in reversed(events):
+            if (not 0.6 * period <= next_time - time <= 1.6 * period
+                    or not 0.5 * amplitude <= swing <= 1.8 * amplitude
+                    or roughness > MAX_ROUGHNESS):
+                break
+            count += 1
+            next_time = time
+        return count
 
 
 class AutoCounter:
@@ -245,6 +266,11 @@ class AutoCounter:
     def process(self, time, values):
         completed = set()
         sources = self.profile["sources"]
+        # Téléphone posé (pompes) : s'il est manipulé, ce qui précède ne décrit pas l'exercice
+        rotation = values.get("rotation")
+        if self.profile.get("phone_at_rest") and rotation is not None and np.linalg.norm(rotation) > HANDLING_ROTATION:
+            for tracker in self.trackers.values():
+                tracker.forget_history()
         for source, value in values.items():
             if source not in sources:
                 continue
@@ -280,7 +306,7 @@ class AutoCounter:
                 best = (source, score)
         if best:
             self.leader = best[0]
-            self.count += 3 + self.trackers[best[0]].missed_cycles_before_regular_run()
+            self.count += 3 + self.trackers[best[0]].cycles_before_regular_run()
             self.last_count_time = time
             self.set_swings = self.trackers[best[0]].cycle_swings[-3:]
             self.weak_cycles = 0
@@ -289,10 +315,23 @@ class AutoCounter:
 
 # --- Capteurs synthétiques ---------------------------------------------------------------------
 
+def depth_reading(distance, coverage):
+    """Moitié centrale de l'image vue par la caméra TrueDepth, téléphone au sol sous la tête.
+    Le corps, à `distance` (m), couvre `coverage` de la zone ; ses parties s'étalent sur
+    25 cm de profondeur. Sous 20 cm, TrueDepth ne mesure plus rien, et le plafond est hors
+    de portée. Renvoie (distance moyenne des pixels mesurables ou None, part mesurable) :
+    tout en bas d'une pompe, la moyenne *remonte* car seules les parties lointaines restent."""
+    parts = distance + np.linspace(0, 0.25, 40)
+    measurable = parts[parts >= 0.2]
+    mean = measurable.mean() if len(measurable) else None
+    return mean, coverage * len(measurable) / len(parts)
+
+
 def synthetic_session(kind, segments, seed, pixel_count=192, fps=30):
     """Images (instant, {source: mesure}) pour une suite de segments :
     ("rep", durée, période), ("rest", durée), ("walk", durée) = téléphone manipulé,
-    ("pant", durée) = essoufflement (respiration rapide et ample).
+    ("pant", durée) = essoufflement (respiration rapide et ample),
+    ("setup", durée) = installation au-dessus du téléphone posé (pompes).
     kind : "pushup" (téléphone au sol), "abs" (sur la poitrine, grands abdos),
     "crunch" (sur la poitrine, petits abdos rapides : seules les épaules décollent),
     "squat" (à la main), "curl" (dans la main qui travaille)."""
@@ -300,6 +339,7 @@ def synthetic_session(kind, segments, seed, pixel_count=192, fps=30):
     pixel_base = rng.uniform(0.2, 0.8, pixel_count)
     frames, t = [], 0.0
     previous_angle = None
+    last_depth = 2.0
     for segment in segments:
         kind_of_segment, duration = segment[0], segment[1]
         period = segment[2] if len(segment) > 2 else 1.0
@@ -311,14 +351,26 @@ def synthetic_session(kind, segments, seed, pixel_count=192, fps=30):
             m = 0.5 * (1 - math.cos(2 * math.pi * tt / period)) if kind_of_segment == "rep" else 0.0
             values = {}
             if kind == "pushup":
-                # Téléphone au sol sous la tête : distance, assombrissement, visage, téléphone immobile
-                depth = rng.uniform(0.3, 1.5) if walking else 0.45 - 0.3 * m
-                valid = 1.0 if depth > 0.2 else 0.2
-                values["depth"] = np.array([depth + rng.normal(0, 0.01), valid + rng.normal(0, 0.02)])
-                light = rng.uniform(0.5, 1.2) if walking else 1.0
-                values["pixels"] = pixel_base * (1 - 0.6 * m) * light + rng.normal(0, 0.02, pixel_count)
-                if m < 0.6 and not walking:
-                    values["face"] = np.array([0.5, 0.5, 0.3 + 0.4 * m]) + rng.normal(0, 0.01, 3)
+                # Téléphone au sol sous la tête : distance (pompe : 50 → 12 cm), part du champ
+                # couverte par le corps, assombrissement de l'image, visage, téléphone immobile
+                coverage = 1.0
+                if walking:
+                    distance, coverage = rng.uniform(0.3, 1.5), rng.uniform(0, 1)
+                elif kind_of_segment == "setup":
+                    # Arrivée lente et agitée au-dessus du téléphone
+                    coverage = min(1.0, tt / 2)
+                    distance = (1.0 - 0.5 * min(1.0, tt / 3) + 0.1 * math.sin(2 * math.pi * tt / 1.3)
+                                + rng.normal(0, 0.02))
+                else:
+                    distance = 0.5 - 0.38 * m
+                mean, measurable = depth_reading(distance, coverage)
+                if mean is not None:
+                    last_depth = mean
+                values["depth"] = np.array([last_depth + rng.normal(0, 0.01), measurable + rng.normal(0, 0.02)])
+                closeness = coverage * (1 - min(distance, 1.5) / 1.5)
+                values["pixels"] = pixel_base * (1 - 0.7 * closeness) + rng.normal(0, 0.02, pixel_count)
+                if 0.25 < distance < 0.8 and coverage > 0.5:
+                    values["face"] = np.array([0.5, 0.5, 0.25 + 0.5 * closeness]) + rng.normal(0, 0.01, 3)
                 angle = rng.uniform(0, 3) if walking else 0.0
                 values["vertical"] = np.array([rng.normal(0, 0.5 if walking else 0.003)])
             elif kind == "squat":
@@ -383,6 +435,10 @@ SCENARIOS = [
     # Profils choisis par l'utilisateur
     ("[Pompes] 15 pompes", "pushup",
      [("walk", 3), ("rest", 2), ("rep", 15 * 1.6, 1.6), ("rest", 2)], 15, "pushups"),
+    ("[Pompes] installation lente et agitée, puis 10 pompes", "pushup",
+     [("walk", 2), ("setup", 4), ("rep", 10 * 1.6, 1.6), ("rest", 3)], 10, "pushups"),
+    ("[Pompes] installation, puis 12 pompes rapides (1 s)", "pushup",
+     [("walk", 2), ("setup", 4), ("rep", 12 * 1.0, 1.0), ("rest", 3)], 12, "pushups"),
     ("[Abdos] 15 petits abdos rapides (6°, 1,2 s) puis essoufflement 20 s", "crunch",
      [("walk", 3), ("rest", 3), ("rep", 15 * 1.2, 1.2), ("pant", 20)], 15, "crunches"),
     ("[Abdos] 20 petits abdos très rapides (6°, 0,9 s)", "crunch",
