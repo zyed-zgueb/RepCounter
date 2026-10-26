@@ -262,6 +262,9 @@ final class WorkoutModel: ObservableObject {
         if setReps > 0 { closeSet(announce: false) }
         sessionEnd = Date()
         phase = .finished
+        // Séance enregistrée : l'enregistrement s'arrête avec elle, et la feuille de fin
+        // (répétitions réelles, partage) s'ouvre sur le résumé
+        if isRecording { stopRecording() }
         sensors.stop()
         announcer.play(.finish)
         announcer.say(totalReps > 0 ? "Séance terminée. \(totalReps) répétitions." : "Séance terminée.")
