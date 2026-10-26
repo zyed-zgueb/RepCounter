@@ -243,6 +243,12 @@ struct HistoryStats {
         return sessions.filter { $0.start > start && $0.start <= end }.compactMap(\.performanceIndex).max()
     }
 
+    /// Meilleure série des `lastDays` derniers jours.
+    func bestSet(lastDays: Int) -> Int? {
+        let start = now.addingTimeInterval(-Double(lastDays) * 86_400)
+        return sessions.filter { $0.start > start }.map(\.bestSet).max()
+    }
+
     /// Indice de l'exercice 4 semaines plus tôt, pour mesurer la progression.
     var previousPerformanceIndex: Double? {
         performanceIndex(at: now.addingTimeInterval(-28 * 86_400))

@@ -786,7 +786,7 @@ private struct SessionSummary: View {
             }
 
             HStack {
-                summaryStat("Indice", record?.performanceIndex.map { "\(Int($0.rounded()))" } ?? "—")
+                summaryStat("Endurance", record?.performanceIndex.map { "\(Int($0.rounded()))" } ?? "—")
                 summaryStat("Moyenne", record?.averagePerSet.map { Format.decimal($0) } ?? "—", unit: "/série")
                 summaryStat("Cadence", record?.cadence.map { Format.decimal($0) } ?? "—", unit: "s")
                 summaryStat("Fatigue", record?.fatigue.map { Format.percent($0) } ?? "—", unit: "%",

@@ -36,7 +36,7 @@ struct HistoryView: View {
                         if stats.isEmpty {
                             emptyState
                         } else {
-                            if let exercise { IndexPanel(stats: stats, exercise: exercise) }
+                            if let exercise { EndurancePanel(stats: stats, exercise: exercise) }
                             WeekPanel(stats: stats)
                             if exercise != nil { RecordsPanel(stats: stats) }
                             VolumePanel(stats: stats)
@@ -146,55 +146,6 @@ private struct ExerciseFilter: View {
         .buttonStyle(.plain)
         .accessibilityLabel(exercise?.title ?? "Tous les exercices")
         .accessibilityAddTraits(on ? .isSelected : [])
-    }
-}
-
-/// Indice de performance de l'exercice (meilleure séance des 4 dernières semaines), son évolution
-/// sur 4 semaines et sa courbe sur 12.
-private struct IndexPanel: View {
-    @Environment(\.theme) private var theme
-    let stats: HistoryStats
-    let exercise: Exercise
-
-    var body: some View {
-        let index = stats.performanceIndex()
-        let previous = stats.previousPerformanceIndex
-        let weekly = stats.weeklyBestIndex()
-        HistoryPanel(title: "Indice de performance", accessory: { MonitorLabel("4 semaines") }) {
-            if let index {
-                HStack(alignment: .center, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("\(Int(index.rounded()))")
-                            .font(theme.font(44, .bold))
-                            .foregroundStyle(LinearGradient(colors: [theme.secondary, theme.primary],
-                                                            startPoint: .leading, endPoint: .trailing))
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                        if let previous, previous > 0 {
-                            let change = (index - previous) / previous * 100
-                            Text("\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) % en 4 sem.")
-                                .font(theme.font(12, .bold))
-                                .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
-                        }
-                    }
-                    if weekly.count >= 2 {
-                        LineChart(points: weekly, weeks: 12)
-                            .frame(height: 60)
-                    }
-                }
-            }
-            Text(explanation(hasIndex: index != nil))
-                .font(theme.font(11))
-                .foregroundStyle(theme.dim)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    private func explanation(hasIndex: Bool) -> String {
-        let base = "Répétitions des 3 premières séries, avec un bonus quand le repos est court"
-        let rule = exercise.isWeighted ? base + ", multipliées par le poids de l'haltère." : base + "."
-        return hasIndex ? rule : "L'indice se calcule sur les séances d'au moins 3 séries. " + rule
     }
 }
 
@@ -672,7 +623,7 @@ struct SessionDetailView: View {
                     .foregroundStyle(theme.warn)
                 }
                 if let index = session.performanceIndex {
-                    Text("Indice \(Int(index.rounded()))" + (session.load.map { " · \(Format.kilograms($0))" } ?? ""))
+                    Text("Endurance \(Int(index.rounded()))" + (session.load.map { " · \(Format.kilograms($0))" } ?? ""))
                         .font(theme.font(12, .bold))
                         .foregroundStyle(theme.text)
                 }

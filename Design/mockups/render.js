@@ -19,9 +19,10 @@ const SCREENS = [
   ["6-recuperation", { phase: "resting", sets: [12, 11, 10, 11, 10, 10], caption: "Récupération" }],
   ["7-fin", { phase: "finished", total: 60, sets: [14, 13, 12, 11, 10], recordSet: 0, caption: "Fin de séance" }],
   ["7b-fin-correction", { phase: "finished", total: 60, sets: [14, 13, 12, 11, 10], recordSet: 0, editing: 2, caption: "Correction d'une série" }],
-  ["9-historique", { phase: "history", height: 1930, caption: "Historique (défile)" }],
+  ["9-historique", { phase: "history", height: 1960, caption: "Historique (défile)" }],
+  ["11-endurance-info", { phase: "info", caption: "(i) Endurance" }],
   ["10-seance", { phase: "session", caption: "Détail d'une séance" }],
-  ["8-reglages", { phase: "settings", audio: "sons", themes, caption: "Réglages (roue dentée)" }],
+  ["8-reglages", { phase: "settings", audio: "sons", themes, height: 1010, caption: "Réglages (roue dentée)" }],
 ];
 
 (async () => {

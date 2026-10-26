@@ -10,6 +10,14 @@ struct SettingsView: View {
     @EnvironmentObject private var themeStore: ThemeStore
     @AppStorage(AudioMode.key) private var audioMode = AudioMode.defaultMode
     @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
+    @AppStorage(Profile.sexKey) private var sexID = ""
+    @AppStorage(Profile.birthYearKey) private var birthYear = 0
+
+    /// Années proposées, des plus récentes aux plus anciennes.
+    private static let birthYears: [Int] = {
+        let current = Calendar.current.component(.year, from: Date())
+        return Array((current - 95...current - 10).reversed())
+    }()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,6 +55,33 @@ struct SettingsView: View {
                                     themeStore.selectedID = option.id
                                 }
                             }
+                        }
+                    }
+
+                    MonitorPanel("Profil") {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 8) {
+                                ForEach(Sex.allCases) { option in
+                                    Button(option.title) { sexID = sexID == option.rawValue ? "" : option.rawValue }
+                                        .buttonStyle(MonitorButtonStyle(filled: sexID == option.rawValue, height: 40, fontSize: 11))
+                                }
+                            }
+                            HStack {
+                                Text("ANNÉE DE NAISSANCE")
+                                    .font(theme.font(11, .semibold))
+                                    .tracking(1)
+                                    .foregroundStyle(theme.text)
+                                Spacer()
+                                Picker("Année de naissance", selection: $birthYear) {
+                                    Text("—").tag(0)
+                                    ForEach(Self.birthYears, id: \.self) { year in
+                                        Text(String(year)).tag(year)
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                                .tint(theme.primary)
+                            }
+                            note("Facultatif, reste sur ton iPhone. Sert à situer ton niveau en pompes sur le barème de référence (score d'endurance).")
                         }
                     }
 
