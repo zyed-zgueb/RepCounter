@@ -83,19 +83,52 @@ struct FinishedRecording: Identifiable {
     let countedReps: Int
 }
 
+/// Une série terminée.
+struct WorkoutSet: Identifiable {
+    let id = UUID()
+    let number: Int
+    let reps: Int
+    /// De la première à la dernière répétition.
+    let duration: TimeInterval
+    /// Durée d'une répétition (s).
+    let cadence: Double?
+}
+
+/// Séance : prêt → compte à rebours → séries et récupérations automatiques → résumé.
 final class WorkoutModel: ObservableObject {
-    /// Ce que l'app perçoit de toi, pour l'indicateur sous le compteur.
+    enum Phase: Equatable {
+        case ready
+        case countdown(Int)
+        case active
+        case finished
+    }
+
+    /// Ce que l'app perçoit de toi, pour l'indicateur de signal.
     enum Presence { case absent, weak, clear }
+
+    static let countdownSeconds = 5
+    /// Annonce de la récupération toutes les 30 s.
+    private static let restAnnouncementInterval = 30
 
     let exercise: Exercise
     let live = LiveSignal()
 
-    @Published private(set) var count = 0
+    @Published private(set) var phase = Phase.ready
+    /// Répétitions de la série en cours.
+    @Published private(set) var setReps = 0
+    @Published private(set) var sets: [WorkoutSet] = []
     @Published private(set) var state: AutoCounter.State = .searching
     @Published private(set) var source: SignalSource?
     @Published private(set) var presence = Presence.absent
+    @Published private(set) var cadence: Double?
+    @Published private(set) var regularity: Float = 0
     @Published private(set) var repPulse = 0
     @Published private(set) var cameraDenied = false
+    /// Horloge de l'écran (1 Hz) : durée de séance et chronomètre de récupération.
+    @Published private(set) var now = Date()
+    @Published private(set) var sessionStart: Date?
+    @Published private(set) var sessionEnd: Date?
+    @Published private(set) var lastRepDate: Date?
     /// Écran de diagnostic : mesures par seconde et état de chaque capteur.
     @Published var showsDiagnostics = false
     @Published private(set) var framesPerSecond: Double = 0
@@ -111,10 +144,30 @@ final class WorkoutModel: ObservableObject {
     @Published private(set) var recordingDuration: TimeInterval = 0
     @Published var finishedRecording: FinishedRecording?
 
+    var totalReps: Int { sets.reduce(0) { $0 + $1.reps } + setReps }
+    /// Numéro de la série en cours (ou de la prochaine, pendant la récupération).
+    var setNumber: Int { sets.count + 1 }
+    var isResting: Bool { phase == .active && state != .counting && !sets.isEmpty }
+    var restDuration: TimeInterval { isResting ? now.timeIntervalSince(lastRepDate ?? now) : 0 }
+    var sessionDuration: TimeInterval {
+        guard let sessionStart else { return 0 }
+        return (sessionEnd ?? now).timeIntervalSince(sessionStart)
+    }
+
     let sensors: SensorHub
     private let counter: AutoCounter   // utilisé uniquement sur sensors.queue
     private let announcer = Announcer()
     private let haptic = UIImpactFeedbackGenerator(style: .heavy)
+    private var clock: Timer?
+    private var countdownTimer: Timer?
+    // Fil principal : compte du compteur depuis le démarrage, base de la série en cours
+    private var counterTotal = 0
+    private var setBase = 0
+    private var setStart: Date?
+    private var restAnnouncements = 0
+    /// Remise à zéro demandée au compteur (démarrage, série annulée) : les mesures sont
+    /// ignorées jusqu'à ce qu'il la confirme, pour ne pas compter avec l'ancien état.
+    private var awaitingReset = false
     // Sur sensors.queue : débit des mesures et netteté lissée (évite que l'indicateur clignote)
     private var frameTimes: [Double] = []
     private var frameIndex = 0
@@ -133,8 +186,13 @@ final class WorkoutModel: ObservableObject {
         sensors.onFrame = { [weak self] frame in self?.handle(frame) }
     }
 
+    // MARK: - Capteurs
+
+    /// Écran affiché : les capteurs tournent (l'indicateur de signal aide à se placer),
+    /// mais rien n'est compté avant « Démarrer ».
     func start() {
         UIApplication.shared.isIdleTimerDisabled = true
+        clock = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
         guard exercise.usesCamera else {
             sensors.start()
             return
@@ -155,10 +213,12 @@ final class WorkoutModel: ObservableObject {
 
     func stop() {
         UIApplication.shared.isIdleTimerDisabled = false
+        clock?.invalidate()
+        countdownTimer?.invalidate()
         sensors.stop()
         // Écran quitté pendant un enregistrement : on le termine sans le résultat
         if isRecording {
-            let counted = count
+            let counted = totalReps
             sensors.queue.async {
                 self.recorder?.finish(countedReps: counted, actualReps: nil)
                 self.recorder = nil
@@ -166,6 +226,128 @@ final class WorkoutModel: ObservableObject {
             isRecording = false
         }
     }
+
+    // MARK: - Séance
+
+    /// « Démarrer » : compte à rebours, le temps de se mettre en place.
+    func beginSession() {
+        guard phase == .ready else { return }
+        var remaining = Self.countdownSeconds
+        phase = .countdown(remaining)
+        announcer.say("Mise en place")
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self else { return timer.invalidate() }
+            remaining -= 1
+            if remaining > 0 {
+                self.phase = .countdown(remaining)
+                if remaining <= 3 { self.announcer.say("\(remaining)") }
+            } else {
+                timer.invalidate()
+                self.startCounting()
+            }
+        }
+    }
+
+    func cancelCountdown() {
+        guard phase.isCountdown else { return }
+        countdownTimer?.invalidate()
+        phase = .ready
+        announcer.say("Annulé")
+    }
+
+    /// Fin du compte à rebours : tout ce qui précède (mise en place) est ignoré.
+    private func startCounting() {
+        sensors.queue.async { self.counter.reset() }
+        awaitingReset = true
+        counterTotal = 0
+        setBase = 0
+        setReps = 0
+        sets = []
+        state = .searching
+        lastRepDate = nil
+        sessionStart = Date()
+        sessionEnd = nil
+        now = Date()
+        phase = .active
+        announcer.say("C'est parti")
+        haptic.impactOccurred()
+    }
+
+    /// Annule la série en cours, ou la dernière terminée pendant la récupération.
+    func cancelSet() {
+        guard phase == .active else { return }
+        if state == .counting || setReps > 0 {
+            sensors.queue.async { self.counter.reset() }
+            awaitingReset = true
+            counterTotal = 0
+            setBase = 0
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { setReps = 0 }
+            state = .searching
+            live.clearPhase()
+            announcer.say("Série annulée")
+        } else if !sets.isEmpty {
+            sets.removeLast()
+            announcer.say("Série annulée")
+        }
+    }
+
+    /// « Terminer » : la série en cours est close, puis le résumé s'affiche.
+    func finishSession() {
+        guard phase == .active || phase.isCountdown else { return }
+        countdownTimer?.invalidate()
+        if setReps > 0 { closeSet(announce: false) }
+        sessionEnd = Date()
+        phase = .finished
+        sensors.stop()
+        announcer.say(totalReps > 0 ? "Séance terminée. \(totalReps) répétitions." : "Séance terminée.")
+    }
+
+    /// Depuis le résumé : nouvelle séance, même exercice.
+    func newSession() {
+        guard phase == .finished else { return }
+        sets = []
+        setReps = 0
+        sessionStart = nil
+        sessionEnd = nil
+        lastRepDate = nil
+        phase = .ready
+        sensors.start()
+    }
+
+    private func closeSet(announce: Bool) {
+        let reps = setReps
+        guard reps > 0 else { return }
+        let duration = max(0, (lastRepDate ?? Date()).timeIntervalSince(setStart ?? lastRepDate ?? Date()))
+        sets.append(WorkoutSet(number: sets.count + 1, reps: reps, duration: duration, cadence: cadence))
+        setBase = counterTotal
+        setReps = 0
+        restAnnouncements = 0
+        if announce {
+            announcer.say("Série \(sets.count) : \(reps). Récupération.")
+        }
+    }
+
+    private func tick() {
+        now = Date()
+        // Récupération annoncée toutes les 30 s
+        guard isResting else { return }
+        let marks = Int(restDuration) / Self.restAnnouncementInterval
+        if marks > restAnnouncements {
+            restAnnouncements = marks
+            announcer.say(Self.spokenDuration(marks * Self.restAnnouncementInterval))
+        }
+    }
+
+    private static func spokenDuration(_ seconds: Int) -> String {
+        let minutes = seconds / 60, rest = seconds % 60
+        switch (minutes, rest) {
+        case (0, _): return "\(rest) secondes"
+        case (_, 0): return minutes == 1 ? "1 minute" : "\(minutes) minutes"
+        default: return "\(minutes) minute\(minutes > 1 ? "s" : "") \(rest)"
+        }
+    }
+
+    // MARK: - Enregistrement
 
     func toggleRecording() {
         if isRecording {
@@ -182,7 +364,7 @@ final class WorkoutModel: ObservableObject {
 
     private func stopRecording() {
         isRecording = false
-        let counted = count
+        let counted = totalReps
         // Retiré de la file des capteurs avant d'être terminé : plus aucune écriture ensuite
         sensors.queue.async {
             guard let recorder = self.recorder else { return }
@@ -198,11 +380,7 @@ final class WorkoutModel: ObservableObject {
         announceEvery = Self.announceChoices[(index + 1) % Self.announceChoices.count]
     }
 
-    func reset() {
-        sensors.queue.async { self.counter.reset() }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { count = 0 }
-        live.clearPhase()
-    }
+    // MARK: - Mesures
 
     // Appelé sur sensors.queue
     private func handle(_ frame: SensorFrame) {
@@ -239,25 +417,52 @@ final class WorkoutModel: ObservableObject {
             self.live.push(phase: output.phase, value: output.liveValue, strength: output.liveStrength)
             // Les propriétés suivantes ne sont publiées que quand elles changent
             if self.presence != presence { self.presence = presence }
-            if output.count != self.count {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { self.count = output.count }
-            }
-            if output.didCount {
-                self.repPulse += 1
-                self.haptic.impactOccurred()
-                // Le premier nombre est toujours dit : il signale que le comptage a démarré
-                let started = self.state != .counting
-                if started || output.count % self.announceEvery == 0 {
-                    self.announcer.say("\(output.count)")
-                } else {
-                    self.announcer.playTick()
-                }
-            }
-            if self.state == .counting, output.state == .resting {
-                self.announcer.say("Pause. Total : \(output.count)")
-            }
-            if self.state != output.state { self.state = output.state }
             if output.source != nil, self.source != output.source { self.source = output.source }
+            // Avant « Démarrer » et pendant le compte à rebours, rien ne compte
+            guard self.phase == .active else { return }
+            self.apply(output)
         }
+    }
+
+    // Fil principal, séance en cours
+    private func apply(_ output: AutoCounter.Output) {
+        if awaitingReset {
+            guard output.didReset else { return }
+            awaitingReset = false
+        }
+        counterTotal = output.count
+        if let cadence = output.cadence, self.cadence != cadence { self.cadence = cadence }
+        if output.regularity > 0, regularity != output.regularity { regularity = output.regularity }
+
+        if output.didCount {
+            let reps = max(0, output.count - setBase)
+            let started = state != .counting
+            if started {
+                // Nouvelle série : ses premières répétitions viennent d'être rattrapées
+                setStart = Date().addingTimeInterval(-Double(max(reps - 1, 0)) * (output.cadence ?? 2))
+                restAnnouncements = 0
+            }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { setReps = reps }
+            lastRepDate = Date()
+            repPulse += 1
+            haptic.impactOccurred()
+            // Le premier nombre d'une série est toujours dit : il signale que le comptage a démarré
+            if started || reps % announceEvery == 0 {
+                announcer.say("\(reps)")
+            } else {
+                announcer.playTick()
+            }
+        }
+        if state == .counting, output.state != .counting {
+            closeSet(announce: true)
+        }
+        if state != output.state { state = output.state }
+    }
+}
+
+extension WorkoutModel.Phase {
+    var isCountdown: Bool {
+        if case .countdown = self { return true }
+        return false
     }
 }

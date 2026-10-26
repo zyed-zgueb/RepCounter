@@ -10,6 +10,19 @@ enum SignalSource: String, CaseIterable {
     case vertical // accélération verticale (téléphone tenu qui monte et descend : squats)
     case rotation // gyroscope : vitesse de rotation (petits gestes rapides : abdos)
 
+    /// Nom court pour le tableau de bord.
+    var code: String {
+        switch self {
+        case .depth: return "CAM 3D"
+        case .pixels: return "IMAGE"
+        case .face: return "VISAGE"
+        case .pose: return "SQUELETTE"
+        case .motion: return "INCLINAISON"
+        case .vertical: return "ACCÉL. VERT."
+        case .rotation: return "GYROSCOPE"
+        }
+    }
+
     var label: String {
         switch self {
         case .depth: return "Caméra 3D"
@@ -345,6 +358,9 @@ final class AutoCounter {
         var liveStrength: Float
         /// Première mesure après une remise à zéro (marquée dans les enregistrements).
         var didReset: Bool
+        /// Durée d'une répétition (s) et régularité du signal suivi, pendant le comptage.
+        var cadence: Double?
+        var regularity: Float
     }
 
     let exercise: Exercise
@@ -362,6 +378,8 @@ final class AutoCounter {
         self.exercise = exercise
     }
 
+    /// Remise à zéro : démarrage d'une séance (fin du compte à rebours) ou série annulée.
+    /// Ce qui précède est ignoré : le compteur ne retient que les cycles postérieurs.
     func reset() {
         count = 0
         leader = nil
@@ -426,7 +444,9 @@ final class AutoCounter {
         return Output(count: count, phase: phase, didCount: didCount, state: state, source: leader,
                       diagnostics: diagnostics,
                       liveValue: shown?.displayValue ?? 0.5, liveStrength: shown?.strength ?? 0,
-                      didReset: didReset)
+                      didReset: didReset,
+                      cadence: leader.flatMap { trackers[$0]?.period },
+                      regularity: leader.flatMap { trackers[$0]?.lastRegularity } ?? 0)
     }
 
     private func bestRegularSource(among sources: Set<SignalSource>, at t: Double) -> SignalSource? {

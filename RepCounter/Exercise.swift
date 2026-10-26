@@ -41,6 +41,18 @@ enum Exercise: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Capteurs, en abrégé (accueil).
+    var sensorTag: String {
+        switch self {
+        case .auto: return "MULTI"
+        case .pushups: return "CAM 3D"
+        case .crunches: return "GYRO"
+        case .squats: return "ACCÉL"
+        case .curls: return "INCL"
+        case .press: return "ACCÉL"
+        }
+    }
+
     /// Capteurs écoutés, par ordre de préférence.
     var sources: [SignalSource] {
         switch self {

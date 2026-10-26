@@ -5,20 +5,26 @@ téléphone comme indiqué, tu fais tes répétitions : le compteur s'affiche à
 continue seul, avec annonce vocale.
 
 ## Écrans
-- **Accueil** : une carte par exercice (avec le placement du téléphone) et le réglage des
-  annonces vocales. La caméra est éteinte.
-- **Séance** : pas de vidéo. L'anneau et le grand chiffre, comme sur l'icône ; en dessous,
-  la courbe en direct de ce que capte l'app et une pastille : « J'attends ton mouvement »,
-  « Mouvement trop léger » (orange) ou « Je te capte » (bleu, avec un halo). La croix
-  revient à l'accueil ; toucher l'écran remet à zéro.
-- La caméra ne s'allume que pour les exercices qui en ont besoin (Pompes, Autre exercice).
-  Abdos, squats, biceps et développé n'utilisent que les capteurs de mouvement.
+Style « moniteur » : fond quasi noir, panneaux à liseré fin, chiffres à chasse fixe, voyants
+d'état, tracé du signal façon électrocardiogramme.
 
-## Lancer
-1. Ouvrir `RepCounter.xcodeproj` dans Xcode 15 ou plus récent.
-2. Cible RepCounter → Signing & Capabilities : choisir ton Team et remplacer le
-   Bundle Identifier `com.example.RepCounter` par un identifiant unique.
-3. Brancher l'iPhone et lancer (⌘R). Il faut un vrai iPhone (caméra TrueDepth).
+- **Accueil** : liste des exercices (placement du téléphone, capteur utilisé) et réglage
+  des annonces vocales. La caméra est éteinte.
+- **Séance** :
+  1. **Veille** : les capteurs tournent (le tracé et le voyant « Signal OK » aident à se
+     placer), mais rien ne compte.
+  2. **Démarrer** : 5 s de mise en place, compte à rebours vocal (« 3, 2, 1, c'est parti »).
+     Tout ce qui précède est ignoré.
+  3. **Séries automatiques** : le compteur de la série s'affiche à la 3e répétition (les
+     premières sont rattrapées). Quand tu t'arrêtes ~4 s, la série est close (« Série 2 : 12.
+     Récupération. ») et un chronomètre de récupération s'affiche, annoncé toutes les 30 s.
+     La série suivante démarre dès que tu reprends, sans toucher l'écran.
+  4. **Annuler série** : annule la série en cours (ou la dernière, pendant la récupération).
+  5. **Terminer** : résumé de la séance (total, durée, séries, moyenne, cadence, détail par
+     série) ; « Nouvelle séance » ou « Quitter ».
+- Tableau de bord pendant la séance : total, nombre de séries, cadence (s/rep), régularité
+  du signal, journal des séries (S01 12 · S02 10…).
+- La caméra ne s'allume que pour les exercices qui en ont besoin (Pompes, Autre exercice).
 
 ## Exercices
 Chaque exercice fixe les capteurs écoutés.
@@ -62,8 +68,8 @@ les comptes (réel, app, compteur Python) et trace le signal de chaque capteur.
 ## Retour sonore
 L'accueil (et le bouton haut-parleur de la séance) choisit la fréquence des annonces vocales : **chaque rep**,
 **toutes les 5** ou **toutes les 10**. Les répétitions non annoncées font un bip court.
-Le premier nombre est toujours dit (le comptage a démarré) et une pause est annoncée
-avec le total (« Pause. Total : 18 »). Le son fonctionne en mode silencieux et se mélange
+Le premier nombre d'une série est toujours dit (le comptage a démarré) ; la fin de série
+est annoncée avec son nombre de répétitions, puis la récupération toutes les 30 s. Le son fonctionne en mode silencieux et se mélange
 à la musique. Le réglage est mémorisé.
 
 ## Comment ça marche

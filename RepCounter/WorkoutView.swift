@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Séance : pas de vidéo. Le compteur, et en dessous une courbe de ce que capte l'app,
-/// pour savoir qu'elle te suit sans avoir l'impression de s'entraîner devant un miroir.
+/// Séance en style moniteur : compteur de la série, cases de mesure, tracé du signal capté,
+/// journal des séries et commandes Démarrer / Annuler la série / Terminer.
 struct WorkoutView: View {
     @StateObject private var model: WorkoutModel
     @Environment(\.dismiss) private var dismiss
@@ -11,36 +11,30 @@ struct WorkoutView: View {
         _model = StateObject(wrappedValue: WorkoutModel(exercise: exercise))
     }
 
-    private var isCounting: Bool { model.count > 0 }
-
     var body: some View {
         ZStack {
-            background
+            Theme.background.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                topBar
-                if model.isRecording {
-                    recordingBanner
-                        .padding(.top, 10)
+            VStack(spacing: 10) {
+                header
+                if model.isRecording { recordingBanner }
+                if model.showsDiagnostics { diagnosticsPanel }
+
+                if model.phase == .finished {
+                    SessionSummary(model: model) { dismiss() }
+                } else {
+                    mainReadout
+                    if model.phase == .active { metrics }
+                    signalPanel
+                    if model.phase == .active, !model.sets.isEmpty { setsLog }
+                    controls
                 }
-                if model.showsDiagnostics {
-                    diagnosticsPanel
-                        .padding(.horizontal, 20)
-                        .padding(.top, 10)
-                }
-                Spacer(minLength: 12)
-                CounterRing(live: model.live, count: model.count, isCounting: isCounting, bump: bump)
-                Spacer(minLength: 12)
-                presenceSection
-                statusLabel
-                    .padding(.top, 16)
-                    .padding(.bottom, 28)
             }
+            .padding(.horizontal, 14)
+            .padding(.bottom, 10)
 
             if model.cameraDenied { deniedView }
         }
-        .contentShape(Rectangle())
-        .onTapGesture { model.reset() }
         .onAppear { model.start() }
         .onDisappear { model.stop() }
         .onChange(of: model.repPulse) { _ in
@@ -49,8 +43,8 @@ struct WorkoutView: View {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { bump = false }
             }
         }
-        .animation(.easeInOut(duration: 0.4), value: isCounting)
-        .animation(.easeInOut(duration: 0.3), value: model.presence)
+        .animation(.easeInOut(duration: 0.25), value: model.phase)
+        .animation(.easeInOut(duration: 0.25), value: model.isResting)
         .sheet(item: $model.finishedRecording) { finished in
             RecordingSheet(finished: finished)
         }
@@ -59,249 +53,346 @@ struct WorkoutView: View {
         .preferredColorScheme(.dark)
     }
 
-    /// Fond sombre ; un halo bleu apparaît quand le mouvement est capté.
-    private var background: some View {
-        ZStack {
-            screenBackground
-            RadialGradient(colors: [brandColor.opacity(model.presence == .clear ? 0.18 : 0.04), .clear],
-                           center: .center, startRadius: 40, endRadius: 420)
-        }
-        .ignoresSafeArea()
-    }
+    // MARK: - En-tête
 
-    private var topBar: some View {
-        HStack(spacing: 10) {
-            roundButton(systemImage: "xmark") { dismiss() }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(model.exercise.title)
-                    .font(.system(.headline, design: .rounded))
-                    .foregroundStyle(.white)
-                Text(model.source.map { "Capteur : \($0.label)" } ?? " ")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.5))
-            }
-            Spacer()
-            recordButton
-            roundButton(systemImage: "waveform.path.ecg", highlighted: model.showsDiagnostics) {
-                model.showsDiagnostics.toggle()
-            }
-            // Fréquence des annonces : 1, 5 ou 10
-            Button { model.cycleAnnounceEvery() } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "speaker.wave.2.fill")
-                    Text("\(model.announceEvery)")
-                        .monospacedDigit()
-                }
-                .font(.footnote.weight(.bold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 12)
-                .frame(height: 40)
-                .background(cardBackground, in: Capsule())
-            }
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 12)
-    }
-
-    /// Enregistre les mesures de la séance, pour analyser un comptage raté.
-    private var recordButton: some View {
-        Button { model.toggleRecording() } label: {
-            Image(systemName: model.isRecording ? "stop.fill" : "record.circle")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(model.isRecording ? Color.white : Color.red)
-                .frame(width: 40, height: 40)
-                .background(model.isRecording ? Color.red : cardBackground, in: Circle())
-        }
-    }
-
-    private var recordingBanner: some View {
+    private var header: some View {
         HStack(spacing: 8) {
-            Circle()
-                .fill(Color.red)
-                .frame(width: 8, height: 8)
-            Text("Enregistrement \(Int(model.recordingDuration) / 60):\(String(format: "%02d", Int(model.recordingDuration) % 60))")
-                .monospacedDigit()
-            Text("· ■ pour arrêter")
-                .foregroundStyle(.white.opacity(0.5))
-        }
-        .font(.footnote.weight(.semibold))
-        .foregroundStyle(.white)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(Color.red.opacity(0.2), in: Capsule())
-    }
-
-    private func roundButton(systemImage: String, highlighted: Bool = false, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(highlighted ? Color.black : Color.white)
-                .frame(width: 40, height: 40)
-                .background(highlighted ? brandColor : cardBackground, in: Circle())
-        }
-    }
-
-    /// Pastille « Je te capte » et courbe en direct du signal suivi.
-    private var presenceSection: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(presenceColor)
-                    .frame(width: 10, height: 10)
-                    .shadow(color: presenceColor, radius: model.presence == .clear ? 6 : 0)
-                Text(presenceText)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white.opacity(model.presence == .absent ? 0.6 : 0.95))
+            IconButton(systemImage: "xmark") { dismiss() }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(model.exercise.title.uppercased())
+                    .font(Theme.mono(14, .bold))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                HStack(spacing: 5) {
+                    StatusLED(color: statusColor)
+                    MonitorLabel(statusText, color: statusColor)
+                }
             }
-            SignalWave(live: model.live)
-                .frame(height: 64)
-                .padding(.horizontal, 28)
+            Spacer(minLength: 4)
+            if model.phase == .active || model.phase == .finished {
+                Text("T+ \(Theme.clock(model.sessionDuration))")
+                    .font(Theme.mono(13, .semibold))
+                    .foregroundStyle(Theme.text)
+                    .monospacedDigit()
+            }
+            IconButton(systemImage: model.isRecording ? "stop.fill" : "record.circle",
+                       color: Theme.alarm, highlighted: model.isRecording) { model.toggleRecording() }
+            IconButton(systemImage: "waveform.path.ecg", color: Theme.trace,
+                       highlighted: model.showsDiagnostics) { model.showsDiagnostics.toggle() }
+            Button { model.cycleAnnounceEvery() } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("\(model.announceEvery)")
+                        .font(Theme.mono(12, .bold))
+                }
+                .foregroundStyle(Theme.text)
+                .frame(width: 44, height: 36)
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(Theme.line, lineWidth: 1))
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private var statusText: String {
+        switch model.phase {
+        case .ready: return "Veille"
+        case .countdown: return "Mise en place"
+        case .finished: return "Séance terminée"
+        case .active:
+            if model.isResting { return "Récupération" }
+            return model.state == .counting ? "Comptage" : "Acquisition"
+        }
+    }
+
+    private var statusColor: Color {
+        switch model.phase {
+        case .ready: return Theme.dim
+        case .countdown: return Theme.warn
+        case .finished: return Theme.ok
+        case .active:
+            if model.isResting { return Theme.warn }
+            return model.state == .counting ? Theme.ok : Theme.trace
+        }
+    }
+
+    // MARK: - Affichage principal
+
+    @ViewBuilder
+    private var mainReadout: some View {
+        switch model.phase {
+        case .ready:
+            MonitorPanel("Veille") {
+                VStack(spacing: 14) {
+                    Image(systemName: model.exercise.symbol)
+                        .font(.system(size: 54, weight: .light))
+                        .foregroundStyle(Theme.trace)
+                    Text(model.exercise.placement)
+                        .font(Theme.mono(13))
+                        .foregroundStyle(Theme.text)
+                        .multilineTextAlignment(.center)
+                    Text("Vérifie le tracé ci-dessous, puis Démarrer : 5 s de mise en place, et rien ne compte avant.")
+                        .font(Theme.mono(11))
+                        .foregroundStyle(Theme.dim)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        case .countdown(let remaining):
+            MonitorPanel("Mise en place") {
+                VStack(spacing: 6) {
+                    Text("\(remaining)")
+                        .font(Theme.mono(150, .bold))
+                        .foregroundStyle(Theme.warn)
+                        .contentTransition(.numericText())
+                    Text(model.exercise.placement)
+                        .font(Theme.mono(12))
+                        .foregroundStyle(Theme.dim)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        case .active:
+            if model.isResting {
+                MonitorPanel("Récupération", accessory: {
+                    MonitorLabel("Série \(String(format: "%02d", model.sets.count)) · \(model.sets.last?.reps ?? 0) reps",
+                                 color: Theme.warn)
+                }) {
+                    VStack(spacing: 4) {
+                        Text(Theme.clock(model.restDuration))
+                            .font(Theme.mono(96, .bold))
+                            .foregroundStyle(Theme.warn)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.5)
+                        Text("La série suivante démarre dès que tu reprends.")
+                            .font(Theme.mono(11))
+                            .foregroundStyle(Theme.dim)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            } else {
+                MonitorPanel("Reps · série \(String(format: "%02d", model.setNumber))", accessory: {
+                    MonitorLabel(model.state == .counting ? "Verrouillé" : "3e rep → affichage",
+                                 color: model.state == .counting ? Theme.ok : Theme.dim)
+                }) {
+                    CounterDial(live: model.live, reps: model.setReps, isCounting: model.state == .counting, bump: bump)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+        case .finished:
+            EmptyView()
+        }
+    }
+
+    private var metrics: some View {
+        HStack(spacing: 8) {
+            MetricTile(label: "Total", value: "\(model.totalReps)")
+            MetricTile(label: "Séries", value: "\(model.sets.count)")
+            MetricTile(label: "Cadence", value: model.cadence.map { String(format: "%.1f", $0) } ?? "—", unit: "s/rep")
+            MetricTile(label: "Régul.", value: model.regularity > 0 ? "\(Int((model.regularity * 100).rounded()))" : "—",
+                       unit: "%", color: model.regularity >= 0.8 ? Theme.ok : Theme.text)
+        }
+    }
+
+    private var signalPanel: some View {
+        MonitorPanel("Signal · \(model.source?.code ?? model.exercise.sensorTag)", accessory: {
+            HStack(spacing: 5) {
+                StatusLED(color: presenceColor)
+                MonitorLabel(presenceText, color: presenceColor)
+            }
+        }) {
+            ZStack {
+                MonitorGrid()
+                SignalTrace(live: model.live)
+                    .padding(.vertical, 4)
+            }
+            .frame(height: 74)
         }
     }
 
     private var presenceColor: Color {
         switch model.presence {
-        case .absent: return Color.white.opacity(0.3)
-        case .weak: return Color.orange
-        case .clear: return brandColor
+        case .absent: return Theme.dim
+        case .weak: return Theme.warn
+        case .clear: return Theme.ok
         }
     }
 
     private var presenceText: String {
-        switch (model.presence, model.state) {
-        case (_, .counting): return "Je te capte, je compte"
-        case (.clear, _): return "Je te capte"
-        case (.weak, _): return "Mouvement trop léger"
-        case (.absent, _): return "J'attends ton mouvement"
+        switch model.presence {
+        case .absent: return "Pas de signal"
+        case .weak: return "Signal faible"
+        case .clear: return "Signal OK"
         }
     }
 
-    private var statusLabel: some View {
-        VStack(spacing: 6) {
-            Text(statusTitle)
-                .font(.system(.title3, design: .rounded).weight(.bold))
-            Text(statusHint)
-                .font(.footnote)
-                .opacity(0.6)
+    private var setsLog: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(model.sets) { set in
+                    HStack(spacing: 6) {
+                        Text(String(format: "S%02d", set.number))
+                            .foregroundStyle(Theme.dim)
+                        Text("\(set.reps)")
+                            .foregroundStyle(Theme.text)
+                    }
+                    .font(Theme.mono(12, .bold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Theme.panel, in: RoundedRectangle(cornerRadius: 3))
+                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.line, lineWidth: 1))
+                }
+            }
         }
-        .foregroundStyle(.white)
-        .multilineTextAlignment(.center)
-        .padding(.horizontal, 28)
     }
 
-    private var statusTitle: String {
-        switch model.state {
-        case .searching: return "Commence tes répétitions"
-        case .counting: return " "
-        case .resting: return "Pause"
+    @ViewBuilder
+    private var controls: some View {
+        switch model.phase {
+        case .ready:
+            Button("Démarrer") { model.beginSession() }
+                .buttonStyle(MonitorButtonStyle(color: Theme.trace, height: 64))
+        case .countdown:
+            Button("Annuler") { model.cancelCountdown() }
+                .buttonStyle(MonitorButtonStyle(color: Theme.dim, filled: false))
+        case .active:
+            HStack(spacing: 10) {
+                Button("Annuler série") { model.cancelSet() }
+                    .buttonStyle(MonitorButtonStyle(color: Theme.warn, filled: false))
+                    .disabled(model.setReps == 0 && model.sets.isEmpty)
+                Button("Terminer") { model.finishSession() }
+                    .buttonStyle(MonitorButtonStyle(color: Theme.alarm))
+            }
+        case .finished:
+            EmptyView()
         }
     }
 
-    private var statusHint: String {
-        switch model.state {
-        case .searching:
-            return "\(model.exercise.placement)\nLe compteur démarre à la 3e répétition."
-        case .counting, .resting:
-            return "Touche l'écran pour remettre à zéro"
+    // MARK: - Enregistrement et diagnostic
+
+    private var recordingBanner: some View {
+        HStack(spacing: 8) {
+            StatusLED(color: Theme.alarm)
+            MonitorLabel("Enregistrement \(Theme.clock(model.recordingDuration))", color: Theme.alarm)
+            Spacer()
+            MonitorLabel("■ pour arrêter")
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Theme.alarm.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.alarm.opacity(0.5), lineWidth: 1))
     }
 
     /// Ce que voit chaque capteur : amplitude du mouvement par rapport au seuil,
     /// cycles détectés, note de régularité (il faut ≥ 0,60 pour démarrer).
     private var diagnosticsPanel: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("\(Int(model.framesPerSecond.rounded())) mesures/s")
-                .font(.footnote.weight(.bold))
-                .foregroundStyle(model.framesPerSecond < 20 ? Color.orange : Color.white)
-            ForEach(model.diagnostics, id: \.source) { item in
-                HStack(spacing: 8) {
-                    Text(item.source.label)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text("ampl. \(Int((100 * item.amplitude / item.source.minAmplitude).rounded())) %")
-                        .foregroundStyle(item.amplitude >= item.source.minAmplitude ? brandColor : Color.white.opacity(0.5))
-                    Text("\(item.cycles) cyc.")
-                    Text(String(format: "rég. %.2f", item.regularity))
-                        .foregroundStyle(item.regularity >= 0.6 ? brandColor : Color.white.opacity(0.5))
+        MonitorPanel("Diagnostic · \(Int(model.framesPerSecond.rounded())) mesures/s") {
+            VStack(alignment: .leading, spacing: 5) {
+                ForEach(model.diagnostics, id: \.source) { item in
+                    HStack(spacing: 8) {
+                        Text(item.source.code)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("ampl \(Int((100 * item.amplitude / item.source.minAmplitude).rounded()))%")
+                            .foregroundStyle(item.amplitude >= item.source.minAmplitude ? Theme.ok : Theme.dim)
+                        Text("\(item.cycles) cyc")
+                        Text(String(format: "rég %.2f", item.regularity))
+                            .foregroundStyle(item.regularity >= 0.6 ? Theme.ok : Theme.dim)
+                    }
+                    .font(Theme.mono(11))
+                    .foregroundStyle(Theme.text)
                 }
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.white)
+                if model.diagnostics.isEmpty {
+                    MonitorLabel("En attente de mesures")
+                }
             }
-            Text("ampl. : mouvement mesuré / seuil (≥ 100 % pour compter)")
-                .font(.caption2)
-                .foregroundStyle(.white.opacity(0.5))
         }
-        .padding(12)
-        .background(cardBackground, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var deniedView: some View {
         VStack(spacing: 16) {
-            Text("Accès à la caméra refusé")
-                .font(.title2.weight(.bold))
+            MonitorLabel("Accès caméra refusé", color: Theme.alarm)
             Text("Cet exercice utilise la caméra pour te voir. Rien n'est enregistré.")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.6))
+                .font(Theme.mono(13))
+                .foregroundStyle(Theme.text)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
             Button("Ouvrir les Réglages") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }
             }
-            .buttonStyle(.borderedProminent)
-            .tint(brandColor)
-            .foregroundStyle(.black)
+            .buttonStyle(MonitorButtonStyle(color: Theme.trace))
             Button("Retour") { dismiss() }
-                .foregroundStyle(.white)
+                .buttonStyle(MonitorButtonStyle(color: Theme.dim, filled: false))
         }
+        .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(screenBackground.ignoresSafeArea())
+        .background(Theme.background.ignoresSafeArea())
     }
 }
 
-/// Anneau et grand chiffre, dans le style de l'icône. Observe le signal en direct :
-/// c'est lui, et pas tout l'écran, qui se redessine 30 fois par seconde.
-private struct CounterRing: View {
+// MARK: - Cadran et tracé (observent le signal en direct, 30 fois par seconde)
+
+/// Cadran gradué : 60 graduations qui s'allument avec l'avancement de la répétition,
+/// et le nombre de répétitions de la série au centre.
+private struct CounterDial: View {
     @ObservedObject var live: LiveSignal
-    let count: Int
+    let reps: Int
     let isCounting: Bool
     let bump: Bool
 
+    private let tickCount = 60
+
     var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.white.opacity(0.08), lineWidth: 18)
-            Circle()
-                .trim(from: 0, to: isCounting ? CGFloat(live.phase) : 0)
-                .stroke(AngularGradient(colors: [ringStartColor, brandColor], center: .center,
-                                        startAngle: .degrees(0), endAngle: .degrees(360)),
-                        style: StrokeStyle(lineWidth: 18, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .shadow(color: brandColor.opacity(0.55), radius: 12)
-                .animation(.linear(duration: 0.1), value: live.phase)
-            VStack(spacing: 0) {
-                Text("REPS")
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
-                    .tracking(3)
-                    .foregroundStyle(.white.opacity(0.6))
-                Text("\(count)")
-                    .font(.system(size: 170, weight: .bold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(isCounting ? Color.white : Color.white.opacity(0.3))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.4)
-                    .contentTransition(.numericText())
-                    .scaleEffect(bump ? 1.12 : 1)
+        GeometryReader { geometry in
+            let side = min(geometry.size.width, geometry.size.height)
+            ZStack {
+                Canvas { context, size in
+                    let center = CGPoint(x: size.width / 2, y: size.height / 2)
+                    let outer = min(size.width, size.height) / 2 - 2
+                    let lit = isCounting ? Int((Float(tickCount) * live.phase).rounded()) : 0
+                    for i in 0..<tickCount {
+                        let angle = Double(i) / Double(tickCount) * 2 * .pi - .pi / 2
+                        let major = i % 5 == 0
+                        let inner = outer - (major ? 16 : 9)
+                        var tick = Path()
+                        tick.move(to: CGPoint(x: center.x + CGFloat(cos(angle)) * inner,
+                                              y: center.y + CGFloat(sin(angle)) * inner))
+                        tick.addLine(to: CGPoint(x: center.x + CGFloat(cos(angle)) * outer,
+                                                 y: center.y + CGFloat(sin(angle)) * outer))
+                        let fraction = Double(i) / Double(tickCount)
+                        let color = i < lit
+                            ? (fraction < 0.5 ? Theme.violet : Theme.trace)
+                            : Theme.line
+                        context.stroke(tick, with: .color(color), style: StrokeStyle(lineWidth: major ? 3 : 2, lineCap: .round))
+                    }
+                }
+                .shadow(color: Theme.trace.opacity(isCounting ? 0.35 : 0), radius: 8)
+
+                VStack(spacing: 0) {
+                    Text("\(reps)")
+                        .font(Theme.mono(side * 0.36, .bold))
+                        .foregroundStyle(isCounting ? Theme.text : Theme.dim)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.4)
+                        .contentTransition(.numericText())
+                        .scaleEffect(bump ? 1.1 : 1)
+                    MonitorLabel("reps")
+                }
+                .padding(side * 0.2)
             }
-            .padding(40)
+            .frame(width: side, height: side)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 310, height: 310)
     }
 }
 
-/// Courbe des 3 dernières secondes du signal suivi : plate sans mouvement,
-/// ample quand le geste est net, atténuée quand il est trop léger.
-private struct SignalWave: View {
+/// Tracé des 3 dernières secondes du signal suivi, façon électrocardiogramme : plat sans
+/// mouvement, ample et lumineux quand le geste est net, atténué quand il est trop léger.
+private struct SignalTrace: View {
     @ObservedObject var live: LiveSignal
 
     var body: some View {
@@ -314,15 +405,107 @@ private struct SignalWave: View {
                 let y = size.height * (1 - CGFloat(value))
                 if i == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
             }
-            let gradient = Gradient(colors: [ringStartColor, brandColor])
-            context.stroke(path,
-                           with: .linearGradient(gradient, startPoint: .zero, endPoint: CGPoint(x: size.width, y: 0)),
-                           style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+            context.stroke(path, with: .color(Theme.trace), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            // Point lumineux à la dernière mesure
+            if let last = samples.last {
+                let dot = CGRect(x: size.width - 4, y: size.height * (1 - CGFloat(last)) - 4, width: 8, height: 8)
+                context.fill(Path(ellipseIn: dot), with: .color(Theme.trace))
+            }
         }
-        .opacity(Double(min(max(live.strength, 0.25), 1)))
-        .shadow(color: brandColor.opacity(live.strength >= 1 ? 0.6 : 0), radius: 6)
+        .opacity(Double(min(max(live.strength, 0.3), 1)))
+        .shadow(color: Theme.trace.opacity(live.strength >= 1 ? 0.7 : 0), radius: 5)
     }
 }
+
+// MARK: - Résumé de séance
+
+private struct SessionSummary: View {
+    @ObservedObject var model: WorkoutModel
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            MonitorPanel("Séance terminée", accessory: {
+                HStack(spacing: 5) {
+                    StatusLED(color: Theme.ok)
+                    MonitorLabel(model.exercise.title, color: Theme.ok)
+                }
+            }) {
+                VStack(spacing: 2) {
+                    Text("\(model.totalReps)")
+                        .font(Theme.mono(96, .bold))
+                        .foregroundStyle(Theme.text)
+                        .monospacedDigit()
+                    MonitorLabel("répétitions au total")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            HStack(spacing: 8) {
+                MetricTile(label: "Durée", value: Theme.clock(model.sessionDuration))
+                MetricTile(label: "Séries", value: "\(model.sets.count)")
+                MetricTile(label: "Moy./série", value: averagePerSet)
+                MetricTile(label: "Cadence", value: averageCadence, unit: "s/rep")
+            }
+            MonitorPanel("Détail des séries") {
+                if model.sets.isEmpty {
+                    MonitorLabel("Aucune série comptée")
+                } else {
+                    VStack(spacing: 0) {
+                        HStack {
+                            MonitorLabel("Série").frame(maxWidth: .infinity, alignment: .leading)
+                            MonitorLabel("Reps").frame(maxWidth: .infinity, alignment: .trailing)
+                            MonitorLabel("Durée").frame(maxWidth: .infinity, alignment: .trailing)
+                            MonitorLabel("Cadence").frame(maxWidth: .infinity, alignment: .trailing)
+                        }
+                        .padding(.bottom, 6)
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                ForEach(model.sets) { set in
+                                    HStack {
+                                        Text(String(format: "S%02d", set.number))
+                                            .foregroundStyle(Theme.dim)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                        Text("\(set.reps)")
+                                            .foregroundStyle(Theme.text)
+                                            .frame(maxWidth: .infinity, alignment: .trailing)
+                                        Text(Theme.clock(set.duration))
+                                            .frame(maxWidth: .infinity, alignment: .trailing)
+                                        Text(set.cadence.map { String(format: "%.1f s", $0) } ?? "—")
+                                            .frame(maxWidth: .infinity, alignment: .trailing)
+                                    }
+                                    .font(Theme.mono(14, .semibold))
+                                    .foregroundStyle(Theme.text)
+                                    .padding(.vertical, 8)
+                                    Rectangle().fill(Theme.line).frame(height: 1)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+            HStack(spacing: 10) {
+                Button("Nouvelle séance") { model.newSession() }
+                    .buttonStyle(MonitorButtonStyle(color: Theme.trace, filled: false))
+                Button("Quitter") { onClose() }
+                    .buttonStyle(MonitorButtonStyle(color: Theme.trace))
+            }
+        }
+    }
+
+    private var averagePerSet: String {
+        guard !model.sets.isEmpty else { return "—" }
+        return String(format: "%.1f", Double(model.totalReps) / Double(model.sets.count))
+    }
+
+    private var averageCadence: String {
+        let cadences = model.sets.compactMap(\.cadence)
+        guard !cadences.isEmpty else { return "—" }
+        return String(format: "%.1f", cadences.reduce(0, +) / Double(cadences.count))
+    }
+}
+
+// MARK: - Fin d'enregistrement
 
 /// Fin d'un enregistrement : nombre de répétitions réellement faites, puis partage du fichier.
 private struct RecordingSheet: View {
@@ -337,65 +520,51 @@ private struct RecordingSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 22) {
+        VStack(spacing: 18) {
             Capsule()
-                .fill(Color.white.opacity(0.2))
+                .fill(Theme.line)
                 .frame(width: 40, height: 5)
                 .padding(.top, 10)
-            Text("Enregistrement terminé")
-                .font(.system(.title2, design: .rounded).weight(.bold))
-            Text("L'app a compté \(finished.countedReps) répétition\(finished.countedReps > 1 ? "s" : "").")
-                .foregroundStyle(.white.opacity(0.7))
+            MonitorLabel("Enregistrement terminé", color: Theme.alarm)
+            Text("Compté par l'app : \(finished.countedReps)")
+                .font(Theme.mono(14))
+                .foregroundStyle(Theme.dim)
 
-            VStack(spacing: 10) {
-                Text("Combien en as-tu réellement fait ?")
-                    .font(.headline)
+            MonitorPanel("Répétitions réellement faites") {
                 HStack(spacing: 24) {
                     stepButton("minus") { actualReps = max(0, actualReps - 1) }
                     Text("\(actualReps)")
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .font(Theme.mono(56, .bold))
+                        .foregroundStyle(Theme.text)
                         .monospacedDigit()
                         .frame(minWidth: 90)
                     stepButton("plus") { actualReps += 1 }
                 }
+                .frame(maxWidth: .infinity)
             }
-            .padding(18)
-            .frame(maxWidth: .infinity)
-            .background(cardBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
 
             if let savedURL {
                 ShareLink(item: savedURL) {
                     Label("Partager l'enregistrement", systemImage: "square.and.arrow.up")
-                        .font(.headline)
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(brandColor, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
+                .buttonStyle(MonitorButtonStyle(color: Theme.trace))
                 Text("Aussi dans Fichiers › Sur mon iPhone › Reps › Recordings.")
-                    .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.5))
+                    .font(Theme.mono(11))
+                    .foregroundStyle(Theme.dim)
                 Button("Fermer") { dismiss() }
-                    .foregroundStyle(.white)
+                    .buttonStyle(MonitorButtonStyle(color: Theme.dim, filled: false))
             } else {
-                Button {
+                Button("Valider") {
                     finished.recorder.finish(countedReps: finished.countedReps, actualReps: actualReps)
                     savedURL = finished.recorder.url
-                } label: {
-                    Text("Valider")
-                        .font(.headline)
-                        .foregroundStyle(.black)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(brandColor, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
+                .buttonStyle(MonitorButtonStyle(color: Theme.trace))
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 24)
-        .foregroundStyle(.white)
+        .padding(.horizontal, 20)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(screenBackground.ignoresSafeArea())
+        .background(Theme.background.ignoresSafeArea())
         .presentationDetents([.fraction(0.75), .large])
         .interactiveDismissDisabled(savedURL == nil)
         .preferredColorScheme(.dark)
@@ -404,10 +573,11 @@ private struct RecordingSheet: View {
     private func stepButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.title2.weight(.bold))
-                .foregroundStyle(.white)
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(Theme.text)
                 .frame(width: 52, height: 52)
-                .background(Color.white.opacity(0.1), in: Circle())
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.line, lineWidth: 1))
         }
     }
 }

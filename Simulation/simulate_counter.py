@@ -332,7 +332,7 @@ class AutoCounter:
         self.locks = []   # (instant, source, régularité) : pour comprendre les résultats
 
     def reset(self, time):
-        """Remise à zéro par l'utilisateur (toucher l'écran)."""
+        """Remise à zéro : démarrage d'une séance ou série annulée. Ce qui précède est ignoré."""
         self.count = 0
         self.leader = None
         self.last_count_time = -math.inf

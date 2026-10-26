@@ -1,108 +1,124 @@
 import SwiftUI
 
-// Couleurs de l'icône : anneau violet (#AB64FA) vers bleu (#3DC1FE)
-let ringStartColor = Color(red: 0.67, green: 0.39, blue: 0.98)
-let brandColor = Color(red: 0.24, green: 0.76, blue: 1.0)
-let screenBackground = Color(red: 0.07, green: 0.07, blue: 0.09)
-let cardBackground = Color(red: 0.13, green: 0.13, blue: 0.16)
-
-/// Accueil : un exercice par carte, sans caméra. Toucher une carte lance la séance.
+/// Accueil : sélection de l'exercice, sans caméra. Toucher une ligne ouvre la séance.
 struct HomeView: View {
     @AppStorage(WorkoutModel.announceEveryKey) private var announceEvery = 1
-
-    private let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 14) {
                     header
-                    LazyVGrid(columns: columns, spacing: 14) {
-                        ForEach(Exercise.allCases) { exercise in
-                            NavigationLink(value: exercise) {
-                                ExerciseCard(exercise: exercise)
+                    MonitorPanel("Sélection de l'exercice") {
+                        VStack(spacing: 0) {
+                            ForEach(Array(Exercise.allCases.enumerated()), id: \.element) { index, exercise in
+                                NavigationLink(value: exercise) {
+                                    ExerciseRow(index: index + 1, exercise: exercise)
+                                }
+                                .buttonStyle(.plain)
+                                if index < Exercise.allCases.count - 1 {
+                                    Rectangle().fill(Theme.line).frame(height: 1)
+                                }
                             }
-                            .buttonStyle(.plain)
                         }
                     }
-                    announceSetting
+                    MonitorPanel("Annonce vocale") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                ForEach(WorkoutModel.announceChoices, id: \.self) { every in
+                                    Button(every == 1 ? "Chaque rep" : "Toutes les \(every)") {
+                                        announceEvery = every
+                                    }
+                                    .buttonStyle(MonitorButtonStyle(color: Theme.trace, filled: announceEvery == every, height: 38))
+                                }
+                            }
+                            Text("Les répétitions non annoncées font un bip court.")
+                                .font(Theme.mono(11))
+                                .foregroundStyle(Theme.dim)
+                        }
+                    }
+                    footer
                 }
-                .padding(20)
+                .padding(16)
             }
-            .background(screenBackground.ignoresSafeArea())
+            .background(Theme.background.ignoresSafeArea())
             .navigationDestination(for: Exercise.self) { exercise in
                 WorkoutView(exercise: exercise)
             }
             .toolbar(.hidden, for: .navigationBar)
         }
-        .tint(brandColor)
+        .tint(Theme.trace)
         .preferredColorScheme(.dark)
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("REPS")
-                .font(.system(.subheadline, design: .rounded).weight(.bold))
-                .tracking(2)
-                .foregroundStyle(
-                    LinearGradient(colors: [ringStartColor, brandColor], startPoint: .leading, endPoint: .trailing)
-                )
-            Text("Quel exercice ?")
-                .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                .foregroundStyle(.white)
-            Text("Place le téléphone comme indiqué : il compte et annonce tes répétitions.")
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.6))
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("REPS")
+                    .font(Theme.mono(28, .bold))
+                    .tracking(6)
+                    .foregroundStyle(
+                        LinearGradient(colors: [Theme.violet, Theme.trace], startPoint: .leading, endPoint: .trailing)
+                    )
+                MonitorLabel("Moniteur de répétitions")
+            }
+            Spacer()
+            HStack(spacing: 6) {
+                StatusLED(color: Theme.ok)
+                MonitorLabel("Prêt", color: Theme.ok)
+            }
         }
-        .padding(.top, 12)
+        .padding(.top, 8)
     }
 
-    private var announceSetting: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Annonce vocale", systemImage: "speaker.wave.2.fill")
-                .font(.headline)
-                .foregroundStyle(.white)
-            Picker("Annonce vocale", selection: $announceEvery) {
-                Text("Chaque rep").tag(1)
-                Text("Toutes les 5").tag(5)
-                Text("Toutes les 10").tag(10)
-            }
-            .pickerStyle(.segmented)
-            Text("Les répétitions non annoncées font un bip court.")
-                .font(.footnote)
-                .foregroundStyle(.white.opacity(0.5))
-        }
-        .padding(16)
-        .background(cardBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+    private var footer: some View {
+        Text("Comptage par caméra 3D et capteurs de mouvement · aucune image enregistrée")
+            .font(Theme.mono(10))
+            .foregroundStyle(Theme.dim)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .multilineTextAlignment(.center)
+            .padding(.top, 4)
     }
 }
 
-private struct ExerciseCard: View {
+private struct ExerciseRow: View {
+    let index: Int
     let exercise: Exercise
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        HStack(spacing: 12) {
+            Text(String(format: "%02d", index))
+                .font(Theme.mono(12, .semibold))
+                .foregroundStyle(Theme.dim)
             Image(systemName: exercise.symbol)
-                .font(.system(size: 30, weight: .semibold))
-                .foregroundStyle(
-                    LinearGradient(colors: [ringStartColor, brandColor], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .frame(height: 36)
-            Text(exercise.title)
-                .font(.system(.title3, design: .rounded).weight(.bold))
-                .foregroundStyle(.white)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-            Text(exercise.placement)
-                .font(.caption)
-                .foregroundStyle(.white.opacity(0.55))
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Theme.trace)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(exercise.title.uppercased())
+                    .font(Theme.mono(15, .bold))
+                    .foregroundStyle(Theme.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text(exercise.placement)
+                    .font(Theme.mono(10))
+                    .foregroundStyle(Theme.dim)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 4)
+            Text(exercise.sensorTag)
+                .font(Theme.mono(9, .bold))
+                .tracking(1)
+                .foregroundStyle(Theme.trace)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.trace.opacity(0.5), lineWidth: 1))
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(Theme.dim)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 170, alignment: .topLeading)
-        .background(cardBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
     }
 }
