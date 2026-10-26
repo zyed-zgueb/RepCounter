@@ -374,7 +374,7 @@ private struct ProgressionPanel: View {
 }
 
 /// Courbe d'une valeur par semaine (points aux semaines qui en ont).
-private struct LineChart: View {
+struct LineChart: View {
     @Environment(\.theme) private var theme
     let points: [(week: Int, value: Double)]
     let weeks: Int
