@@ -62,6 +62,10 @@ private enum Tuning {
     static let keptCycles = 30
     /// En série, un cycle plus faible que 40 % des précédents ne compte pas.
     static let weakCycleRatio: Float = 0.4
+    /// En série, un cycle 40 % plus ample que les précédents, après une pause d'au moins 1,5 fois
+    /// le rythme de la série : le téléphone qu'on reprend en fin de série. Il ne compte pas.
+    static let strongCycleRatio: Float = 1.4
+    static let pauseRatio = 1.5
     /// Rotation (rad/s) au-delà de laquelle un téléphone censé être posé est manipulé.
     static let handlingRotation: Float = 0.5
 }
@@ -391,10 +395,20 @@ final class AutoCounter {
     private var resetPending = false
     /// Ampleur des répétitions de la série en cours.
     private var setSwings: [Float] = []
+    /// Instants où elles ont été comptées.
+    private var setTimes: [Double] = []
     private var weakCycles = 0
 
     init(exercise: Exercise) {
         self.exercise = exercise
+    }
+
+    /// Rythme de la série : intervalle médian entre ses dernières répétitions comptées.
+    private var setRhythm: Double? {
+        let recent = Array(setTimes.suffix(6))
+        guard recent.count >= 2 else { return nil }
+        let intervals = zip(recent.dropFirst(), recent).map { Float($0 - $1) }
+        return Double(median(intervals[...]))
     }
 
     /// Remise à zéro : démarrage d'une séance (fin du compte à rebours) ou série annulée.
@@ -428,13 +442,20 @@ final class AutoCounter {
         var didCount = false
         if let leader, let tracker = trackers[leader] {
             if completed.contains(leader), let swing = tracker.cycleSwings.last {
+                // Un cycle bien plus ample, après une pause : le téléphone qu'on reprend en fin
+                // de série. Il ne compte pas, la série est finie.
                 // Un cycle bien plus faible que les répétitions de la série (essoufflement,
                 // téléphone qu'on repose…) ne compte pas ; deux de suite : fin de série
-                if swing >= Tuning.weakCycleRatio * median(setSwings.suffix(5)) {
+                let usual = median(setSwings.suffix(5))
+                if swing > Tuning.strongCycleRatio * usual, let rhythm = setRhythm ?? tracker.period,
+                   t - lastCountTime > Tuning.pauseRatio * rhythm {
+                    self.leader = nil
+                } else if swing >= Tuning.weakCycleRatio * usual {
                     count += 1
                     lastCountTime = t
                     didCount = true
                     setSwings.append(swing)
+                    setTimes.append(t)
                     weakCycles = 0
                 } else {
                     weakCycles += 1
@@ -451,6 +472,7 @@ final class AutoCounter {
             lastCountTime = t
             didCount = true
             setSwings = Array(tracker.cycleSwings.suffix(Self.cyclesToLock))
+            setTimes = [t]
             weakCycles = 0
         }
 

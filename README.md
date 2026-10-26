@@ -75,6 +75,9 @@ l'inclinaison seule ne distingue pas. Les répétitions de plus de 3 s ne sont p
 
 En série, un cycle plus faible que 40 % des répétitions précédentes ne compte pas ; deux de
 suite marquent la fin de la série. Ça évite de compter l'essoufflement après des abdos.
+À l'inverse, un cycle 40 % plus ample que les répétitions de la série, après une pause d'au
+moins 1,5 fois son rythme, est le téléphone qu'on reprend sur la poitrine : il ne compte pas et
+clôt la série.
 
 ## Diagnostic
 Avec le mode analyse activé (Réglages), le bouton tracé de pouls de la séance affiche ce que voit l'app : mesures par seconde
@@ -168,6 +171,7 @@ Enregistrements réels (`Recordings/`, iPhone 14) :
 | Pompes 26/10 13:02 (avant le comptage au repos) | 10 | 9 | 10 |
 | Pompes 26/10 14:14 (avec pré-enregistrement et profondeur brute) | 10 | 10 | 10 |
 | Abdos 26/10 14:19 (après remise à zéro) | 20 | 20 | 20 |
+| Abdos 26/10 19:40 (téléphone repris sur la poitrine à la fin) | 20 | 21 | 20 |
 
 Abdos du 14:19 : le 20e avait été compté 2,7 s en retard, par le mouvement de fin (retour au
 sol trop lent pour le gyroscope). Rejoué avec la règle du retour non vu : compté 1,1 s après

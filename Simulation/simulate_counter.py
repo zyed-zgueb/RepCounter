@@ -35,8 +35,12 @@ MAX_ROUGHNESS = 0.12   # au-delà, signal trop saccadé : du bruit, pas un geste
 
 MIN_AMPLITUDE = {"depth": 0.04, "pixels": 0.05, "face": 0.03, "pose": 0.2, "motion": 0.1,
                  "vertical": 0.08, "rotation": 0.25}
-WEAK_CYCLE_RATIO = 0.4
-HANDLING_ROTATION = 0.5  # rad/s : au-delà, un téléphone censé être posé est manipulé   # en série, un cycle plus faible que 40 % des précédents ne compte pas
+WEAK_CYCLE_RATIO = 0.4    # en série, un cycle plus faible que 40 % des précédents ne compte pas
+# En série, un cycle 40 % plus ample que les précédents, après une pause d'au moins 1,5 fois le
+# rythme de la série : le téléphone qu'on reprend en fin de série. Il ne compte pas, la série est finie.
+STRONG_CYCLE_RATIO = 1.4
+PAUSE_RATIO = 1.5
+HANDLING_ROTATION = 0.5  # rad/s : au-delà, un téléphone censé être posé est manipulé
 
 # Profils d'exercice : identiques à `Exercise` dans Exercise.swift.
 # sources : capteurs écoutés, par ordre de préférence ; max_period : écart max entre deux reps.
@@ -328,6 +332,7 @@ class AutoCounter:
         self.count = 0
         self.last_count_time = -math.inf
         self.set_swings = []    # ampleur des répétitions de la série en cours
+        self.set_times = []     # instants où elles ont été comptées
         self.weak_cycles = 0
         self.locks = []   # (instant, source, régularité) : pour comprendre les résultats
 
@@ -362,10 +367,19 @@ class AutoCounter:
                 # Un cycle bien plus faible que les répétitions de la série (essoufflement,
                 # téléphone qu'on repose…) ne compte pas ; deux de suite : fin de série
                 swing = tracker.cycle_swings[-1]
-                if swing >= WEAK_CYCLE_RATIO * float(np.median(self.set_swings[-5:])):
+                usual = float(np.median(self.set_swings[-5:]))
+                rhythm = (float(np.median(np.diff(self.set_times[-6:]))) if len(self.set_times) >= 2
+                          else tracker.period())
+                if (swing > STRONG_CYCLE_RATIO * usual and rhythm
+                        and time - self.last_count_time > PAUSE_RATIO * rhythm):
+                    # Téléphone repris en fin de série : ne compte pas, la série est finie
+                    self.leader = None
+                    return
+                if swing >= WEAK_CYCLE_RATIO * usual:
                     self.count += 1
                     self.last_count_time = time
                     self.set_swings.append(swing)
+                    self.set_times.append(time)
                     self.weak_cycles = 0
                 else:
                     self.weak_cycles += 1
@@ -388,6 +402,7 @@ class AutoCounter:
             tracker.adopt_rest_position(series_start)
             self.last_count_time = time
             self.set_swings = self.trackers[best[0]].cycle_swings[-3:]
+            self.set_times = [time]
             self.weak_cycles = 0
             self.locks.append((round(time, 1), best[0], round(best[1], 2)))
 
