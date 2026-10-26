@@ -654,7 +654,7 @@ struct SessionDetailView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     Text(Format.clock(set.duration))
                         .frame(maxWidth: .infinity, alignment: .trailing)
-                    Text(set.cadence.map { "\(Format.decimal($0)) s" } ?? "—")
+                    Text(set.pace.map { "\(Format.decimal($0)) s" } ?? "—")
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     Text(rest(before: index, in: sets).map(Format.clock) ?? "—")
                         .foregroundStyle(theme.dim)

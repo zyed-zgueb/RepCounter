@@ -32,7 +32,7 @@ final class SessionRecord {
         return sets.isEmpty ? nil : Double(totalReps) / Double(sets.count)
     }
     /// Cadence moyenne (s par répétition).
-    var cadence: Double? { average(orderedSets.compactMap(\.cadence)) }
+    var cadence: Double? { average(orderedSets.compactMap(\.pace)) }
     /// Écart entre la dernière et la première série, en % de la première (négatif quand on faiblit).
     var fatigue: Double? {
         let sets = orderedSets
@@ -51,6 +51,7 @@ final class SetRecord {
     var countedReps: Int = 0
     var start: Date = Date()
     var duration: TimeInterval = 0
+    /// Rythme du compteur à la fin de la série (voir `pace`, plus juste).
     var cadence: Double?
     /// Instant de chaque répétition, en secondes depuis la première.
     var repTimes: [Double] = []
@@ -68,6 +69,10 @@ final class SetRecord {
 
     /// Durée de chaque répétition (s) : elle s'allonge quand la fatigue arrive.
     var repDurations: [Double] { zip(repTimes.dropFirst(), repTimes).map { $0 - $1 } }
+
+    /// Cadence de la série (s par répétition) : intervalle médian entre ses répétitions. La
+    /// fin de série (dernière répétition comptée en retard, téléphone repris) ne la fausse pas.
+    var pace: Double? { medianInterval(repTimes) ?? cadence }
 }
 
 extension SessionRecord {
@@ -203,6 +208,14 @@ struct HistoryStats {
     func dailyVolume() -> [Date: Int] {
         sessions.reduce(into: [:]) { $0[calendar.startOfDay(for: $1.start), default: 0] += $1.totalReps }
     }
+}
+
+/// Intervalle médian entre des instants croissants (au moins trois), sinon nil.
+func medianInterval(_ times: [Double]) -> Double? {
+    guard times.count >= 3 else { return nil }
+    let intervals = zip(times.dropFirst(), times).map { $0 - $1 }.sorted()
+    let middle = intervals.count / 2
+    return intervals.count % 2 == 1 ? intervals[middle] : (intervals[middle - 1] + intervals[middle]) / 2
 }
 
 func average(_ values: [Double]) -> Double? {

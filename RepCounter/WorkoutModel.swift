@@ -295,7 +295,10 @@ final class WorkoutModel: ObservableObject {
         let start = setStart ?? setRepDates.first ?? Date()
         let duration = max(0, (lastRepDate ?? Date()).timeIntervalSince(start))
         let repTimes = setRepDates.prefix(reps).map { max(0, $0.timeIntervalSince(start)) }
-        sets.append(WorkoutSet(number: sets.count + 1, reps: reps, duration: duration, cadence: cadence,
+        // Cadence de la série : intervalle médian entre ses répétitions (le rythme du compteur,
+        // mesuré sur les derniers cycles, est faussé par la fin de série)
+        let pace = medianInterval(Array(repTimes)) ?? cadence
+        sets.append(WorkoutSet(number: sets.count + 1, reps: reps, duration: duration, cadence: pace,
                                start: start, repTimes: repTimes))
         setBase = counterTotal
         setReps = 0
