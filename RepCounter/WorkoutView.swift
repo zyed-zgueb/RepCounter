@@ -166,8 +166,6 @@ struct WorkoutView: View {
                     ExerciseCarousel(selection: $browsing, side: side)
                 }
                 placementText(browsing)
-                    .id(browsing)
-                    .transition(.opacity)
             case .countdown(let remaining):
                 let elapsed = Double(WorkoutModel.countdownSeconds - remaining) / Double(WorkoutModel.countdownSeconds)
                 Dial(face: DialFace(lit: Int(elapsed * Double(DialFace.tickCount)), palette: .solid(theme.warn))) { side in
@@ -243,15 +241,30 @@ struct WorkoutView: View {
         .padding(side * 0.12)
     }
 
+    /// Consigne de placement. Sa hauteur est toujours celle de la plus longue consigne : le
+    /// cadran ne bouge pas d'un exercice à l'autre. Le changement de texte est un fondu sur place.
     private func placementText(_ exercise: Exercise) -> some View {
-        Text(exercise.placement)
+        ZStack(alignment: .top) {
+            placementLine(Self.longestPlacement)
+                .hidden()
+            placementLine(exercise.placement)
+                .id(exercise)
+                .transition(.opacity)
+        }
+        .frame(maxWidth: 300)
+    }
+
+    private func placementLine(_ text: String) -> some View {
+        Text(text)
             .font(theme.font(12))
             .foregroundStyle(theme.dim)
             .multilineTextAlignment(.center)
             .lineSpacing(3)
-            .frame(maxWidth: 300)
             .fixedSize(horizontal: false, vertical: true)
     }
+
+    private static let longestPlacement = Exercise.allCases.map(\.placement).max { $0.count < $1.count } ?? ""
+
 
     /// Une ligne discrète sous le cadran : total de la séance et cadence (et régularité en mode analyse).
     private var statsLine: some View {
