@@ -67,7 +67,7 @@ final class WorkoutModel: ObservableObject {
         case finished
     }
 
-    /// Ce que l'app perçoit de toi, pour l'indicateur de signal.
+    /// Ampleur du mouvement capté (au repos, léger, assez net pour compter), pour le voyant.
     enum Presence { case absent, weak, clear }
 
     static let countdownSeconds = 5

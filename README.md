@@ -18,7 +18,7 @@ Réglages. Pas de défilement.
    des points indiquent la position parmi les six exercices ; aux deux bouts, le contenu résiste.
    Un toucher esquisse le geste. Les capteurs du nouvel exercice démarrent une fois le geste
    posé (0,4 s), et l'app retient le dernier choisi. Le cadran suit déjà le mouvement capté ;
-   en dessous, la consigne de placement, le tracé du signal (« Signal OK ») et **Démarrer**.
+   en dessous, la consigne de placement, le tracé du mouvement capté, avec un voyant d'état (« Au repos », « Léger », « Net » : assez net pour compter) et **Démarrer**.
    Roue dentée : les Réglages. Rien ne compte.
 2. **Départ** : 5 s pour se mettre en position, le cadran se remplit ; une note à 3, 2 et 1,
    un accord au départ. Tout ce qui précède est ignoré.

@@ -375,11 +375,12 @@ struct WorkoutView: View {
         }
     }
 
-    /// Tracé du signal, pour se placer avant de démarrer.
+    /// Tracé du mouvement capté, pour se placer avant de démarrer. Un état, pas une alerte :
+    /// téléphone au repos, léger mouvement, ou mouvement assez net pour être compté.
     private var signalStrip: some View {
         VStack(spacing: 4) {
             HStack(spacing: 5) {
-                MonitorLabel("Signal · \(model.source?.code ?? model.exercise.sensorTag)")
+                MonitorLabel("Mouvement · \(model.source?.code ?? model.exercise.sensorTag)")
                 Spacer()
                 StatusLED(color: presenceColor)
                 MonitorLabel(presenceText, color: presenceColor)
@@ -392,16 +393,16 @@ struct WorkoutView: View {
     private var presenceColor: Color {
         switch model.presence {
         case .absent: return theme.dim
-        case .weak: return theme.warn
+        case .weak: return theme.primary
         case .clear: return theme.ok
         }
     }
 
     private var presenceText: String {
         switch model.presence {
-        case .absent: return "Pas de signal"
-        case .weak: return "Signal faible"
-        case .clear: return "Signal OK"
+        case .absent: return "Au repos"
+        case .weak: return "Léger"
+        case .clear: return "Net"
         }
     }
 

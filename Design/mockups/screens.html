@@ -149,8 +149,8 @@ function render(t, s) {
   }
 
   function signalStrip(kind) {
-    const k = { ok: ["Signal OK", c.ok], weak: ["Signal faible", c.warn], none: ["Pas de signal", c.dim] }[kind];
-    return `<div style="width:100%"><div class="row" style="justify-content:space-between;margin-bottom:4px">${label("Signal · " + ex[3])}
+    const k = { ok: ["Net", c.ok], weak: ["Léger", c.primary], none: ["Au repos", c.dim] }[kind];
+    return `<div style="width:100%"><div class="row" style="justify-content:space-between;margin-bottom:4px">${label("Mouvement · " + ex[3])}
       <span class="row" style="gap:5px">${led(k[1])}${label(k[0], k[1])}</span></div>${trace(kind)}</div>`;
   }
 
