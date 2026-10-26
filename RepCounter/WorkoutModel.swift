@@ -76,6 +76,13 @@ final class LiveSignal: ObservableObject {
     }
 }
 
+/// Enregistrement arrêté, en attente du nombre de répétitions réellement faites.
+struct FinishedRecording: Identifiable {
+    let id = UUID()
+    let recorder: SessionRecorder
+    let countedReps: Int
+}
+
 final class WorkoutModel: ObservableObject {
     /// Ce que l'app perçoit de toi, pour l'indicateur sous le compteur.
     enum Presence { case absent, weak, clear }
@@ -99,6 +106,10 @@ final class WorkoutModel: ObservableObject {
     }
     static let announceEveryKey = "announceEvery"
     static let announceChoices = [1, 5, 10]
+    /// Enregistrement des mesures, pour analyser une séance qui compte mal.
+    @Published private(set) var isRecording = false
+    @Published private(set) var recordingDuration: TimeInterval = 0
+    @Published var finishedRecording: FinishedRecording?
 
     let sensors: SensorHub
     private let counter: AutoCounter   // utilisé uniquement sur sensors.queue
@@ -108,6 +119,7 @@ final class WorkoutModel: ObservableObject {
     private var frameTimes: [Double] = []
     private var frameIndex = 0
     private var smoothedStrength: Float = 0
+    private var recorder: SessionRecorder?
 
     init(exercise: Exercise) {
         self.exercise = exercise
@@ -141,6 +153,38 @@ final class WorkoutModel: ObservableObject {
     func stop() {
         UIApplication.shared.isIdleTimerDisabled = false
         sensors.stop()
+        // Écran quitté pendant un enregistrement : on le termine sans le résultat
+        if isRecording {
+            let counted = count
+            sensors.queue.async {
+                self.recorder?.finish(countedReps: counted, actualReps: nil)
+                self.recorder = nil
+            }
+            isRecording = false
+        }
+    }
+
+    func toggleRecording() {
+        if isRecording {
+            stopRecording()
+        } else if let recorder = SessionRecorder(exercise: exercise) {
+            sensors.queue.async { self.recorder = recorder }
+            recordingDuration = 0
+            isRecording = true
+        }
+    }
+
+    private func stopRecording() {
+        isRecording = false
+        let counted = count
+        // Retiré de la file des capteurs avant d'être terminé : plus aucune écriture ensuite
+        sensors.queue.async {
+            guard let recorder = self.recorder else { return }
+            self.recorder = nil
+            DispatchQueue.main.async {
+                self.finishedRecording = FinishedRecording(recorder: recorder, countedReps: counted)
+            }
+        }
     }
 
     func cycleAnnounceEvery() {
@@ -162,6 +206,16 @@ final class WorkoutModel: ObservableObject {
         frameIndex += 1
         smoothedStrength += 0.1 * (output.liveStrength - smoothedStrength)
         let presence: Presence = smoothedStrength >= 1 ? .clear : (smoothedStrength >= 0.3 ? .weak : .absent)
+        if let recorder {
+            recorder.append(frame, output: output)
+            if frameIndex % 15 == 0 {
+                let duration = recorder.duration
+                DispatchQueue.main.async {
+                    self.recordingDuration = duration
+                    if duration >= SessionRecorder.maxDuration, self.isRecording { self.stopRecording() }
+                }
+            }
+        }
 
         // Diagnostic rafraîchi 3 fois par seconde environ
         if frameIndex % 10 == 0, let first = frameTimes.first, let last = frameTimes.last, last > first {

@@ -49,6 +49,14 @@ compteur démarre). Une capture de cet écran pendant un exercice qui ne compte 
 
 Touche l'écran pour remettre à zéro. Après une pause, la série suivante s'ajoute au total.
 
+## Enregistrer une séance pour l'analyser
+Pendant une séance, le bouton ● enregistre les mesures des capteurs (pas de vidéo : l'image
+se limite à la vignette 12×16 du compteur ; ~3 Mo par minute, 5 minutes au plus). À l'arrêt,
+l'app demande combien de répétitions ont réellement été faites, puis propose de partager le
+fichier (AirDrop, Mail…). Il est aussi visible dans Fichiers › Sur mon iPhone › Reps ›
+Recordings. Déposé dans `Recordings/`, il se rejoue avec `Simulation/replay.py`, qui compare
+les comptes (réel, app, compteur Python) et trace le signal de chaque capteur.
+
 ## Retour sonore
 L'accueil (et le bouton haut-parleur de la séance) choisit la fréquence des annonces vocales : **chaque rep**,
 **toutes les 5** ou **toutes les 10**. Les répétitions non annoncées font un bip court.

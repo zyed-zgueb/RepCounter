@@ -19,6 +19,10 @@ struct WorkoutView: View {
 
             VStack(spacing: 0) {
                 topBar
+                if model.isRecording {
+                    recordingBanner
+                        .padding(.top, 10)
+                }
                 if model.showsDiagnostics {
                     diagnosticsPanel
                         .padding(.horizontal, 20)
@@ -47,6 +51,9 @@ struct WorkoutView: View {
         }
         .animation(.easeInOut(duration: 0.4), value: isCounting)
         .animation(.easeInOut(duration: 0.3), value: model.presence)
+        .sheet(item: $model.finishedRecording) { finished in
+            RecordingSheet(finished: finished)
+        }
         .toolbar(.hidden, for: .navigationBar)
         .statusBarHidden()
         .preferredColorScheme(.dark)
@@ -74,21 +81,54 @@ struct WorkoutView: View {
                     .foregroundStyle(.white.opacity(0.5))
             }
             Spacer()
+            recordButton
             roundButton(systemImage: "waveform.path.ecg", highlighted: model.showsDiagnostics) {
                 model.showsDiagnostics.toggle()
             }
+            // Fréquence des annonces : 1, 5 ou 10
             Button { model.cycleAnnounceEvery() } label: {
-                Label(model.announceEvery == 1 ? "Chaque rep" : "Toutes les \(model.announceEvery)",
-                      systemImage: "speaker.wave.2.fill")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .frame(height: 40)
-                    .background(cardBackground, in: Capsule())
+                HStack(spacing: 4) {
+                    Image(systemName: "speaker.wave.2.fill")
+                    Text("\(model.announceEvery)")
+                        .monospacedDigit()
+                }
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 12)
+                .frame(height: 40)
+                .background(cardBackground, in: Capsule())
             }
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)
+    }
+
+    /// Enregistre les mesures de la séance, pour analyser un comptage raté.
+    private var recordButton: some View {
+        Button { model.toggleRecording() } label: {
+            Image(systemName: model.isRecording ? "stop.fill" : "record.circle")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(model.isRecording ? Color.white : Color.red)
+                .frame(width: 40, height: 40)
+                .background(model.isRecording ? Color.red : cardBackground, in: Circle())
+        }
+    }
+
+    private var recordingBanner: some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color.red)
+                .frame(width: 8, height: 8)
+            Text("Enregistrement \(Int(model.recordingDuration) / 60):\(String(format: "%02d", Int(model.recordingDuration) % 60))")
+                .monospacedDigit()
+            Text("· ■ pour arrêter")
+                .foregroundStyle(.white.opacity(0.5))
+        }
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(Color.red.opacity(0.2), in: Capsule())
     }
 
     private func roundButton(systemImage: String, highlighted: Bool = false, action: @escaping () -> Void) -> some View {
@@ -281,5 +321,93 @@ private struct SignalWave: View {
         }
         .opacity(Double(min(max(live.strength, 0.25), 1)))
         .shadow(color: brandColor.opacity(live.strength >= 1 ? 0.6 : 0), radius: 6)
+    }
+}
+
+/// Fin d'un enregistrement : nombre de répétitions réellement faites, puis partage du fichier.
+private struct RecordingSheet: View {
+    let finished: FinishedRecording
+    @Environment(\.dismiss) private var dismiss
+    @State private var actualReps: Int
+    @State private var savedURL: URL?
+
+    init(finished: FinishedRecording) {
+        self.finished = finished
+        _actualReps = State(initialValue: finished.countedReps)
+    }
+
+    var body: some View {
+        VStack(spacing: 22) {
+            Capsule()
+                .fill(Color.white.opacity(0.2))
+                .frame(width: 40, height: 5)
+                .padding(.top, 10)
+            Text("Enregistrement terminé")
+                .font(.system(.title2, design: .rounded).weight(.bold))
+            Text("L'app a compté \(finished.countedReps) répétition\(finished.countedReps > 1 ? "s" : "").")
+                .foregroundStyle(.white.opacity(0.7))
+
+            VStack(spacing: 10) {
+                Text("Combien en as-tu réellement fait ?")
+                    .font(.headline)
+                HStack(spacing: 24) {
+                    stepButton("minus") { actualReps = max(0, actualReps - 1) }
+                    Text("\(actualReps)")
+                        .font(.system(size: 56, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .frame(minWidth: 90)
+                    stepButton("plus") { actualReps += 1 }
+                }
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity)
+            .background(cardBackground, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+            if let savedURL {
+                ShareLink(item: savedURL) {
+                    Label("Partager l'enregistrement", systemImage: "square.and.arrow.up")
+                        .font(.headline)
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(brandColor, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                Text("Aussi dans Fichiers › Sur mon iPhone › Reps › Recordings.")
+                    .font(.footnote)
+                    .foregroundStyle(.white.opacity(0.5))
+                Button("Fermer") { dismiss() }
+                    .foregroundStyle(.white)
+            } else {
+                Button {
+                    finished.recorder.finish(countedReps: finished.countedReps, actualReps: actualReps)
+                    savedURL = finished.recorder.url
+                } label: {
+                    Text("Valider")
+                        .font(.headline)
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(brandColor, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 24)
+        .foregroundStyle(.white)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(screenBackground.ignoresSafeArea())
+        .presentationDetents([.fraction(0.75), .large])
+        .interactiveDismissDisabled(savedURL == nil)
+        .preferredColorScheme(.dark)
+    }
+
+    private func stepButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 52, height: 52)
+                .background(Color.white.opacity(0.1), in: Circle())
+        }
     }
 }

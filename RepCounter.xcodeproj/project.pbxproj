@@ -11,11 +11,12 @@
 		B00000000000000000000002 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000002 /* HomeView.swift */; };
 		B00000000000000000000003 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000003 /* WorkoutView.swift */; };
 		B00000000000000000000004 /* WorkoutModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000004 /* WorkoutModel.swift */; };
-		B00000000000000000000005 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000005 /* Exercise.swift */; };
-		B00000000000000000000006 /* AutoCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000006 /* AutoCounter.swift */; };
-		B00000000000000000000007 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000007 /* SensorHub.swift */; };
-		B00000000000000000000008 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000008 /* PoseFeatures.swift */; };
-		B00000000000000000000009 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000009 /* SignalMath.swift */; };
+		B00000000000000000000005 /* SessionRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000005 /* SessionRecorder.swift */; };
+		B00000000000000000000006 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000006 /* Exercise.swift */; };
+		B00000000000000000000007 /* AutoCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000007 /* AutoCounter.swift */; };
+		B00000000000000000000008 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000008 /* SensorHub.swift */; };
+		B00000000000000000000009 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000009 /* PoseFeatures.swift */; };
+		B00000000000000000000010 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000010 /* SignalMath.swift */; };
 		B00000000000000000000098 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000098 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -24,11 +25,12 @@
 		F00000000000000000000002 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		F00000000000000000000003 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
 		F00000000000000000000004 /* WorkoutModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutModel.swift; sourceTree = "<group>"; };
-		F00000000000000000000005 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
-		F00000000000000000000006 /* AutoCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoCounter.swift; sourceTree = "<group>"; };
-		F00000000000000000000007 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
-		F00000000000000000000008 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
-		F00000000000000000000009 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
+		F00000000000000000000005 /* SessionRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecorder.swift; sourceTree = "<group>"; };
+		F00000000000000000000006 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
+		F00000000000000000000007 /* AutoCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoCounter.swift; sourceTree = "<group>"; };
+		F00000000000000000000008 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
+		F00000000000000000000009 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
+		F00000000000000000000010 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
 		F00000000000000000000098 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F00000000000000000000099 /* RepCounter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RepCounter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -59,11 +61,12 @@
 				F00000000000000000000002 /* HomeView.swift */,
 				F00000000000000000000003 /* WorkoutView.swift */,
 				F00000000000000000000004 /* WorkoutModel.swift */,
-				F00000000000000000000005 /* Exercise.swift */,
-				F00000000000000000000006 /* AutoCounter.swift */,
-				F00000000000000000000007 /* SensorHub.swift */,
-				F00000000000000000000008 /* PoseFeatures.swift */,
-				F00000000000000000000009 /* SignalMath.swift */,
+				F00000000000000000000005 /* SessionRecorder.swift */,
+				F00000000000000000000006 /* Exercise.swift */,
+				F00000000000000000000007 /* AutoCounter.swift */,
+				F00000000000000000000008 /* SensorHub.swift */,
+				F00000000000000000000009 /* PoseFeatures.swift */,
+				F00000000000000000000010 /* SignalMath.swift */,
 				F00000000000000000000098 /* Assets.xcassets */,
 			);
 			path = RepCounter;
@@ -146,11 +149,12 @@
 				B00000000000000000000002 /* HomeView.swift in Sources */,
 				B00000000000000000000003 /* WorkoutView.swift in Sources */,
 				B00000000000000000000004 /* WorkoutModel.swift in Sources */,
-				B00000000000000000000005 /* Exercise.swift in Sources */,
-				B00000000000000000000006 /* AutoCounter.swift in Sources */,
-				B00000000000000000000007 /* SensorHub.swift in Sources */,
-				B00000000000000000000008 /* PoseFeatures.swift in Sources */,
-				B00000000000000000000009 /* SignalMath.swift in Sources */,
+				B00000000000000000000005 /* SessionRecorder.swift in Sources */,
+				B00000000000000000000006 /* Exercise.swift in Sources */,
+				B00000000000000000000007 /* AutoCounter.swift in Sources */,
+				B00000000000000000000008 /* SensorHub.swift in Sources */,
+				B00000000000000000000009 /* PoseFeatures.swift in Sources */,
+				B00000000000000000000010 /* SignalMath.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -205,6 +209,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Reps;
 				INFOPLIST_KEY_NSCameraUsageDescription = "La caméra sert à suivre tes mouvements pour compter tes répétitions. Rien n'est enregistré.";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
@@ -231,6 +237,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Reps;
 				INFOPLIST_KEY_NSCameraUsageDescription = "La caméra sert à suivre tes mouvements pour compter tes répétitions. Rien n'est enregistré.";
+				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
+				INFOPLIST_KEY_UIFileSharingEnabled = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
