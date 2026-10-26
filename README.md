@@ -112,6 +112,15 @@ immobile, téléphone manipulé, allongé essoufflé en profil Abdos ; 20 tirage
 
 100 séances exactes sur 100. Le profil Développé épaules n'est pas simulé.
 
-Enregistrements réels (`Recordings/`) : 10 pompes du 26/10 (iPhone 14) — l'app en avait
-compté 9 ; rejouées, 10, quel que soit le signe pris par l'ACP. Le code Swift n'a pas été
+Enregistrements réels (`Recordings/`, iPhone 14) :
+
+| Séance | Réel | App | Rejoué |
+|---|---|---|---|
+| Pompes 26/10 13:02 (avant le comptage au repos) | 10 | 9 | 10 |
+| Pompes 26/10 14:14 (avec pré-enregistrement et profondeur brute) | 10 | 10 | 10 |
+
+La séance de 14:14 confirme que l'app et le compteur Python donnent le même résultat sur
+données réelles. Profondeur brute : le 10e centile des distances suit la partie du corps la
+plus proche (0,58 m en haut de pompe → 0,16 m en bas, puis non mesurable ~0,25 s). Utilisé
+comme mesure, il compte aussi 10/10 ; à confirmer sur d'autres séances avant d'en changer. Le code Swift n'a pas été
 compilé (préparé sans Xcode).
