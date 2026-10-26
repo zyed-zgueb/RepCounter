@@ -602,36 +602,41 @@ private struct HoldButton: View {
     }
 }
 
-/// Tracé des 3 dernières secondes du signal suivi, façon électrocardiogramme : plat sans
-/// mouvement, ample et lumineux quand le geste est net, atténué quand il est trop léger.
-/// Il s'estompe vers la gauche : le passé compte moins que l'instant.
+/// Tracé des 8 dernières secondes du signal suivi, façon électrocardiogramme apaisé : plat
+/// sans mouvement, ample et lumineux quand le geste est net. Courbe lissée, qui s'estompe
+/// vers la gauche : le passé compte moins que l'instant.
 private struct SignalTrace: View {
     @Environment(\.theme) private var theme
     @ObservedObject var live: LiveSignal
 
     var body: some View {
+        let presence = Double(min(max(live.strength, 0), 1))
         Canvas { context, size in
             let samples = live.samples
             guard samples.count > 1 else { return }
-            var path = Path()
-            for (i, value) in samples.enumerated() {
-                let x = size.width * CGFloat(i) / CGFloat(samples.count - 1)
-                let y = 4 + (size.height - 8) * (1 - CGFloat(value))
-                if i == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
+            let points = samples.enumerated().map { i, value in
+                CGPoint(x: size.width * CGFloat(i) / CGFloat(samples.count - 1),
+                        y: 4 + (size.height - 8) * (1 - CGFloat(value)))
             }
+            // Courbe passant par le milieu des segments : pas d'angles
+            var path = Path()
+            path.move(to: points[0])
+            for i in 1..<points.count - 1 {
+                let middle = CGPoint(x: (points[i].x + points[i + 1].x) / 2, y: (points[i].y + points[i + 1].y) / 2)
+                path.addQuadCurve(to: middle, control: points[i])
+            }
+            path.addLine(to: points[points.count - 1])
             let fade = Gradient(stops: [.init(color: theme.primary.opacity(0), location: 0),
                                         .init(color: theme.primary.opacity(0.7), location: 0.5),
                                         .init(color: theme.primary, location: 1)])
             context.stroke(path, with: .linearGradient(fade, startPoint: .zero, endPoint: CGPoint(x: size.width, y: 0)),
                            style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-            // Point lumineux à la dernière mesure
-            if let last = samples.last {
-                let y = 4 + (size.height - 8) * (1 - CGFloat(last))
-                context.fill(Path(ellipseIn: CGRect(x: size.width - 7, y: y - 3.5, width: 7, height: 7)), with: .color(theme.primary))
-            }
+            // Point à la dernière mesure
+            let last = points[points.count - 1]
+            context.fill(Path(ellipseIn: CGRect(x: last.x - 7, y: last.y - 3.5, width: 7, height: 7)), with: .color(theme.primary))
         }
-        .opacity(Double(min(max(live.strength, 0.3), 1)))
-        .shadow(color: theme.primary.opacity(live.strength >= 1 ? 0.6 * min(theme.glow, 1) : 0), radius: 5)
+        .opacity(0.35 + 0.65 * presence)
+        .shadow(color: theme.primary.opacity(0.4 * presence * min(theme.glow, 1)), radius: 4)
     }
 }
 

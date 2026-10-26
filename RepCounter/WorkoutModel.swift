@@ -1,23 +1,38 @@
 import SwiftUI
 import AVFoundation
+import QuartzCore
 
 /// Ce qui change à chaque mesure (30 fois par seconde). Seuls l'anneau et la courbe
 /// l'observent : le reste de l'écran, et ses boutons, ne sont pas redessinés en continu.
+///
+/// La courbe est apaisée, pour l'affichage seulement (le compteur n'en dépend pas) : lissée,
+/// aplatie quand le mouvement est trop faible pour compter (le bruit des capteurs ne s'agite
+/// pas à l'écran), et lente (8 s à l'écran, 20 points par seconde).
 final class LiveSignal: ObservableObject {
-    static let sampleCount = 90   // 3 s de courbe
+    static let sampleCount = 160
+    private static let sampleInterval = 1.0 / 20
 
     /// Avancement dans la répétition en cours (anneau).
     @Published private(set) var phase: Float = 0
     /// Position récente du signal suivi, 0…1 (courbe).
     @Published private(set) var samples = [Float](repeating: 0.5, count: LiveSignal.sampleCount)
-    /// Netteté du mouvement : ≥ 1 quand il est assez net pour compter.
+    /// Netteté du mouvement, lissée : ≥ 1 quand il est assez net pour compter.
     @Published private(set) var strength: Float = 0
+
+    private var smoothedValue: Float = 0.5
+    private var lastSample: CFTimeInterval = 0
 
     func push(phase: Float, value: Float, strength: Float) {
         self.phase = phase
-        self.strength = strength
+        self.strength += 0.05 * (strength - self.strength)
+        // Sous le seuil de comptage, l'oscillation s'efface progressivement jusqu'à la ligne plate
+        let presence = min(max((self.strength - 0.3) / 0.7, 0), 1)
+        smoothedValue += 0.15 * (0.5 + (value - 0.5) * presence - smoothedValue)
+        let now = CACurrentMediaTime()
+        guard now - lastSample >= Self.sampleInterval else { return }
+        lastSample = now
         samples.removeFirst()
-        samples.append(value)
+        samples.append(smoothedValue)
     }
 
     func clearPhase() {

@@ -7,7 +7,7 @@ le compteur s'affiche à la 3e et continue seul, avec un retour sonore bref et f
 ## Écran
 Un seul écran : le cadran (60 graduations), éclairé par un halo de la couleur de l'état —
 bleu pendant l'effort, orange au repos, vert à la fin. Style « moniteur » : fond quasi noir,
-chiffres à chasse fixe, voyants d'état, tracé du signal façon électrocardiogramme.
+chiffres à chasse fixe, voyants d'état, tracé du signal façon électrocardiogramme apaisé (lissé, lent, plat quand rien ne bouge).
 
 Principe : à l'écran, seulement ce qui sert à l'instant ; le reste est rangé dans les
 Réglages. Pas de défilement.
