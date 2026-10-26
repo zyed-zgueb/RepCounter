@@ -131,10 +131,19 @@ class SignalTracker:
         # extrême. Par défaut le repos est le bas du signal ; au démarrage du comptage, on
         # regarde où était le signal juste avant la série (adopt_rest_position).
         self.rest_high = False
+        # Capteur de vitesse (gyroscope, accélération) : au repos, le signal est au milieu
+        self.rest_in_middle = False
         self.armed = False
+        self.armed_since = -math.inf
         self.skip_next = False
+        self.ignore_before = -math.inf
         self.amplitude = 0.0
         self.phase = 0.0
+
+    def forget_cycles(self, before):
+        """Remise à zéro du compteur : oublie les cycles passés."""
+        self.cycles, self.cycle_swings = [], []
+        self.ignore_before = before
 
     def process(self, value, t):
         """Ajoute une mesure ; renvoie True quand un cycle complet vient de se terminer."""
@@ -166,8 +175,21 @@ class SignalTracker:
         self.phase = min(max(n, 0.0), 1.0)
         at_extreme = n < LOW if self.rest_high else n > HIGH
         at_rest = n > HIGH if self.rest_high else n < LOW
+        period = self.period()
         if not self.armed and at_extreme:
             self.armed = True
+            self.armed_since = t
+        elif (self.armed and not self.skip_next and self.rest_in_middle and period
+              and t - self.armed_since > 1.5 * period):
+            # Capteur de vitesse : un retour lent au repos (ou pas de retour, en fin de série)
+            # ne se voit pas. Le geste a eu lieu : on le compte ; son retour, s'il se voit
+            # plus tard, ne comptera pas une seconde fois.
+            self.skip_next = True
+            since = np.array(self.times) > self.cycles[-1]
+            swing = float(self.signal[since].max() - self.signal[since].min())
+            self.cycles = (self.cycles + [t])[-30:]
+            self.cycle_swings = (self.cycle_swings + [swing])[-30:]
+            return True
         elif self.armed and at_rest:
             self.armed = False
             if self.skip_next:
@@ -240,7 +262,9 @@ class SignalTracker:
             return   # pas de position tenue avant la série : on garde le sens actuel
         level = (float(np.median(held)) - low) / amplitude
         if 0.3 <= level <= 0.7:
-            return   # repos au milieu (capteur de vitesse : gyroscope, accélération) : pas d'extrême
+            # Repos au milieu (capteur de vitesse : gyroscope, accélération) : pas d'extrême
+            self.rest_in_middle = True
+            return
         rest_high = level > 0.7
         if rest_high != self.rest_high:
             self.rest_high = rest_high
@@ -266,10 +290,12 @@ class SignalTracker:
         amplitude = percentile(regular, 0.95) - low
         if amplitude <= 0:
             return 0, run_start
-        events, high, previous = [], False, -math.inf
+        events, high, previous = [], False, self.ignore_before
         for i, (value, time) in enumerate(zip(self.signal, times)):
             if time >= run_start - 0.5 * period:
                 break
+            if time < self.ignore_before:
+                continue
             n = (value - low) / amplitude
             if not high and n > HIGH:
                 high = True
@@ -304,6 +330,14 @@ class AutoCounter:
         self.set_swings = []    # ampleur des répétitions de la série en cours
         self.weak_cycles = 0
         self.locks = []   # (instant, source, régularité) : pour comprendre les résultats
+
+    def reset(self, time):
+        """Remise à zéro par l'utilisateur (toucher l'écran)."""
+        self.count = 0
+        self.leader = None
+        self.last_count_time = -math.inf
+        for tracker in self.trackers.values():
+            tracker.forget_cycles(time)
 
     def process(self, time, values):
         completed = set()

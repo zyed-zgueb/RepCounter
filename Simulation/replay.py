@@ -3,7 +3,8 @@
 
 L'app enregistre (bouton ● pendant une séance) un fichier JSON Lines : une ligne `meta`,
 une ligne par mesure ({"t", "v": {source: [valeurs]}, "x": {mesures d'analyse}, "count",
-"state", "leader", "pre": true pour les 16 s antérieures à l'appui sur ●}), et une ligne
+"state", "leader", "pre": true pour les 16 s antérieures à l'appui sur ●, "reset": true
+après une remise à zéro}), et une ligne
 `end` avec le nombre de répétitions réellement faites.
 
 Usage :
@@ -53,7 +54,14 @@ def replay(frames, profile):
     counter = sc.AutoCounter(profile)
     traces = {source: [] for source in sc.PROFILES[profile]["sources"]}
     counts = []
+    previous_app_count, previous_time = 0, frames[0]["t"]
     for frame in frames:
+        # Remise à zéro faite dans l'app (entre deux mesures, comme dans AutoCounter.swift) :
+        # marquée, ou visible au compteur qui retombe à 0
+        app_count = frame.get("count", 0)
+        if frame.get("reset") or (app_count == 0 and previous_app_count > 0):
+            counter.reset(previous_time)
+        previous_app_count, previous_time = app_count, frame["t"]
         values = {source: np.array(v, dtype=float) for source, v in frame["v"].items()}
         counter.process(frame["t"], values)
         counts.append(counter.count)

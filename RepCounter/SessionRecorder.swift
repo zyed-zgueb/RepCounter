@@ -71,6 +71,7 @@ final class SessionRecorder {
         line += ",\"count\":\(output.count),\"state\":\"\(output.state)\""
         if let leader = output.source { line += ",\"leader\":\"\(leader.rawValue)\"" }
         if preRoll { line += ",\"pre\":true" }
+        if output.didReset { line += ",\"reset\":true" }
         line += "}\n"
         try? handle.write(contentsOf: Data(line.utf8))
     }

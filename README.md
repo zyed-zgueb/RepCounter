@@ -87,6 +87,9 @@ avec le total (« Pause. Total : 18 »). Le son fonctionne en mode silencieux et
   fixe le sens du signal. Sans cela, le signe arbitraire de l'ACP pouvait faire compter à
   mi-chemin. Pour les capteurs de vitesse (gyroscope, accélération), le repos est au milieu
   du signal : le sens n'est pas modifié.
+- Capteurs de vitesse : un retour lent au repos ne se voit pas (le gyroscope mesure une
+  vitesse). Si le geste a eu lieu et que son retour n'arrive pas dans 1,5 période, la
+  répétition est comptée ; son retour, s'il se voit plus tard, ne compte pas une seconde fois.
 - Plus de cycle pendant environ 3 périodes : pause, la source sera recherchée à nouveau.
 
 ## Validation
@@ -118,6 +121,11 @@ Enregistrements réels (`Recordings/`, iPhone 14) :
 |---|---|---|---|
 | Pompes 26/10 13:02 (avant le comptage au repos) | 10 | 9 | 10 |
 | Pompes 26/10 14:14 (avec pré-enregistrement et profondeur brute) | 10 | 10 | 10 |
+| Abdos 26/10 14:19 (après remise à zéro) | 20 | 20 | 20 |
+
+Abdos du 14:19 : le 20e avait été compté 2,7 s en retard, par le mouvement de fin (retour au
+sol trop lent pour le gyroscope). Rejoué avec la règle du retour non vu : compté 1,1 s après
+la montée, et le mouvement de fin n'ajoute rien.
 
 La séance de 14:14 confirme que l'app et le compteur Python donnent le même résultat sur
 données réelles. Profondeur brute : le 10e centile des distances suit la partie du corps la

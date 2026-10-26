@@ -87,7 +87,10 @@ final class SignalTracker {
     // extrême. Par défaut le repos est le bas du signal ; au démarrage du comptage, on
     // regarde où était le signal juste avant la série (adoptRestPosition).
     private var restHigh = false
+    /// Capteur de vitesse (gyroscope, accélération) : au repos, le signal est au milieu.
+    private var restInMiddle = false
     private var armed = false
+    private var armedSince = -Double.infinity
     private var skipNext = false
     private var ignoreBefore = -Double.infinity
 
@@ -159,28 +162,39 @@ final class SignalTracker {
         let atRest = restHigh ? n > Tuning.highThreshold : n < Tuning.lowThreshold
         if !armed, atExtreme {
             armed = true
+            armedSince = t
+        } else if armed, !skipNext, restInMiddle, let period, !cycles.isEmpty, t - armedSince > 1.5 * period {
+            // Capteur de vitesse : un retour lent au repos (ou pas de retour, en fin de série)
+            // ne se voit pas. Le geste a eu lieu : on le compte ; son retour, s'il se voit
+            // plus tard, ne comptera pas une seconde fois.
+            skipNext = true
+            recordCycle(at: t)
+            return true
         } else if armed, atRest {
             armed = false
             if skipNext, !cycles.isEmpty {
-                // Fin de la répétition déjà comptée au démarrage du comptage : elle se
-                // termine maintenant, au retour au repos
+                // Fin de la répétition déjà comptée : elle se termine maintenant, au retour au repos
                 skipNext = false
                 cycles[cycles.count - 1] = t
                 return false
             }
             if let last = cycles.last, t - last < Tuning.minPeriod { return false }
-            let cycleStart = cycles.last ?? t - maxPeriod
-            let startIndex = times.firstIndex { $0 > cycleStart } ?? 0
-            let cycleSignal = signal[startIndex...]
-            cycles.append(t)
-            cycleSwings.append((cycleSignal.max() ?? 0) - (cycleSignal.min() ?? 0))
-            if cycles.count > Tuning.keptCycles {
-                cycles.removeFirst(cycles.count - Tuning.keptCycles)
-                cycleSwings.removeFirst(cycleSwings.count - Tuning.keptCycles)
-            }
+            recordCycle(at: t)
             return true
         }
         return false
+    }
+
+    private func recordCycle(at t: Double) {
+        let cycleStart = cycles.last ?? t - maxPeriod
+        let startIndex = times.firstIndex { $0 > cycleStart } ?? 0
+        let cycleSignal = signal[startIndex...]
+        cycles.append(t)
+        cycleSwings.append((cycleSignal.max() ?? 0) - (cycleSignal.min() ?? 0))
+        if cycles.count > Tuning.keptCycles {
+            cycles.removeFirst(cycles.count - Tuning.keptCycles)
+            cycleSwings.removeFirst(cycleSwings.count - Tuning.keptCycles)
+        }
     }
 
     /// Durée moyenne des deux derniers cycles.
@@ -239,7 +253,11 @@ final class SignalTracker {
         guard held.count >= 5, regularAmplitude > 0,
               standardDeviation(held) <= 0.25 * regularAmplitude else { return }
         let level = (median(held[...]) - low) / regularAmplitude
-        guard level < 0.3 || level > 0.7 else { return }
+        guard level < 0.3 || level > 0.7 else {
+            // Repos au milieu (capteur de vitesse : gyroscope, accélération) : pas d'extrême
+            restInMiddle = true
+            return
+        }
         let newRestHigh = level > 0.7
         if newRestHigh != restHigh {
             restHigh = newRestHigh
@@ -325,6 +343,8 @@ final class AutoCounter {
         /// mouvement (amplitude / seuil, ≥ 1 : assez net pour compter).
         var liveValue: Float
         var liveStrength: Float
+        /// Première mesure après une remise à zéro (marquée dans les enregistrements).
+        var didReset: Bool
     }
 
     let exercise: Exercise
@@ -333,6 +353,7 @@ final class AutoCounter {
     private var count = 0
     private var lastCountTime = -Double.infinity
     private var lastFrameTime = 0.0
+    private var resetPending = false
     /// Ampleur des répétitions de la série en cours.
     private var setSwings: [Float] = []
     private var weakCycles = 0
@@ -345,12 +366,15 @@ final class AutoCounter {
         count = 0
         leader = nil
         lastCountTime = -.infinity
+        resetPending = true
         for tracker in trackers.values { tracker.forgetCycles(before: lastFrameTime) }
     }
 
     func process(_ frame: SensorFrame) -> Output {
         let t = frame.time
         lastFrameTime = t
+        let didReset = resetPending
+        resetPending = false
         // Téléphone censé être posé (pompes) : s'il est manipulé, ce qui précède ne décrit
         // pas l'exercice, on repart de zéro une fois qu'il est reposé
         if exercise.phoneAtRest, let rotation = frame.values[.rotation],
@@ -401,7 +425,8 @@ final class AutoCounter {
             ?? exercise.sources.compactMap { trackers[$0] }.max { $0.strength < $1.strength }
         return Output(count: count, phase: phase, didCount: didCount, state: state, source: leader,
                       diagnostics: diagnostics,
-                      liveValue: shown?.displayValue ?? 0.5, liveStrength: shown?.strength ?? 0)
+                      liveValue: shown?.displayValue ?? 0.5, liveStrength: shown?.strength ?? 0,
+                      didReset: didReset)
     }
 
     private func bestRegularSource(among sources: Set<SignalSource>, at t: Double) -> SignalSource? {
