@@ -10,6 +10,8 @@ fs.mkdirSync(out, { recursive: true });
 
 const SCREENS = [
   ["1-ouverture", { phase: "ready", signal: "ok", caption: "Ouverture de l'app (veille)" }],
+  ["1b-ouverture-centre", { phase: "ready", centerPicker: true, signal: "ok", caption: "Variante : toucher le pictogramme" }],
+  ["1c-abdos-centre", { phase: "ready", centerPicker: true, exercise: 1, signal: "weak", caption: "Variante, abdos" }],
   ["2-choix-exercice", { phase: "picker", exercise: 0, caption: "Toucher le nom de l'exercice" }],
   ["2b-abdos", { phase: "ready", exercise: 1, signal: "weak", caption: "Abdos choisis" }],
   ["3-depart", { phase: "countdown", caption: "Départ (bips 3, 2, 1, accord)" }],
@@ -27,8 +29,8 @@ const SCREENS = [
   await page.evaluate(() => document.fonts.ready);
   const shots = SCREENS.map(([name, s]) => [`v2-${name}`, byId.monitor, s]);
   for (const id of ["clinic", "neon"]) {
-    shots.push([`v2-${id}-5-serie`, byId[id], SCREENS[5][1]]);
-    shots.push([`v2-${id}-1-ouverture`, byId[id], SCREENS[0][1]]);
+    shots.push([`v2-${id}-5-serie`, byId[id], SCREENS.find(x => x[0] === "5-serie")[1]]);
+    shots.push([`v2-${id}-1-ouverture`, byId[id], SCREENS.find(x => x[0] === "1-ouverture")[1]]);
   }
   for (const [name, theme, screen] of shots) {
     await page.evaluate(([t, s]) => window.renderScreen(t, s), [theme, screen]);

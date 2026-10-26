@@ -160,11 +160,27 @@ function render(t, s) {
   }
 
   function ready() {
+    if (s.centerPicker) return readyCenter();
     return `<div class="top">${selector()}${iconBtn("gear")}</div>
       <div class="hero">
         ${ring({ lit: 60, colors: "pale", sweep: 17, content: `
           ${icon(ex[0], c.primary, 92)}
           <div style="margin-top:16px">${label("Prêt", c.dim)}</div>` })}
+        ${placement()}
+      </div>
+      <div class="bottom">${signalStrip(s.signal || "ok")}${btn("Démarrer", c.primary, true, 64)}</div>`;
+  }
+
+  // Variante : l'exercice se change en touchant le pictogramme au centre du cadran
+  function readyCenter() {
+    return `<div class="top"><span></span>${iconBtn("gear")}</div>
+      <div class="hero">
+        ${ring({ lit: 60, colors: "pale", sweep: 17, content: `
+          <div class="center" style="width:196px;height:196px;border-radius:50%;gap:14px;
+               background:radial-gradient(circle, ${hexA(c.primary, .10)} 0%, ${hexA(c.primary, .03)} 70%);border:1px solid ${hexA(c.primary, .28)}">
+            ${icon(ex[0], c.primary, 84)}
+            <div class="row" style="gap:6px"><span style="font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase">${ex[1]}</span>${icon("chevron", c.dim, 13)}</div>
+          </div>` })}
         ${placement()}
       </div>
       <div class="bottom">${signalStrip(s.signal || "ok")}${btn("Démarrer", c.primary, true, 64)}</div>`;
