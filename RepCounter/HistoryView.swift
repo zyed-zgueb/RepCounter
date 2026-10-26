@@ -36,6 +36,7 @@ struct HistoryView: View {
                         if stats.isEmpty {
                             emptyState
                         } else {
+                            if let exercise { IndexPanel(stats: stats, exercise: exercise) }
                             WeekPanel(stats: stats)
                             if exercise != nil { RecordsPanel(stats: stats) }
                             VolumePanel(stats: stats)
@@ -145,6 +146,55 @@ private struct ExerciseFilter: View {
         .buttonStyle(.plain)
         .accessibilityLabel(exercise?.title ?? "Tous les exercices")
         .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
+/// Indice de performance de l'exercice (meilleure séance des 4 dernières semaines), son évolution
+/// sur 4 semaines et sa courbe sur 12.
+private struct IndexPanel: View {
+    @Environment(\.theme) private var theme
+    let stats: HistoryStats
+    let exercise: Exercise
+
+    var body: some View {
+        let index = stats.performanceIndex()
+        let previous = stats.previousPerformanceIndex
+        let weekly = stats.weeklyBestIndex()
+        HistoryPanel(title: "Indice de performance", accessory: { MonitorLabel("4 semaines") }) {
+            if let index {
+                HStack(alignment: .center, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(Int(index.rounded()))")
+                            .font(theme.font(44, .bold))
+                            .foregroundStyle(LinearGradient(colors: [theme.secondary, theme.primary],
+                                                            startPoint: .leading, endPoint: .trailing))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                        if let previous, previous > 0 {
+                            let change = (index - previous) / previous * 100
+                            Text("\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) % en 4 sem.")
+                                .font(theme.font(12, .bold))
+                                .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
+                        }
+                    }
+                    if weekly.count >= 2 {
+                        LineChart(points: weekly, weeks: 12)
+                            .frame(height: 60)
+                    }
+                }
+            }
+            Text(explanation(hasIndex: index != nil))
+                .font(theme.font(11))
+                .foregroundStyle(theme.dim)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func explanation(hasIndex: Bool) -> String {
+        let base = "Répétitions des 3 premières séries, avec un bonus quand le repos est court"
+        let rule = exercise.isWeighted ? base + ", multipliées par le poids de l'haltère." : base + "."
+        return hasIndex ? rule : "L'indice se calcule sur les séances d'au moins 3 séries. " + rule
     }
 }
 
@@ -621,6 +671,11 @@ struct SessionDetailView: View {
                     .font(theme.font(12, .bold))
                     .foregroundStyle(theme.warn)
                 }
+                if let index = session.performanceIndex {
+                    Text("Indice \(Int(index.rounded()))" + (session.load.map { " · \(Format.kilograms($0))" } ?? ""))
+                        .font(theme.font(12, .bold))
+                        .foregroundStyle(theme.text)
+                }
                 Text([Format.clock(session.duration),
                       "\(session.orderedSets.count) série\(session.orderedSets.count > 1 ? "s" : "")",
                       session.fatigue.map { "fatigue \(Format.percent($0)) %" }]
@@ -656,7 +711,7 @@ struct SessionDetailView: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     Text(set.pace.map { "\(Format.decimal($0)) s" } ?? "—")
                         .frame(maxWidth: .infinity, alignment: .trailing)
-                    Text(rest(before: index, in: sets).map(Format.clock) ?? "—")
+                    Text(session.rest(before: index).map(Format.clock) ?? "—")
                         .foregroundStyle(theme.dim)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                 }
@@ -670,12 +725,6 @@ struct SessionDetailView: View {
         }
     }
 
-    /// Récupération avant une série : de la fin de la précédente au début de celle-ci.
-    private func rest(before index: Int, in sets: [SetRecord]) -> TimeInterval? {
-        guard index > 0 else { return nil }
-        let previous = sets[index - 1]
-        return max(0, sets[index].start.timeIntervalSince(previous.start.addingTimeInterval(previous.duration)))
-    }
 }
 
 /// Une courbe par série : la durée de chacune de ses répétitions, côte à côte.

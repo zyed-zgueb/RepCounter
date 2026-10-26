@@ -156,6 +156,11 @@ enum Format {
         Calendar.current.isDateInToday(date) ? "aujourd'hui" : date.formatted(.dateTime.day().month(.abbreviated))
     }
 
+    /// « 12 kg », « 7,5 kg ».
+    static func kilograms(_ value: Double) -> String {
+        "\(value.formatted(.number.precision(.fractionLength(0...1)))) kg"
+    }
+
     /// « 19:40 ».
     static func time(_ date: Date) -> String {
         date.formatted(.dateTime.hour().minute())

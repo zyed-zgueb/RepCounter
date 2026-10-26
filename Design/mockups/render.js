@@ -11,6 +11,7 @@ fs.mkdirSync(out, { recursive: true });
 const SCREENS = [
   ["1-ouverture", { phase: "ready", signal: "ok", caption: "Ouverture de l'app (veille)" }],
   ["2-glissement", { phase: "ready", exercise: 0, drag: -95, signal: "ok", caption: "Glisser vers la gauche" }],
+  ["2c-biceps", { phase: "ready", exercise: 3, signal: "ok", caption: "Biceps : charge de l'haltère" }],
   ["2b-abdos", { phase: "ready", exercise: 1, signal: "weak", caption: "Abdos choisis" }],
   ["3-depart", { phase: "countdown", caption: "Départ (bips 3, 2, 1, accord)" }],
   ["4-detection", { phase: "acquiring", tentative: 2, caption: "Détection 2/3" }],
@@ -18,7 +19,7 @@ const SCREENS = [
   ["6-recuperation", { phase: "resting", sets: [12, 11, 10, 11, 10, 10], caption: "Récupération" }],
   ["7-fin", { phase: "finished", total: 60, sets: [14, 13, 12, 11, 10], recordSet: 0, caption: "Fin de séance" }],
   ["7b-fin-correction", { phase: "finished", total: 60, sets: [14, 13, 12, 11, 10], recordSet: 0, editing: 2, caption: "Correction d'une série" }],
-  ["9-historique", { phase: "history", height: 1720, caption: "Historique (défile)" }],
+  ["9-historique", { phase: "history", height: 1930, caption: "Historique (défile)" }],
   ["10-seance", { phase: "session", caption: "Détail d'une séance" }],
   ["8-reglages", { phase: "settings", audio: "sons", themes, caption: "Réglages (roue dentée)" }],
 ];

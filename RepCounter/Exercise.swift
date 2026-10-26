@@ -18,6 +18,18 @@ enum Exercise: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Exercice avec haltère : sa charge est demandée et entre dans l'indice de performance.
+    var isWeighted: Bool { self == .curls || self == .press }
+
+    /// Charge choisie pour cet exercice (kg, par haltère), mémorisée.
+    var load: Double {
+        get {
+            let saved = UserDefaults.standard.double(forKey: "load.\(rawValue)")
+            return saved > 0 ? saved : 5
+        }
+        nonmutating set { UserDefaults.standard.set(newValue, forKey: "load.\(rawValue)") }
+    }
+
     /// Nom court, pour le cadran et les tuiles du choix d'exercice.
     var shortTitle: String {
         switch self {

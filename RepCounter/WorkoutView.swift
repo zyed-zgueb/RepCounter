@@ -17,6 +17,8 @@ struct WorkoutView: View {
     @State private var record: SessionRecord?
     /// Exercice affiché dans le cadran pendant qu'on glisse ; adopté une fois le geste posé.
     @State private var browsing: Exercise
+    /// Charge de l'haltère de l'exercice affiché (Biceps, Développé), mémorisée par exercice.
+    @State private var load: Double
     @State private var pendingSelection: DispatchWorkItem?
     @State private var autoStarted = false
     /// Adopte un autre exercice : l'écran est recréé avec ses capteurs.
@@ -32,6 +34,7 @@ struct WorkoutView: View {
     init(exercise: Exercise, startsSession: Bool = false, onSelectExercise: @escaping (Exercise, Bool) -> Void) {
         _model = StateObject(wrappedValue: WorkoutModel(exercise: exercise))
         _browsing = State(initialValue: exercise)
+        _load = State(initialValue: exercise.load)
         self.onSelectExercise = onSelectExercise
         self.startsSession = startsSession
     }
@@ -67,7 +70,9 @@ struct WorkoutView: View {
             pendingSelection?.cancel()
             model.stop()
         }
+        .onChange(of: load) { browsing.load = $0 }
         .onChange(of: browsing) { exercise in
+            load = exercise.load
             pendingSelection?.cancel()
             guard exercise != model.exercise else { return }
             let selection = DispatchWorkItem { onSelectExercise(exercise, false) }
@@ -90,7 +95,7 @@ struct WorkoutView: View {
         .onChange(of: model.phase) { phase in
             // Séance terminée : enregistrée aussitôt ; nouvelle séance : on repart de rien
             if phase == .finished {
-                record = SessionRecord.save(model, in: modelContext)
+                record = SessionRecord.save(model, load: model.exercise.load, in: modelContext)
             } else if phase == .ready {
                 record = nil
             }
@@ -198,6 +203,7 @@ struct WorkoutView: View {
                     ExerciseCarousel(selection: $browsing, side: side)
                 }
                 placementText(browsing)
+                loadControl
             case .countdown(let remaining):
                 let elapsed = Double(WorkoutModel.countdownSeconds - remaining) / Double(WorkoutModel.countdownSeconds)
                 Dial(face: DialFace(lit: Int(elapsed * Double(DialFace.tickCount)), palette: .solid(theme.warn))) { side in
@@ -242,6 +248,43 @@ struct WorkoutView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Charge de l'haltère (Biceps, Développé), réglée avant de démarrer ; un appui long fait
+    /// défiler. Sa place est réservée pour tous les exercices : le cadran ne bouge pas.
+    private var loadControl: some View {
+        HStack(spacing: 14) {
+            MonitorLabel("Haltère")
+            loadButton("minus", step: -0.5)
+            Text(Format.kilograms(load))
+                .font(theme.font(17, .bold))
+                .foregroundStyle(theme.text)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+                .frame(minWidth: 72)
+            loadButton("plus", step: 0.5)
+        }
+        .frame(height: 40)
+        .opacity(browsing.isWeighted ? 1 : 0)
+        .allowsHitTesting(browsing.isWeighted)
+        .accessibilityHidden(!browsing.isWeighted)
+        .animation(.easeInOut(duration: 0.2), value: browsing.isWeighted)
+    }
+
+    private func loadButton(_ systemImage: String, step: Double) -> some View {
+        Button {
+            UISelectionFeedbackGenerator().selectionChanged()
+            withAnimation(.snappy(duration: 0.15)) { load = min(max(load + step, 0.5), 100) }
+        } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(theme.text)
+                .frame(width: 36, height: 36)
+                .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+                .contentShape(Rectangle())
+        }
+        .buttonRepeatBehavior(.enabled)
+        .accessibilityLabel(step < 0 ? "Alléger" : "Alourdir")
     }
 
     /// Nombre de la série ; avant la validation, répétitions détectées en pâle et témoins 1/3, 2/3…
@@ -743,7 +786,7 @@ private struct SessionSummary: View {
             }
 
             HStack {
-                summaryStat("Durée", Format.clock(model.sessionDuration))
+                summaryStat("Indice", record?.performanceIndex.map { "\(Int($0.rounded()))" } ?? "—")
                 summaryStat("Moyenne", record?.averagePerSet.map { Format.decimal($0) } ?? "—", unit: "/série")
                 summaryStat("Cadence", record?.cadence.map { Format.decimal($0) } ?? "—", unit: "s")
                 summaryStat("Fatigue", record?.fatigue.map { Format.percent($0) } ?? "—", unit: "%",

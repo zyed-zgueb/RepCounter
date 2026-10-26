@@ -13,6 +13,8 @@ final class SessionRecord {
     var exerciseID: String = Exercise.auto.rawValue
     var start: Date = Date()
     var end: Date = Date()
+    /// Charge (kg, par haltère) pour les exercices qui en ont une.
+    var load: Double?
     @Relationship(deleteRule: .cascade, inverse: \SetRecord.session)
     var sets: [SetRecord]? = []
 
@@ -33,6 +35,35 @@ final class SessionRecord {
     }
     /// Cadence moyenne (s par répétition).
     var cadence: Double? { average(orderedSets.compactMap(\.pace)) }
+    /// Récupération avant une série : de la fin de la précédente au début de celle-ci.
+    func rest(before index: Int) -> TimeInterval? {
+        let sets = orderedSets
+        guard index > 0, index < sets.count else { return nil }
+        let previous = sets[index - 1]
+        return max(0, sets[index].start.timeIntervalSince(previous.start.addingTimeInterval(previous.duration)))
+    }
+
+    /// Indice de performance : les répétitions des 3 premières séries, chacune pondérée par le
+    /// repos qui la précède, k = (60 s / repos)^0,2 (1 avec 60 s, 1,15 avec 30 s, 0,80 avec 3 min ;
+    /// repos borné entre 15 s et 5 min), multipliées par la charge pour les exercices avec haltère.
+    /// Il récompense la capacité, le maintien d'une série à l'autre et la récupération rapide ;
+    /// le format commun (3 séries) le rend comparable d'une séance et d'une personne à l'autre.
+    /// Nil avec moins de 3 séries, ou sans charge pour un exercice avec haltère.
+    var performanceIndex: Double? {
+        let sets = orderedSets
+        guard sets.count >= Self.indexSets else { return nil }
+        var index = Double(sets[0].reps)
+        for i in 1..<Self.indexSets {
+            let rest = min(max(self.rest(before: i) ?? 60, 15), 300)
+            index += Double(sets[i].reps) * pow(60 / rest, 0.2)
+        }
+        guard exercise.isWeighted else { return index }
+        guard let load, load > 0 else { return nil }
+        return index * load
+    }
+
+    static let indexSets = 3
+
     /// Écart entre la dernière et la première série, en % de la première (négatif quand on faiblit).
     var fatigue: Double? {
         let sets = orderedSets
@@ -78,9 +109,10 @@ final class SetRecord {
 extension SessionRecord {
     /// Enregistre la séance terminée d'un modèle de séance (rien si aucune répétition).
     @discardableResult
-    static func save(_ model: WorkoutModel, in context: ModelContext) -> SessionRecord? {
+    static func save(_ model: WorkoutModel, load: Double?, in context: ModelContext) -> SessionRecord? {
         guard !model.sets.isEmpty, let start = model.sessionStart else { return nil }
         let record = SessionRecord(exercise: model.exercise, start: start, end: model.sessionEnd ?? Date())
+        record.load = model.exercise.isWeighted ? load : nil
         context.insert(record)
         record.sets = model.sets.enumerated().map { index, set in
             SetRecord(index: index, reps: set.reps, start: set.start, duration: set.duration,
@@ -199,6 +231,27 @@ struct HistoryStats {
     func weekly(weeks: Int = 12, _ value: (SessionRecord) -> Double?) -> [(week: Int, value: Double)] {
         lastWeeks(weeks).enumerated().compactMap { index, week in
             average(sessions(inWeek: week).compactMap(value)).map { (index, $0) }
+        }
+    }
+
+    // Indice de performance (un exercice)
+
+    /// Indice de l'exercice : la meilleure séance des 4 semaines qui précèdent `date`.
+    func performanceIndex(at date: Date? = nil) -> Double? {
+        let end = date ?? now
+        let start = end.addingTimeInterval(-28 * 86_400)
+        return sessions.filter { $0.start > start && $0.start <= end }.compactMap(\.performanceIndex).max()
+    }
+
+    /// Indice de l'exercice 4 semaines plus tôt, pour mesurer la progression.
+    var previousPerformanceIndex: Double? {
+        performanceIndex(at: now.addingTimeInterval(-28 * 86_400))
+    }
+
+    /// Meilleur indice de chaque semaine (celles qui en ont un), sur les `weeks` dernières.
+    func weeklyBestIndex(weeks: Int = 12) -> [(week: Int, value: Double)] {
+        lastWeeks(weeks).enumerated().compactMap { index, week in
+            sessions(inWeek: week).compactMap(\.performanceIndex).max().map { (index, $0) }
         }
     }
 

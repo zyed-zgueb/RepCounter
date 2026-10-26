@@ -181,6 +181,10 @@ function render(t, s) {
             <div class="row" style="position:absolute;left:0;right:0;top:${side / 2 + side * 0.19 - 2.5}px;justify-content:center;gap:6px">${dots}</div>
           </div>` })}
         <div style="font-size:12px;color:${c.dim};max-width:300px;line-height:1.45;text-align:center">${EXERCISES[index][2]}</div>
+        <div class="row" style="gap:14px;height:40px;opacity:${index === 3 || index === 4 ? 1 : 0}">${label("Haltère")}
+          <span style="width:36px;height:36px;border-radius:${r}px;border:1px solid ${c.line};display:flex;align-items:center;justify-content:center">${icon("minus", c.text, 13)}</span>
+          <span style="font-size:17px;font-weight:700;min-width:72px;text-align:center">${s.load || "12 kg"}</span>
+          <span style="width:36px;height:36px;border-radius:${r}px;border:1px solid ${c.line};display:flex;align-items:center;justify-content:center">${icon("plus", c.text, 13)}</span></div>
       </div>
       <div class="bottom">${signalStrip(s.signal || "ok")}${btn("Démarrer", c.primary, true, 64)}</div>`;
   }
@@ -279,7 +283,7 @@ function render(t, s) {
         </div>
         <div class="row" style="width:100%;height:100px;gap:10px;align-items:flex-end">${bars}</div>
         ${corrector}
-        <div class="row" style="width:100%;border-top:1px solid ${c.line};padding-top:12px">${stat("Durée", "12:08")}${stat("Moyenne", (s.total / sets.length).toFixed(1), "/série")}${stat("Cadence", "1.6", "s")}${stat("Fatigue", "−29", "%", c.warn)}</div>
+        <div class="row" style="width:100%;border-top:1px solid ${c.line};padding-top:12px">${stat("Indice", "39")}${stat("Moyenne", (s.total / sets.length).toFixed(1), "/série")}${stat("Cadence", "1.6", "s")}${stat("Fatigue", "−29", "%", c.warn)}</div>
       </div>
       <div class="bottom">${btn("Nouvelle séance", c.primary, true, 58)}</div>`;
   }
@@ -366,6 +370,16 @@ function render(t, s) {
     return `<div class="top"><span style="font-size:16px;font-weight:700;letter-spacing:3px">HISTORIQUE</span>${iconBtn("xmark", c.text)}</div>
       <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
         ${exerciseBar(1)}
+        ${panel("Indice de performance", label("4 semaines"), (() => {
+          const pts = [31, 32, 32, 34, 35, 35, 36, 37, 37, 38, 39], w = 170, h = 56, lo = 30, hi = 40;
+          const line = pts.map((v, i) => `${(i / 10 * w).toFixed(1)},${(h - (v - lo) / (hi - lo) * h).toFixed(1)}`).join(" ");
+          return `<div class="row" style="gap:18px;align-items:center">
+            <div><div style="font-size:44px;font-weight:700;line-height:1;background:linear-gradient(90deg,${c.secondary},${c.primary});-webkit-background-clip:text;color:transparent">39</div>
+              <div style="font-size:12px;font-weight:700;color:${c.ok};margin-top:4px">▲ +8 % en 4 sem.</div></div>
+            <svg width="${w}" height="${h + 6}" viewBox="0 -3 ${w} ${h + 6}"><polyline points="${line}" fill="none" stroke="${c.primary}" stroke-width="2" stroke-linejoin="round"/>
+              <circle cx="${w}" cy="${h - (39 - lo) / (hi - lo) * h}" r="4" fill="${c.primary}"/></svg></div>
+            <div style="font-size:11px;color:${c.dim};line-height:1.4">Répétitions des 3 premières séries, avec un bonus quand le repos est court.</div>`;
+        })())}
         ${panel("Cette semaine", label("26 oct. – 1 nov."), week)}
         ${panel("Records", "", records)}
         ${panel("Volume · 12 semaines", label("reps / semaine"), volume)}
