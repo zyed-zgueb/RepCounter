@@ -13,17 +13,22 @@ struct WorkoutView: View {
     /// Exercice affiché dans le cadran pendant qu'on glisse ; adopté une fois le geste posé.
     @State private var browsing: Exercise
     @State private var pendingSelection: DispatchWorkItem?
+    @State private var autoStarted = false
     /// Adopte un autre exercice : l'écran est recréé avec ses capteurs.
-    let onSelectExercise: (Exercise) -> Void
+    /// Le second paramètre demande de démarrer la séance aussitôt (Démarrer touché en glissant).
+    let onSelectExercise: (Exercise, Bool) -> Void
+    /// Démarrer la séance dès l'affichage.
+    let startsSession: Bool
 
     /// Délai sans geste avant d'adopter l'exercice affiché : passer vite de Pompes à Biceps
     /// n'allume pas et n'éteint pas la caméra à chaque étape.
     private static let selectionDelay = 0.4
 
-    init(exercise: Exercise, onSelectExercise: @escaping (Exercise) -> Void) {
+    init(exercise: Exercise, startsSession: Bool = false, onSelectExercise: @escaping (Exercise, Bool) -> Void) {
         _model = StateObject(wrappedValue: WorkoutModel(exercise: exercise))
         _browsing = State(initialValue: exercise)
         self.onSelectExercise = onSelectExercise
+        self.startsSession = startsSession
     }
 
     var body: some View {
@@ -46,7 +51,13 @@ struct WorkoutView: View {
             .padding(.top, 8)
             .padding(.bottom, 12)
         }
-        .onAppear { model.start() }
+        .onAppear {
+            model.start()
+            if startsSession, !autoStarted {
+                autoStarted = true
+                model.beginSession()
+            }
+        }
         .onDisappear {
             pendingSelection?.cancel()
             model.stop()
@@ -54,7 +65,7 @@ struct WorkoutView: View {
         .onChange(of: browsing) { exercise in
             pendingSelection?.cancel()
             guard exercise != model.exercise else { return }
-            let selection = DispatchWorkItem { onSelectExercise(exercise) }
+            let selection = DispatchWorkItem { onSelectExercise(exercise, false) }
             pendingSelection = selection
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.selectionDelay, execute: selection)
         }
@@ -333,10 +344,8 @@ struct WorkoutView: View {
             } else {
                 VStack(spacing: 12) {
                     signalStrip
-                    Button("Démarrer") { model.beginSession() }
+                    Button("Démarrer") { start() }
                         .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 64))
-                        // Le temps que l'exercice affiché soit adopté
-                        .disabled(browsing != model.exercise)
                 }
             }
         case .countdown:
@@ -352,6 +361,17 @@ struct WorkoutView: View {
             }
         case .finished:
             EmptyView()
+        }
+    }
+
+    /// Démarrer. Si l'exercice affiché n'est pas encore adopté (Démarrer touché juste après
+    /// un glissement), il l'est tout de suite, et sa séance démarre dès son affichage.
+    private func start() {
+        if browsing != model.exercise {
+            pendingSelection?.cancel()
+            onSelectExercise(browsing, true)
+        } else {
+            model.beginSession()
         }
     }
 

@@ -20,13 +20,18 @@ struct RootView: View {
     static let exerciseKey = "exercise"
 
     @AppStorage(RootView.exerciseKey) private var exerciseID = Exercise.pushups.rawValue
+    /// L'écran du nouvel exercice démarre sa séance dès son affichage.
+    @State private var startsSession = false
 
     private var exercise: Exercise { Exercise(rawValue: exerciseID) ?? .pushups }
 
     var body: some View {
         // Un écran par exercice : changer d'exercice arrête ses capteurs et démarre ceux du suivant.
         // Le nouvel écran s'affiche à l'identique (même exercice dans le cadran) : pas de transition.
-        WorkoutView(exercise: exercise) { exerciseID = $0.rawValue }
+        WorkoutView(exercise: exercise, startsSession: startsSession) { selected, start in
+            startsSession = start
+            exerciseID = selected.rawValue
+        }
             .id(exercise)
             .transition(.identity)
             .statusBarHidden()
