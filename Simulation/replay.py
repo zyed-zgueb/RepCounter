@@ -2,8 +2,9 @@
 """Rejoue un enregistrement de l'app dans le compteur Python et trace les signaux.
 
 L'app enregistre (bouton ● pendant une séance) un fichier JSON Lines : une ligne `meta`,
-une ligne par mesure ({"t", "v": {source: [valeurs]}, "count", "state", "leader"}), et une
-ligne `end` avec le nombre de répétitions réellement faites.
+une ligne par mesure ({"t", "v": {source: [valeurs]}, "x": {mesures d'analyse}, "count",
+"state", "leader", "pre": true pour les 16 s antérieures à l'appui sur ●}), et une ligne
+`end` avec le nombre de répétitions réellement faites.
 
 Usage :
     python3 Simulation/replay.py Recordings/pushups_2026-10-26_18-30-00.jsonl
@@ -63,14 +64,21 @@ def replay(frames, profile):
     return counter, counts, traces
 
 
-def plot(path, times, app_counts, replay_counts, traces, counter, title):
+EXTRA_LABELS = {"depthStats": ["10e centile (m)", "médiane (m)", "90e centile (m)", "part mesurable", "moyenne (m)"]}
+
+
+def plot(path, times, app_counts, replay_counts, traces, counter, title, extras, record_start):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     sources = [s for s, trace in traces.items() if not all(math.isnan(v) for v in trace)]
-    figure, axes = plt.subplots(len(sources) + 1, 1, figsize=(14, 2.2 * (len(sources) + 1)), sharex=True)
+    rows = len(sources) + 1 + len(extras)
+    figure, axes = plt.subplots(rows, 1, figsize=(14, 2.2 * rows), sharex=True)
     axes = np.atleast_1d(axes)
+    if record_start is not None:
+        for axis in axes:
+            axis.axvline(record_start, color="red", alpha=0.6, linewidth=1, linestyle=":")
     axes[0].step(times, app_counts, where="post", label="app", color="#3DC1FE", linewidth=2)
     axes[0].step(times, replay_counts, where="post", label="rejoué (Python)", color="#AB64FA", linestyle="--")
     axes[0].set_ylabel("répétitions")
@@ -84,6 +92,12 @@ def plot(path, times, app_counts, replay_counts, traces, counter, title):
                 axis.axvline(cycle, color="#3DC1FE", alpha=0.5, linewidth=1)
         leader_mark = " (référence)" if any(lock[1] == source for lock in counter.locks) else ""
         axis.set_ylabel(source + leader_mark)
+    for axis, (key, series) in zip(axes[1 + len(sources):], extras.items()):
+        labels = EXTRA_LABELS.get(key, [])
+        for i, column in enumerate(np.array(series, dtype=float).T):
+            axis.plot(times, column, linewidth=1, label=labels[i] if i < len(labels) else f"{key}[{i}]")
+        axis.set_ylabel(key)
+        axis.legend(loc="upper left", fontsize=7, ncol=5)
     axes[-1].set_xlabel("temps (s)")
     figure.tight_layout()
     figure.savefig(path, dpi=110)
@@ -123,9 +137,20 @@ def main():
     for source, tracker in counter.trackers.items():
         print(f"  {source:9s} cycles à : {', '.join(f'{c:.1f}' for c in tracker.cycles)}")
 
+    # Mesures d'analyse (ex. répartition des distances TrueDepth), si présentes
+    keys = sorted({key for frame in frames for key in frame.get("x", {})})
+    extras = {}
+    for key in keys:
+        width = max(len(frame["x"][key]) for frame in frames if key in frame.get("x", {}))
+        extras[key] = [frame.get("x", {}).get(key, [math.nan] * width) for frame in frames]
+    live = [t for frame, t in zip(frames, times) if not frame.get("pre")]
+    record_start = live[0] if live and len(live) < len(frames) else None
+    if record_start is not None:
+        print(f"  Appui sur ● à {record_start:.1f} s (les 16 s d'avant sont incluses)")
+
     png = args.png or os.path.splitext(args.recording)[0] + ".png"
     title = f"{os.path.basename(args.recording)} — réel {actual}, app {app_counts[-1]}, rejoué {counter.count}"
-    plot(png, times, app_counts, replay_counts, traces, counter, title)
+    plot(png, times, app_counts, replay_counts, traces, counter, title, extras, record_start)
 
 
 if __name__ == "__main__":

@@ -127,7 +127,12 @@ class SignalTracker:
         self.signal = np.zeros(0)
         self.axis = None
         self.frame_index = 0
-        self.is_high = False
+        # Un cycle se termine au retour à la position de repos, après être passé à l'autre
+        # extrême. Par défaut le repos est le bas du signal ; au démarrage du comptage, on
+        # regarde où était le signal juste avant la série (adopt_rest_position).
+        self.rest_high = False
+        self.armed = False
+        self.skip_next = False
         self.amplitude = 0.0
         self.phase = 0.0
 
@@ -159,10 +164,18 @@ class SignalTracker:
 
         n = (self.signal[-1] - low) / self.amplitude
         self.phase = min(max(n, 0.0), 1.0)
-        if not self.is_high and n > HIGH:
-            self.is_high = True
-        elif self.is_high and n < LOW:
-            self.is_high = False
+        at_extreme = n < LOW if self.rest_high else n > HIGH
+        at_rest = n > HIGH if self.rest_high else n < LOW
+        if not self.armed and at_extreme:
+            self.armed = True
+        elif self.armed and at_rest:
+            self.armed = False
+            if self.skip_next:
+                # Fin de la répétition déjà comptée au démarrage du comptage : elle se
+                # termine maintenant, au retour au repos
+                self.skip_next = False
+                self.cycles[-1] = t
+                return False
             if self.cycles and t - self.cycles[-1] < MIN_PERIOD:
                 return False
             since = np.array(self.times) > (self.cycles[-1] if self.cycles else t - self.max_period)
@@ -205,8 +218,36 @@ class SignalTracker:
         self.cycle_swings = []
         self.signal = np.zeros(0)
         self.axis = None
-        self.is_high = False
+        self.armed = False
+        self.skip_next = False
         self.amplitude = 0.0
+
+    def adopt_rest_position(self, series_start):
+        """Au démarrage du comptage : la position tenue juste avant la série est le repos.
+
+        Les cycles détectés jusque-là se terminaient peut-être à l'autre extrême (le signe de
+        l'ACP est arbitraire) : une pompe était alors comptée en bas, à mi-chemin, et la
+        dernière de la série jamais terminée. On bascule pour compter au retour au repos.
+        `series_start` : premier cycle de la série ; la série commence au plus une période avant."""
+        period = self.period()
+        times = np.array(self.times)
+        before = series_start - period
+        held = self.signal[(times >= before - 1.0) & (times <= before - 0.1)]
+        regular = self.signal[times >= self.cycles[-3] - period]
+        low = percentile(regular, 0.05)
+        amplitude = percentile(regular, 0.95) - low
+        if len(held) < 5 or amplitude <= 0 or np.std(held) > 0.25 * amplitude:
+            return   # pas de position tenue avant la série : on garde le sens actuel
+        level = (float(np.median(held)) - low) / amplitude
+        if 0.3 <= level <= 0.7:
+            return   # repos au milieu (capteur de vitesse : gyroscope, accélération) : pas d'extrême
+        rest_high = level > 0.7
+        if rest_high != self.rest_high:
+            self.rest_high = rest_high
+            # On vient de compter la répétition en cours (à son extrême) : on y est, et son
+            # retour au repos ne doit pas compter une seconde fois
+            self.armed = True
+            self.skip_next = True
 
     def cycles_before_regular_run(self):
         """Répétitions faites avant que la série soit jugée régulière.
@@ -215,7 +256,8 @@ class SignalTracker:
         les premières répétitions ont pu être mal découpées ou manquées. On relit tout
         l'historique avec l'axe et les seuils de la série régulière, et on remonte les cycles
         qui lui ressemblent : même rythme, ampleur comparable (ni moitié moins, ni presque le
-        double), tracé fluide. On s'arrête au premier qui ne ressemble pas (pause, secousses)."""
+        double), tracé fluide. On s'arrête au premier qui ne ressemble pas (pause, secousses).
+        Renvoie (nombre de cycles repris, instant du premier cycle de la série)."""
         period = self.period()
         run_start = self.cycles[-3]
         times = np.array(self.times)
@@ -223,7 +265,7 @@ class SignalTracker:
         low = percentile(regular, 0.05)
         amplitude = percentile(regular, 0.95) - low
         if amplitude <= 0:
-            return 0
+            return 0, run_start
         events, high, previous = [], False, -math.inf
         for i, (value, time) in enumerate(zip(self.signal, times)):
             if time >= run_start - 0.5 * period:
@@ -247,7 +289,7 @@ class SignalTracker:
                 break
             count += 1
             next_time = time
-        return count
+        return count, next_time
 
 
 class AutoCounter:
@@ -306,7 +348,10 @@ class AutoCounter:
                 best = (source, score)
         if best:
             self.leader = best[0]
-            self.count += 3 + self.trackers[best[0]].cycles_before_regular_run()
+            tracker = self.trackers[best[0]]
+            earlier, series_start = tracker.cycles_before_regular_run()
+            self.count += 3 + earlier
+            tracker.adopt_rest_position(series_start)
             self.last_count_time = time
             self.set_swings = self.trackers[best[0]].cycle_swings[-3:]
             self.weak_cycles = 0

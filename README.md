@@ -51,7 +51,9 @@ Touche l'écran pour remettre à zéro. Après une pause, la série suivante s'a
 
 ## Enregistrer une séance pour l'analyser
 Pendant une séance, le bouton ● enregistre les mesures des capteurs (pas de vidéo : l'image
-se limite à la vignette 12×16 du compteur ; ~3 Mo par minute, 5 minutes au plus). À l'arrêt,
+se limite à la vignette 12×16 du compteur ; ~3 Mo par minute, 5 minutes au plus). Les 16 s
+qui précèdent l'appui sont incluses, pour que la relecture reproduise exactement l'app ; la
+répartition des distances mesurées par TrueDepth est aussi enregistrée pour l'analyse. À l'arrêt,
 l'app demande combien de répétitions ont réellement été faites, puis propose de partager le
 fichier (AirDrop, Mail…). Il est aussi visible dans Fichiers › Sur mon iPhone › Reps ›
 Recordings. Déposé dans `Recordings/`, il se rejoue avec `Simulation/replay.py`, qui compare
@@ -80,6 +82,11 @@ avec le total (« Pause. Total : 18 »). Le son fonctionne en mode silencieux et
   pause ou des secousses.
 - Pompes (téléphone posé) : si le gyroscope détecte que le téléphone est manipulé,
   l'analyse repart de zéro une fois qu'il est reposé.
+- Une répétition est comptée au retour à la position de repos (en haut de la pompe,
+  allongé pour l'abdo…) : au démarrage du comptage, la position tenue juste avant la série
+  fixe le sens du signal. Sans cela, le signe arbitraire de l'ACP pouvait faire compter à
+  mi-chemin. Pour les capteurs de vitesse (gyroscope, accélération), le repos est au milieu
+  du signal : le sens n'est pas modifié.
 - Plus de cycle pendant environ 3 périodes : pause, la source sera recherchée à nouveau.
 
 ## Validation
@@ -103,5 +110,8 @@ après toute modification du compteur, en gardant les deux en phase :
 Faux départs : 0 sur 100 séances sans exercice (téléphone posé, allongé en respirant, debout
 immobile, téléphone manipulé, allongé essoufflé en profil Abdos ; 20 tirages chacun).
 
-100 séances exactes sur 100. Le profil Développé épaules n'est pas simulé. Le code Swift n'a pas été
+100 séances exactes sur 100. Le profil Développé épaules n'est pas simulé.
+
+Enregistrements réels (`Recordings/`) : 10 pompes du 26/10 (iPhone 14) — l'app en avait
+compté 9 ; rejouées, 10, quel que soit le signe pris par l'ACP. Le code Swift n'a pas été
 compilé (préparé sans Xcode).

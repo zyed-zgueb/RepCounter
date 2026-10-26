@@ -120,6 +120,9 @@ final class WorkoutModel: ObservableObject {
     private var frameIndex = 0
     private var smoothedStrength: Float = 0
     private var recorder: SessionRecorder?
+    /// Dernières mesures (autant que l'historique du compteur), écrites au début d'un enregistrement.
+    private var recentFrames: [(frame: SensorFrame, output: AutoCounter.Output)] = []
+    private static let preRollDuration = 16.0
 
     init(exercise: Exercise) {
         self.exercise = exercise
@@ -168,7 +171,10 @@ final class WorkoutModel: ObservableObject {
         if isRecording {
             stopRecording()
         } else if let recorder = SessionRecorder(exercise: exercise) {
-            sensors.queue.async { self.recorder = recorder }
+            sensors.queue.async {
+                for entry in self.recentFrames { recorder.append(entry.frame, output: entry.output, preRoll: true) }
+                self.recorder = recorder
+            }
             recordingDuration = 0
             isRecording = true
         }
@@ -201,6 +207,9 @@ final class WorkoutModel: ObservableObject {
     // Appelé sur sensors.queue
     private func handle(_ frame: SensorFrame) {
         let output = counter.process(frame)
+        recentFrames.append((frame: frame, output: output))
+        let expired = recentFrames.prefix { $0.frame.time < frame.time - Self.preRollDuration }.count
+        if expired > 0 { recentFrames.removeFirst(expired) }
         frameTimes.append(frame.time)
         if frameTimes.count > 30 { frameTimes.removeFirst(frameTimes.count - 30) }
         frameIndex += 1

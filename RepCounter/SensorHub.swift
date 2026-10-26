@@ -6,6 +6,8 @@ import Vision
 struct SensorFrame {
     let time: Double
     var values: [SignalSource: [Float]]
+    /// Mesures supplémentaires, seulement enregistrées pour l'analyse (pas utilisées pour compter).
+    var extras: [String: [Float]] = [:]
 }
 
 /// Caméra avant (TrueDepth si disponible), Vision et CoreMotion. Avec la caméra, chaque image
@@ -29,6 +31,8 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
     private let poseExtractor = PoseFeatureExtractor()
     private var latestDepth: [Float]?
     private var lastDepthMean: Float = 0
+    /// Distances mesurées au centre (10e, 50e, 90e centiles), part mesurable, moyenne.
+    private var latestDepthStats: [Float]?
     private lazy var motionQueue: OperationQueue = {
         let operationQueue = OperationQueue()
         operationQueue.underlyingQueue = self.queue
@@ -101,7 +105,9 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
 
         if device.deviceType == .builtInTrueDepthCamera, session.canAddOutput(depthOutput) {
             session.addOutput(depthOutput)
-            depthOutput.isFilteringEnabled = true
+            // Mesures brutes : le lissage invente des distances là où la caméra ne mesure rien
+            // (visage à moins de 20 cm) ; sans lui, la part non mesurable est une vraie mesure
+            depthOutput.isFilteringEnabled = false
             depthOutput.alwaysDiscardsLateDepthData = true
             depthOutput.setDelegate(self, callbackQueue: queue)
             depthOutput.connection(with: .depthData)?.isEnabled = true
@@ -136,22 +142,24 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
         let bytesPerRow = CVPixelBufferGetBytesPerRow(map)
 
         // Moitié centrale de l'image ; trop près, la profondeur n'est plus mesurable
-        var sum: Float = 0
-        var valid = 0
+        var measured: [Float] = []
         var total = 0
         for y in stride(from: height / 4, to: 3 * height / 4, by: 4) {
             let row = base.advanced(by: y * bytesPerRow).assumingMemoryBound(to: Float32.self)
             for x in stride(from: width / 4, to: 3 * width / 4, by: 4) {
                 total += 1
                 let depth = row[x]
-                if depth.isFinite, depth > 0 {
-                    sum += depth
-                    valid += 1
-                }
+                if depth.isFinite, depth > 0 { measured.append(depth) }
             }
         }
-        if valid > 0 { lastDepthMean = sum / Float(valid) }
-        latestDepth = [lastDepthMean, Float(valid) / Float(max(total, 1))]
+        let validFraction = Float(measured.count) / Float(max(total, 1))
+        if !measured.isEmpty { lastDepthMean = measured.reduce(0, +) / Float(measured.count) }
+        latestDepth = [lastDepthMean, validFraction]
+        let sorted = measured.sorted()
+        func centile(_ p: Float) -> Float {
+            sorted.isEmpty ? 0 : sorted[min(sorted.count - 1, Int(Float(sorted.count - 1) * p))]
+        }
+        latestDepthStats = [centile(0.1), centile(0.5), centile(0.9), validFraction, lastDepthMean]
     }
 
     // MARK: - Vidéo
@@ -191,7 +199,9 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
             }
         }
 
-        onFrame?(SensorFrame(time: time, values: values))
+        var frame = SensorFrame(time: time, values: values)
+        if sources.contains(.depth), let stats = latestDepthStats { frame.extras["depthStats"] = stats }
+        onFrame?(frame)
     }
 
     /// Image réduite à 12×16 en niveaux de gris (plan Y), valeurs 0…1.

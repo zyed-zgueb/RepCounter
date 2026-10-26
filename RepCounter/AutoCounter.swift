@@ -83,7 +83,12 @@ final class SignalTracker {
     private var signal: [Float] = []
     private var axis: [Float]?
     private var frameIndex = 0
-    private var isHigh = false
+    // Un cycle se termine au retour à la position de repos, après être passé à l'autre
+    // extrême. Par défaut le repos est le bas du signal ; au démarrage du comptage, on
+    // regarde où était le signal juste avant la série (adoptRestPosition).
+    private var restHigh = false
+    private var armed = false
+    private var skipNext = false
     private var ignoreBefore = -Double.infinity
 
     init(source: SignalSource, maxPeriod: Double) {
@@ -106,7 +111,8 @@ final class SignalTracker {
         cycles = []
         cycleSwings = []
         axis = nil
-        isHigh = false
+        armed = false
+        skipNext = false
         amplitude = 0
     }
 
@@ -149,10 +155,19 @@ final class SignalTracker {
 
         let n = (current - low) / amplitude
         phase = min(max(n, 0), 1)
-        if !isHigh, n > Tuning.highThreshold {
-            isHigh = true
-        } else if isHigh, n < Tuning.lowThreshold {
-            isHigh = false
+        let atExtreme = restHigh ? n < Tuning.lowThreshold : n > Tuning.highThreshold
+        let atRest = restHigh ? n > Tuning.highThreshold : n < Tuning.lowThreshold
+        if !armed, atExtreme {
+            armed = true
+        } else if armed, atRest {
+            armed = false
+            if skipNext, !cycles.isEmpty {
+                // Fin de la répétition déjà comptée au démarrage du comptage : elle se
+                // termine maintenant, au retour au repos
+                skipNext = false
+                cycles[cycles.count - 1] = t
+                return false
+            }
             if let last = cycles.last, t - last < Tuning.minPeriod { return false }
             let cycleStart = cycles.last ?? t - maxPeriod
             let startIndex = times.firstIndex { $0 > cycleStart } ?? 0
@@ -206,6 +221,35 @@ final class SignalTracker {
         return fullPeriod
     }
 
+    /// Au démarrage du comptage : la position tenue juste avant la série est le repos.
+    ///
+    /// Les cycles détectés jusque-là se terminaient peut-être à l'autre extrême (le signe de
+    /// l'ACP est arbitraire) : une pompe était alors comptée en bas, à mi-chemin. On bascule
+    /// pour compter au retour au repos. Sans position tenue nette, ou si le repos est au
+    /// milieu (capteur de vitesse : gyroscope, accélération), on garde le sens actuel.
+    /// - Parameter seriesStart: premier cycle de la série ; elle commence au plus une période avant.
+    func adoptRestPosition(seriesStart: Double) {
+        guard let period, cycles.count >= 3 else { return }
+        let before = seriesStart - period
+        let held = signal.indices.filter { times[$0] >= before - 1.0 && times[$0] <= before - 0.1 }.map { signal[$0] }
+        guard let regularStart = times.firstIndex(where: { $0 >= cycles[cycles.count - 3] - period }) else { return }
+        let regular = signal[regularStart...]
+        let low = percentile(regular, 0.05)
+        let regularAmplitude = percentile(regular, 0.95) - low
+        guard held.count >= 5, regularAmplitude > 0,
+              standardDeviation(held) <= 0.25 * regularAmplitude else { return }
+        let level = (median(held[...]) - low) / regularAmplitude
+        guard level < 0.3 || level > 0.7 else { return }
+        let newRestHigh = level > 0.7
+        if newRestHigh != restHigh {
+            restHigh = newRestHigh
+            // On vient de compter la répétition en cours (à son extrême) : on y est, et son
+            // retour au repos ne doit pas compter une seconde fois
+            armed = true
+            skipNext = true
+        }
+    }
+
     /// Répétitions faites avant que la série soit jugée régulière.
     ///
     /// Pendant la mise en place, l'axe de l'ACP et les seuils n'étaient pas encore justes :
@@ -213,14 +257,15 @@ final class SignalTracker {
     /// l'historique avec l'axe et les seuils de la série régulière, et on remonte les cycles
     /// qui lui ressemblent : même rythme, ampleur comparable (ni moitié moins, ni presque le
     /// double), tracé fluide. On s'arrête au premier qui ne ressemble pas (pause, secousses).
-    func cyclesBeforeRegularRun() -> Int {
-        guard let period, cycles.count >= 3 else { return 0 }
+    /// Renvoie le nombre de cycles repris et l'instant du premier cycle de la série.
+    func cyclesBeforeRegularRun() -> (count: Int, seriesStart: Double) {
+        guard let period, cycles.count >= 3 else { return (0, cycles.last ?? 0) }
         let runStart = cycles[cycles.count - 3]
-        guard let regularStart = times.firstIndex(where: { $0 >= runStart - period }) else { return 0 }
+        guard let regularStart = times.firstIndex(where: { $0 >= runStart - period }) else { return (0, runStart) }
         let regular = signal[regularStart...]
         let low = percentile(regular, 0.05)
         let regularAmplitude = percentile(regular, 0.95) - low
-        guard regularAmplitude > 0 else { return 0 }
+        guard regularAmplitude > 0 else { return (0, runStart) }
 
         var events: [(time: Double, swing: Float, roughness: Float)] = []
         var high = false
@@ -254,7 +299,7 @@ final class SignalTracker {
             count += 1
             next = event.time
         }
-        return count
+        return (count, next)
     }
 
     var diagnostic: SourceDiagnostic {
@@ -339,7 +384,9 @@ final class AutoCounter {
         } else if let best = bestRegularSource(among: completed, at: t), let tracker = trackers[best] {
             // Les 3 cycles réguliers comptent, plus ceux faits avant
             leader = best
-            count += 3 + tracker.cyclesBeforeRegularRun()
+            let earlier = tracker.cyclesBeforeRegularRun()
+            count += 3 + earlier.count
+            tracker.adoptRestPosition(seriesStart: earlier.seriesStart)
             lastCountTime = t
             didCount = true
             setSwings = Array(tracker.cycleSwings.suffix(3))

@@ -5,7 +5,8 @@ import UIKit
 ///
 /// Format JSON Lines : une ligne `meta`, puis une ligne par mesure (instant, valeurs de chaque
 /// capteur, compteur de l'app), puis une ligne `end` avec le nombre de répétitions réellement
-/// faites. Pas de vidéo : l'image n'est que la vignette 12×16 utilisée par le compteur.
+/// faites. Les 16 s qui précèdent l'appui sur ● sont incluses : tout l'historique qui influence
+/// le compteur, pour que la relecture reproduise exactement l'app. Pas de vidéo : l'image n'est que la vignette 12×16 utilisée par le compteur.
 /// `append` est appelé sur la file des capteurs ; `finish` une fois l'enregistreur retiré de cette file.
 final class SessionRecorder {
     /// Durée maximale : au-delà, l'enregistrement s'arrête seul (~3 Mo par minute).
@@ -46,9 +47,12 @@ final class SessionRecorder {
         writeJSON(meta)
     }
 
-    func append(_ frame: SensorFrame, output: AutoCounter.Output) {
-        if firstFrameTime == nil { firstFrameTime = frame.time }
-        duration = frame.time - (firstFrameTime ?? frame.time)
+    /// - Parameter preRoll: mesure antérieure à l'appui sur ● (ne compte pas dans la durée).
+    func append(_ frame: SensorFrame, output: AutoCounter.Output, preRoll: Bool = false) {
+        if !preRoll {
+            if firstFrameTime == nil { firstFrameTime = frame.time }
+            duration = frame.time - (firstFrameTime ?? frame.time)
+        }
 
         var line = "{\"t\":" + String(format: "%.4f", frame.time) + ",\"v\":{"
         line += frame.values
@@ -57,8 +61,16 @@ final class SessionRecorder {
                 "\"\(source.rawValue)\":[" + values.map { String(format: "%.4f", $0) }.joined(separator: ",") + "]"
             }
             .joined(separator: ",")
-        line += "},\"count\":\(output.count),\"state\":\"\(output.state)\""
+        line += "}"
+        if !frame.extras.isEmpty {
+            line += ",\"x\":{" + frame.extras
+                .sorted { $0.key < $1.key }
+                .map { key, values in "\"\(key)\":[" + values.map { String(format: "%.4f", $0) }.joined(separator: ",") + "]" }
+                .joined(separator: ",") + "}"
+        }
+        line += ",\"count\":\(output.count),\"state\":\"\(output.state)\""
         if let leader = output.source { line += ",\"leader\":\"\(leader.rawValue)\"" }
+        if preRoll { line += ",\"pre\":true" }
         line += "}\n"
         try? handle.write(contentsOf: Data(line.utf8))
     }

@@ -17,6 +17,12 @@ func median(_ values: ArraySlice<Float>) -> Float {
     return sorted.count % 2 == 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
 }
 
+func standardDeviation(_ values: [Float]) -> Float {
+    guard !values.isEmpty else { return 0 }
+    let m = values.reduce(0, +) / Float(values.count)
+    return (values.reduce(0) { $0 + ($1 - m) * ($1 - m) } / Float(values.count)).squareRoot()
+}
+
 func percentile(_ values: ArraySlice<Float>, _ p: Float) -> Float {
     let sorted = values.sorted()
     guard !sorted.isEmpty else { return 0 }
