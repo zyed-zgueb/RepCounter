@@ -10,7 +10,7 @@
 		B00000000000000000000001 /* RepCounterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000001 /* RepCounterApp.swift */; };
 		B00000000000000000000002 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000002 /* Theme.swift */; };
 		B00000000000000000000003 /* Audio.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000003 /* Audio.swift */; };
-		B00000000000000000000004 /* ExercisePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000004 /* ExercisePicker.swift */; };
+		B00000000000000000000004 /* ExerciseCarousel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000004 /* ExerciseCarousel.swift */; };
 		B00000000000000000000005 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000005 /* SettingsView.swift */; };
 		B00000000000000000000006 /* ExerciseIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000006 /* ExerciseIcon.swift */; };
 		B00000000000000000000007 /* WorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000007 /* WorkoutView.swift */; };
@@ -30,7 +30,7 @@
 		F00000000000000000000001 /* RepCounterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepCounterApp.swift; sourceTree = "<group>"; };
 		F00000000000000000000002 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		F00000000000000000000003 /* Audio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Audio.swift; sourceTree = "<group>"; };
-		F00000000000000000000004 /* ExercisePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePicker.swift; sourceTree = "<group>"; };
+		F00000000000000000000004 /* ExerciseCarousel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseCarousel.swift; sourceTree = "<group>"; };
 		F00000000000000000000005 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		F00000000000000000000006 /* ExerciseIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseIcon.swift; sourceTree = "<group>"; };
 		F00000000000000000000007 /* WorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutView.swift; sourceTree = "<group>"; };
@@ -72,7 +72,7 @@
 				F00000000000000000000001 /* RepCounterApp.swift */,
 				F00000000000000000000002 /* Theme.swift */,
 				F00000000000000000000003 /* Audio.swift */,
-				F00000000000000000000004 /* ExercisePicker.swift */,
+				F00000000000000000000004 /* ExerciseCarousel.swift */,
 				F00000000000000000000005 /* SettingsView.swift */,
 				F00000000000000000000006 /* ExerciseIcon.swift */,
 				F00000000000000000000007 /* WorkoutView.swift */,
@@ -168,7 +168,7 @@
 				B00000000000000000000001 /* RepCounterApp.swift in Sources */,
 				B00000000000000000000002 /* Theme.swift in Sources */,
 				B00000000000000000000003 /* Audio.swift in Sources */,
-				B00000000000000000000004 /* ExercisePicker.swift in Sources */,
+				B00000000000000000000004 /* ExerciseCarousel.swift in Sources */,
 				B00000000000000000000005 /* SettingsView.swift in Sources */,
 				B00000000000000000000006 /* ExerciseIcon.swift in Sources */,
 				B00000000000000000000007 /* WorkoutView.swift in Sources */,

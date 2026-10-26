@@ -13,10 +13,13 @@ Principe : à l'écran, seulement ce qui sert à l'instant ; le reste est rangé
 Réglages. Pas de défilement.
 
 1. **Veille** (ouverture de l'app) : au centre du cadran, le pictogramme et le nom de
-   l'exercice. **Le toucher ouvre le choix de l'exercice** (six tuiles par-dessus le cadran) ;
-   l'app retient le dernier choisi. Le cadran suit déjà le mouvement capté ; en dessous, la
-   consigne de placement, le tracé du signal (« Signal OK ») et **Démarrer**. Roue dentée :
-   les Réglages. Rien ne compte.
+   l'exercice. **On glisse à gauche ou à droite pour changer d'exercice**, comme les cadrans
+   d'une montre : le contenu défile dans le cadran, qui ne bouge pas, avec un cran de vibration ;
+   des points indiquent la position parmi les six exercices ; aux deux bouts, le contenu résiste.
+   Un toucher esquisse le geste. Les capteurs du nouvel exercice démarrent une fois le geste
+   posé (0,4 s), et l'app retient le dernier choisi. Le cadran suit déjà le mouvement capté ;
+   en dessous, la consigne de placement, le tracé du signal (« Signal OK ») et **Démarrer**.
+   Roue dentée : les Réglages. Rien ne compte.
 2. **Départ** : 5 s pour se mettre en position, le cadran se remplit ; une note à 3, 2 et 1,
    un accord au départ. Tout ce qui précède est ignoré.
 3. **Série** : il ne reste que le nombre, en très grand, et une ligne discrète (total de la

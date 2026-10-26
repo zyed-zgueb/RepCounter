@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// L'écran unique de l'app : le cadran. En veille, son centre est le choix de l'exercice ;
+/// L'écran unique de l'app : le cadran. En veille, on y glisse d'un exercice à l'autre ;
 /// pendant l'effort, il n'affiche que le nombre ; en récupération, le chronomètre ; à la fin,
 /// le total. Tout le reste est rangé dans les Réglages.
 struct WorkoutView: View {
@@ -10,12 +10,20 @@ struct WorkoutView: View {
     @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
     @State private var bump = false
     @State private var showsSettings = false
-    /// Ouvre le choix de l'exercice (en veille seulement).
-    let onPickExercise: () -> Void
+    /// Exercice affiché dans le cadran pendant qu'on glisse ; adopté une fois le geste posé.
+    @State private var browsing: Exercise
+    @State private var pendingSelection: DispatchWorkItem?
+    /// Adopte un autre exercice : l'écran est recréé avec ses capteurs.
+    let onSelectExercise: (Exercise) -> Void
 
-    init(exercise: Exercise, onPickExercise: @escaping () -> Void) {
+    /// Délai sans geste avant d'adopter l'exercice affiché : passer vite de Pompes à Biceps
+    /// n'allume pas et n'éteint pas la caméra à chaque étape.
+    private static let selectionDelay = 0.4
+
+    init(exercise: Exercise, onSelectExercise: @escaping (Exercise) -> Void) {
         _model = StateObject(wrappedValue: WorkoutModel(exercise: exercise))
-        self.onPickExercise = onPickExercise
+        _browsing = State(initialValue: exercise)
+        self.onSelectExercise = onSelectExercise
     }
 
     var body: some View {
@@ -37,11 +45,19 @@ struct WorkoutView: View {
             .padding(.horizontal, 20)
             .padding(.top, 8)
             .padding(.bottom, 12)
-
-            if model.cameraDenied { deniedView }
         }
         .onAppear { model.start() }
-        .onDisappear { model.stop() }
+        .onDisappear {
+            pendingSelection?.cancel()
+            model.stop()
+        }
+        .onChange(of: browsing) { exercise in
+            pendingSelection?.cancel()
+            guard exercise != model.exercise else { return }
+            let selection = DispatchWorkItem { onSelectExercise(exercise) }
+            pendingSelection = selection
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.selectionDelay, execute: selection)
+        }
         .onChange(of: model.repPulse) { _ in
             withAnimation(.spring(response: 0.12, dampingFraction: 0.5)) { bump = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -147,9 +163,11 @@ struct WorkoutView: View {
             switch model.phase {
             case .ready:
                 Dial(face: LiveDialFace(live: model.live, palette: .idle)) { side in
-                    exerciseButton(side: side)
+                    ExerciseCarousel(selection: $browsing, side: side)
                 }
-                placementText
+                placementText(browsing)
+                    .id(browsing)
+                    .transition(.opacity)
             case .countdown(let remaining):
                 let elapsed = Double(WorkoutModel.countdownSeconds - remaining) / Double(WorkoutModel.countdownSeconds)
                 Dial(face: DialFace(lit: Int(elapsed * Double(DialFace.tickCount)), palette: .solid(theme.warn))) { side in
@@ -161,7 +179,7 @@ struct WorkoutView: View {
                 Text("Mets-toi en position")
                     .font(theme.font(13))
                     .foregroundStyle(theme.text)
-                placementText
+                placementText(model.exercise)
             case .active where model.isResting:
                 let seconds = Int(model.restDuration)
                 Dial(face: DialFace(lit: seconds % 60 == 0 && seconds > 0 ? 60 : seconds % 60, palette: .solid(theme.warn))) { side in
@@ -196,37 +214,6 @@ struct WorkoutView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Centre du cadran en veille : le pictogramme de l'exercice, qui se touche pour en changer.
-    private func exerciseButton(side: CGFloat) -> some View {
-        Button {
-            UISelectionFeedbackGenerator().selectionChanged()
-            onPickExercise()
-        } label: {
-            VStack(spacing: side * 0.04) {
-                ExerciseIcon(exercise: model.exercise, size: side * 0.25)
-                    .foregroundStyle(theme.primary)
-                HStack(spacing: 6) {
-                    Text(model.exercise.shortTitle.uppercased())
-                        .font(theme.font(15, .bold))
-                        .tracking(2)
-                        .foregroundStyle(theme.text)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(theme.dim)
-                }
-            }
-            .frame(width: side * 0.58, height: side * 0.58)
-            .background(Circle().fill(RadialGradient(colors: [theme.primary.opacity(0.10), theme.primary.opacity(0.03)],
-                                                     center: .center, startRadius: 0, endRadius: side * 0.29)))
-            .overlay(Circle().stroke(theme.primary.opacity(0.28), lineWidth: 1))
-            .contentShape(Circle())
-        }
-        .buttonStyle(PressableStyle())
-        .accessibilityLabel("Exercice : \(model.exercise.title). Toucher pour changer.")
-    }
-
     /// Nombre de la série ; avant la validation, répétitions détectées en pâle et témoins 1/3, 2/3…
     private func dialCount(side: CGFloat, counting: Bool) -> some View {
         VStack(spacing: 4) {
@@ -256,8 +243,8 @@ struct WorkoutView: View {
         .padding(side * 0.12)
     }
 
-    private var placementText: some View {
-        Text(model.exercise.placement)
+    private func placementText(_ exercise: Exercise) -> some View {
+        Text(exercise.placement)
             .font(theme.font(12))
             .foregroundStyle(theme.dim)
             .multilineTextAlignment(.center)
@@ -328,10 +315,16 @@ struct WorkoutView: View {
     private var bottom: some View {
         switch model.phase {
         case .ready:
-            VStack(spacing: 12) {
-                signalStrip
-                Button("Démarrer") { model.beginSession() }
-                    .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 64))
+            if model.cameraDenied {
+                cameraDenied
+            } else {
+                VStack(spacing: 12) {
+                    signalStrip
+                    Button("Démarrer") { model.beginSession() }
+                        .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 64))
+                        // Le temps que l'exercice affiché soit adopté
+                        .disabled(browsing != model.exercise)
+                }
             }
         case .countdown:
             Button("Annuler") { model.cancelCountdown() }
@@ -419,25 +412,26 @@ struct WorkoutView: View {
         }
     }
 
-    private var deniedView: some View {
-        VStack(spacing: 16) {
-            MonitorLabel("Accès caméra refusé", color: theme.alarm)
-            Text("Cet exercice utilise la caméra pour te voir. Rien n'est enregistré.")
-                .font(theme.font(13))
-                .foregroundStyle(theme.text)
+    /// Caméra refusée : à la place de Démarrer, de quoi l'autoriser. Le cadran reste
+    /// utilisable pour glisser vers un exercice sans caméra.
+    private var cameraDenied: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 5) {
+                StatusLED(color: theme.alarm)
+                MonitorLabel("Accès caméra refusé", color: theme.alarm)
+            }
+            Text("\(model.exercise.title) utilise la caméra pour te voir ; rien n'est enregistré. Glisse sur le cadran pour un exercice sans caméra.")
+                .font(theme.font(12))
+                .foregroundStyle(theme.dim)
                 .multilineTextAlignment(.center)
-            Button("Ouvrir les Réglages") {
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Autoriser la caméra") {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
                 }
             }
-            .buttonStyle(MonitorButtonStyle(color: theme.primary))
-            Button("Changer d'exercice") { onPickExercise() }
-                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false))
+            .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 64))
         }
-        .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(theme.background.ignoresSafeArea())
     }
 }
 
@@ -554,15 +548,6 @@ private struct Ripple: View {
                     withAnimation(.easeOut(duration: 0.7)) { expanded = true }
                 }
             }
-    }
-}
-
-/// Bouton qui s'enfonce légèrement sous le doigt.
-struct PressableStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1)
-            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 

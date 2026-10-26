@@ -82,7 +82,6 @@ function render(t, s) {
   let html;
   switch (s.phase) {
     case "ready": html = ready(); break;
-    case "picker": html = ready() + picker(); break;
     case "countdown": html = countdown(); break;
     case "acquiring": html = acquiring(); break;
     case "counting": html = counting(); break;
@@ -156,35 +155,31 @@ function render(t, s) {
   }
 
   // Veille : l'exercice se change en touchant le pictogramme au centre du cadran
+  // Veille : on glisse dans le cadran d'un exercice à l'autre ; s.drag (pt) = geste en cours.
+  // Mêmes proportions que ExerciseCarousel.swift (cadran de 330 pt).
   function ready() {
+    const side = 330, page = side * 0.5, index = s.exercise ?? 0, drag = s.drag || 0;
+    const items = EXERCISES.map(([ic, name], i) => {
+      const x = (i - index) * page + drag, opacity = Math.max(0, 1 - Math.abs(x) / page);
+      if (!opacity) return "";
+      return `<div class="center" style="position:absolute;inset:0;gap:${side * 0.04}px;transform:translate(${x}px, ${-side * 0.03}px);opacity:${opacity}">
+        ${icon(ic, c.primary, side * 0.24)}
+        <span style="font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase">${name}</span></div>`;
+    }).join("");
+    const dots = EXERCISES.map((_, i) => `<span style="width:5px;height:5px;border-radius:50%;background:${i === index ? c.primary : hexA(c.dim, .45)}"></span>`).join("");
+    const inner = side * 0.76, disc = side * 0.58;
     return `<div class="top"><span></span>${iconBtn("gear")}</div>
       <div class="hero">
         ${ring({ lit: 60, colors: "pale", sweep: 17, content: `
-          <div class="center" style="width:196px;height:196px;border-radius:50%;gap:14px;
-               background:radial-gradient(circle, ${hexA(c.primary, .10)} 0%, ${hexA(c.primary, .03)} 70%);border:1px solid ${hexA(c.primary, .28)}">
-            ${icon(ex[0], c.primary, 84)}
-            <div class="row" style="gap:6px"><span style="font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase">${ex[1]}</span>${icon("chevron", c.dim, 13)}</div>
+          <div style="position:relative;width:${side}px;height:${side}px">
+            <div style="position:absolute;left:${(side - disc) / 2}px;top:${(side - disc) / 2}px;width:${disc}px;height:${disc}px;border-radius:50%;
+                 background:radial-gradient(circle, ${hexA(c.primary, .10)} 0%, ${hexA(c.primary, .03)} 70%);border:1px solid ${hexA(c.primary, .28)}"></div>
+            <div style="position:absolute;left:${(side - inner) / 2}px;top:${(side - inner) / 2}px;width:${inner}px;height:${inner}px;border-radius:50%;overflow:hidden">${items}</div>
+            <div class="row" style="position:absolute;left:0;right:0;top:${side / 2 + side * 0.19 - 2.5}px;justify-content:center;gap:6px">${dots}</div>
           </div>` })}
-        ${placement()}
+        <div style="font-size:12px;color:${c.dim};max-width:300px;line-height:1.45;text-align:center">${EXERCISES[index][2]}</div>
       </div>
       <div class="bottom">${signalStrip(s.signal || "ok")}${btn("Démarrer", c.primary, true, 64)}</div>`;
-  }
-
-  function picker() {
-    const tiles = EXERCISES.map(([ic, name, , tag], i) => {
-      const on = i === (s.exercise ?? 0);
-      return `<div class="center" style="gap:10px;height:148px;border-radius:${Math.max(r, 4) * 2}px;position:relative;
-          background:${on ? hexA(c.primary, .1) : c.panel};border:1px solid ${on ? c.primary : c.line};
-          ${on && glow ? `box-shadow:0 0 ${18 * glow}px ${hexA(c.primary, .25)}` : ""}">
-        ${on ? `<span style="position:absolute;top:10px;right:10px">${icon("check", c.primary, 16)}</span>` : ""}
-        ${icon(ic, on ? c.primary : c.text, 46)}
-        <span style="font-size:14px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase">${name}</span>
-        <span style="font-size:9px;font-weight:700;letter-spacing:1px;color:${on ? c.primary : c.dim}">${tag}</span></div>`;
-    }).join("");
-    return `<div style="position:absolute;inset:0;background:${hexA(c.background, .82)};backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);padding:54px 20px 34px;display:flex;flex-direction:column;gap:18px">
-      <div class="top">${label("Exercice", c.text)}${iconBtn("xmark", c.text)}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">${tiles}</div>
-      <div style="font-size:12px;color:${c.dim};text-align:center;line-height:1.45;margin-top:4px">Le cadran se règle sur l'exercice choisi.<br>L'app s'en souvient à la prochaine ouverture.</div></div>`;
   }
 
   function countdown() {

@@ -10,7 +10,7 @@ fs.mkdirSync(out, { recursive: true });
 
 const SCREENS = [
   ["1-ouverture", { phase: "ready", signal: "ok", caption: "Ouverture de l'app (veille)" }],
-  ["2-choix-exercice", { phase: "picker", exercise: 0, caption: "Toucher le pictogramme" }],
+  ["2-glissement", { phase: "ready", exercise: 0, drag: -95, signal: "ok", caption: "Glisser vers la gauche" }],
   ["2b-abdos", { phase: "ready", exercise: 1, signal: "weak", caption: "Abdos choisis" }],
   ["3-depart", { phase: "countdown", caption: "Départ (bips 3, 2, 1, accord)" }],
   ["4-detection", { phase: "acquiring", tentative: 2, caption: "Détection 2/3" }],
