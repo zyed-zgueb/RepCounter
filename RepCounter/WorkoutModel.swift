@@ -123,6 +123,9 @@ final class WorkoutModel: ObservableObject {
     @Published private(set) var cadence: Double?
     @Published private(set) var regularity: Float = 0
     @Published private(set) var repPulse = 0
+    /// Répétitions détectées mais pas encore validées (avant le démarrage du comptage d'une série).
+    @Published private(set) var tentative = 0
+    @Published private(set) var tentativePulse = 0
     @Published private(set) var cameraDenied = false
     /// Horloge de l'écran (1 Hz) : durée de séance et chronomètre de récupération.
     @Published private(set) var now = Date()
@@ -158,6 +161,7 @@ final class WorkoutModel: ObservableObject {
     private let counter: AutoCounter   // utilisé uniquement sur sensors.queue
     private let announcer = Announcer()
     private let haptic = UIImpactFeedbackGenerator(style: .heavy)
+    private let lightHaptic = UIImpactFeedbackGenerator(style: .light)
     private var clock: Timer?
     private var countdownTimer: Timer?
     // Fil principal : compte du compteur depuis le démarrage, base de la série en cours
@@ -433,6 +437,16 @@ final class WorkoutModel: ObservableObject {
         counterTotal = output.count
         if let cadence = output.cadence, self.cadence != cadence { self.cadence = cadence }
         if output.regularity > 0, regularity != output.regularity { regularity = output.regularity }
+
+        // Répétitions provisoires : une vibration légère à chacune, pour dire « je te suis »
+        let tentative = output.state == .counting ? 0 : output.tentative
+        if tentative != self.tentative {
+            if tentative > self.tentative {
+                tentativePulse += 1
+                lightHaptic.impactOccurred()
+            }
+            self.tentative = tentative
+        }
 
         if output.didCount {
             let reps = max(0, output.count - setBase)

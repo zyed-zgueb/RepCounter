@@ -24,6 +24,23 @@ d'état, tracé du signal façon électrocardiogramme.
      série) ; « Nouvelle séance » ou « Quitter ».
 - Tableau de bord pendant la séance : total, nombre de séries, cadence (s/rep), régularité
   du signal, journal des séries (S01 12 · S02 10…).
+- **Répétitions détectées, pas encore validées** : avant le démarrage du comptage d'une
+  série, le cadran suit déjà le mouvement (graduations pâles), affiche les répétitions
+  détectées en chiffres pâles « à valider », trois témoins de validation (« Détection 2/3 »),
+  une onde et une vibration légère à chaque détection. Une fois validé, tout passe en plein.
+
+## Thèmes
+Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis, lueur,
+clair/sombre, gratuit ou premium). Aucun écran n'a de couleur en dur : tout passe par
+`@Environment(\.theme)` (`Theme.swift`). Ajouter un thème = ajouter une entrée au fichier.
+`ThemeStore` mémorise le choix et prévoit le déblocage des thèmes premium par achat intégré
+(StoreKit à brancher ; en attendant, tous les thèmes sont utilisables). Thèmes livrés :
+Moniteur (gratuit), Phosphore, Clinique (clair), Néon.
+
+## Maquettes
+`Design/mockups/` reproduit les écrans en HTML à partir du même `Themes.json`, pour valider
+le rendu sans Mac : `node Design/mockups/render.js` → `Design/mockups/out/*.png`. Polices
+approchées (JetBrains Mono ≈ SF Mono, Inter ≈ SF Pro), pictogrammes à la place des SF Symbols.
 - La caméra ne s'allume que pour les exercices qui en ont besoin (Pompes, Autre exercice).
 
 ## Exercices

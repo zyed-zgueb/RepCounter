@@ -1,25 +1,117 @@
 import SwiftUI
 
-/// Style « moniteur » : fond quasi noir, panneaux à liseré fin sur une grille, chiffres et
-/// libellés à chasse fixe, voyants d'état et tracé lumineux comme sur un écran de surveillance.
-enum Theme {
-    static let background = Color(red: 0.02, green: 0.03, blue: 0.04)
-    static let panel = Color(red: 0.05, green: 0.07, blue: 0.09)
-    static let line = Color(red: 0.13, green: 0.18, blue: 0.22)
-    static let grid = Color(red: 0.07, green: 0.11, blue: 0.14)
-    static let text = Color(red: 0.87, green: 0.93, blue: 0.96)
-    static let dim = Color(red: 0.45, green: 0.53, blue: 0.58)
-    /// Tracé principal : le bleu de l'icône.
-    static let trace = Color(red: 0.24, green: 0.76, blue: 1.0)
-    static let violet = Color(red: 0.67, green: 0.39, blue: 0.98)
-    static let ok = Color(red: 0.18, green: 0.90, blue: 0.62)
-    static let warn = Color(red: 1.0, green: 0.69, blue: 0.13)
-    static let alarm = Color(red: 1.0, green: 0.31, blue: 0.31)
+// MARK: - Thèmes
 
-    static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+/// Un thème d'affichage, décrit dans `Themes.json` : couleurs, police, arrondis, lueur.
+/// Ajouter un thème (ou en vendre un en achat intégré) ne demande aucun changement d'écran.
+struct AppTheme: Decodable, Identifiable, Equatable {
+    struct Palette: Decodable, Equatable {
+        let background, panel, line, grid, text, dim: String
+        /// Tracé principal et action principale ; secondaire pour les dégradés.
+        let primary, secondary: String
+        let ok, warn, alarm: String
+        /// Texte sur un bouton plein.
+        let onPrimary: String
     }
 
+    let id: String
+    let name: String
+    /// Thème payant (achat intégré à venir).
+    let premium: Bool
+    /// "dark" ou "light".
+    let scheme: String
+    /// "monospaced", "rounded" ou "default".
+    let font: String
+    let radius: CGFloat
+    /// Intensité de la lueur des tracés (0 : aucune).
+    let glow: Double
+    let colors: Palette
+
+    var background: Color { Color(hex: colors.background) }
+    var panel: Color { Color(hex: colors.panel) }
+    var line: Color { Color(hex: colors.line) }
+    var grid: Color { Color(hex: colors.grid) }
+    var text: Color { Color(hex: colors.text) }
+    var dim: Color { Color(hex: colors.dim) }
+    var primary: Color { Color(hex: colors.primary) }
+    var secondary: Color { Color(hex: colors.secondary) }
+    var ok: Color { Color(hex: colors.ok) }
+    var warn: Color { Color(hex: colors.warn) }
+    var alarm: Color { Color(hex: colors.alarm) }
+    var onPrimary: Color { Color(hex: colors.onPrimary) }
+
+    var colorScheme: ColorScheme { scheme == "light" ? .light : .dark }
+
+    func font(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        let design: Font.Design
+        switch font {
+        case "rounded": design = .rounded
+        case "default": design = .default
+        default: design = .monospaced
+        }
+        return .system(size: size, weight: weight, design: design)
+    }
+
+    /// Thème de secours si `Themes.json` est absent ou illisible.
+    static let fallback = AppTheme(
+        id: "monitor", name: "Moniteur", premium: false, scheme: "dark", font: "monospaced", radius: 4, glow: 1,
+        colors: Palette(background: "#05080A", panel: "#0D1217", line: "#212E38", grid: "#121C24",
+                        text: "#DEEDF5", dim: "#738794", primary: "#3DC2FF", secondary: "#AB64FA",
+                        ok: "#2EE69E", warn: "#FFB021", alarm: "#FF4F4F", onPrimary: "#000000"))
+}
+
+/// Thèmes disponibles et thème choisi (mémorisé).
+final class ThemeStore: ObservableObject {
+    /// Tant que les achats intégrés ne sont pas branchés, tous les thèmes sont utilisables.
+    static let premiumUnlockedForDevelopment = true
+    private static let selectedKey = "theme"
+
+    let themes: [AppTheme]
+    @Published var selectedID: String {
+        didSet { UserDefaults.standard.set(selectedID, forKey: Self.selectedKey) }
+    }
+    /// Thèmes premium achetés (à alimenter par StoreKit).
+    @Published var unlockedIDs: Set<String> = []
+
+    var current: AppTheme { themes.first { $0.id == selectedID && isUnlocked($0) } ?? themes[0] }
+
+    init(bundle: Bundle = .main) {
+        struct File: Decodable { let themes: [AppTheme] }
+        let loaded = bundle.url(forResource: "Themes", withExtension: "json")
+            .flatMap { try? Data(contentsOf: $0) }
+            .flatMap { try? JSONDecoder().decode(File.self, from: $0).themes } ?? []
+        themes = loaded.isEmpty ? [.fallback] : loaded
+        selectedID = UserDefaults.standard.string(forKey: Self.selectedKey) ?? themes[0].id
+    }
+
+    func isUnlocked(_ theme: AppTheme) -> Bool {
+        !theme.premium || unlockedIDs.contains(theme.id) || Self.premiumUnlockedForDevelopment
+    }
+}
+
+private struct ThemeKey: EnvironmentKey {
+    static let defaultValue = AppTheme.fallback
+}
+
+extension EnvironmentValues {
+    /// Thème courant, injecté à la racine de l'app.
+    var theme: AppTheme {
+        get { self[ThemeKey.self] }
+        set { self[ThemeKey.self] = newValue }
+    }
+}
+
+extension Color {
+    /// « #RRGGBB ».
+    init(hex: String) {
+        let value = UInt64(hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) ?? 0
+        self.init(red: Double((value >> 16) & 0xFF) / 255,
+                  green: Double((value >> 8) & 0xFF) / 255,
+                  blue: Double(value & 0xFF) / 255)
+    }
+}
+
+enum Format {
     /// « 4:05 » ou « 1:02:07 ».
     static func clock(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds))
@@ -30,39 +122,44 @@ enum Theme {
     }
 }
 
-/// Libellé de panneau : capitales espacées, chasse fixe.
-struct MonitorLabel: View {
-    let text: String
-    var color = Theme.dim
+// MARK: - Composants (style moniteur, couleurs du thème courant)
 
-    init(_ text: String, color: Color = Theme.dim) {
+/// Libellé de panneau : capitales espacées.
+struct MonitorLabel: View {
+    @Environment(\.theme) private var theme
+    let text: String
+    var color: Color?
+
+    init(_ text: String, color: Color? = nil) {
         self.text = text
         self.color = color
     }
 
     var body: some View {
         Text(text.uppercased())
-            .font(Theme.mono(10, .semibold))
+            .font(theme.font(10, .semibold))
             .tracking(1.5)
-            .foregroundStyle(color)
+            .foregroundStyle(color ?? theme.dim)
             .lineLimit(1)
     }
 }
 
 /// Voyant d'état lumineux.
 struct StatusLED: View {
+    @Environment(\.theme) private var theme
     let color: Color
 
     var body: some View {
         Circle()
             .fill(color)
             .frame(width: 7, height: 7)
-            .shadow(color: color.opacity(0.9), radius: 4)
+            .shadow(color: color.opacity(0.9 * min(theme.glow, 1)), radius: 4 * theme.glow)
     }
 }
 
 /// Panneau à liseré fin, avec un titre et un élément optionnel à droite du titre.
 struct MonitorPanel<Content: View, Accessory: View>: View {
+    @Environment(\.theme) private var theme
     let title: String?
     let accessory: Accessory
     let content: Content
@@ -86,8 +183,8 @@ struct MonitorPanel<Content: View, Accessory: View>: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(Theme.line, lineWidth: 1))
+        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
     }
 }
 
@@ -99,37 +196,39 @@ extension MonitorPanel where Accessory == EmptyView {
 
 /// Valeur chiffrée avec son libellé (case de tableau de bord).
 struct MetricTile: View {
+    @Environment(\.theme) private var theme
     let label: String
     let value: String
     var unit: String? = nil
-    var color = Theme.text
+    var color: Color? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             MonitorLabel(label)
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(value)
-                    .font(Theme.mono(20, .semibold))
-                    .foregroundStyle(color)
+                    .font(theme.font(20, .semibold))
+                    .foregroundStyle(color ?? theme.text)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 if let unit {
                     Text(unit)
-                        .font(Theme.mono(10))
-                        .foregroundStyle(Theme.dim)
+                        .font(theme.font(10))
+                        .foregroundStyle(theme.dim)
                 }
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(Theme.line, lineWidth: 1))
+        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
     }
 }
 
 /// Grille de fond d'un tracé.
 struct MonitorGrid: View {
+    @Environment(\.theme) private var theme
     var columns = 12
     var rows = 4
 
@@ -146,46 +245,59 @@ struct MonitorGrid: View {
                 path.move(to: CGPoint(x: 0, y: y))
                 path.addLine(to: CGPoint(x: size.width, y: y))
             }
-            context.stroke(path, with: .color(Theme.grid), lineWidth: 1)
+            context.stroke(path, with: .color(theme.grid), lineWidth: 1)
         }
     }
 }
 
 /// Bouton de commande : plein (action principale) ou à liseré.
 struct MonitorButtonStyle: ButtonStyle {
-    var color = Theme.trace
+    @Environment(\.theme) private var theme
+    @Environment(\.isEnabled) private var isEnabled
+    /// Couleur du bouton ; par défaut la couleur principale du thème.
+    var color: Color?
     var filled = true
     var height: CGFloat = 54
+    var fontSize: CGFloat = 15
 
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(Theme.mono(15, .bold))
-            .tracking(2)
+        let tint = color ?? theme.primary
+        return configuration.label
+            .font(theme.font(fontSize, .bold))
+            .tracking(fontSize >= 14 ? 2 : 1)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
             .textCase(.uppercase)
-            .foregroundStyle(filled ? Color.black : color)
+            .foregroundStyle(filled ? theme.onPrimary : tint)
             .frame(maxWidth: .infinity)
             .frame(height: height)
-            .background(filled ? color : color.opacity(0.08), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(color, lineWidth: filled ? 0 : 1))
-            .opacity(configuration.isPressed ? 0.7 : 1)
+            .background(filled ? tint : tint.opacity(0.08),
+                        in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous)
+                .stroke(tint, lineWidth: filled ? 0 : 1))
+            .opacity(configuration.isPressed ? 0.7 : (isEnabled ? 1 : 0.35))
     }
 }
 
 /// Petit bouton carré d'en-tête.
 struct IconButton: View {
+    @Environment(\.theme) private var theme
     let systemImage: String
-    var color = Theme.text
+    var color: Color? = nil
     var highlighted = false
     let action: () -> Void
 
     var body: some View {
+        let tint = color ?? theme.text
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(highlighted ? Color.black : color)
+                .foregroundStyle(highlighted ? theme.onPrimary : tint)
                 .frame(width: 36, height: 36)
-                .background(highlighted ? color : Theme.panel, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(highlighted ? color : Theme.line, lineWidth: 1))
+                .background(highlighted ? tint : theme.panel,
+                            in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous)
+                    .stroke(highlighted ? tint : theme.line, lineWidth: 1))
         }
     }
 }

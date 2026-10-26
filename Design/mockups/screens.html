@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquettes Reps</title>
+<style>
+  /* Reproduction HTML des écrans SwiftUI (HomeView, WorkoutView) pour valider le rendu visuel.
+     Les couleurs viennent du même RepCounter/Themes.json que l'app. Polices : JetBrains Mono
+     (≈ SF Mono) et Inter (≈ SF Pro) ; les icônes SF Symbols sont remplacées par des pictogrammes. */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #222; }
+  .phone { width: 390px; height: 844px; overflow: hidden; position: relative;
+           display: flex; flex-direction: column; gap: 10px; padding: 55px 14px 44px; }
+  .label { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap; }
+  .panel { padding: 12px; border: 1px solid; display: flex; flex-direction: column; gap: 10px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .led { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .icon-btn { width: 36px; height: 36px; border: 1px solid; display: flex; align-items: center; justify-content: center; flex: none; }
+  .btn { height: 54px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700;
+         letter-spacing: 2px; text-transform: uppercase; flex: 1; border: 1px solid transparent; }
+  .tiles { display: flex; gap: 8px; }
+  .tile { flex: 1; padding: 8px 10px; border: 1px solid; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .tile .value { font-size: 20px; font-weight: 600; white-space: nowrap; }
+  .tile .unit { font-size: 10px; margin-left: 3px; }
+  .chip { padding: 6px 10px; border: 1px solid; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .grow { flex: 1; min-height: 0; }
+  .center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+  .caption { position: absolute; top: 14px; left: 0; right: 0; text-align: center; font: 600 11px Inter; letter-spacing: 1px;
+             color: rgba(255,255,255,.35); text-transform: uppercase; }
+  .light .caption { color: rgba(0,0,0,.35); }
+</style>
+</head>
+<body>
+<div id="screen"></div>
+<script>
+const params = new URLSearchParams(location.search);
+
+const EXERCISES = [
+  ["Pompes", "Téléphone au sol, écran vers le haut, sous ta tête.", "CAM 3D"],
+  ["Abdos", "Téléphone tenu à plat contre la poitrine.", "GYRO"],
+  ["Squats", "Téléphone tenu à la main ou contre la poitrine.", "ACCÉL"],
+  ["Biceps", "Téléphone dans la main qui travaille.", "INCL"],
+  ["Développé épaules", "Téléphone dans un brassard sur l'avant-bras qui pousse.", "ACCÉL"],
+  ["Autre exercice", "Téléphone posé face à toi ou porté sur toi ; l'app cherche le geste répété.", "MULTI"],
+];
+
+function fontFamily(t) {
+  return t.font === "monospaced" ? "'JetBrains Mono', monospace" : "Inter, sans-serif";
+}
+
+// Pictogrammes simples à la place des SF Symbols
+const ICONS = {
+  xmark: '<path d="M5 5 L15 15 M15 5 L5 15" stroke-width="2" stroke-linecap="round"/>',
+  record: '<circle cx="10" cy="10" r="7" fill="none" stroke-width="1.8"/><circle cx="10" cy="10" r="3.5" stroke="none"/>',
+  stop: '<rect x="5" y="5" width="10" height="10" rx="1" stroke="none"/>',
+  ecg: '<path d="M2 11 H6 L8 5 L11 16 L13 9 L14 11 H18" fill="none" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>',
+  speaker: '<path d="M3 8 H6 L10 5 V15 L6 12 H3 Z" stroke="none"/><path d="M13 7 Q15 10 13 13 M15 5 Q19 10 15 15" fill="none" stroke-width="1.5" stroke-linecap="round"/>',
+  chevron: '<path d="M8 5 L13 10 L8 15" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  figure: '<circle cx="10" cy="4" r="2.2" stroke="none"/><path d="M10 7 V13 M10 13 L6 18 M10 13 L14 18 M5 9.5 H15" fill="none" stroke-width="2" stroke-linecap="round"/>',
+  dumbbell: '<path d="M3 10 H17" stroke-width="2"/><rect x="4" y="6" width="3" height="8" rx="1" stroke="none"/><rect x="13" y="6" width="3" height="8" rx="1" stroke="none"/>',
+  sparkles: '<path d="M10 3 L11.5 8.5 L17 10 L11.5 11.5 L10 17 L8.5 11.5 L3 10 L8.5 8.5 Z" stroke="none"/>',
+  star: '<path d="M10 2.5 L12.2 7.4 L17.5 7.9 L13.5 11.4 L14.7 16.6 L10 13.9 L5.3 16.6 L6.5 11.4 L2.5 7.9 L7.8 7.4 Z" stroke="none"/>',
+};
+function icon(name, color, size = 20) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="${color}" stroke="${color}">${ICONS[name]}</svg>`;
+}
+
+function render(t, screen) {
+  const c = t.colors, r = t.radius, glow = t.glow;
+  const F = fontFamily(t);
+  const label = (text, color = c.dim) => `<span class="label" style="color:${color}">${text}</span>`;
+  const led = color => `<span class="led" style="background:${color};box-shadow:0 0 ${4 * glow}px ${color}"></span>`;
+  const panel = (title, accessory, content, extra = "") =>
+    `<div class="panel ${extra}" style="background:${c.panel};border-color:${c.line};border-radius:${r}px">
+       ${title || accessory ? `<div class="panel-head">${title ? label(title) : "<span></span>"}${accessory || ""}</div>` : ""}
+       ${content}</div>`;
+  const tile = (name, value, unit = "", color = c.text) =>
+    `<div class="tile" style="background:${c.panel};border-color:${c.line};border-radius:${r}px">${label(name)}
+       <div><span class="value" style="color:${color}">${value}</span>${unit ? `<span class="unit" style="color:${c.dim}">${unit}</span>` : ""}</div></div>`;
+  const iconBtn = (name, color = c.text, highlighted = false) =>
+    `<div class="icon-btn" style="border-radius:${r}px;background:${highlighted ? color : c.panel};border-color:${highlighted ? color : c.line}">${icon(name, highlighted ? c.onPrimary : color, 16)}</div>`;
+  const btn = (text, color, filled = true, height = 54, size = 15) =>
+    `<div class="btn" style="font-size:${size}px;letter-spacing:${size >= 14 ? 2 : 1}px;height:${height}px;border-radius:${r}px;background:${filled ? color : hexA(color, 0.08)};color:${filled ? c.onPrimary : color};border-color:${filled ? "transparent" : color}">${text}</div>`;
+
+  const s = screen;
+  let html = "";
+  if (s.kind === "home") {
+    html = homeScreen();
+  } else if (s.kind === "themes") {
+    html = themesScreen();
+  } else {
+    html = workoutScreen();
+  }
+  document.getElementById("screen").innerHTML =
+    `<div class="phone ${t.scheme}" style="background:${c.background};font-family:${F};color:${c.text}">
+       <div class="caption">${s.caption || ""} · thème ${t.name}</div>${html}</div>`;
+
+  function homeScreen() {
+    const rows = EXERCISES.map(([name, place, tag], i) => `
+      <div class="row" style="padding:11px 0;gap:12px;${i < EXERCISES.length - 1 ? `border-bottom:1px solid ${c.line}` : ""}">
+        <span style="font-size:12px;font-weight:600;color:${c.dim}">${String(i + 1).padStart(2, "0")}</span>
+        <span style="width:28px;display:flex;justify-content:center">${icon(i === 3 ? "dumbbell" : i === 5 ? "sparkles" : "figure", c.primary, 22)}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:15px;font-weight:700;text-transform:uppercase">${name}</div>
+          <div style="font-size:10px;color:${c.dim};margin-top:3px;line-height:1.3">${place}</div>
+        </div>
+        <span style="font-size:9px;font-weight:700;letter-spacing:1px;color:${c.primary};border:1px solid ${hexA(c.primary, .5)};border-radius:3px;padding:3px 6px">${tag}</span>
+        ${icon("chevron", c.dim, 14)}
+      </div>`).join("");
+    const announce = `<div class="row">${[["Chaque rep", true], ["Toutes les 5", false], ["Toutes les 10", false]]
+      .map(([text, on]) => btn(text, c.primary, on, 38, 11)).join("")}</div>
+      <div style="font-size:11px;color:${c.dim}">Les répétitions non annoncées font un bip court.</div>`;
+    return `
+      <div class="row" style="justify-content:space-between;padding-top:8px">
+        <div><div style="font-size:28px;font-weight:700;letter-spacing:6px;background:linear-gradient(90deg,${c.secondary},${c.primary});-webkit-background-clip:text;color:transparent">REPS</div>
+             ${label("Moniteur de répétitions")}</div>
+        <div class="row" style="gap:6px">${led(c.ok)}${label("Prêt", c.ok)}</div>
+      </div>
+      ${panel("Sélection de l'exercice", "", `<div>${rows}</div>`)}
+      ${panel("Annonce vocale", "", announce)}`;
+  }
+
+  // Bas de l'accueil : annonce vocale et choix du thème (pastilles de couleurs, nom dans sa police)
+  function themesScreen() {
+    const rows = s.themes.map(o => {
+      const swatches = ["background", "panel", "primary", "secondary", "ok"].map(k =>
+        `<span style="flex:1;background:${o.colors[k]}"></span>`).join("");
+      const selected = o.id === t.id;
+      return `<div class="row" style="gap:12px;padding:4px 0">
+        <span style="display:flex;width:70px;height:26px;border-radius:3px;overflow:hidden;border:1px solid ${c.line}">${swatches}</span>
+        <span style="flex:1;font-family:${fontFamily(o)};font-size:14px;font-weight:700;text-transform:uppercase">${o.name}</span>
+        ${o.premium ? `<span class="row" style="gap:3px;font-size:9px;font-weight:700;color:${c.warn};text-transform:uppercase">${icon("star", c.warn, 11)}Premium</span>` : ""}
+        <span style="width:20px;height:20px;border-radius:50%;border:2px solid ${selected ? c.primary : c.dim};display:flex;align-items:center;justify-content:center">
+          ${selected ? `<span style="width:10px;height:10px;border-radius:50%;background:${c.primary}"></span>` : ""}</span></div>`;
+    }).join("");
+    const announce = `<div class="row">${[["Chaque rep", true], ["Toutes les 5", false], ["Toutes les 10", false]]
+      .map(([text, on]) => btn(text, c.primary, on, 38, 11)).join("")}</div>
+      <div style="font-size:11px;color:${c.dim}">Les répétitions non annoncées font un bip court.</div>`;
+    return `<div style="height:8px"></div>${panel("Annonce vocale", "", announce)}
+      ${panel("Thème d'affichage", "", `<div style="display:flex;flex-direction:column;gap:8px">${rows}</div>`)}
+      <div style="font-size:10px;color:${c.dim};text-align:center;margin-top:4px">Comptage par caméra 3D et capteurs de mouvement · aucune image enregistrée</div>`;
+  }
+
+  function workoutScreen() {
+    const status = { ready: ["Veille", c.dim], countdown: ["Mise en place", c.warn], acquiring: ["Acquisition", c.primary],
+                     counting: ["Comptage", c.ok], resting: ["Récupération", c.warn], finished: ["Séance terminée", c.ok] }[s.phase];
+    const clock = ["counting", "resting", "acquiring", "finished"].includes(s.phase)
+      ? `<span style="font-size:13px;font-weight:600">T+ ${s.phase === "finished" ? "12:08" : s.clock || "4:32"}</span>` : "";
+    const header = `
+      <div class="row" style="padding-top:8px">
+        ${iconBtn("xmark")}
+        <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700">POMPES</div>
+          <div class="row" style="gap:5px;margin-top:2px">${led(status[1])}${label(status[0], status[1])}</div></div>
+        ${clock}${iconBtn("record", c.alarm)}${iconBtn("ecg", c.primary)}
+        <div class="icon-btn" style="width:44px;border-radius:${r}px;background:${c.panel};border-color:${c.line};gap:3px">${icon("speaker", c.text, 13)}<span style="font-size:12px;font-weight:700">1</span></div>
+      </div>`;
+    if (s.phase === "finished") return header + summary();
+    const metrics = ["counting", "resting", "acquiring"].includes(s.phase) ? `<div class="tiles">
+        ${tile("Total", s.total ?? 0)}${tile("Séries", s.sets?.length ?? 0)}
+        ${tile("Cadence", s.cadence ?? "—", "s/rep")}${tile("Régul.", s.regularity ?? "—", "%", s.regularity >= 80 ? c.ok : c.text)}</div>` : "";
+    const signal = panel("Signal · CAM 3D",
+      `<span class="row" style="gap:5px">${led(s.signal === "ok" ? c.ok : s.signal === "weak" ? c.warn : c.dim)}${label(
+        s.signal === "ok" ? "Signal OK" : s.signal === "weak" ? "Signal faible" : "Pas de signal",
+        s.signal === "ok" ? c.ok : s.signal === "weak" ? c.warn : c.dim)}</span>`,
+      `<div style="height:74px;position:relative">${grid()}${trace(s.signal)}</div>`);
+    const log = s.sets?.length && ["counting", "resting", "acquiring"].includes(s.phase)
+      ? `<div class="row" style="gap:6px">${s.sets.map((n, i) => `<span class="chip" style="background:${c.panel};border-color:${c.line};border-radius:3px"><span style="color:${c.dim}">S${String(i + 1).padStart(2, "0")}</span>&nbsp;&nbsp;${n}</span>`).join("")}</div>` : "";
+    const controls = s.phase === "ready" ? `<div class="row">${btn("Démarrer", c.primary, true, 64)}</div>`
+      : s.phase === "countdown" ? `<div class="row">${btn("Annuler", c.dim, false)}</div>`
+      : `<div class="row" style="gap:10px">${btn("Annuler série", c.warn, false)}${btn("Terminer", c.alarm)}</div>`;
+    return header + `<div class="grow" style="display:flex">${main()}</div>` + metrics + signal + log + controls;
+  }
+
+  function main() {
+    if (s.phase === "ready") {
+      return panel("Veille", "", `<div class="center grow" style="gap:14px;height:100%">
+        ${icon("figure", c.primary, 56)}
+        <div style="font-size:13px">Téléphone au sol, écran vers le haut, sous ta tête.</div>
+        <div style="font-size:11px;color:${c.dim}">Vérifie le tracé ci-dessous, puis Démarrer : 5 s de mise en place, et rien ne compte avant.</div></div>`, "grow");
+    }
+    if (s.phase === "countdown") {
+      return panel("Mise en place", "", `<div class="center grow" style="height:100%">
+        <div style="font-size:150px;font-weight:700;color:${c.warn};line-height:1">3</div>
+        <div style="font-size:12px;color:${c.dim};margin-top:6px">Téléphone au sol, écran vers le haut, sous ta tête.</div></div>`, "grow");
+    }
+    if (s.phase === "resting") {
+      return panel("Récupération", label(`Série 02 · ${s.sets.at(-1)} reps`, c.warn),
+        `<div class="center grow" style="height:100%">
+          <div style="font-size:96px;font-weight:700;color:${c.warn};line-height:1">0:42</div>
+          <div style="font-size:11px;color:${c.dim};margin-top:8px">La série suivante démarre dès que tu reprends.</div></div>`, "grow");
+    }
+    const counting = s.phase === "counting";
+    const accessory = counting ? label("Validé", c.ok)
+      : s.tentative > 0 ? label(`Détection ${s.tentative}/3`, c.primary) : label("En attente du mouvement");
+    return panel(`Reps · série ${String((s.sets?.length ?? 0) + 1).padStart(2, "0")}`, accessory,
+      `<div class="center grow" style="height:100%">${dial(counting)}</div>`, "grow");
+  }
+
+  function dial(counting) {
+    const size = 300, cx = size / 2, outer = size / 2 - 2;
+    const lit = Math.round(60 * s.phase01);
+    let ticks = "";
+    for (let i = 0; i < 60; i++) {
+      const a = i / 60 * 2 * Math.PI - Math.PI / 2, major = i % 5 === 0, inner = outer - (major ? 16 : 9);
+      const color = i >= lit ? c.line : counting ? (i < 30 ? c.secondary : c.primary) : hexA(c.primary, 0.4);
+      ticks += `<line x1="${cx + Math.cos(a) * inner}" y1="${cx + Math.sin(a) * inner}" x2="${cx + Math.cos(a) * outer}" y2="${cx + Math.sin(a) * outer}"
+                 stroke="${color}" stroke-width="${major ? 3 : 2}" stroke-linecap="round"/>`;
+    }
+    const tentative = s.tentative || 0;
+    const center = counting ? s.reps : tentative > 0 ? tentative : "–";
+    const numberColor = counting ? c.text : tentative > 0 ? hexA(c.primary, 0.55) : c.dim;
+    const pips = counting ? label("reps")
+      : `<div class="row" style="gap:5px;justify-content:center;margin:4px 0">${[0, 1, 2].map(i =>
+          `<span style="width:14px;height:6px;border-radius:1.5px;background:${i < tentative ? c.primary : c.line}"></span>`).join("")}</div>
+         ${label(tentative > 0 ? "à valider" : "en attente")}`;
+    const ripple = !counting && tentative > 0
+      ? `<circle cx="${cx}" cy="${cx}" r="${outer * 0.72}" fill="none" stroke="${c.primary}" stroke-width="2" opacity="0.45"/>` : "";
+    return `<div style="position:relative;width:${size}px;height:${size}px">
+      <svg width="${size}" height="${size}" style="position:absolute;inset:0;${counting && glow ? `filter:drop-shadow(0 0 ${8 * Math.min(glow, 1)}px ${hexA(c.primary, .35)})` : ""}">${ticks}${ripple}</svg>
+      <div class="center" style="position:absolute;inset:0">
+        <div style="font-size:108px;font-weight:700;color:${numberColor};line-height:1">${center}</div>${pips}</div></div>`;
+  }
+
+  function grid() {
+    let lines = "";
+    for (let i = 1; i < 12; i++) lines += `<line x1="${i / 12 * 336}" y1="0" x2="${i / 12 * 336}" y2="74" stroke="${c.grid}"/>`;
+    for (let i = 1; i < 4; i++) lines += `<line x1="0" y1="${i / 4 * 74}" x2="336" y2="${i / 4 * 74}" stroke="${c.grid}"/>`;
+    return `<svg width="100%" height="74" viewBox="0 0 336 74" preserveAspectRatio="none" style="position:absolute;inset:0">${lines}</svg>`;
+  }
+
+  function trace(kind) {
+    const amp = kind === "ok" ? 0.42 : kind === "weak" ? 0.12 : 0.02, n = 90;
+    let pts = [];
+    for (let i = 0; i < n; i++) {
+      const x = i / (n - 1) * 336;
+      const phase = i / n * 2 * Math.PI * 2.2;
+      // Forme en plateau, comme les pompes enregistrées
+      const v = 0.5 + amp * Math.tanh(2.4 * Math.sin(phase)) + 0.015 * Math.sin(i * 1.7);
+      pts.push(`${x.toFixed(1)},${(66 - v * 58).toFixed(1)}`);
+    }
+    const last = pts.at(-1).split(",");
+    const opacity = kind === "ok" ? 1 : kind === "weak" ? 0.6 : 0.3;
+    const shadow = kind === "ok" && glow ? `filter:drop-shadow(0 0 ${5 * glow}px ${hexA(c.primary, .7)})` : "";
+    return `<svg width="100%" height="74" viewBox="0 0 336 74" preserveAspectRatio="none" style="position:absolute;inset:0;opacity:${opacity};${shadow}">
+      <polyline points="${pts.join(" ")}" fill="none" stroke="${c.primary}" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="${last[0]}" cy="${last[1]}" r="4" fill="${c.primary}"/></svg>`;
+  }
+
+  function summary() {
+    const sets = s.sets;
+    const rows = sets.map((n, i) => `<div class="row" style="padding:8px 0;border-bottom:1px solid ${c.line};font-size:14px;font-weight:600">
+        <span style="flex:1;color:${c.dim}">S${String(i + 1).padStart(2, "0")}</span><span style="flex:1;text-align:right">${n}</span>
+        <span style="flex:1;text-align:right">0:${String(14 + n * 1).padStart(2, "0")}</span><span style="flex:1;text-align:right">1.${5 + (i % 3)} s</span></div>`).join("");
+    const head = `<div class="row">${["Série", "Reps", "Durée", "Cadence"].map((h, i) =>
+        `<span style="flex:1;text-align:${i ? "right" : "left"}">${label(h)}</span>`).join("")}</div>`;
+    return panel("Séance terminée", `<span class="row" style="gap:5px">${led(c.ok)}${label("Pompes", c.ok)}</span>`,
+        `<div class="center"><div style="font-size:96px;font-weight:700;line-height:1">${s.total}</div>${label("répétitions au total")}</div>`)
+      + `<div class="tiles">${tile("Durée", "12:08")}${tile("Séries", sets.length)}${tile("Moy./série", (s.total / sets.length).toFixed(1))}${tile("Cadence", "1.6", "s/rep")}</div>`
+      + `<div class="grow" style="display:flex">${panel("Détail des séries", "", head + `<div>${rows}</div>`, "grow")}</div>`
+      + `<div class="row" style="gap:10px">${btn("Nouvelle séance", c.primary, false)}${btn("Quitter", c.primary)}</div>`;
+  }
+}
+
+function hexA(hex, alpha) {
+  const v = parseInt(hex.slice(1), 16);
+  return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${alpha})`;
+}
+
+window.renderScreen = (theme, screen) => render(theme, screen);
+</script>
+</body>
+</html>

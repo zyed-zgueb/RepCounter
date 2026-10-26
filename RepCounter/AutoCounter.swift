@@ -333,6 +333,19 @@ final class SignalTracker {
         return (count, next)
     }
 
+    /// Cycles récents qui s'enchaînent (écart ≤ période max), postérieurs à `after` :
+    /// des répétitions probablement en cours, pas encore validées.
+    func recentChain(at t: Double, after: Double) -> Int {
+        guard let last = cycles.last, last > after, t - last <= maxPeriod else { return 0 }
+        var chain = 1
+        var i = cycles.count - 1
+        while i > 0, cycles[i] - cycles[i - 1] <= maxPeriod, cycles[i - 1] > after {
+            chain += 1
+            i -= 1
+        }
+        return chain
+    }
+
     var diagnostic: SourceDiagnostic {
         SourceDiagnostic(source: source, amplitude: amplitude, cycles: cycles.count, regularity: lastRegularity)
     }
@@ -361,7 +374,13 @@ final class AutoCounter {
         /// Durée d'une répétition (s) et régularité du signal suivi, pendant le comptage.
         var cadence: Double?
         var regularity: Float
+        /// Avant le démarrage du comptage : répétitions déjà détectées mais pas encore
+        /// validées (0 à cyclesToLock − 1), pour montrer que l'app suit le mouvement.
+        var tentative: Int
     }
+
+    /// Cycles réguliers exigés pour démarrer le comptage d'une série.
+    static let cyclesToLock = 3
 
     let exercise: Exercise
     private var trackers: [SignalSource: SignalTracker] = [:]
@@ -427,11 +446,11 @@ final class AutoCounter {
             // Les 3 cycles réguliers comptent, plus ceux faits avant
             leader = best
             let earlier = tracker.cyclesBeforeRegularRun()
-            count += 3 + earlier.count
+            count += Self.cyclesToLock + earlier.count
             tracker.adoptRestPosition(seriesStart: earlier.seriesStart)
             lastCountTime = t
             didCount = true
-            setSwings = Array(tracker.cycleSwings.suffix(3))
+            setSwings = Array(tracker.cycleSwings.suffix(Self.cyclesToLock))
             weakCycles = 0
         }
 
@@ -446,7 +465,16 @@ final class AutoCounter {
                       liveValue: shown?.displayValue ?? 0.5, liveStrength: shown?.strength ?? 0,
                       didReset: didReset,
                       cadence: leader.flatMap { trackers[$0]?.period },
-                      regularity: leader.flatMap { trackers[$0]?.lastRegularity } ?? 0)
+                      regularity: leader.flatMap { trackers[$0]?.lastRegularity } ?? 0,
+                      tentative: tentative(at: t))
+    }
+
+    private func tentative(at t: Double) -> Int {
+        guard leader == nil else { return 0 }
+        let chains = exercise.sources.compactMap { trackers[$0] }
+            .filter { $0.strength >= 1 }
+            .map { $0.recentChain(at: t, after: lastCountTime) }
+        return min(chains.max() ?? 0, Self.cyclesToLock - 1)
     }
 
     private func bestRegularSource(among sources: Set<SignalSource>, at t: Double) -> SignalSource? {

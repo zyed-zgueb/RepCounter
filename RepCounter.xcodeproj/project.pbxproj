@@ -19,6 +19,7 @@
 		B00000000000000000000010 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000010 /* PoseFeatures.swift */; };
 		B00000000000000000000011 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000011 /* SignalMath.swift */; };
 		B00000000000000000000098 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000098 /* Assets.xcassets */; };
+		B00000000000000000000097 /* Themes.json in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000097 /* Themes.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -34,6 +35,7 @@
 		F00000000000000000000010 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
 		F00000000000000000000011 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
 		F00000000000000000000098 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F00000000000000000000097 /* Themes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Themes.json; sourceTree = "<group>"; };
 		F00000000000000000000099 /* RepCounter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RepCounter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -71,6 +73,7 @@
 				F00000000000000000000010 /* PoseFeatures.swift */,
 				F00000000000000000000011 /* SignalMath.swift */,
 				F00000000000000000000098 /* Assets.xcassets */,
+				F00000000000000000000097 /* Themes.json */,
 			);
 			path = RepCounter;
 			sourceTree = "<group>";
@@ -138,6 +141,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B00000000000000000000098 /* Assets.xcassets in Resources */,
+				B00000000000000000000097 /* Themes.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

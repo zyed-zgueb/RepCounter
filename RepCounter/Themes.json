@@ -1,0 +1,96 @@
+{
+  "themes": [
+    {
+      "id": "monitor",
+      "name": "Moniteur",
+      "premium": false,
+      "scheme": "dark",
+      "font": "monospaced",
+      "radius": 4,
+      "glow": 1.0,
+      "colors": {
+        "background": "#05080A",
+        "panel": "#0D1217",
+        "line": "#212E38",
+        "grid": "#121C24",
+        "text": "#DEEDF5",
+        "dim": "#738794",
+        "primary": "#3DC2FF",
+        "secondary": "#AB64FA",
+        "ok": "#2EE69E",
+        "warn": "#FFB021",
+        "alarm": "#FF4F4F",
+        "onPrimary": "#000000"
+      }
+    },
+    {
+      "id": "phosphor",
+      "name": "Phosphore",
+      "premium": true,
+      "scheme": "dark",
+      "font": "monospaced",
+      "radius": 2,
+      "glow": 1.4,
+      "colors": {
+        "background": "#020602",
+        "panel": "#061006",
+        "line": "#123316",
+        "grid": "#0B1E0C",
+        "text": "#B8FFB2",
+        "dim": "#4F8C52",
+        "primary": "#39FF6A",
+        "secondary": "#1FBF4A",
+        "ok": "#39FF6A",
+        "warn": "#E5FF3A",
+        "alarm": "#FF5A3A",
+        "onPrimary": "#021004"
+      }
+    },
+    {
+      "id": "clinic",
+      "name": "Clinique",
+      "premium": true,
+      "scheme": "light",
+      "font": "default",
+      "radius": 8,
+      "glow": 0.0,
+      "colors": {
+        "background": "#EDF1F4",
+        "panel": "#FFFFFF",
+        "line": "#C9D3DB",
+        "grid": "#E4EAEF",
+        "text": "#0E1A24",
+        "dim": "#5B6B78",
+        "primary": "#0077CC",
+        "secondary": "#6A4BD8",
+        "ok": "#0E9E66",
+        "warn": "#D17A00",
+        "alarm": "#D63A3A",
+        "onPrimary": "#FFFFFF"
+      }
+    },
+    {
+      "id": "neon",
+      "name": "Néon",
+      "premium": true,
+      "scheme": "dark",
+      "font": "rounded",
+      "radius": 10,
+      "glow": 1.6,
+      "colors": {
+        "background": "#0A0612",
+        "panel": "#140C22",
+        "line": "#2F2049",
+        "grid": "#1C1330",
+        "text": "#F3EBFF",
+        "dim": "#8E7DB0",
+        "primary": "#FF3DCB",
+        "secondary": "#7B5CFF",
+        "ok": "#3DFFD8",
+        "warn": "#FFC23D",
+        "alarm": "#FF3D6E",
+        "onPrimary": "#12051C"
+      }
+    }
+  ]
+}
