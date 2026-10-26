@@ -136,10 +136,8 @@ final class WorkoutModel: ObservableObject {
     @Published var showsDiagnostics = false
     @Published private(set) var framesPerSecond: Double = 0
     @Published private(set) var diagnostics: [SourceDiagnostic] = []
-    /// Annonce vocale toutes les N répétitions (1, 5 ou 10) ; bip pour les autres.
-    @Published var announceEvery: Int {
-        didSet { UserDefaults.standard.set(announceEvery, forKey: Self.announceEveryKey) }
-    }
+    /// Annonce vocale toutes les N répétitions (1, 5 ou 10) ; bip pour les autres. Réglé dans les Réglages.
+    private let announceEvery: Int
     static let announceEveryKey = "announceEvery"
     static let announceChoices = [1, 5, 10]
     /// Enregistrement des mesures, pour analyser une séance qui compte mal.
@@ -377,11 +375,6 @@ final class WorkoutModel: ObservableObject {
                 self.finishedRecording = FinishedRecording(recorder: recorder, countedReps: counted)
             }
         }
-    }
-
-    func cycleAnnounceEvery() {
-        let index = Self.announceChoices.firstIndex(of: announceEvery) ?? 0
-        announceEvery = Self.announceChoices[(index + 1) % Self.announceChoices.count]
     }
 
     // MARK: - Mesures

@@ -7,6 +7,7 @@ struct WorkoutView: View {
     @StateObject private var model: WorkoutModel
     @Environment(\.dismiss) private var dismiss
     @State private var bump = false
+    @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
 
     init(exercise: Exercise) {
         _model = StateObject(wrappedValue: WorkoutModel(exercise: exercise))
@@ -18,8 +19,8 @@ struct WorkoutView: View {
 
             VStack(spacing: 10) {
                 header
-                if model.isRecording { recordingBanner }
-                if model.showsDiagnostics { diagnosticsPanel }
+                if analysisMode, model.isRecording { recordingBanner }
+                if analysisMode, model.showsDiagnostics { diagnosticsPanel }
 
                 if model.phase == .finished {
                     SessionSummary(model: model) { dismiss() }
@@ -77,21 +78,12 @@ struct WorkoutView: View {
                     .foregroundStyle(theme.text)
                     .monospacedDigit()
             }
-            IconButton(systemImage: model.isRecording ? "stop.fill" : "record.circle",
-                       color: theme.alarm, highlighted: model.isRecording) { model.toggleRecording() }
-            IconButton(systemImage: "waveform.path.ecg", color: theme.primary,
-                       highlighted: model.showsDiagnostics) { model.showsDiagnostics.toggle() }
-            Button { model.cycleAnnounceEvery() } label: {
-                HStack(spacing: 3) {
-                    Image(systemName: "speaker.wave.2.fill")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text("\(model.announceEvery)")
-                        .font(theme.font(12, .bold))
-                }
-                .foregroundStyle(theme.text)
-                .frame(width: 44, height: 36)
-                .background(theme.panel, in: RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).stroke(theme.line, lineWidth: 1))
+            // Outils d'analyse : visibles seulement si le mode analyse est activé dans les Réglages
+            if analysisMode {
+                IconButton(systemImage: model.isRecording ? "stop.fill" : "record.circle",
+                           color: theme.alarm, highlighted: model.isRecording) { model.toggleRecording() }
+                IconButton(systemImage: "waveform.path.ecg", color: theme.primary,
+                           highlighted: model.showsDiagnostics) { model.showsDiagnostics.toggle() }
             }
         }
         .padding(.top, 8)
@@ -199,8 +191,10 @@ struct WorkoutView: View {
             MetricTile(label: "Total", value: "\(model.totalReps)")
             MetricTile(label: "Séries", value: "\(model.sets.count)")
             MetricTile(label: "Cadence", value: model.cadence.map { String(format: "%.1f", $0) } ?? "—", unit: "s/rep")
-            MetricTile(label: "Régul.", value: model.regularity > 0 ? "\(Int((model.regularity * 100).rounded()))" : "—",
-                       unit: "%", color: model.regularity >= 0.8 ? theme.ok : theme.text)
+            if analysisMode {
+                MetricTile(label: "Régul.", value: model.regularity > 0 ? "\(Int((model.regularity * 100).rounded()))" : "—",
+                           unit: "%", color: model.regularity >= 0.8 ? theme.ok : theme.text)
+            }
         }
     }
 
@@ -236,24 +230,32 @@ struct WorkoutView: View {
         }
     }
 
+    /// Dernières séries sur une ligne fixe ; les plus anciennes sont résumées par « +N ».
     private var setsLog: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(model.sets) { set in
-                    HStack(spacing: 6) {
-                        Text(String(format: "S%02d", set.number))
-                            .foregroundStyle(theme.dim)
-                        Text("\(set.reps)")
-                            .foregroundStyle(theme.text)
-                    }
-                    .font(theme.font(12, .bold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(theme.panel, in: RoundedRectangle(cornerRadius: 3))
-                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(theme.line, lineWidth: 1))
-                }
+        let shown = model.sets.suffix(Self.setsShown)
+        let hidden = model.sets.count - shown.count
+        return HStack(spacing: 6) {
+            if hidden > 0 { setChip(label: "+\(hidden)", value: nil) }
+            ForEach(shown) { set in
+                setChip(label: String(format: "S%02d", set.number), value: "\(set.reps)")
             }
+            Spacer(minLength: 0)
         }
+    }
+
+    private static let setsShown = 4
+
+    private func setChip(label: String, value: String?) -> some View {
+        HStack(spacing: 6) {
+            Text(label).foregroundStyle(theme.dim)
+            if let value { Text(value).foregroundStyle(theme.text) }
+        }
+        .font(theme.font(12, .bold))
+        .lineLimit(1)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(theme.panel, in: RoundedRectangle(cornerRadius: 3))
+        .overlay(RoundedRectangle(cornerRadius: 3).stroke(theme.line, lineWidth: 1))
     }
 
     @ViewBuilder

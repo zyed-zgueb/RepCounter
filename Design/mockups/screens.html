@@ -61,6 +61,7 @@ const ICONS = {
   figure: '<circle cx="10" cy="4" r="2.2" stroke="none"/><path d="M10 7 V13 M10 13 L6 18 M10 13 L14 18 M5 9.5 H15" fill="none" stroke-width="2" stroke-linecap="round"/>',
   dumbbell: '<path d="M3 10 H17" stroke-width="2"/><rect x="4" y="6" width="3" height="8" rx="1" stroke="none"/><rect x="13" y="6" width="3" height="8" rx="1" stroke="none"/>',
   sparkles: '<path d="M10 3 L11.5 8.5 L17 10 L11.5 11.5 L10 17 L8.5 11.5 L3 10 L8.5 8.5 Z" stroke="none"/>',
+  gear: '<circle cx="10" cy="10" r="2.6" fill="none" stroke-width="1.8"/><path d="M10 2.5 V5 M10 15 V17.5 M2.5 10 H5 M15 10 H17.5 M4.7 4.7 L6.5 6.5 M13.5 13.5 L15.3 15.3 M4.7 15.3 L6.5 13.5 M13.5 6.5 L15.3 4.7" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="5.6" fill="none" stroke-width="1.8"/>',
   star: '<path d="M10 2.5 L12.2 7.4 L17.5 7.9 L13.5 11.4 L14.7 16.6 L10 13.9 L5.3 16.6 L6.5 11.4 L2.5 7.9 L7.8 7.4 Z" stroke="none"/>',
 };
 function icon(name, color, size = 20) {
@@ -88,8 +89,8 @@ function render(t, screen) {
   let html = "";
   if (s.kind === "home") {
     html = homeScreen();
-  } else if (s.kind === "themes") {
-    html = themesScreen();
+  } else if (s.kind === "settings") {
+    html = settingsScreen();
   } else {
     html = workoutScreen();
   }
@@ -109,21 +110,17 @@ function render(t, screen) {
         <span style="font-size:9px;font-weight:700;letter-spacing:1px;color:${c.primary};border:1px solid ${hexA(c.primary, .5)};border-radius:3px;padding:3px 6px">${tag}</span>
         ${icon("chevron", c.dim, 14)}
       </div>`).join("");
-    const announce = `<div class="row">${[["Chaque rep", true], ["Toutes les 5", false], ["Toutes les 10", false]]
-      .map(([text, on]) => btn(text, c.primary, on, 38, 11)).join("")}</div>
-      <div style="font-size:11px;color:${c.dim}">Les répétitions non annoncées font un bip court.</div>`;
     return `
       <div class="row" style="justify-content:space-between;padding-top:8px">
         <div><div style="font-size:28px;font-weight:700;letter-spacing:6px;background:linear-gradient(90deg,${c.secondary},${c.primary});-webkit-background-clip:text;color:transparent">REPS</div>
              ${label("Moniteur de répétitions")}</div>
-        <div class="row" style="gap:6px">${led(c.ok)}${label("Prêt", c.ok)}</div>
+        ${iconBtn("gear")}
       </div>
-      ${panel("Sélection de l'exercice", "", `<div>${rows}</div>`)}
-      ${panel("Annonce vocale", "", announce)}`;
+      ${panel("Exercice", "", `<div>${rows}</div>`)}`;
   }
 
-  // Bas de l'accueil : annonce vocale et choix du thème (pastilles de couleurs, nom dans sa police)
-  function themesScreen() {
+  // Réglages (feuille ouverte par la roue dentée) : annonce vocale, thème, mode analyse
+  function settingsScreen() {
     const rows = s.themes.map(o => {
       const swatches = ["background", "panel", "primary", "secondary", "ok"].map(k =>
         `<span style="flex:1;background:${o.colors[k]}"></span>`).join("");
@@ -138,8 +135,16 @@ function render(t, screen) {
     const announce = `<div class="row">${[["Chaque rep", true], ["Toutes les 5", false], ["Toutes les 10", false]]
       .map(([text, on]) => btn(text, c.primary, on, 38, 11)).join("")}</div>
       <div style="font-size:11px;color:${c.dim}">Les répétitions non annoncées font un bip court.</div>`;
-    return `<div style="height:8px"></div>${panel("Annonce vocale", "", announce)}
-      ${panel("Thème d'affichage", "", `<div style="display:flex;flex-direction:column;gap:8px">${rows}</div>`)}
+    const toggle = `<div class="row" style="justify-content:space-between">
+        <span style="font-size:14px;font-weight:700">MODE ANALYSE</span>
+        <span style="width:51px;height:31px;border-radius:16px;background:${s.analysis ? c.primary : c.line};position:relative">
+          <span style="position:absolute;top:2px;${s.analysis ? "right" : "left"}:2px;width:27px;height:27px;border-radius:50%;background:#fff"></span></span></div>
+      <div style="font-size:11px;color:${c.dim};line-height:1.35">Affiche pendant la séance l'enregistrement des mesures (●) et le diagnostic des capteurs, pour analyser une séance qui compte mal.</div>`;
+    return `<div class="row" style="justify-content:space-between;padding:8px 0 2px">
+        <span style="font-size:16px;font-weight:700;letter-spacing:3px">RÉGLAGES</span>${iconBtn("xmark")}</div>
+      ${panel("Annonce vocale", "", announce)}
+      ${panel("Thème", "", `<div style="display:flex;flex-direction:column;gap:8px">${rows}</div>`)}
+      ${panel("Analyse", "", toggle)}
       <div style="font-size:10px;color:${c.dim};text-align:center;margin-top:4px">Comptage par caméra 3D et capteurs de mouvement · aucune image enregistrée</div>`;
   }
 
@@ -153,20 +158,24 @@ function render(t, screen) {
         ${iconBtn("xmark")}
         <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700">POMPES</div>
           <div class="row" style="gap:5px;margin-top:2px">${led(status[1])}${label(status[0], status[1])}</div></div>
-        ${clock}${iconBtn("record", c.alarm)}${iconBtn("ecg", c.primary)}
-        <div class="icon-btn" style="width:44px;border-radius:${r}px;background:${c.panel};border-color:${c.line};gap:3px">${icon("speaker", c.text, 13)}<span style="font-size:12px;font-weight:700">1</span></div>
+        ${clock}${s.analysis ? iconBtn("record", c.alarm) + iconBtn("ecg", c.primary) : ""}
       </div>`;
     if (s.phase === "finished") return header + summary();
     const metrics = ["counting", "resting", "acquiring"].includes(s.phase) ? `<div class="tiles">
         ${tile("Total", s.total ?? 0)}${tile("Séries", s.sets?.length ?? 0)}
-        ${tile("Cadence", s.cadence ?? "—", "s/rep")}${tile("Régul.", s.regularity ?? "—", "%", s.regularity >= 80 ? c.ok : c.text)}</div>` : "";
+        ${tile("Cadence", s.cadence ?? "—", "s/rep")}${s.analysis ? tile("Régul.", s.regularity ?? "—", "%", s.regularity >= 80 ? c.ok : c.text) : ""}</div>` : "";
     const signal = panel("Signal · CAM 3D",
       `<span class="row" style="gap:5px">${led(s.signal === "ok" ? c.ok : s.signal === "weak" ? c.warn : c.dim)}${label(
         s.signal === "ok" ? "Signal OK" : s.signal === "weak" ? "Signal faible" : "Pas de signal",
         s.signal === "ok" ? c.ok : s.signal === "weak" ? c.warn : c.dim)}</span>`,
       `<div style="height:74px;position:relative">${grid()}${trace(s.signal)}</div>`);
     const log = s.sets?.length && ["counting", "resting", "acquiring"].includes(s.phase)
-      ? `<div class="row" style="gap:6px">${s.sets.map((n, i) => `<span class="chip" style="background:${c.panel};border-color:${c.line};border-radius:3px"><span style="color:${c.dim}">S${String(i + 1).padStart(2, "0")}</span>&nbsp;&nbsp;${n}</span>`).join("")}</div>` : "";
+      ? (() => {
+          // Ligne fixe : les 4 dernières séries, les plus anciennes résumées par « +N »
+          const chip = (name, value) => `<span class="chip" style="background:${c.panel};border-color:${c.line};border-radius:3px"><span style="color:${c.dim}">${name}</span>${value != null ? `&nbsp;&nbsp;${value}` : ""}</span>`;
+          const hidden = Math.max(0, s.sets.length - 4);
+          return `<div class="row" style="gap:6px;justify-content:flex-start">${hidden ? chip(`+${hidden}`) : ""}${s.sets.slice(hidden).map((n, i) => chip(`S${String(hidden + i + 1).padStart(2, "0")}`, n)).join("")}</div>`;
+        })() : "";
     const controls = s.phase === "ready" ? `<div class="row">${btn("Démarrer", c.primary, true, 64)}</div>`
       : s.phase === "countdown" ? `<div class="row">${btn("Annuler", c.dim, false)}</div>`
       : `<div class="row" style="gap:10px">${btn("Annuler série", c.warn, false)}${btn("Terminer", c.alarm)}</div>`;
@@ -186,7 +195,7 @@ function render(t, screen) {
         <div style="font-size:12px;color:${c.dim};margin-top:6px">Téléphone au sol, écran vers le haut, sous ta tête.</div></div>`, "grow");
     }
     if (s.phase === "resting") {
-      return panel("Récupération", label(`Série 02 · ${s.sets.at(-1)} reps`, c.warn),
+      return panel("Récupération", label(`Série ${String(s.sets.length).padStart(2, "0")} · ${s.sets.at(-1)} reps`, c.warn),
         `<div class="center grow" style="height:100%">
           <div style="font-size:96px;font-weight:700;color:${c.warn};line-height:1">0:42</div>
           <div style="font-size:11px;color:${c.dim};margin-top:8px">La série suivante démarre dès que tu reprends.</div></div>`, "grow");

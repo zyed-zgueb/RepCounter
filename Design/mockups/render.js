@@ -11,12 +11,14 @@ fs.mkdirSync(out, { recursive: true });
 
 const SCREENS = [
   ["01-accueil", { kind: "home", caption: "Accueil" }],
-  ["01b-accueil-themes", { kind: "themes", themes, caption: "Accueil, bas de page" }],
+  ["01b-reglages", { kind: "settings", themes, caption: "Réglages (roue dentée)" }],
   ["02-veille", { phase: "ready", signal: "ok", phase01: 0.3, caption: "Veille" }],
   ["03-compte-a-rebours", { phase: "countdown", signal: "weak", phase01: 0, caption: "Compte à rebours" }],
   ["04-detection-2-sur-3", { phase: "acquiring", signal: "ok", phase01: 0.55, tentative: 2, total: 0, sets: [], caption: "Détection, pas encore validé" }],
   ["05-comptage", { phase: "counting", signal: "ok", phase01: 0.7, reps: 7, total: 19, cadence: "1.6", regularity: 97, sets: [12], caption: "Comptage validé" }],
   ["06-recuperation", { phase: "resting", signal: "weak", phase01: 0, total: 22, cadence: "1.6", regularity: 97, sets: [12, 10], caption: "Récupération" }],
+  ["06b-recuperation-6-series", { phase: "resting", signal: "weak", phase01: 0, total: 64, cadence: "1.6", sets: [12, 11, 10, 11, 10, 10], caption: "Récupération, 6 séries" }],
+  ["08-mode-analyse", { phase: "counting", signal: "ok", phase01: 0.7, reps: 7, total: 19, cadence: "1.6", regularity: 97, sets: [12], analysis: true, caption: "Mode analyse activé" }],
   ["07-resume", { phase: "finished", total: 34, sets: [12, 10, 12], caption: "Résumé de séance" }],
 ];
 
@@ -30,6 +32,7 @@ const SCREENS = [
   for (const id of ["phosphor", "clinic", "neon"]) {
     shots.push([`${id}-05-comptage`, byId[id], SCREENS[5][1]]);
     shots.push([`${id}-04-detection`, byId[id], SCREENS[4][1]]);
+    shots.push([`${id}-01b-reglages`, byId[id], SCREENS[1][1]]);
   }
   for (const [name, theme, screen] of shots) {
     await page.evaluate(([t, s]) => window.renderScreen(t, s), [theme, screen]);

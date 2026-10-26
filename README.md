@@ -8,8 +8,12 @@ continue seul, avec annonce vocale.
 Style « moniteur » : fond quasi noir, panneaux à liseré fin, chiffres à chasse fixe, voyants
 d'état, tracé du signal façon électrocardiogramme.
 
-- **Accueil** : liste des exercices (placement du téléphone, capteur utilisé) et réglage
-  des annonces vocales. La caméra est éteinte.
+Principe : à l'écran, seulement ce qui sert pendant l'effort ; le reste est rangé dans les
+Réglages. Pas de défilement, sauf pour une liste qui dépasse l'écran.
+
+- **Accueil** : la liste des exercices (placement du téléphone, capteur utilisé) et une roue
+  dentée. La caméra est éteinte.
+- **Réglages** (roue dentée) : annonce vocale, thème, mode analyse.
 - **Séance** :
   1. **Veille** : les capteurs tournent (le tracé et le voyant « Signal OK » aident à se
      placer), mais rien ne compte.
@@ -22,8 +26,11 @@ d'état, tracé du signal façon électrocardiogramme.
   4. **Annuler série** : annule la série en cours (ou la dernière, pendant la récupération).
   5. **Terminer** : résumé de la séance (total, durée, séries, moyenne, cadence, détail par
      série) ; « Nouvelle séance » ou « Quitter ».
-- Tableau de bord pendant la séance : total, nombre de séries, cadence (s/rep), régularité
-  du signal, journal des séries (S01 12 · S02 10…).
+- Tableau de bord pendant la séance : total, nombre de séries, cadence (s/rep), tracé du
+  signal, journal des séries sur une ligne fixe (les 4 dernières, les plus anciennes résumées
+  par « +N » ; le détail complet est dans le résumé).
+- **Mode analyse** (Réglages) : ajoute à la séance l'enregistrement ●, le diagnostic des
+  capteurs et la régularité du signal. Désactivé par défaut.
 - **Répétitions détectées, pas encore validées** : avant le démarrage du comptage d'une
   série, le cadran suit déjà le mouvement (graduations pâles), affiche les répétitions
   détectées en chiffres pâles « à valider », trois témoins de validation (« Détection 2/3 »),
@@ -31,7 +38,7 @@ d'état, tracé du signal façon électrocardiogramme.
 
 ## Thèmes
 Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis, lueur,
-clair/sombre, gratuit ou premium). Aucun écran n'a de couleur en dur : tout passe par
+clair/sombre, gratuit ou premium), choisis dans les Réglages. Aucun écran n'a de couleur en dur : tout passe par
 `@Environment(\.theme)` (`Theme.swift`). Ajouter un thème = ajouter une entrée au fichier.
 `ThemeStore` mémorise le choix et prévoit le déblocage des thèmes premium par achat intégré
 (StoreKit à brancher ; en attendant, tous les thèmes sont utilisables). Thèmes livrés :
@@ -64,16 +71,14 @@ En série, un cycle plus faible que 40 % des répétitions précédentes ne comp
 suite marquent la fin de la série. Ça évite de compter l'essoufflement après des abdos.
 
 ## Diagnostic
-Pendant la séance, le bouton tracé de pouls affiche ce que voit l'app : mesures par seconde
+Avec le mode analyse activé (Réglages), le bouton tracé de pouls de la séance affiche ce que voit l'app : mesures par seconde
 (en orange sous 20) et, pour chaque capteur, l'amplitude du mouvement par rapport au seuil
 (il faut ≥ 100 %), les cycles détectés et la note de régularité (il faut ≥ 0,60 pour que le
 compteur démarre). Une capture de cet écran pendant un exercice qui ne compte pas suffit
 à comprendre pourquoi.
 
-Touche l'écran pour remettre à zéro. Après une pause, la série suivante s'ajoute au total.
-
 ## Enregistrer une séance pour l'analyser
-Pendant une séance, le bouton ● enregistre les mesures des capteurs (pas de vidéo : l'image
+Avec le mode analyse activé (Réglages), le bouton ● de la séance enregistre les mesures des capteurs (pas de vidéo : l'image
 se limite à la vignette 12×16 du compteur ; ~3 Mo par minute, 5 minutes au plus). Les 16 s
 qui précèdent l'appui sont incluses, pour que la relecture reproduise exactement l'app ; la
 répartition des distances mesurées par TrueDepth est aussi enregistrée pour l'analyse. À l'arrêt,
@@ -83,7 +88,7 @@ Recordings. Déposé dans `Recordings/`, il se rejoue avec `Simulation/replay.py
 les comptes (réel, app, compteur Python) et trace le signal de chaque capteur.
 
 ## Retour sonore
-L'accueil (et le bouton haut-parleur de la séance) choisit la fréquence des annonces vocales : **chaque rep**,
+Les Réglages choisissent la fréquence des annonces vocales : **chaque rep**,
 **toutes les 5** ou **toutes les 10**. Les répétitions non annoncées font un bip court.
 Le premier nombre d'une série est toujours dit (le comptage a démarré) ; la fin de série
 est annoncée avec son nombre de répétitions, puis la récupération toutes les 30 s. Le son fonctionne en mode silencieux et se mélange
