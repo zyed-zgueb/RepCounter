@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 @main
@@ -11,6 +12,8 @@ struct RepCounterApp: App {
                 .environment(\.theme, themeStore.current)
                 .preferredColorScheme(themeStore.current.colorScheme)
         }
+        // Historique des séances, sur l'iPhone (iCloud activable plus tard : modèle compatible CloudKit)
+        .modelContainer(for: SessionRecord.self)
     }
 }
 

@@ -125,6 +125,48 @@ extension Color {
 }
 
 enum Format {
+    /// « 1,6 » (une décimale, à la française).
+    static func decimal(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(1)))
+    }
+
+    /// « −29 », « +12 » : écart en %, arrondi.
+    static func percent(_ value: Double) -> String {
+        signed(Int(value.rounded()))
+    }
+
+    /// « +6 », « −4 », « 0 ».
+    static func signed(_ value: Int) -> String {
+        value > 0 ? "+\(value)" : (value < 0 ? "−\(-value)" : "0")
+    }
+
+    /// « jeudi 22 », ou « aujourd'hui ».
+    static func dayName(_ date: Date) -> String {
+        Calendar.current.isDateInToday(date) ? "aujourd'hui" : date.formatted(.dateTime.weekday(.wide).day())
+    }
+
+    /// « Lun. 26 oct. », première lettre en capitale.
+    static func shortDay(_ date: Date) -> String {
+        let text = date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
+        return text.prefix(1).uppercased() + text.dropFirst()
+    }
+
+    /// « 12 oct. », ou « aujourd'hui ».
+    static func shortDate(_ date: Date) -> String {
+        Calendar.current.isDateInToday(date) ? "aujourd'hui" : date.formatted(.dateTime.day().month(.abbreviated))
+    }
+
+    /// « 19:40 ».
+    static func time(_ date: Date) -> String {
+        date.formatted(.dateTime.hour().minute())
+    }
+
+    /// « 38 min », « 1 h 05 ».
+    static func minutes(_ seconds: TimeInterval) -> String {
+        let total = Int(seconds / 60)
+        return total < 60 ? "\(total) min" : String(format: "%d h %02d", total / 60, total % 60)
+    }
+
     /// « 4:05 » ou « 1:02:07 ».
     static func clock(_ seconds: TimeInterval) -> String {
         let total = max(0, Int(seconds))

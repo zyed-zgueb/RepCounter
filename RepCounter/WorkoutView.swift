@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 /// L'écran unique de l'app : le cadran. En veille, on y glisse d'un exercice à l'autre ;
@@ -6,10 +7,14 @@ import SwiftUI
 struct WorkoutView: View {
     @Environment(\.theme) private var theme
     @EnvironmentObject private var themeStore: ThemeStore
+    @Environment(\.modelContext) private var modelContext
     @StateObject private var model: WorkoutModel
     @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
     @State private var bump = false
     @State private var showsSettings = false
+    @State private var showsHistory = false
+    /// La séance terminée, enregistrée dans l'historique.
+    @State private var record: SessionRecord?
     /// Exercice affiché dans le cadran pendant qu'on glisse ; adopté une fois le geste posé.
     @State private var browsing: Exercise
     @State private var pendingSelection: DispatchWorkItem?
@@ -41,7 +46,7 @@ struct WorkoutView: View {
                 if analysisMode, model.showsDiagnostics { diagnosticsPanel.padding(.top, 8) }
 
                 if model.phase == .finished {
-                    SessionSummary(model: model)
+                    SessionSummary(model: model, record: record)
                 } else {
                     hero
                     bottom
@@ -82,6 +87,19 @@ struct WorkoutView: View {
             RecordingSheet(finished: finished)
                 .environment(\.theme, theme)
         }
+        .onChange(of: model.phase) { phase in
+            // Séance terminée : enregistrée aussitôt ; nouvelle séance : on repart de rien
+            if phase == .finished {
+                record = SessionRecord.save(model, in: modelContext)
+            } else if phase == .ready {
+                record = nil
+            }
+        }
+        .sheet(isPresented: $showsHistory) {
+            HistoryView(exercise: model.exercise)
+                .environment(\.theme, themeStore.current)
+                .preferredColorScheme(themeStore.current.colorScheme)
+        }
         .sheet(isPresented: $showsSettings) {
             SettingsView()
                 .environmentObject(themeStore)
@@ -115,6 +133,9 @@ struct WorkoutView: View {
 
     private var topBar: some View {
         HStack(spacing: 8) {
+            if model.phase == .ready || model.phase == .finished {
+                IconButton(systemImage: "chart.bar.fill", color: theme.dim) { showsHistory = true }
+            }
             if model.phase == .ready {
                 Spacer()
             } else {
@@ -679,43 +700,56 @@ private struct SignalTrace: View {
 
 // MARK: - Fin de séance
 
-/// Le total dans le cadran, l'histogramme des séries, trois mesures, et « Nouvelle séance ».
+/// Le total dans le cadran, l'écart avec la séance précédente et les records battus, les séries
+/// (une touche sur une barre pour corriger son compte), quatre mesures, et « Nouvelle séance ».
 private struct SessionSummary: View {
     @Environment(\.theme) private var theme
     @ObservedObject var model: WorkoutModel
+    /// La séance enregistrée (nil si aucune répétition).
+    let record: SessionRecord?
+    @Query(sort: \SessionRecord.start, order: .reverse) private var history: [SessionRecord]
+    @State private var editing: Int?
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 14) {
             Spacer(minLength: 0)
             Dial(face: DialFace(lit: DialFace.tickCount, palette: .gradient)) { side in
                 VStack(spacing: 6) {
-                    Text("\(model.totalReps)")
-                        .font(theme.font(side * 0.42, .bold))
+                    Text("\(total)")
+                        .font(theme.font(side * 0.4, .bold))
                         .tracking(-side * 0.01)
                         .foregroundStyle(LinearGradient(colors: [theme.secondary, theme.primary],
                                                         startPoint: .leading, endPoint: .trailing))
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.4)
+                        .contentTransition(.numericText())
                     MonitorLabel("\(model.exercise.shortTitle) · répétitions")
                 }
                 .padding(side * 0.14)
             }
-            .frame(maxWidth: 270)
+            .frame(maxWidth: 236)
 
-            if model.sets.isEmpty {
-                MonitorLabel("Aucune série comptée")
+            if let record {
+                highlights(record)
+                SetBars(sets: record.orderedSets.map(\.reps), recordIndex: recordSetIndex(record), editing: editing) { index in
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { editing = editing == index ? nil : index }
+                }
+                .frame(height: 100)
+                corrector(record)
             } else {
-                SetBars(sets: model.sets)
-                    .frame(height: 118)
+                MonitorLabel("Aucune série comptée")
             }
 
             HStack {
                 summaryStat("Durée", Format.clock(model.sessionDuration))
-                summaryStat("Moyenne", averagePerSet, unit: "/série")
-                summaryStat("Cadence", averageCadence, unit: "s/rep")
+                summaryStat("Moyenne", record?.averagePerSet.map { Format.decimal($0) } ?? "—", unit: "/série")
+                summaryStat("Cadence", record?.cadence.map { Format.decimal($0) } ?? "—", unit: "s")
+                summaryStat("Fatigue", record?.fatigue.map { Format.percent($0) } ?? "—", unit: "%",
+                            color: (record?.fatigue ?? 0) < 0 ? theme.warn : theme.text)
             }
-            .padding(.top, 14)
+            .padding(.top, 12)
             .overlay(alignment: .top) { Rectangle().fill(theme.line).frame(height: 1) }
             Spacer(minLength: 0)
 
@@ -724,13 +758,107 @@ private struct SessionSummary: View {
         }
     }
 
-    private func summaryStat(_ label: String, _ value: String, unit: String? = nil) -> some View {
+    private var total: Int { record?.totalReps ?? model.totalReps }
+
+    /// Séances précédentes du même exercice.
+    private func earlier(_ record: SessionRecord) -> [SessionRecord] {
+        history.filter { $0.exercise == record.exercise && $0.start < record.start }
+    }
+
+    /// Série qui bat le record de série de l'exercice (la meilleure de la séance), s'il y en a un.
+    private func recordSetIndex(_ record: SessionRecord) -> Int? {
+        let before = earlier(record)
+        guard let previousBest = before.map(\.bestSet).max(), record.bestSet > previousBest else { return nil }
+        return record.orderedSets.firstIndex { $0.reps == record.bestSet }
+    }
+
+    /// Pastilles : écart avec la séance précédente, record battu.
+    @ViewBuilder
+    private func highlights(_ record: SessionRecord) -> some View {
+        let before = earlier(record)
+        HStack(spacing: 10) {
+            if let previous = before.first {
+                let delta = record.totalReps - previous.totalReps
+                pill(delta >= 0 ? "▲ +\(delta) vs \(Format.dayName(previous.start))" : "▼ \(delta) vs \(Format.dayName(previous.start))",
+                     color: delta >= 0 ? theme.ok : theme.dim)
+            } else {
+                pill("Première séance", color: theme.primary)
+            }
+            if let best = before.map(\.totalReps).max(), record.totalReps > best {
+                pill("Record de séance", color: theme.warn, star: true)
+            } else if recordSetIndex(record) != nil {
+                pill("Record de série", color: theme.warn, star: true)
+            }
+        }
+    }
+
+    private func pill(_ text: String, color: Color, star: Bool = false) -> some View {
+        HStack(spacing: 5) {
+            if star { Image(systemName: "star.fill").font(.system(size: 10, weight: .bold)) }
+            Text(text)
+        }
+        .font(theme.font(12, .bold))
+        .foregroundStyle(color)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(color.opacity(0.12), in: Capsule())
+    }
+
+    /// Correction du compte d'une série, ou l'invitation à le faire.
+    @ViewBuilder
+    private func corrector(_ record: SessionRecord) -> some View {
+        let sets = record.orderedSets
+        if let editing, editing < sets.count {
+            let set = sets[editing]
+            HStack(spacing: 14) {
+                MonitorLabel("Série \(String(format: "%02d", editing + 1))", color: theme.text)
+                stepButton("minus") { set.reps = max(0, set.reps - 1) }
+                Text("\(set.reps)")
+                    .font(theme.font(22, .bold))
+                    .foregroundStyle(theme.text)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .frame(minWidth: 34)
+                stepButton("plus") { set.reps += 1 }
+                Text("compté : \(set.countedReps)")
+                    .font(theme.font(11))
+                    .foregroundStyle(theme.dim)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+        } else {
+            Text("Touche une série pour corriger son compte.")
+                .font(theme.font(11))
+                .foregroundStyle(theme.dim)
+                .transition(.opacity)
+        }
+    }
+
+    private func stepButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { action() }
+        } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(theme.text)
+                .frame(width: 36, height: 36)
+                .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+        }
+    }
+
+    private func summaryStat(_ label: String, _ value: String, unit: String? = nil, color: Color? = nil) -> some View {
         VStack(spacing: 4) {
             MonitorLabel(label)
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(value)
-                    .font(theme.font(20, .semibold))
-                    .foregroundStyle(theme.text)
+                    .font(theme.font(18, .semibold))
+                    .foregroundStyle(color ?? theme.text)
                     .monospacedDigit()
                 if let unit {
                     Text(unit)
@@ -743,48 +871,48 @@ private struct SessionSummary: View {
         }
         .frame(maxWidth: .infinity)
     }
-
-    private var averagePerSet: String {
-        guard !model.sets.isEmpty else { return "—" }
-        return String(format: "%.1f", Double(model.totalReps) / Double(model.sets.count))
-    }
-
-    private var averageCadence: String {
-        let cadences = model.sets.compactMap(\.cadence)
-        guard !cadences.isEmpty else { return "—" }
-        return String(format: "%.1f", cadences.reduce(0, +) / Double(cadences.count))
-    }
 }
 
 /// Histogramme des séries : une barre par série, sans défilement (les libellés s'effacent
-/// quand les séries sont trop nombreuses pour les lire).
-private struct SetBars: View {
+/// quand les séries sont trop nombreuses pour les lire). Une touche sur une barre la sélectionne.
+struct SetBars: View {
     @Environment(\.theme) private var theme
-    let sets: [WorkoutSet]
+    let sets: [Int]
+    var recordIndex: Int? = nil
+    var editing: Int? = nil
+    var onSelect: ((Int) -> Void)? = nil
 
     var body: some View {
-        let most = max(sets.map(\.reps).max() ?? 1, 1)
+        let most = max(sets.max() ?? 1, 1)
         HStack(alignment: .bottom, spacing: sets.count > 12 ? 4 : 10) {
-            ForEach(sets) { set in
+            ForEach(Array(sets.enumerated()), id: \.offset) { index, reps in
+                let selected = index == editing, record = index == recordIndex
                 VStack(spacing: 6) {
                     if sets.count <= 12 {
-                        Text("\(set.reps)")
-                            .font(theme.font(13, .bold))
-                            .foregroundStyle(theme.text)
+                        HStack(spacing: 2) {
+                            if record { Image(systemName: "star.fill").font(.system(size: 8, weight: .bold)) }
+                            Text("\(reps)").contentTransition(.numericText())
+                        }
+                        .font(theme.font(13, .bold))
+                        .foregroundStyle(record ? theme.warn : theme.text)
                     }
                     UnevenBar(radius: min(theme.radius, 4))
-                        .fill(LinearGradient(colors: [theme.primary, theme.secondary.opacity(0.85)],
-                                             startPoint: .top, endPoint: .bottom))
+                        .fill(selected
+                              ? AnyShapeStyle(theme.text)
+                              : AnyShapeStyle(LinearGradient(colors: [theme.primary, theme.secondary.opacity(0.85)],
+                                                             startPoint: .top, endPoint: .bottom)))
                         .frame(maxWidth: 38)
-                        .frame(height: 70 * CGFloat(set.reps) / CGFloat(most))
+                        .frame(height: max(2, 64 * CGFloat(reps) / CGFloat(most)))
                         .shadow(color: theme.primary.opacity(0.3 * min(theme.glow, 1)), radius: 8)
                     if sets.count <= 10 {
-                        Text(String(format: "S%02d", set.number))
+                        Text(String(format: "S%02d", index + 1))
                             .font(theme.font(10))
-                            .foregroundStyle(theme.dim)
+                            .foregroundStyle(selected ? theme.text : theme.dim)
                     }
                 }
                 .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture { onSelect?(index) }
             }
         }
         .frame(maxHeight: .infinity, alignment: .bottom)
@@ -792,7 +920,7 @@ private struct SetBars: View {
 }
 
 /// Barre arrondie en haut seulement.
-private struct UnevenBar: Shape {
+struct UnevenBar: Shape {
     let radius: CGFloat
 
     func path(in rect: CGRect) -> Path {

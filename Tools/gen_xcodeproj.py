@@ -4,7 +4,7 @@ Usage : python3 Tools/gen_xcodeproj.py — à relancer après l'ajout ou le retr
 """
 import os
 
-files = ["RepCounterApp.swift","Theme.swift","Audio.swift","ExerciseCarousel.swift","SettingsView.swift","ExerciseIcon.swift","WorkoutView.swift","WorkoutModel.swift","SessionRecorder.swift","Exercise.swift","AutoCounter.swift","SensorHub.swift","PoseFeatures.swift","SignalMath.swift"]
+files = ["RepCounterApp.swift","Theme.swift","Audio.swift","ExerciseCarousel.swift","History.swift","HistoryView.swift","SettingsView.swift","ExerciseIcon.swift","WorkoutView.swift","WorkoutModel.swift","SessionRecorder.swift","Exercise.swift","AutoCounter.swift","SensorHub.swift","PoseFeatures.swift","SignalMath.swift"]
 def i(p,n): return p + "0"*(23-len(str(n))) + str(n)
 fref = {f: i("F",k+1) for k,f in enumerate(files)}
 bf = {f: i("B",k+1) for k,f in enumerate(files)}
@@ -17,7 +17,7 @@ common = '''				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				SDKROOT = iphoneos;
 '''
 target = '''				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;

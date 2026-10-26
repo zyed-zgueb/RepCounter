@@ -1,6 +1,6 @@
 # Reps — compteur de répétitions
 
-App iOS (SwiftUI, iOS 16+, iPhone). L'app s'ouvre sur le cadran, réglé sur ton dernier
+App iOS (SwiftUI, iOS 17+, iPhone). L'app s'ouvre sur le cadran, réglé sur ton dernier
 exercice. Tu places le téléphone comme indiqué, tu touches Démarrer et tu fais tes répétitions :
 le compteur s'affiche à la 3e et continue seul, avec un retour sonore bref et feutré.
 
@@ -31,12 +31,28 @@ Réglages. Pas de défilement.
    anciennes). La série suivante démarre dès que tu reprends, sans toucher l'écran.
 5. **Annuler série** annule la série en cours (ou la dernière, pendant la récupération).
    **Terminer se maintient** 0,8 s (une jauge se remplit) : pas de fin de séance par erreur.
-6. **Fin** : le total dans le cadran, l'histogramme des séries, durée, moyenne et cadence,
-   puis « Nouvelle séance ».
+6. **Fin** : le total dans le cadran, l'écart avec la séance précédente (« ▲ +6 vs jeudi 22 »)
+   et le record battu, l'histogramme des séries (étoile sur la série record), durée, moyenne,
+   cadence et fatigue (écart entre la dernière et la première série). **Toucher une série
+   permet de corriger son compte** (− / +, avec le compte d'origine). Puis « Nouvelle séance ».
 
+- **Historique** (icône graphique, en veille et à la fin) : Σ (tous les exercices) ou un
+  exercice, puis la semaine en cours (cadran, écart avec la semaine précédente, séances, temps,
+  semaines d'affilée), les records (série, séance, semaine ; en orange quand ils datent de la
+  semaine), le volume sur 12 semaines avec sa moyenne, la progression (moyenne par série,
+  cadence, fatigue), la régularité sur 16 semaines (un carré par jour) et la liste des séances.
+  Une séance s'ouvre sur son détail : séries, récupérations et rythme rep par rep ; un appui
+  long la supprime.
 - **Réglages** (roue dentée, en veille et à la fin) : retour sonore, thème, mode analyse.
 - **Mode analyse** : ajoute à la séance l'enregistrement ●, le diagnostic des capteurs et
   la régularité du signal. Désactivé par défaut.
+
+## Historique
+Chaque séance terminée est enregistrée sur l'iPhone (SwiftData, `History.swift`) avec ses séries
+et l'instant de chaque répétition : toute statistique future pourra être calculée sur les
+séances passées. Le modèle suit les règles de CloudKit (valeurs par défaut, relations
+optionnelles) : la synchronisation iCloud pourra être activée sans migration. Les statistiques
+sont calculées dans `HistoryStats`, les écrans sont dans `HistoryView.swift`.
 
 ## Thèmes
 Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis, lueur,

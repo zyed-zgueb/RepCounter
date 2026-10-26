@@ -56,6 +56,10 @@ struct WorkoutSet: Identifiable {
     let duration: TimeInterval
     /// Durée d'une répétition (s).
     let cadence: Double?
+    /// Première répétition.
+    let start: Date
+    /// Instant de chaque répétition, en secondes depuis la première (rythme rep par rep).
+    let repTimes: [TimeInterval]
 }
 
 /// Séance : prêt → compte à rebours → séries et récupérations automatiques → résumé.
@@ -127,6 +131,8 @@ final class WorkoutModel: ObservableObject {
     private var counterTotal = 0
     private var setBase = 0
     private var setStart: Date?
+    /// Instants des répétitions de la série en cours.
+    private var setRepDates: [Date] = []
     private var restAnnouncements = 0
     /// Remise à zéro demandée au compteur (démarrage, série annulée) : les mesures sont
     /// ignorées jusqu'à ce qu'il la confirme, pour ne pas compter avec l'ancien état.
@@ -246,6 +252,7 @@ final class WorkoutModel: ObservableObject {
             counterTotal = 0
             setBase = 0
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { setReps = 0 }
+            setRepDates = []
             state = .searching
             live.clearPhase()
             announcer.say("Série annulée")
@@ -285,10 +292,14 @@ final class WorkoutModel: ObservableObject {
     private func closeSet(announce: Bool) {
         let reps = setReps
         guard reps > 0 else { return }
-        let duration = max(0, (lastRepDate ?? Date()).timeIntervalSince(setStart ?? lastRepDate ?? Date()))
-        sets.append(WorkoutSet(number: sets.count + 1, reps: reps, duration: duration, cadence: cadence))
+        let start = setStart ?? setRepDates.first ?? Date()
+        let duration = max(0, (lastRepDate ?? Date()).timeIntervalSince(start))
+        let repTimes = setRepDates.prefix(reps).map { max(0, $0.timeIntervalSince(start)) }
+        sets.append(WorkoutSet(number: sets.count + 1, reps: reps, duration: duration, cadence: cadence,
+                               start: start, repTimes: repTimes))
         setBase = counterTotal
         setReps = 0
+        setRepDates = []
         restAnnouncements = 0
         if announce {
             announcer.play(.setEnd)
@@ -413,9 +424,15 @@ final class WorkoutModel: ObservableObject {
             let reps = max(0, output.count - setBase)
             let started = state != .counting
             if started {
-                // Nouvelle série : ses premières répétitions viennent d'être rattrapées
-                setStart = Date().addingTimeInterval(-Double(max(reps - 1, 0)) * (output.cadence ?? 2))
+                // Nouvelle série : ses premières répétitions viennent d'être rattrapées ; leurs
+                // instants sont reconstitués à la cadence mesurée
+                let cadence = output.cadence ?? 2
+                let start = Date().addingTimeInterval(-Double(max(reps - 1, 0)) * cadence)
+                setStart = start
+                setRepDates = (0..<reps).map { start.addingTimeInterval(Double($0) * cadence) }
                 restAnnouncements = 0
+            } else {
+                while setRepDates.count < reps { setRepDates.append(Date()) }
             }
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { setReps = reps }
             lastRepDate = Date()
