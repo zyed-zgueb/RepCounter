@@ -3,13 +3,13 @@ import Foundation
 /// Exercice choisi par l'utilisateur : où est le téléphone, quels capteurs écouter.
 /// Mêmes profils que `PROFILES` dans Simulation/simulate_counter.py.
 enum Exercise: String, CaseIterable, Identifiable {
-    case auto, pushups, crunches, squats, curls, press
+    case pushups, crunches, squats, curls, press, auto
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .auto: return "Auto"
+        case .auto: return "Autre exercice"
         case .pushups: return "Pompes"
         case .crunches: return "Abdos"
         case .squats: return "Squats"
@@ -21,7 +21,7 @@ enum Exercise: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .auto: return "sparkles"
-        case .pushups: return "figure.core.training"
+        case .pushups: return "figure.cross.training"
         case .crunches: return "figure.core.training"
         case .squats: return "figure.strengthtraining.functional"
         case .curls: return "dumbbell.fill"
@@ -32,7 +32,7 @@ enum Exercise: String, CaseIterable, Identifiable {
     /// Où mettre le téléphone.
     var placement: String {
         switch self {
-        case .auto: return "Téléphone posé face à toi, ou porté sur toi."
+        case .auto: return "Téléphone posé face à toi ou porté sur toi ; l'app cherche le geste répété."
         case .pushups: return "Téléphone au sol, écran vers le haut, sous ta tête."
         case .crunches: return "Téléphone tenu à plat contre la poitrine."
         case .squats: return "Téléphone tenu à la main ou contre la poitrine."
@@ -53,6 +53,11 @@ enum Exercise: String, CaseIterable, Identifiable {
         case .curls: return [.motion, .rotation]
         case .press: return [.vertical, .motion]
         }
+    }
+
+    /// La caméra n'est allumée que si l'exercice en a besoin.
+    var usesCamera: Bool {
+        !Set(sources).isDisjoint(with: [.depth, .pixels, .face, .pose])
     }
 
     /// Écart maximal entre deux répétitions (s).

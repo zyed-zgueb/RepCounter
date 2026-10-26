@@ -4,7 +4,7 @@ import SwiftUI
 struct RepCounterApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeView()
         }
     }
 }

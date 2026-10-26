@@ -67,6 +67,11 @@ final class SignalTracker {
     /// Écart max − min du signal pendant chaque cycle.
     private(set) var cycleSwings: [Float] = []
     private(set) var phase: Float = 0
+    /// Position du signal pour l'affichage (0…1), même sous le seuil : un petit mouvement
+    /// donne une petite oscillation, un mouvement net une oscillation complète.
+    private(set) var displayValue: Float = 0.5
+    /// Amplitude rapportée au seuil : ≥ 1 quand le mouvement est assez net pour compter.
+    var strength: Float { amplitude / source.minAmplitude }
     private(set) var amplitude: Float = 0
     /// Dernière note de régularité calculée (diagnostic).
     private(set) var lastRegularity: Float = 0
@@ -123,12 +128,15 @@ final class SignalTracker {
         let recent = signal[recentStart...]
         let low = percentile(recent, 0.05)
         amplitude = percentile(recent, 0.95) - low
+        let current = signal[signal.count - 1]
+        let scale = max(amplitude, source.minAmplitude)
+        displayValue = min(max(0.5 + (current - (low + amplitude / 2)) / scale, 0), 1)
         guard amplitude >= source.minAmplitude else {
             phase = 0
             return false
         }
 
-        let n = (signal[signal.count - 1] - low) / amplitude
+        let n = (current - low) / amplitude
         phase = min(max(n, 0), 1)
         if !isHigh, n > Tuning.highThreshold {
             isHigh = true
@@ -245,6 +253,10 @@ final class AutoCounter {
         var state: State
         var source: SignalSource?
         var diagnostics: [SourceDiagnostic]
+        /// Pour l'affichage en direct : position du signal suivi (0…1) et netteté du
+        /// mouvement (amplitude / seuil, ≥ 1 : assez net pour compter).
+        var liveValue: Float
+        var liveStrength: Float
     }
 
     let exercise: Exercise
@@ -308,8 +320,12 @@ final class AutoCounter {
         let state: State = leader != nil ? .counting : (count == 0 ? .searching : .resting)
         let phase = leader.flatMap { trackers[$0]?.phase } ?? 0
         let diagnostics = exercise.sources.compactMap { trackers[$0]?.diagnostic }
+        // Signal affiché : la source qui compte, sinon celle qui bouge le plus
+        let shown = leader.flatMap { trackers[$0] }
+            ?? exercise.sources.compactMap { trackers[$0] }.max { $0.strength < $1.strength }
         return Output(count: count, phase: phase, didCount: didCount, state: state, source: leader,
-                      diagnostics: diagnostics)
+                      diagnostics: diagnostics,
+                      liveValue: shown?.displayValue ?? 0.5, liveStrength: shown?.strength ?? 0)
     }
 
     private func bestRegularSource(among sources: Set<SignalSource>, at t: Double) -> SignalSource? {

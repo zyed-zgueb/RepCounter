@@ -8,15 +8,17 @@ struct SensorFrame {
     var values: [SignalSource: [Float]]
 }
 
-/// Caméra avant (TrueDepth si disponible), Vision et CoreMotion.
+/// Caméra avant (TrueDepth si disponible), Vision et CoreMotion. Avec la caméra, chaque image
+/// vidéo produit une mesure ; sans caméra, c'est le capteur de mouvement qui cadence (30/s).
 final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureDepthDataOutputDelegate {
     let session = AVCaptureSession()
-    /// File série des mesures : `onFrame` y est appelé, `activeSources` doit y être modifié.
+    /// File série des mesures, sur laquelle `onFrame` est appelé.
     let queue = DispatchQueue(label: "repcounter.sensors", qos: .userInteractive)
 
     var onFrame: ((SensorFrame) -> Void)?
-    /// Sources calculées à chaque image : celles de l'exercice choisi.
-    var activeSources = Set(SignalSource.allCases)
+    /// Sources calculées à chaque mesure : celles de l'exercice.
+    let activeSources: Set<SignalSource>
+    private let usesCamera: Bool
 
     private let sessionQueue = DispatchQueue(label: "repcounter.session")
     private let videoOutput = AVCaptureVideoDataOutput()
@@ -27,15 +29,33 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
     private let poseExtractor = PoseFeatureExtractor()
     private var latestDepth: [Float]?
     private var lastDepthMean: Float = 0
+    private lazy var motionQueue: OperationQueue = {
+        let operationQueue = OperationQueue()
+        operationQueue.underlyingQueue = self.queue
+        return operationQueue
+    }()
+
+    init(sources: Set<SignalSource>) {
+        activeSources = sources
+        usesCamera = !sources.isDisjoint(with: [.depth, .pixels, .face, .pose])
+        super.init()
+    }
 
     func start() {
-        if motion.isDeviceMotionAvailable {
-            motion.deviceMotionUpdateInterval = 1.0 / 30
+        guard motion.isDeviceMotionAvailable || usesCamera else { return }
+        motion.deviceMotionUpdateInterval = 1.0 / 30
+        if usesCamera {
+            // Lu à chaque image vidéo
             motion.startDeviceMotionUpdates()
-        }
-        sessionQueue.async {
-            if self.session.inputs.isEmpty { self.configure() }
-            if !self.session.isRunning { self.session.startRunning() }
+            sessionQueue.async {
+                if self.session.inputs.isEmpty { self.configure() }
+                if !self.session.isRunning { self.session.startRunning() }
+            }
+        } else {
+            motion.startDeviceMotionUpdates(to: motionQueue) { [weak self] deviceMotion, _ in
+                guard let self, let deviceMotion else { return }
+                self.onFrame?(SensorFrame(time: deviceMotion.timestamp, values: self.motionValues(deviceMotion)))
+            }
         }
     }
 
@@ -44,6 +64,19 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
         sessionQueue.async {
             if self.session.isRunning { self.session.stopRunning() }
         }
+    }
+
+    private func motionValues(_ deviceMotion: CMDeviceMotion) -> [SignalSource: [Float]] {
+        let gravity = deviceMotion.gravity
+        let acceleration = deviceMotion.userAcceleration
+        let rotation = deviceMotion.rotationRate
+        // Accélération le long de la verticale, quelle que soit l'orientation du téléphone
+        let vertical = acceleration.x * gravity.x + acceleration.y * gravity.y + acceleration.z * gravity.z
+        return [
+            .motion: [Float(gravity.x), Float(gravity.y), Float(gravity.z)],
+            .vertical: [Float(vertical)],
+            .rotation: [Float(rotation.x), Float(rotation.y), Float(rotation.z)],
+        ]
     }
 
     private func configure() {
@@ -132,14 +165,7 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
         if sources.contains(.depth), let depth = latestDepth { values[.depth] = depth }
         if sources.contains(.pixels), let thumbnail = thumbnail(pixelBuffer) { values[.pixels] = thumbnail }
         if let deviceMotion = motion.deviceMotion {
-            let gravity = deviceMotion.gravity
-            let acceleration = deviceMotion.userAcceleration
-            let rotation = deviceMotion.rotationRate
-            values[.motion] = [Float(gravity.x), Float(gravity.y), Float(gravity.z)]
-            // Accélération le long de la verticale, quelle que soit l'orientation du téléphone
-            let vertical = acceleration.x * gravity.x + acceleration.y * gravity.y + acceleration.z * gravity.z
-            values[.vertical] = [Float(vertical)]
-            values[.rotation] = [Float(rotation.x), Float(rotation.y), Float(rotation.z)]
+            values.merge(motionValues(deviceMotion)) { current, _ in current }
         }
 
         // Vision est le calcul le plus coûteux : seulement si l'exercice en a besoin

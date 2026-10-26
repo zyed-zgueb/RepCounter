@@ -1,8 +1,18 @@
 # Reps — compteur de répétitions
 
-App iOS (SwiftUI, iOS 16+, iPhone). Tu choisis l'exercice (ou « Auto »), tu places le
+App iOS (SwiftUI, iOS 16+, iPhone). Tu choisis l'exercice sur l'accueil, tu places le
 téléphone comme indiqué, tu fais tes répétitions : le compteur s'affiche à la 3e et
 continue seul, avec annonce vocale.
+
+## Écrans
+- **Accueil** : une carte par exercice (avec le placement du téléphone) et le réglage des
+  annonces vocales. La caméra est éteinte.
+- **Séance** : pas de vidéo. L'anneau et le grand chiffre, comme sur l'icône ; en dessous,
+  la courbe en direct de ce que capte l'app et une pastille : « J'attends ton mouvement »,
+  « Mouvement trop léger » (orange) ou « Je te capte » (bleu, avec un halo). La croix
+  revient à l'accueil ; toucher l'écran remet à zéro.
+- La caméra ne s'allume que pour les exercices qui en ont besoin (Pompes, Autre exercice).
+  Abdos, squats, biceps et développé n'utilisent que les capteurs de mouvement.
 
 ## Lancer
 1. Ouvrir `RepCounter.xcodeproj` dans Xcode 15 ou plus récent.
@@ -11,11 +21,11 @@ continue seul, avec annonce vocale.
 3. Brancher l'iPhone et lancer (⌘R). Il faut un vrai iPhone (caméra TrueDepth).
 
 ## Exercices
-Le menu en haut de l'écran choisit l'exercice ; il fixe les capteurs écoutés.
+Chaque exercice fixe les capteurs écoutés.
 
 | Exercice | Téléphone | Capteurs |
 |---|---|---|
-| Auto | posé face à toi, ou porté | tous, le plus régulier l'emporte |
+| Autre exercice | posé face à toi, ou porté | tous, le plus régulier l'emporte |
 | Pompes | au sol, écran vers le haut, sous ta tête | profondeur, visage, image |
 | Abdos | à plat contre la poitrine | gyroscope (vitesse de rotation) |
 | Squats | à la main ou contre la poitrine | accélération verticale, inclinaison |
@@ -31,7 +41,7 @@ En série, un cycle plus faible que 40 % des répétitions précédentes ne comp
 suite marquent la fin de la série. Ça évite de compter l'essoufflement après des abdos.
 
 ## Diagnostic
-Le bouton en haut à gauche (tracé de pouls) affiche ce que voit l'app : images par seconde
+Pendant la séance, le bouton tracé de pouls affiche ce que voit l'app : mesures par seconde
 (en orange sous 20) et, pour chaque capteur, l'amplitude du mouvement par rapport au seuil
 (il faut ≥ 100 %), les cycles détectés et la note de régularité (il faut ≥ 0,60 pour que le
 compteur démarre). Une capture de cet écran pendant un exercice qui ne compte pas suffit
@@ -40,7 +50,7 @@ compteur démarre). Une capture de cet écran pendant un exercice qui ne compte 
 Touche l'écran pour remettre à zéro. Après une pause, la série suivante s'ajoute au total.
 
 ## Retour sonore
-Le bouton en haut à droite choisit la fréquence des annonces vocales : **chaque rep**,
+L'accueil (et le bouton haut-parleur de la séance) choisit la fréquence des annonces vocales : **chaque rep**,
 **toutes les 5** ou **toutes les 10**. Les répétitions non annoncées font un bip court.
 Le premier nombre est toujours dit (le comptage a démarré) et une pause est annoncée
 avec le total (« Pause. Total : 18 »). Le son fonctionne en mode silencieux et se mélange

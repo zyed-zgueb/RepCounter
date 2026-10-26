@@ -52,48 +52,78 @@ final class Announcer {
     }
 }
 
-final class WorkoutModel: ObservableObject {
-    @Published private(set) var count = 0
+/// Ce qui change à chaque mesure (30 fois par seconde). Seuls l'anneau et la courbe
+/// l'observent : le reste de l'écran, et ses boutons, ne sont pas redessinés en continu.
+final class LiveSignal: ObservableObject {
+    static let sampleCount = 90   // 3 s de courbe
+
+    /// Avancement dans la répétition en cours (anneau).
     @Published private(set) var phase: Float = 0
+    /// Position récente du signal suivi, 0…1 (courbe).
+    @Published private(set) var samples = [Float](repeating: 0.5, count: LiveSignal.sampleCount)
+    /// Netteté du mouvement : ≥ 1 quand il est assez net pour compter.
+    @Published private(set) var strength: Float = 0
+
+    func push(phase: Float, value: Float, strength: Float) {
+        self.phase = phase
+        self.strength = strength
+        samples.removeFirst()
+        samples.append(value)
+    }
+
+    func clearPhase() {
+        phase = 0
+    }
+}
+
+final class WorkoutModel: ObservableObject {
+    /// Ce que l'app perçoit de toi, pour l'indicateur sous le compteur.
+    enum Presence { case absent, weak, clear }
+
+    let exercise: Exercise
+    let live = LiveSignal()
+
+    @Published private(set) var count = 0
     @Published private(set) var state: AutoCounter.State = .searching
     @Published private(set) var source: SignalSource?
+    @Published private(set) var presence = Presence.absent
     @Published private(set) var repPulse = 0
     @Published private(set) var cameraDenied = false
-    /// Écran de diagnostic : images par seconde et état de chaque capteur.
+    /// Écran de diagnostic : mesures par seconde et état de chaque capteur.
     @Published var showsDiagnostics = false
     @Published private(set) var framesPerSecond: Double = 0
     @Published private(set) var diagnostics: [SourceDiagnostic] = []
     /// Annonce vocale toutes les N répétitions (1, 5 ou 10) ; bip pour les autres.
-    @Published var announceEvery = 1 {
-        didSet { UserDefaults.standard.set(announceEvery, forKey: "announceEvery") }
+    @Published var announceEvery: Int {
+        didSet { UserDefaults.standard.set(announceEvery, forKey: Self.announceEveryKey) }
     }
+    static let announceEveryKey = "announceEvery"
     static let announceChoices = [1, 5, 10]
-    /// Exercice choisi : capteurs écoutés et placement du téléphone.
-    @Published var exercise = Exercise.auto {
-        didSet {
-            UserDefaults.standard.set(exercise.rawValue, forKey: "exercise")
-            apply(exercise)
-        }
-    }
 
-    let sensors = SensorHub()
-    private var counter = AutoCounter(exercise: .auto)   // utilisé uniquement sur sensors.queue
+    let sensors: SensorHub
+    private let counter: AutoCounter   // utilisé uniquement sur sensors.queue
     private let announcer = Announcer()
     private let haptic = UIImpactFeedbackGenerator(style: .heavy)
-    // Mesure du débit d'images (sensors.queue)
+    // Sur sensors.queue : débit des mesures et netteté lissée (évite que l'indicateur clignote)
     private var frameTimes: [Double] = []
     private var frameIndex = 0
+    private var smoothedStrength: Float = 0
 
-    init() {
-        let saved = UserDefaults.standard.integer(forKey: "announceEvery")
+    init(exercise: Exercise) {
+        self.exercise = exercise
+        sensors = SensorHub(sources: Set(exercise.sources))
+        counter = AutoCounter(exercise: exercise)
+        let saved = UserDefaults.standard.integer(forKey: Self.announceEveryKey)
         announceEvery = Self.announceChoices.contains(saved) ? saved : 1
-        exercise = UserDefaults.standard.string(forKey: "exercise").flatMap(Exercise.init(rawValue:)) ?? .auto
         sensors.onFrame = { [weak self] frame in self?.handle(frame) }
-        apply(exercise)   // didSet n'est pas appelé pendant l'init
     }
 
     func start() {
         UIApplication.shared.isIdleTimerDisabled = true
+        guard exercise.usesCamera else {
+            sensors.start()
+            return
+        }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             sensors.start()
@@ -118,23 +148,10 @@ final class WorkoutModel: ObservableObject {
         announceEvery = Self.announceChoices[(index + 1) % Self.announceChoices.count]
     }
 
-    /// Nouveau compteur pour l'exercice ; seuls ses capteurs restent calculés.
-    private func apply(_ exercise: Exercise) {
-        sensors.queue.async {
-            self.counter = AutoCounter(exercise: exercise)
-            self.sensors.activeSources = Set(exercise.sources)
-        }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { count = 0 }
-        phase = 0
-        state = .searching
-        source = nil
-        diagnostics = []
-    }
-
     func reset() {
         sensors.queue.async { self.counter.reset() }
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { count = 0 }
-        phase = 0
+        live.clearPhase()
     }
 
     // Appelé sur sensors.queue
@@ -143,17 +160,22 @@ final class WorkoutModel: ObservableObject {
         frameTimes.append(frame.time)
         if frameTimes.count > 30 { frameTimes.removeFirst(frameTimes.count - 30) }
         frameIndex += 1
+        smoothedStrength += 0.1 * (output.liveStrength - smoothedStrength)
+        let presence: Presence = smoothedStrength >= 1 ? .clear : (smoothedStrength >= 0.3 ? .weak : .absent)
+
         // Diagnostic rafraîchi 3 fois par seconde environ
         if frameIndex % 10 == 0, let first = frameTimes.first, let last = frameTimes.last, last > first {
             let fps = Double(frameTimes.count - 1) / (last - first)
             let diagnostics = output.diagnostics
             DispatchQueue.main.async {
                 self.framesPerSecond = fps
-                self.diagnostics = diagnostics
+                if self.showsDiagnostics { self.diagnostics = diagnostics }
             }
         }
         DispatchQueue.main.async {
-            self.phase = output.phase
+            self.live.push(phase: output.phase, value: output.liveValue, strength: output.liveStrength)
+            // Les propriétés suivantes ne sont publiées que quand elles changent
+            if self.presence != presence { self.presence = presence }
             if output.count != self.count {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { self.count = output.count }
             }
