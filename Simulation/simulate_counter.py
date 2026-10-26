@@ -410,7 +410,7 @@ class AutoCounter:
 # --- Capteurs synthétiques ---------------------------------------------------------------------
 
 def depth_reading(distance, coverage):
-    """Moitié centrale de l'image vue par la caméra TrueDepth, téléphone au sol sous la tête.
+    """Moitié centrale de l'image vue par la caméra TrueDepth, téléphone au sol, au niveau de la tête.
     Le corps, à `distance` (m), couvre `coverage` de la zone ; ses parties s'étalent sur
     25 cm de profondeur. Sous 20 cm, TrueDepth ne mesure plus rien, et le plafond est hors
     de portée. Renvoie (distance moyenne des pixels mesurables ou None, part mesurable) :
@@ -428,7 +428,7 @@ def synthetic_session(kind, segments, seed, pixel_count=192, fps=30):
     ("setup", durée) = installation au-dessus du téléphone posé (pompes).
     kind : "pushup" (téléphone au sol), "abs" (sur la poitrine, grands abdos),
     "crunch" (sur la poitrine, petits abdos rapides : seules les épaules décollent),
-    "squat" (à la main), "curl" (dans la main qui travaille)."""
+    "squat" (à la main), "curl" (brassard sur l'avant-bras qui travaille)."""
     rng = np.random.default_rng(seed)
     pixel_base = rng.uniform(0.2, 0.8, pixel_count)
     frames, t = [], 0.0
@@ -445,7 +445,7 @@ def synthetic_session(kind, segments, seed, pixel_count=192, fps=30):
             m = 0.5 * (1 - math.cos(2 * math.pi * tt / period)) if kind_of_segment == "rep" else 0.0
             values = {}
             if kind == "pushup":
-                # Téléphone au sol sous la tête : distance (pompe : 50 → 12 cm), part du champ
+                # Téléphone au sol, au niveau de la tête : distance (pompe : 50 → 12 cm), part du champ
                 # couverte par le corps, assombrissement de l'image, visage, téléphone immobile
                 coverage = 1.0
                 if walking:
@@ -475,7 +475,7 @@ def synthetic_session(kind, segments, seed, pixel_count=192, fps=30):
                 vertical = -0.2 * w * w * math.cos(w * tt) / 9.81 if kind_of_segment == "rep" else 0.0
                 values["vertical"] = np.array([vertical + rng.normal(0, 0.5 if walking else 0.02)])
             elif kind == "curl":
-                # Téléphone dans la main qui travaille : il pivote avec l'avant-bras
+                # Téléphone dans un brassard sur l'avant-bras qui travaille : il pivote avec lui
                 angle = rng.uniform(0, 3) if walking else math.radians(10 + 120 * m)
                 values["vertical"] = np.array([rng.normal(0, 0.5 if walking else 0.03)])
             elif kind == "crunch":
@@ -543,7 +543,7 @@ SCENARIOS = [
      [("rest", 30), ("pant", 30)], 0, "crunches"),
     ("[Squats] 10 squats, téléphone à la main", "squat",
      [("walk", 3), ("rest", 2), ("rep", 10 * 2.5, 2.5), ("rest", 3)], 10, "squats"),
-    ("[Biceps] 12 flexions, téléphone dans la main qui travaille", "curl",
+    ("[Biceps] 12 flexions, téléphone en brassard sur l'avant-bras", "curl",
      [("walk", 3), ("rest", 2), ("rep", 12 * 2.0, 2.0), ("rest", 3)], 12, "curls"),
 ]
 

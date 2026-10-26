@@ -78,10 +78,10 @@ Chaque exercice fixe les capteurs écoutés.
 | Exercice | Téléphone | Capteurs |
 |---|---|---|
 | Autre exercice | posé face à toi, ou porté | tous, le plus régulier l'emporte |
-| Pompes | au sol, écran vers le haut, sous ta tête | profondeur, visage, image |
+| Pompes | au sol, écran vers le haut, au niveau de la tête | profondeur, visage, image |
 | Abdos | à plat contre la poitrine | gyroscope (vitesse de rotation) |
 | Squats | à la main ou contre la poitrine | accélération verticale, inclinaison |
-| Biceps | dans la main qui travaille | inclinaison, gyroscope |
+| Biceps | brassard sur l'avant-bras qui travaille, près du poignet | inclinaison, gyroscope |
 | Développé épaules | brassard sur l'avant-bras qui pousse | accélération verticale, inclinaison |
 
 Abdos : le gyroscope mesure la vitesse de rotation. Un petit basculement rapide des
