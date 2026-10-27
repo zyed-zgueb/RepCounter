@@ -25,9 +25,12 @@ struct RootView: View {
 
     @AppStorage(RootView.exerciseKey) private var exerciseID = Exercise.pushups.rawValue
     @AppStorage(Exercise.mineKey) private var mineValue = Exercise.defaultMineValue
-    @AppStorage(Exercise.armbandKey) private var hasArmband = false
+    @EnvironmentObject private var themeStore: ThemeStore
     /// L'écran du nouvel exercice démarre sa séance dès son affichage.
     @State private var startsSession = false
+    @State private var showsSettings = false
+    /// Incrémenté pour recréer l'écran avec d'autres capteurs (brassard).
+    @State private var generation = 0
 
     private var mine: [Exercise] { Exercise.decode(mineValue) }
 
@@ -39,13 +42,22 @@ struct RootView: View {
     var body: some View {
         // Un écran par exercice : changer d'exercice arrête ses capteurs et démarre ceux du suivant.
         // Le nouvel écran s'affiche à l'identique (même exercice dans le cadran) : pas de transition.
-        WorkoutView(exercise: exercise, exercises: mine, startsSession: startsSession) { selected, start in
+        WorkoutView(exercise: exercise, exercises: mine, startsSession: startsSession,
+                    onOpenSettings: { showsSettings = true },
+                    onRebuild: { startsSession = false; generation += 1 }) { selected, start in
             startsSession = start
             exerciseID = selected.rawValue
         }
-            // Brassard déclaré ou retiré : l'écran d'un exercice de bras change de capteurs
-            .id(exercise.isArmExercise ? "\(exercise.rawValue).\(hasArmband)" : exercise.rawValue)
+            .id("\(exercise.rawValue).\(generation)")
             .transition(.identity)
             .statusBarHidden()
+            // Présentés ici, au-dessus de l'écran d'entraînement : recréer celui-ci (brassard,
+            // exercice retiré de Mes exercices) ne referme pas les Réglages
+            .sheet(isPresented: $showsSettings) {
+                SettingsView()
+                    .environmentObject(themeStore)
+                    .environment(\.theme, themeStore.current)
+                    .preferredColorScheme(themeStore.current.colorScheme)
+            }
     }
 }

@@ -12,7 +12,6 @@ struct WorkoutView: View {
     @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
     @AppStorage(Exercise.armbandKey) private var hasArmband = false
     @State private var bump = false
-    @State private var showsSettings = false
     @State private var showsHistory = false
     /// La séance terminée, enregistrée dans l'historique.
     @State private var record: SessionRecord?
@@ -23,6 +22,8 @@ struct WorkoutView: View {
     @State private var loadKind: LoadKind
     @State private var pendingSelection: DispatchWorkItem?
     @State private var autoStarted = false
+    /// Brassard déclaré quand l'écran a été créé (ses capteurs en dépendent).
+    @State private var builtWithArmband = Exercise.hasArmband
     /// Adopte un autre exercice : l'écran est recréé avec ses capteurs.
     /// Le second paramètre demande de démarrer la séance aussitôt (Démarrer touché en glissant).
     let onSelectExercise: (Exercise, Bool) -> Void
@@ -30,12 +31,18 @@ struct WorkoutView: View {
     let startsSession: Bool
     /// Les exercices du cadran (Mes exercices), dans l'ordre.
     let exercises: [Exercise]
+    /// Ouvre les Réglages. Ils sont présentés au-dessus de cet écran, pas par lui : un réglage
+    /// qui recrée l'écran (brassard, exercice retiré) ne les referme pas.
+    let onOpenSettings: () -> Void
+    /// Demande à recréer l'écran : ses capteurs ne correspondent plus au réglage du brassard.
+    let onRebuild: () -> Void
 
     /// Délai sans geste avant d'adopter l'exercice affiché : passer vite de Pompes à Biceps
     /// n'allume pas et n'éteint pas la caméra à chaque étape.
     private static let selectionDelay = 0.4
 
     init(exercise: Exercise, exercises: [Exercise], startsSession: Bool = false,
+         onOpenSettings: @escaping () -> Void, onRebuild: @escaping () -> Void,
          onSelectExercise: @escaping (Exercise, Bool) -> Void) {
         _model = StateObject(wrappedValue: WorkoutModel(exercise: exercise))
         _browsing = State(initialValue: exercise)
@@ -44,6 +51,8 @@ struct WorkoutView: View {
         self.onSelectExercise = onSelectExercise
         self.startsSession = startsSession
         self.exercises = exercises
+        self.onOpenSettings = onOpenSettings
+        self.onRebuild = onRebuild
     }
 
     var body: some View {
@@ -107,19 +116,23 @@ struct WorkoutView: View {
                 record = SessionRecord.save(model, load: model.exercise.load, loadKind: model.exercise.loadKind, in: modelContext)
             } else if phase == .ready {
                 record = nil
+                rebuildIfNeeded()
             }
         }
+        .onChange(of: hasArmband) { _ in rebuildIfNeeded() }
         .sheet(isPresented: $showsHistory) {
             HistoryView(exercise: model.exercise)
                 .environment(\.theme, themeStore.current)
                 .preferredColorScheme(themeStore.current.colorScheme)
         }
-        .sheet(isPresented: $showsSettings) {
-            SettingsView()
-                .environmentObject(themeStore)
-                .environment(\.theme, themeStore.current)
-                .preferredColorScheme(themeStore.current.colorScheme)
-        }
+    }
+
+    /// Brassard déclaré ou retiré pour un exercice de bras : l'écran est recréé avec les bons
+    /// capteurs, mais seulement en veille. Une séance en cours ou terminée (son résumé) reste
+    /// affichée ; le changement s'applique à la nouvelle séance.
+    private func rebuildIfNeeded() {
+        guard model.exercise.isArmExercise, hasArmband != builtWithArmband, model.phase == .ready else { return }
+        onRebuild()
     }
 
     // MARK: - Fond
@@ -172,7 +185,7 @@ struct WorkoutView: View {
                            highlighted: model.showsDiagnostics) { model.showsDiagnostics.toggle() }
             }
             if model.phase == .ready || model.phase == .finished {
-                IconButton(systemImage: "gearshape", color: theme.dim) { showsSettings = true }
+                IconButton(systemImage: "gearshape", color: theme.dim) { onOpenSettings() }
             }
         }
         .frame(height: 44)
