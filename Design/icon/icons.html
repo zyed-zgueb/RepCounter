@@ -1,0 +1,52 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#1c1c1e;font-family:Inter,sans-serif;color:#ddd}
+.row{display:flex;gap:40px;padding:30px 40px;align-items:flex-start}
+.cell{display:flex;flex-direction:column;align-items:center;gap:14px}
+.cap{font:600 13px Inter;letter-spacing:1px;text-transform:uppercase;color:#aaa}
+.home{display:flex;gap:22px;padding:18px 26px;border-radius:26px;background:linear-gradient(135deg,#3a4a6b,#6b4a6b)}
+.home div{display:flex;flex-direction:column;align-items:center;gap:6px;font:500 11px Inter;color:#fff}
+</style></head><body><div id="root"></div><script>
+// Icônes en SVG 1024 × 1024, dans le langage du cadran de l'app
+const C = { bg1: "#0D1217", bg2: "#05080A", primary: "#3DC2FF", secondary: "#AB64FA", line: "#1E2A33", text: "#EAF4FA" };
+function mix(a, b, k) { const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const ch = s => Math.round(((pa >> s) & 255) * (1 - k) + ((pb >> s) & 255) * k); return `rgb(${ch(16)},${ch(8)},${ch(0)})`; }
+function ticks({ count, lit, outer, majorEvery, majorLen, minorLen, majorW, minorW, cx = 512 }) {
+  let s = "";
+  for (let i = 0; i < count; i++) {
+    const a = i / count * 2 * Math.PI - Math.PI / 2, major = i % majorEvery === 0;
+    const inner = outer - (major ? majorLen : minorLen);
+    const color = i < lit ? mix(C.secondary, C.primary, i / Math.max(lit - 1, 1)) : C.line;
+    s += `<line x1="${cx + Math.cos(a) * inner}" y1="${cx + Math.sin(a) * inner}" x2="${cx + Math.cos(a) * outer}" y2="${cx + Math.sin(a) * outer}" stroke="${color}" stroke-width="${major ? majorW : minorW}" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+function dot(index, count, r, size) { const a = index / count * 2 * Math.PI - Math.PI / 2;
+  return `<circle cx="${512 + Math.cos(a) * r}" cy="${512 + Math.sin(a) * r}" r="${size}" fill="#fff" filter="url(#g)"/>`; }
+const base = inner => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="SIZE" height="SIZE">
+  <defs><radialGradient id="bg" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="#14202A"/><stop offset=".6" stop-color="${C.bg1}"/><stop offset="1" stop-color="${C.bg2}"/></radialGradient>
+  <radialGradient id="halo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${C.primary}" stop-opacity=".18"/><stop offset="1" stop-color="${C.primary}" stop-opacity="0"/></radialGradient>
+  <linearGradient id="num" x1="0" x2="1"><stop offset="0" stop-color="${C.secondary}"/><stop offset="1" stop-color="${C.primary}"/></linearGradient>
+  <filter id="g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/><circle cx="512" cy="512" r="420" fill="url(#halo)"/>${inner}</svg>`;
+const ICONS = {
+  // A : le cadran et le nombre (le compteur de l'app, sans texte)
+  A: base(`<g filter="url(#soft)">${ticks({ count: 48, lit: 34, outer: 430, majorEvery: 4, majorLen: 92, minorLen: 58, majorW: 30, minorW: 20 })}</g>
+     <text x="512" y="512" text-anchor="middle" dominant-baseline="central" font-family="JetBrains Mono, monospace" font-weight="800" font-size="330" letter-spacing="-12" fill="${C.text}">14</text>`),
+  // B : les graduations seules, un point lumineux au bout de l'arc (le geste en cours)
+  B: base(`<g filter="url(#soft)">${ticks({ count: 36, lit: 26, outer: 420, majorEvery: 3, majorLen: 120, minorLen: 80, majorW: 38, minorW: 28 })}</g>${dot(25.5, 36, 440, 34)}`),
+  // C : le cadran et le pictogramme des pompes
+  C: base(`<g filter="url(#soft)">${ticks({ count: 48, lit: 34, outer: 430, majorEvery: 4, majorLen: 92, minorLen: 58, majorW: 30, minorW: 20 })}</g>
+     <g transform="translate(262 262) scale(25)" fill="${C.primary}" stroke="${C.primary}">
+       <circle cx="3.4" cy="7.6" r="1.9" stroke="none"/><path d="M5.8 9.4 L18.4 16.2 M6.2 9.6 L6.6 16.2" fill="none" stroke-width="2" stroke-linecap="round"/>
+       <path d="M1.5 17.6 H18.5" stroke-width="1" stroke-linecap="round" opacity=".55"/></g>`),
+};
+const mask = (svg, size) => `<div style="width:${size}px;height:${size}px;border-radius:${size * 0.2237}px;overflow:hidden">${svg.replaceAll("SIZE", size)}</div>`;
+const names = { A: "A · Cadran et nombre", B: "B · Graduations et point", C: "C · Cadran et pictogramme" };
+document.getElementById("root").innerHTML =
+  `<div class="row">${Object.keys(ICONS).map(k => `<div class="cell">${mask(ICONS[k], 300)}<span class="cap">${names[k]}</span></div>`).join("")}</div>
+   <div class="row" style="padding-top:0"><div class="home">${Object.keys(ICONS).map(k => `<div>${mask(ICONS[k], 62)}<span>Reps ${k}</span></div>`).join("")}
+     <div><div style="width:62px;height:62px;border-radius:14px;background:#2fbf5f"></div><span>Messages</span></div>
+     <div><div style="width:62px;height:62px;border-radius:14px;background:#fff"></div><span>Photos</span></div></div></div>`;
+window.ICONS = ICONS;
+</script></body></html>
