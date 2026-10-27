@@ -1,12 +1,12 @@
 // Réglages de l'app partagés par tous (versionnés).
 //
-// Ce qui est propre à ton Mac — ton équipe de signature, ton identifiant d'app — va dans
-// Local.xcconfig, à côté de ce fichier : il n'est pas versionné, donc un pull ne le touche
-// jamais. Pour le créer : copie Local.xcconfig.example en Local.xcconfig et remplis-le.
+// Équipe de signature et identifiant de l'app ci-dessous. Pour en utiliser d'autres sur un
+// autre Mac, sans toucher à ce fichier : copie Local.xcconfig.example en Local.xcconfig (non
+// versionné) et remplis-le ; ses valeurs remplacent celles-ci.
 // Ne règle plus l'équipe dans Xcode (Signing & Capabilities) : Xcode modifierait le fichier
 // projet, ce qui crée des conflits au pull suivant.
 
-PRODUCT_BUNDLE_IDENTIFIER = com.example.RepCounter
-DEVELOPMENT_TEAM =
+PRODUCT_BUNDLE_IDENTIFIER = com.zgueb.RepCounter
+DEVELOPMENT_TEAM = D7HS87Z523
 
 #include? "Local.xcconfig"
