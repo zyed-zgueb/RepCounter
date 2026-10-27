@@ -49,10 +49,11 @@ def load(path):
     return meta, end, frames
 
 
-def replay(frames, profile):
-    """Rejoue les mesures ; renvoie le compteur et, par source, le signal suivi à chaque instant."""
-    counter = sc.AutoCounter(profile)
-    traces = {source: [] for source in sc.PROFILES[profile]["sources"]}
+def replay(frames, profile, sources=None):
+    """Rejoue les mesures ; renvoie le compteur et, par source, le signal suivi à chaque instant.
+    `sources` : capteurs écoutés par l'app pendant l'enregistrement (par défaut, ceux du profil)."""
+    counter = sc.AutoCounter(profile, sources)
+    traces = {source: [] for source in counter.profile["sources"]}
     counts = []
     previous_app_count, previous_time = 0, frames[0]["t"]
     for frame in frames:
@@ -132,7 +133,9 @@ def main():
     # Les instants de l'enregistrement sont décalés pour partir de 0
     for frame, t in zip(frames, times):
         frame["t"] = float(t)
-    counter, replay_counts, traces = replay(frames, profile)
+    # Profil imposé : ses capteurs ; sinon, ceux que l'app écoutait
+    sources = None if args.profile else meta.get("sources")
+    counter, replay_counts, traces = replay(frames, profile, sources)
     app_counts = [frame.get("count", 0) for frame in frames]
 
     actual = end.get("actualReps")

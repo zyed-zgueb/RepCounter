@@ -17,6 +17,9 @@ final class SessionRecord {
     var load: Double?
     /// Équipement (LoadKind) : nil pour les séances enregistrées avant qu'il soit demandé.
     var loadKind: String?
+    /// Capteurs qui ont compté : « camera » ou « motion » (nil pour les séances plus anciennes).
+    /// Sert à mesurer la précision du comptage de chaque exercice, dans chaque mode.
+    var sensing: String?
     @Relationship(deleteRule: .cascade, inverse: \SetRecord.session)
     var sets: [SetRecord]? = []
 
@@ -114,6 +117,7 @@ extension SessionRecord {
         let record = SessionRecord(exercise: model.exercise, start: start, end: model.sessionEnd ?? Date())
         record.load = model.exercise.isWeighted ? load : nil
         record.loadKind = model.exercise.isWeighted ? loadKind?.rawValue : nil
+        record.sensing = model.countsWithCamera ? "camera" : "motion"
         context.insert(record)
         record.sets = model.sets.enumerated().map { index, set in
             SetRecord(index: index, reps: set.reps, start: set.start, duration: set.duration,
@@ -281,4 +285,37 @@ func medianInterval(_ times: [Double]) -> Double? {
 
 func average(_ values: [Double]) -> Double? {
     values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
+}
+
+// MARK: - Précision du comptage
+
+/// Précision du comptage, mesurée sur les séances réelles : une série corrigée à la main en fin
+/// de séance (compte retenu ≠ compte de l'app) est une erreur de l'app ; une série non corrigée
+/// est tenue pour exacte. Par exercice et par mode (caméra ou mouvement).
+struct CountingAccuracy: Identifiable {
+    let exercise: Exercise
+    /// « camera », « motion », ou nil (séances d'avant l'enregistrement du mode).
+    let sensing: String?
+    let sets: Int
+    let exactSets: Int
+    /// Répétitions retenues, et écart total entre l'app et le compte retenu.
+    let reps: Int
+    let missedOrExtra: Int
+
+    var id: String { exercise.rawValue + "." + (sensing ?? "?") }
+    var exactShare: Double { sets > 0 ? Double(exactSets) / Double(sets) : 0 }
+    var repAccuracy: Double { reps > 0 ? max(0, 1 - Double(missedOrExtra) / Double(reps)) : 0 }
+
+    static func make(_ sessions: [SessionRecord]) -> [CountingAccuracy] {
+        let groups = Dictionary(grouping: sessions) { "\($0.exerciseID)|\($0.sensing ?? "")" }
+        return groups.values.compactMap { group -> CountingAccuracy? in
+            guard let first = group.first else { return nil }
+            let sets = group.flatMap(\.orderedSets)
+            return CountingAccuracy(exercise: first.exercise, sensing: first.sensing, sets: sets.count,
+                                    exactSets: sets.filter { $0.reps == $0.countedReps }.count,
+                                    reps: sets.reduce(0) { $0 + $1.reps },
+                                    missedOrExtra: sets.reduce(0) { $0 + abs($1.reps - $1.countedReps) })
+        }
+        .sorted { ($0.exercise.title, $0.sensing ?? "") < ($1.exercise.title, $1.sensing ?? "") }
+    }
 }

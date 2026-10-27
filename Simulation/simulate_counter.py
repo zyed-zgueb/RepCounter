@@ -332,8 +332,12 @@ class SignalTracker:
 class AutoCounter:
     """Les sources du profil suivies en parallèle ; la première avec 3 cycles réguliers mène."""
 
-    def __init__(self, profile="auto"):
-        self.profile = PROFILES[profile]
+    def __init__(self, profile="auto", sources=None):
+        # Capteurs : ceux du profil, ou ceux réellement écoutés par l'app (enregistrement), qui
+        # dépendent d'un réglage (brassard pour les exercices de bras)
+        self.profile = dict(PROFILES[profile])
+        if sources:
+            self.profile["sources"] = list(sources)
         self.trackers = {}
         self.leader = None
         self.count = 0

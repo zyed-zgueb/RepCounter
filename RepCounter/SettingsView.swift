@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 /// Réglages, rangés hors de l'écran d'entraînement : mes exercices, profil, retour sonore, thème,
@@ -172,6 +173,7 @@ struct SettingsView: View {
                             }
                             .tint(theme.primary)
                             note("Affiche pendant la séance l'enregistrement des mesures (●) et le diagnostic des capteurs, pour analyser une séance qui compte mal.")
+                            if analysisMode { AccuracyList() }
                         }
                     }
 
@@ -303,6 +305,50 @@ private struct MyExercisesView: View {
 private extension Exercise {
     var mineRowID: String { "mine." + rawValue }
     var otherRowID: String { "other." + rawValue }
+}
+
+/// Précision du comptage (mode analyse) : par exercice et par mode, la part des séries exactes
+/// et la précision par répétition, d'après les corrections faites en fin de séance.
+private struct AccuracyList: View {
+    @Environment(\.theme) private var theme
+    @Query private var sessions: [SessionRecord]
+
+    var body: some View {
+        let rows = CountingAccuracy.make(sessions)
+        VStack(alignment: .leading, spacing: 8) {
+            Rectangle().fill(theme.line).frame(height: 1)
+                .padding(.vertical, 4)
+            MonitorLabel("Précision du comptage")
+            if rows.isEmpty {
+                Text("Aucune séance pour l'instant.")
+                    .font(theme.font(11))
+                    .foregroundStyle(theme.dim)
+            }
+            ForEach(rows) { row in
+                HStack(spacing: 10) {
+                    ExerciseIcon(exercise: row.exercise, size: 20)
+                        .foregroundStyle(theme.primary)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(row.exercise.shortTitle + (row.sensing == "camera" ? " · caméra" : row.sensing == "motion" ? " · mouvement" : ""))
+                            .font(theme.font(13, .bold))
+                            .foregroundStyle(theme.text)
+                        Text("\(row.exactSets)/\(row.sets) séries exactes · \(row.missedOrExtra) erreur\(row.missedOrExtra > 1 ? "s" : "") sur \(row.reps) reps")
+                            .font(theme.font(11))
+                            .foregroundStyle(theme.dim)
+                    }
+                    Spacer(minLength: 4)
+                    Text("\(Int((row.exactShare * 100).rounded())) %")
+                        .font(theme.font(15, .bold))
+                        .foregroundStyle(row.exactShare >= 0.95 ? theme.ok : (row.exactShare >= 0.8 ? theme.text : theme.warn))
+                        .monospacedDigit()
+                }
+            }
+            Text("Une série corrigée en fin de séance compte comme une erreur ; corrige chaque série fausse pour que la mesure soit juste. Objectif : 95 % de séries exactes.")
+                .font(theme.font(11))
+                .foregroundStyle(theme.dim)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
 }
 
 /// Aperçu d'un thème : ses couleurs, son nom dans sa police, et son statut (inclus ou premium).

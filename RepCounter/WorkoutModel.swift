@@ -121,6 +121,8 @@ final class WorkoutModel: ObservableObject {
 
     let sensors: SensorHub
     private let counter: AutoCounter   // utilisé uniquement sur sensors.queue
+    /// La séance se compte à la caméra (sinon aux capteurs de mouvement). Fixé à la création.
+    let countsWithCamera: Bool
     /// Retour sonore, selon le réglage lu à l'ouverture de l'écran.
     private let announcer = Announcer()
     private let haptic = UIImpactFeedbackGenerator(style: .heavy)
@@ -149,6 +151,7 @@ final class WorkoutModel: ObservableObject {
     init(exercise: Exercise) {
         self.exercise = exercise
         counter = AutoCounter(exercise: exercise)
+        countsWithCamera = !Set(counter.sources).isDisjoint(with: [.depth, .pixels, .face, .pose])
         sensors = SensorHub(sources: Set(counter.sources))
         sensors.onFrame = { [weak self] frame in self?.handle(frame) }
     }
