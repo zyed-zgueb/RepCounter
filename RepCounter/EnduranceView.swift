@@ -173,7 +173,7 @@ struct EndurancePanel: View {
     private func caption(score: Double?, assessment: EnduranceAssessment?) -> String {
         if score == nil {
             return "Le score se calcule sur les séances d'au moins 3 séries."
-                + (exercise.isWeighted ? " Pense à régler le poids de l'haltère sous le cadran." : "")
+                + (exercise.isWeighted ? " Pense à régler ta charge sous le cadran." : "")
         }
         if let assessment {
             return "Meilleure série : \(assessment.reps) pompes · niveau \(assessment.level.title.lowercased()) pour \(assessment.sex == .male ? "un homme" : "une femme") de \(assessment.ageBand) (barème SCPE)."
@@ -219,8 +219,8 @@ struct EnduranceInfoView: View {
                             "Pendant un effort bref et intense, le muscle puise dans ses réserves de phosphocréatine. Entre deux séries, elles se reconstituent vite au début puis de plus en plus lentement : une bonne moitié en quelques dizaines de secondes, presque tout en 3 à 5 minutes. Refaire autant de répétitions après un repos court demande donc plus d'endurance. Le coefficient k(R) en tient compte : l'exposant 0,2 compense à peu près la baisse de répétitions qu'entraîne un repos deux fois plus court, si bien que le choix du repos ne change pas le score à niveau égal — seule la progression le fait monter.")
 
                     if exercise.isWeighted {
-                        section("Avec une haltère",
-                                "Pour Biceps et Développé, le score est multiplié par le poids de l'haltère : c'est le tonnage (répétitions × charge), la mesure classique du travail en musculation. Plus lourd ou plus de répétitions : le score monte.")
+                        section("Avec une charge",
+                                "Pour Biceps et Développé, le score est multiplié par la charge totale soulevée — 2 haltères de 5 kg : 10 kg. C'est le tonnage (répétitions × charge), la mesure classique du travail en musculation. Plus lourd ou plus de répétitions : le score monte.")
                     }
 
                     section("Ton niveau",

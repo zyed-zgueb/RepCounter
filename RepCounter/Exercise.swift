@@ -21,7 +21,13 @@ enum Exercise: String, CaseIterable, Identifiable {
     /// Exercice avec haltère : sa charge est demandée et entre dans l'indice de performance.
     var isWeighted: Bool { self == .curls || self == .press }
 
-    /// Charge choisie pour cet exercice (kg, par haltère), mémorisée.
+    /// Équipement choisi pour cet exercice (1 haltère, 2 haltères ou une barre), mémorisé.
+    var loadKind: LoadKind {
+        get { UserDefaults.standard.string(forKey: "loadKind.\(rawValue)").flatMap(LoadKind.init) ?? .two }
+        nonmutating set { UserDefaults.standard.set(newValue.rawValue, forKey: "loadKind.\(rawValue)") }
+    }
+
+    /// Poids choisi pour cet exercice (kg, par haltère, ou de la barre), mémorisé.
     var load: Double {
         get {
             let saved = UserDefaults.standard.double(forKey: "load.\(rawValue)")
@@ -102,5 +108,32 @@ enum Exercise: String, CaseIterable, Identifiable {
         case .crunches: return 3   // au-delà, ce serait la respiration
         default: return 6
         }
+    }
+}
+
+/// Équipement d'un exercice avec charge. Le poids réglé est celui d'un haltère (ou de la barre) ;
+/// la charge totale soulevée est ce poids multiplié par le nombre d'haltères.
+enum LoadKind: String, CaseIterable {
+    case one, two, bar
+
+    var title: String {
+        switch self {
+        case .one: return "1 haltère"
+        case .two: return "2 haltères"
+        case .bar: return "Barre"
+        }
+    }
+
+    /// Charges égales soulevées en même temps.
+    var pieces: Int { self == .two ? 2 : 1 }
+
+    var next: LoadKind {
+        let all = LoadKind.allCases
+        return all[(all.firstIndex(of: self)! + 1) % all.count]
+    }
+
+    /// « 2 × 5 kg », « 1 × 8 kg », « 20 kg » (barre).
+    func describe(_ weight: Double) -> String {
+        self == .bar ? Format.kilograms(weight) : "\(pieces) × \(Format.kilograms(weight))"
     }
 }

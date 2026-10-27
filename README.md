@@ -55,7 +55,7 @@ optionnelles) : la synchronisation iCloud pourra être activée sans migration. 
 sont calculées dans `HistoryStats`, les écrans sont dans `HistoryView.swift`.
 
 ## Test de forme
-Depuis le panneau Forme de l'historique d'un exercice : une consigne, 5 s pour se placer, puis
+Depuis le panneau Forme de l'historique d'un exercice (pompes, squats, développé, flexions ; pas les abdos, où la vitesse maximale n'a pas de sens et sollicite la nuque) : une consigne, 5 s pour se placer, puis
 **4 répétitions aussi vite que possible, amplitude complète**. L'app s'arrête seule. La durée de
 chaque répétition (d'un extrême du mouvement au suivant : 3 mesures) est comparée à la
 référence personnelle (médiane des 10 derniers tests) : **forme en %** (100 = comme d'habitude,
@@ -79,7 +79,7 @@ du record de série).
 Score d'endurance musculaire, par séance d'au moins 3 séries : **r₁ + r₂·k(R₂) + r₃·k(R₃)**, les répétitions des 3 premières
 séries, chacune pondérée par le repos R qui la précède, **k(R) = (60 s / R)^0,2** (1 avec 60 s,
 1,15 avec 30 s, 0,80 avec 3 min ; R borné entre 15 s et 5 min). Pour Biceps et Développé, on
-multiplie par le poids de l'haltère (réglé sous le cadran, mémorisé par exercice). L'indice
+multiplie par la charge totale soulevée : l'équipement (1 haltère, 2 haltères ou barre) et le poids (par haltère, ou de la barre) se règlent sous le cadran, mémorisés par exercice ; « 2 × 5 kg » donne 10 kg. L'indice
 récompense la capacité, le maintien d'une série à l'autre et la récupération rapide ; le format
 commun (3 séries) le rend comparable d'une séance et d'une personne à l'autre. L'indice d'un
 exercice est sa meilleure séance des 4 dernières semaines.

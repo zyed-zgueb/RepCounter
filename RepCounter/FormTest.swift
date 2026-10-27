@@ -91,8 +91,10 @@ extension Array where Element == FormTest {
 }
 
 extension Exercise {
-    /// Le test de forme a un sens pour les exercices identifiés (pas pour « Autre »).
-    var supportsFormTest: Bool { self != .auto }
+    /// Le test de forme mesure la vitesse d'une répétition faite à fond : il a un sens pour les
+    /// mouvements de poussée ou de traction (pompes, squats, développé, flexions). Pas pour les
+    /// abdos (vite = élan, qui sollicite la nuque et le dos) ni pour « Autre ».
+    var supportsFormTest: Bool { self != .auto && self != .crunches }
 
     /// « 4 pompes », « 4 abdos »…
     var testNoun: String {

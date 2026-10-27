@@ -28,6 +28,7 @@ struct WorkoutView: View {
     @State private var browsing: Exercise
     /// Charge de l'haltère de l'exercice affiché (Biceps, Développé), mémorisée par exercice.
     @State private var load: Double
+    @State private var loadKind: LoadKind
     @State private var pendingSelection: DispatchWorkItem?
     @State private var autoStarted = false
     @Query(sort: \FormTest.date) private var formTests: [FormTest]
@@ -47,6 +48,7 @@ struct WorkoutView: View {
         _model = StateObject(wrappedValue: WorkoutModel(exercise: exercise))
         _browsing = State(initialValue: exercise)
         _load = State(initialValue: exercise.load)
+        _loadKind = State(initialValue: exercise.loadKind)
         self.onSelectExercise = onSelectExercise
         self.startAction = startAction
     }
@@ -89,8 +91,10 @@ struct WorkoutView: View {
             model.stop()
         }
         .onChange(of: load) { browsing.load = $0 }
+        .onChange(of: loadKind) { browsing.loadKind = $0 }
         .onChange(of: browsing) { exercise in
             load = exercise.load
+            loadKind = exercise.loadKind
             pendingSelection?.cancel()
             guard exercise != model.exercise else { return }
             let selection = DispatchWorkItem { onSelectExercise(exercise, .none) }
@@ -130,7 +134,7 @@ struct WorkoutView: View {
         .onChange(of: model.phase) { phase in
             // Séance terminée : enregistrée aussitôt ; nouvelle séance : on repart de rien
             if phase == .finished {
-                record = SessionRecord.save(model, load: model.exercise.load, in: modelContext)
+                record = SessionRecord.save(model, load: model.exercise.load, loadKind: model.exercise.loadKind, in: modelContext)
             } else if phase == .ready {
                 record = nil
             }
@@ -397,18 +401,40 @@ struct WorkoutView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    /// Charge de l'haltère (Biceps, Développé), réglée avant de démarrer ; un appui long fait
-    /// défiler. Sa place est réservée pour tous les exercices : le cadran ne bouge pas.
+    /// Charge (Biceps, Développé), réglée avant de démarrer : l'équipement (1 haltère,
+    /// 2 haltères, barre ; une touche passe au suivant) et le poids d'un haltère ou de la barre
+    /// (un appui long fait défiler). Sa place est réservée pour tous les exercices : le cadran
+    /// ne bouge pas.
     private var loadControl: some View {
-        HStack(spacing: 14) {
-            MonitorLabel("Haltère")
+        HStack(spacing: 10) {
+            Button {
+                UISelectionFeedbackGenerator().selectionChanged()
+                withAnimation(.snappy(duration: 0.15)) { loadKind = loadKind.next }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(loadKind.title.uppercased())
+                        .font(theme.font(11, .bold))
+                        .tracking(1)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 9, weight: .bold))
+                }
+                .foregroundStyle(theme.primary)
+                .padding(.horizontal, 10)
+                .frame(height: 36)
+                .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.primary.opacity(0.5), lineWidth: 1))
+                .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Équipement : \(loadKind.title)")
             loadButton("minus", step: -0.5)
-            Text(Format.kilograms(load))
-                .font(theme.font(17, .bold))
+            Text(loadKind.describe(load))
+                .font(theme.font(15, .bold))
                 .foregroundStyle(theme.text)
                 .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
                 .contentTransition(.numericText())
-                .frame(minWidth: 72)
+                .frame(minWidth: 84)
             loadButton("plus", step: 0.5)
         }
         .frame(height: 40)

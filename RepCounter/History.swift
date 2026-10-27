@@ -13,8 +13,10 @@ final class SessionRecord {
     var exerciseID: String = Exercise.auto.rawValue
     var start: Date = Date()
     var end: Date = Date()
-    /// Charge (kg, par haltère) pour les exercices qui en ont une.
+    /// Poids (kg, d'un haltère ou de la barre) pour les exercices qui en ont un.
     var load: Double?
+    /// Équipement (LoadKind) : nil pour les séances enregistrées avant qu'il soit demandé.
+    var loadKind: String?
     @Relationship(deleteRule: .cascade, inverse: \SetRecord.session)
     var sets: [SetRecord]? = []
 
@@ -58,8 +60,19 @@ final class SessionRecord {
             index += Double(sets[i].reps) * pow(60 / rest, 0.2)
         }
         guard exercise.isWeighted else { return index }
-        guard let load, load > 0 else { return nil }
-        return index * load
+        guard let totalLoad, totalLoad > 0 else { return nil }
+        return index * totalLoad
+    }
+
+    /// Charge totale soulevée (kg) : poids × nombre d'haltères.
+    var totalLoad: Double? {
+        load.map { $0 * Double(loadKind.flatMap(LoadKind.init)?.pieces ?? 1) }
+    }
+
+    /// « 2 × 5 kg », ou le seul poids pour les séances d'avant.
+    var loadDescription: String? {
+        guard let load else { return nil }
+        return loadKind.flatMap(LoadKind.init)?.describe(load) ?? Format.kilograms(load)
     }
 
     static let indexSets = 3
@@ -109,10 +122,11 @@ final class SetRecord {
 extension SessionRecord {
     /// Enregistre la séance terminée d'un modèle de séance (rien si aucune répétition).
     @discardableResult
-    static func save(_ model: WorkoutModel, load: Double?, in context: ModelContext) -> SessionRecord? {
+    static func save(_ model: WorkoutModel, load: Double?, loadKind: LoadKind?, in context: ModelContext) -> SessionRecord? {
         guard !model.sets.isEmpty, let start = model.sessionStart else { return nil }
         let record = SessionRecord(exercise: model.exercise, start: start, end: model.sessionEnd ?? Date())
         record.load = model.exercise.isWeighted ? load : nil
+        record.loadKind = model.exercise.isWeighted ? loadKind?.rawValue : nil
         context.insert(record)
         record.sets = model.sets.enumerated().map { index, set in
             SetRecord(index: index, reps: set.reps, start: set.start, duration: set.duration,
