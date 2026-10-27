@@ -1,0 +1,94 @@
+<body style="background:#0D1217;margin:0;padding:24px;font-family:Inter,sans-serif;color:#8aa"><div id="r"></div>
+<script>
+// Un seul squelette pour tous les pictogrammes (repère 20 × 20, y vers le bas).
+// Longueurs fixes : seules les articulations changent d'une pose à l'autre.
+const S = { torso: 5.2, neck: 2.3, head: 1.5, upperArm: 2.9, forearm: 2.7, thigh: 3.7, shin: 3.7 };
+const W = 1.2;                         // trait des membres
+const rad = d => d * Math.PI / 180;
+// Point au bout d'un segment de longueur `len`, orienté `deg` (0 = vers la droite, 90 = vers le bas)
+const go = (p, len, deg) => [p[0] + len * Math.cos(rad(deg)), p[1] + len * Math.sin(rad(deg))];
+const line = pts => `<polyline points="${pts.map(p => p.map(v => v.toFixed(2)).join(",")).join(" ")}" fill="none" stroke-width="${W}" stroke-linecap="round" stroke-linejoin="round"/>`;
+const head = c => `<circle cx="${c[0].toFixed(2)}" cy="${c[1].toFixed(2)}" r="${S.head}" stroke="none"/>`;
+const faint = (d, w = 0.8) => `<path d="${d}" stroke-width="${w}" stroke-linecap="round" fill="none" style="stroke:var(--gear)" opacity="var(--gearOpacity)"/>`;
+const bar = d => `<path d="${d}" stroke-width="1.1" stroke-linecap="round" fill="none" style="stroke:var(--gear)"/>`;
+const floor = faint("M1.5 18.3 H18.5");
+// Haltère : poignée et deux disques, centré en c, orienté `deg`
+const plate = c => `<rect style="fill:var(--gear)" x="${(c[0] - 0.9).toFixed(2)}" y="${(c[1] - 1.3).toFixed(2)}" width="1.8" height="2.6" rx=".5" stroke="none"/>`;
+const dumbbell = (c, deg) => `<g style="fill:var(--gear);stroke:var(--gear)" transform="translate(${c[0].toFixed(2)} ${c[1].toFixed(2)}) rotate(${deg})">
+  <path d="M-1.5 0 H1.5" stroke-width="0.9" stroke-linecap="round"/><rect x="-2.1" y="-1" width="1.1" height="2" rx=".35" stroke="none"/><rect x="1" y="-1" width="1.1" height="2" rx=".35" stroke="none"/></g>`;
+
+// Corps de profil : de la hanche, tronc incliné de `torsoDeg` ; renvoie épaule et tête
+function trunk(hip, torsoDeg) {
+  const shoulder = go(hip, S.torso, torsoDeg);
+  return { shoulder, headC: go(shoulder, S.neck, torsoDeg) };
+}
+const leg = (hip, thighDeg, shinDeg) => { const knee = go(hip, S.thigh, thighDeg); return [hip, knee, go(knee, S.shin, shinDeg)]; };
+const arm = (shoulder, upperDeg, foreDeg) => { const elbow = go(shoulder, S.upperArm, upperDeg); return [shoulder, elbow, go(elbow, S.forearm, foreDeg)]; };
+
+const P = {};
+// Pompes : planche, bras tendus, pieds et mains au sol
+{ const slope = 26; const foot = [17.6, 18]; const hip = go(foot, S.thigh + S.shin, 180 + slope);
+  const { shoulder, headC } = trunk(hip, 180 + slope);
+  P.Pompes = line([foot, hip, shoulder]) + line([shoulder, go(shoulder, S.upperArm + S.forearm, 90)]) + head(headC) + floor; }
+// Abdos : allongé, genoux pliés, buste relevé, bras vers les genoux
+{ const hip = [8.6, 17.4]; const legPts = leg(hip, -50, 60);
+  const { shoulder, headC } = trunk(hip, 180 + 35);
+  P.Abdos = line(legPts) + line([hip, shoulder]) + line(arm(shoulder, -12, -12)) + head(headC) + floor; }
+// Squats : en bas du mouvement, bras tendus devant
+{ const foot = [8.6, 18]; const knee = go(foot, S.shin, -65); const hip = go(knee, S.thigh, 188);
+  const { shoulder, headC } = trunk(hip, -58);
+  P.Squats = line([foot, knee, hip, shoulder]) + line(arm(shoulder, 2, 2)) + head(headC) + floor; }
+// Fentes : buste droit, cuisse avant horizontale, genou arrière près du sol, bras le long du corps
+{ const hip = [9.4, 14.3]; const front = leg(hip, -2, 90); const back = leg(hip, 116, 180);
+  const { shoulder, headC } = trunk(hip, -90);
+  P.Fentes = line(front) + line(back) + line([hip, shoulder]) + line(arm(shoulder, 62, 18)) + head(headC) + floor; }
+// Tractions : de face, suspendu, coudes pliés
+{ const handL = [5.8, 2.6], handR = [14.2, 2.6]; const sL = [7.8, 6.4], sR = [12.2, 6.4]; const neck = [10, 6.4];
+  const eL = [5.1, 5.0], eR = [14.9, 5.0]; const hip = [10, 6.4 + S.torso];
+  P.Tractions = bar("M2.5 2.4 H17.5") + line([handL, eL, sL, sR, eR, handR]) + line([neck, hip]) + head([10, 6.4 - S.neck])
+    + line([hip, go(hip, S.thigh + S.shin, 101)]) + line([hip, go(hip, S.thigh + S.shin, 79)]); }
+// Dips : de face, en appui bras tendus sur deux barres, pieds au-dessus du sol
+{ const y = 5.0; const sL = [7.8, y], sR = [12.2, y]; const neck = [10, y]; const hip = [10, y + S.torso];
+  const hL = go(sL, S.upperArm + S.forearm, 108), hR = go(sR, S.upperArm + S.forearm, 72);
+  P.Dips = faint(`M${hL[0] - 1.8} ${hL[1]} V18.3 M${hR[0] + 1.8} ${hR[1]} V18.3`, 1) + floor
+    + bar(`M${hL[0] - 2.2} ${hL[1]} H${hL[0] + 0.6} M${hR[0] - 0.6} ${hR[1]} H${hR[0] + 2.2}`)
+    + line([hL, sL, sR, hR]) + line([neck, hip]) + head([10, y - S.neck])
+    + line([hip, go(hip, S.thigh + S.shin - 0.6, 100)]) + line([hip, go(hip, S.thigh + S.shin - 0.6, 80)]); }
+// Biceps : de profil, debout, coude au corps, avant-bras levé avec l'haltère
+{ const hip = [9.2, 10.8]; const { shoulder, headC } = trunk(hip, -90);
+  const a = arm(shoulder, 72, -48);
+  P.Biceps = line([go(hip, S.thigh + S.shin, 96), hip, go(hip, S.thigh + S.shin, 84)]) + line([hip, shoulder]) + line(a) + head(headC)
+    + plate(a[2]) + floor; }
+// Rowing haltère : un genou et une main sur le banc, dos plat, l'autre bras tire l'haltère (coude au-dessus du dos)
+{ const benchTop = 14.4; const hip = [12.2, benchTop - S.thigh];
+  const { shoulder, headC } = trunk(hip, 180 + 18);
+  const support = [shoulder, go(shoulder, benchTop - shoulder[1], 90)];
+  const kneel = [hip, [hip[0], benchTop], [hip[0] + 1.6, benchTop]];
+  const standFoot = [16.6, 18];
+  const standKnee = [15.4, 14.4];
+  const pull = arm(go(shoulder, 0.6, 18), -72, 96);
+  P.Rowing = faint(`M3.2 ${benchTop + 0.7} H13.6 M4.2 ${benchTop + 0.7} V18.3 M12.6 ${benchTop + 0.7} V18.3`, 1) + floor
+    + line([hip, standKnee, standFoot]) + line(kneel) + line([hip, shoulder]) + line(support) + line(pull) + plate(pull[2]) + head(headC); }
+// Développé : de face, une haltère dans chaque main, coudes à hauteur d'épaules
+{ const sL = [7.8, 5.6], sR = [12.2, 5.6]; const neck = [10, 5.6]; const hip = [10, 5.6 + S.torso];
+  const eL = go(sL, S.upperArm, 175), eR = go(sR, S.upperArm, 5); const hL = go(eL, S.forearm, -90), hR = go(eR, S.forearm, -90);
+  P.Développé = line([hL, eL, sL, sR, eR, hR]) + line([neck, hip]) + head([10, 5.6 - S.neck]) + dumbbell(hL, 0) + dumbbell(hR, 0)
+    + line([go(hip, S.thigh + S.shin, 101), hip, go(hip, S.thigh + S.shin, 79)]) + floor; }
+// Autre : un geste qui se répète
+P.Autre = `<path d="M15.2 5.8 A6.6 6.6 0 1 0 16.4 11.6" fill="none" stroke-width="${W}" stroke-linecap="round"/><path d="M15.6 2.6 L15.4 6.1 L11.9 5.8" fill="none" stroke-width="${W}" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="10.2" r="${S.head}" stroke="none"/>`;
+
+window.P = P;
+const V = [
+  ["Une couleur (actuel)", "#3DC2FF", "1"],
+  ["A · matériel gris", "#738794", "1"],
+  ["B · matériel bleu atténué", "rgba(61,194,255,.38)", "1"],
+  ["C · matériel violet", "#AB64FA", "1"],
+];
+const box = (k, gear, op, size) => `<svg width="${size}" height="${size}" viewBox="0 0 20 20" fill="#3DC2FF" stroke="#3DC2FF" style="--gear:${gear};--gearOpacity:${op};background:#141c23;border-radius:${size / 9}px">${P[k]}</svg>`;
+document.getElementById("r").innerHTML =
+  `<div style="display:flex;gap:26px">${V.map(([t, g, o]) => `<div style="display:flex;flex-direction:column;align-items:center;gap:8px">${box("Rowing", g, o, 150)}
+     <div style="display:flex;gap:8px;align-items:center">${box("Rowing", g, o, 44)}${box("Rowing", g, o, 22)}</div><span style="font-size:11px">${t}</span></div>`).join("")}</div>
+   <div style="font:600 12px Inter;letter-spacing:1px;margin:22px 0 10px">A · MATÉRIEL GRIS SUR LES AUTRES FIGURES</div>
+   <div style="display:flex;gap:14px">${["Pompes", "Tractions", "Dips", "Biceps", "Rowing", "Développé", "Fentes"].map(k =>
+     `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">${box(k, "#738794", "1", 76)}${box(k, "#738794", "1", 22)}<span style="font-size:10px">${k}</span></div>`).join("")}</div>`;
+</script></body>
