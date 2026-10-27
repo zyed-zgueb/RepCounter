@@ -7,7 +7,7 @@ body{margin:0;background:#1c1c1e;font-family:Inter,sans-serif;color:#ddd}
 .home div{display:flex;flex-direction:column;align-items:center;gap:6px;font:500 11px Inter;color:#fff}
 </style></head><body><div id="root"></div><script>
 // Icônes en SVG 1024 × 1024, dans le langage du cadran de l'app
-const C = { bg1: "#0D1217", bg2: "#05080A", primary: "#3DC2FF", secondary: "#AB64FA", line: "#1E2A33", text: "#EAF4FA" };
+const C = { bg1: "#0D1217", bg2: "#05080A", primary: "#3DC2FF", secondary: "#AB64FA", line: "#3A4E5E", text: "#EAF4FA" };
 function mix(a, b, k) { const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
   const ch = s => Math.round(((pa >> s) & 255) * (1 - k) + ((pb >> s) & 255) * k); return `rgb(${ch(16)},${ch(8)},${ch(0)})`; }
 function ticks({ count, lit, outer, majorEvery, majorLen, minorLen, majorW, minorW, cx = 512 }) {
