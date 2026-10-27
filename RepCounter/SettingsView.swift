@@ -226,7 +226,9 @@ private struct MyExercisesView: View {
 
             List {
                 Section {
-                    ForEach(mine) { exercise in
+                    // Identifiants propres à chaque section : un exercice ajouté devient une nouvelle
+                    // ligne (avec sa poignée ≡), au lieu de la ligne « Autres » déplacée, sans poignée
+                    ForEach(mine, id: \.mineRowID) { exercise in
                         row(exercise, adding: false)
                     }
                     .onMove { from, to in
@@ -243,7 +245,7 @@ private struct MyExercisesView: View {
                 }
                 if !others.isEmpty {
                     Section {
-                        ForEach(others) { exercise in
+                        ForEach(others, id: \.otherRowID) { exercise in
                             row(exercise, adding: true)
                         }
                     } header: {
@@ -284,6 +286,11 @@ private struct MyExercisesView: View {
         .padding(.vertical, 4)
         .listRowBackground(theme.panel)
     }
+}
+
+private extension Exercise {
+    var mineRowID: String { "mine." + rawValue }
+    var otherRowID: String { "other." + rawValue }
 }
 
 /// Aperçu d'un thème : ses couleurs, son nom dans sa police, et son statut (inclus ou premium).
