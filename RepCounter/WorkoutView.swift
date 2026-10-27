@@ -10,6 +10,7 @@ struct WorkoutView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var model: WorkoutModel
     @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
+    @AppStorage(Exercise.armbandKey) private var hasArmband = false
     @State private var bump = false
     @State private var showsSettings = false
     @State private var showsHistory = false
@@ -352,7 +353,7 @@ struct WorkoutView: View {
         ZStack(alignment: .top) {
             placementLine(Self.longestPlacement)
                 .hidden()
-            placementLine(exercise.placement)
+            placementLine(exercise.placement(armband: hasArmband))
                 .id(exercise)
                 .transition(.opacity)
         }
@@ -368,7 +369,9 @@ struct WorkoutView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    private static let longestPlacement = Exercise.allCases.map(\.placement).max { $0.count < $1.count } ?? ""
+    private static let longestPlacement = Exercise.allCases
+        .flatMap { [$0.placement(armband: false), $0.placement(armband: true)] }
+        .max { $0.count < $1.count } ?? ""
 
 
     /// Une ligne discrète sous le cadran : total de la séance (et régularité en mode analyse).
@@ -550,7 +553,10 @@ struct WorkoutView: View {
                 StatusLED(color: theme.alarm)
                 MonitorLabel("Accès caméra refusé", color: theme.alarm)
             }
-            Text("\(model.exercise.title) utilise la caméra pour te voir ; rien n'est enregistré. Glisse sur le cadran pour un exercice sans caméra.")
+            Text("\(model.exercise.title) utilise la caméra pour te voir ; rien n'est enregistré. "
+                 + (model.exercise.isArmExercise
+                    ? "Avec un brassard, active « J'ai un brassard » dans les Réglages."
+                    : "Glisse sur le cadran pour un exercice sans caméra."))
                 .font(theme.font(12))
                 .foregroundStyle(theme.dim)
                 .multilineTextAlignment(.center)

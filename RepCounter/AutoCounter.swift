@@ -394,6 +394,8 @@ final class AutoCounter {
     static let cyclesToLock = 3
 
     let exercise: Exercise
+    /// Capteurs écoutés, figés pour la séance (ils dépendent d'un réglage).
+    let sources: [SignalSource]
     private var trackers: [SignalSource: SignalTracker] = [:]
     private var leader: SignalSource?
     private var count = 0
@@ -408,6 +410,7 @@ final class AutoCounter {
 
     init(exercise: Exercise) {
         self.exercise = exercise
+        sources = exercise.sources
     }
 
     /// Rythme de la série : intervalle médian entre ses dernières répétitions comptées.
@@ -440,7 +443,7 @@ final class AutoCounter {
             for tracker in trackers.values { tracker.forgetHistory() }
         }
         var completed = Set<SignalSource>()
-        for (source, value) in frame.values where exercise.sources.contains(source) {
+        for (source, value) in frame.values where sources.contains(source) {
             let tracker = trackers[source] ?? SignalTracker(source: source, maxPeriod: exercise.maxPeriod)
             trackers[source] = tracker
             if tracker.process(value, at: t) { completed.insert(source) }
@@ -485,10 +488,10 @@ final class AutoCounter {
 
         let state: State = leader != nil ? .counting : (count == 0 ? .searching : .resting)
         let phase = leader.flatMap { trackers[$0]?.phase } ?? 0
-        let diagnostics = exercise.sources.compactMap { trackers[$0]?.diagnostic }
+        let diagnostics = sources.compactMap { trackers[$0]?.diagnostic }
         // Signal affiché : la source qui compte, sinon celle qui bouge le plus
         let shown = leader.flatMap { trackers[$0] }
-            ?? exercise.sources.compactMap { trackers[$0] }.max { $0.strength < $1.strength }
+            ?? sources.compactMap { trackers[$0] }.max { $0.strength < $1.strength }
         return Output(count: count, phase: phase, didCount: didCount, state: state, source: leader,
                       diagnostics: diagnostics,
                       liveValue: shown?.displayValue ?? 0.5, liveStrength: shown?.strength ?? 0,
@@ -501,7 +504,7 @@ final class AutoCounter {
 
     private func tentative(at t: Double) -> Int {
         guard leader == nil else { return 0 }
-        let chains = exercise.sources.compactMap { trackers[$0] }
+        let chains = sources.compactMap { trackers[$0] }
             .filter { $0.strength >= 1 }
             .map { $0.recentChain(at: t, after: lastCountTime) }
         return min(chains.max() ?? 0, Self.cyclesToLock - 1)
@@ -509,7 +512,7 @@ final class AutoCounter {
 
     private func bestRegularSource(among sources: Set<SignalSource>, at t: Double) -> SignalSource? {
         var best: (source: SignalSource, score: Float)?
-        for source in exercise.sources where sources.contains(source) {
+        for source in self.sources where sources.contains(source) {
             guard let score = trackers[source]?.regularity(at: t), score >= Tuning.minRegularity else { continue }
             // Scores arrondis : à 0,1 près, l'ordre de préférence départage
             if best == nil || (score * 10).rounded() > (best!.score * 10).rounded() {

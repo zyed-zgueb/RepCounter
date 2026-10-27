@@ -38,9 +38,9 @@ const EXERCISES = [
   ["lunge", "Fentes", "Téléphone tenu à la main ou contre la poitrine.", "ACCÉL"],
   ["pullup", "Tractions", "Téléphone dans une poche de pantalon ajustée.", "ACCÉL"],
   ["dips", "Dips", "Téléphone dans une poche de pantalon ajustée.", "ACCÉL"],
-  ["dumbbell", "Biceps", "Téléphone dans un brassard sur l'avant-bras qui travaille, près du poignet.", "INCL"],
-  ["row", "Rowing", "Téléphone dans un brassard sur l'avant-bras qui tire, près du poignet.", "INCL"],
-  ["press", "Développé", "Téléphone dans un brassard sur l'avant-bras qui pousse.", "ACCÉL"],
+  ["dumbbell", "Biceps", "Téléphone posé face à toi, à 2 m environ\u00A0: bras, buste et hanches dans l'image.", "CAMÉRA"],
+  ["row", "Rowing", "Téléphone posé sur le côté, à 2 m environ\u00A0: toi de profil, bras, buste et hanches dans l'image.", "CAMÉRA"],
+  ["press", "Développé", "Téléphone posé face à toi, à 2 m environ\u00A0: bras, buste et hanches dans l'image.", "CAMÉRA"],
   ["sparkles", "Autre", "Téléphone posé face à toi ou porté sur toi.", "MULTI"],
 ];
 
@@ -647,7 +647,11 @@ function render(t, s) {
     return `<div class="top"><span style="font-size:16px;font-weight:700;letter-spacing:3px">RÉGLAGES</span>${iconBtn("xmark", c.text)}</div>
       <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px">
       ${panel("Mes exercices", `<div class="row" style="gap:8px;height:36px">${[0, 1, 2, 3, 4].map(e => icon(EXERCISES[e][0], c.primary, 22)).join("")}<span style="flex:1"></span>${icon("right", c.dim, 11)}</div>
-        ${note("Les exercices du cadran, dans l'ordre où ils défilent.")}`)}
+        ${note("Les exercices du cadran, dans l'ordre où ils défilent.")}
+        <div style="height:1px;background:${c.line};margin:4px 0"></div>
+        <div class="row" style="justify-content:space-between"><span style="font-size:14px;font-weight:700">J'AI UN BRASSARD</span>
+          <span style="width:51px;height:31px;border-radius:16px;background:${c.line};position:relative"><span style="position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff"></span></span></div>
+        ${note("Biceps, développé, rowing : iPhone posé à 2 m, la caméra compte ; rien n'est enregistré. Avec un brassard, le compte est encore plus précis.")}`)}
       ${panel("Profil", `<div class="row">${choice("Femme", false)}${choice("Homme", true)}</div>
         <div class="row" style="justify-content:space-between"><span style="font-size:11px;font-weight:600;letter-spacing:1px">ANNÉE DE NAISSANCE</span><span style="font-size:14px;color:${c.primary}">1988 ⌄</span></div>
         ${note("Facultatif, reste sur ton iPhone. Sert à situer ton niveau en pompes sur le barème de référence (score d'endurance).")}`)}

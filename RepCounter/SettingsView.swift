@@ -14,6 +14,7 @@ struct SettingsView: View {
     @AppStorage(Profile.sexKey) private var sexID = ""
     @AppStorage(Profile.birthYearKey) private var birthYear = 0
     @AppStorage(Exercise.mineKey) private var mineValue = Exercise.defaultMineValue
+    @AppStorage(Exercise.armbandKey) private var hasArmband = false
 
     @State private var showsYearWheel = false
     @State private var showsExercises = false
@@ -61,6 +62,17 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                             .accessibilityLabel("Mes exercices : " + Exercise.decode(mineValue).map(\.title).joined(separator: ", "))
                             note("Les exercices du cadran, dans l'ordre où ils défilent.")
+                            Rectangle().fill(theme.line).frame(height: 1)
+                                .padding(.vertical, 4)
+                            Toggle(isOn: $hasArmband) {
+                                Text("J'AI UN BRASSARD")
+                                    .font(theme.font(14, .bold))
+                                    .foregroundStyle(theme.text)
+                            }
+                            .tint(theme.primary)
+                            note(hasArmband
+                                 ? "Biceps, développé, rowing : iPhone dans le brassard, sur l'avant-bras. Les capteurs de mouvement comptent, au plus près du geste."
+                                 : "Biceps, développé, rowing : iPhone posé à 2 m, la caméra compte ; rien n'est enregistré. Avec un brassard, le compte est encore plus précis.")
                         }
                     }
 

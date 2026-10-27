@@ -29,7 +29,7 @@ const SCREENS = [
   ["9e-activite", { phase: "history", sub: "activity", caption: "Détail : activité" }],
   ["11-endurance-info", { phase: "info", caption: "(i) Endurance" }],
   ["10-seance", { phase: "session", caption: "Détail d'une séance" }],
-  ["8-reglages", { phase: "settings", audio: "sons", themes, height: 1110, caption: "Réglages (roue dentée)" }],
+  ["8-reglages", { phase: "settings", audio: "sons", themes, height: 1230, caption: "Réglages (roue dentée)" }],
   ["8b-mes-exercices", { phase: "exercises", caption: "Mes exercices" }],
 ];
 

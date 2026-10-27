@@ -39,6 +39,7 @@ final class SessionRecorder {
             "version": 1,
             "exercise": exercise.rawValue,
             "sources": exercise.sources.map(\.rawValue),
+            "armband": Exercise.hasArmband,
             "device": Self.deviceModel(),
             "system": UIDevice.current.systemVersion,
             "app": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?",

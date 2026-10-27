@@ -50,8 +50,28 @@ enum Exercise: String, CaseIterable, Identifiable {
         }
     }
 
+    // MARK: Brassard
+
+    /// Biceps, développé, rowing : le téléphone se porte sur l'avant-bras (brassard) ou se pose
+    /// face à soi (caméra), selon que l'on a un brassard ou non (Réglages).
+    var isArmExercise: Bool { isWeighted }
+
+    /// « J'ai un brassard » (Réglages) : les exercices de bras se comptent au bras.
+    static let armbandKey = "equipment.armband"
+    static var hasArmband: Bool { UserDefaults.standard.bool(forKey: armbandKey) }
+
+    /// Exercice de bras compté à la caméra (pas de brassard déclaré).
+    var countsWithCamera: Bool { isArmExercise && !Self.hasArmband }
+
     /// Où mettre le téléphone.
-    var placement: String {
+    var placement: String { placement(armband: Self.hasArmband) }
+
+    func placement(armband: Bool) -> String {
+        if isArmExercise, !armband {
+            return self == .row
+                ? "Téléphone posé sur le côté, à 2 m environ\u{00A0}: toi de profil, bras, buste et hanches dans l'image."
+                : "Téléphone posé face à toi, à 2 m environ\u{00A0}: bras, buste et hanches dans l'image."
+        }
         switch self {
         case .auto: return "Téléphone posé face à toi ou porté sur toi ; l'app cherche le geste répété."
         case .pushups: return "Téléphone au sol, écran vers le haut, au niveau de ta tête."
@@ -68,6 +88,7 @@ enum Exercise: String, CaseIterable, Identifiable {
 
     /// Capteurs, en abrégé (accueil).
     var sensorTag: String {
+        if countsWithCamera { return "CAMÉRA" }
         switch self {
         case .auto: return "MULTI"
         case .pushups: return "CAM 3D"
@@ -80,6 +101,12 @@ enum Exercise: String, CaseIterable, Identifiable {
 
     /// Capteurs écoutés, par ordre de préférence.
     var sources: [SignalSource] {
+        // Exercice de bras sans brassard : la caméra voit le squelette (poignets, coudes) et
+        // l'image ; les capteurs de mouvement restent à l'écoute si le téléphone est malgré tout
+        // porté au bras. (La profondeur TrueDepth ne porte pas jusqu'à 2 m.)
+        if countsWithCamera {
+            return self == .press ? [.pose, .pixels, .vertical, .motion] : [.pose, .pixels, .motion, .rotation]
+        }
         switch self {
         case .auto: return [.depth, .motion, .vertical, .pose, .face, .pixels]
         case .pushups: return [.depth, .face, .pixels]

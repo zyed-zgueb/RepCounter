@@ -148,8 +148,8 @@ final class WorkoutModel: ObservableObject {
 
     init(exercise: Exercise) {
         self.exercise = exercise
-        sensors = SensorHub(sources: Set(exercise.sources))
         counter = AutoCounter(exercise: exercise)
+        sensors = SensorHub(sources: Set(counter.sources))
         sensors.onFrame = { [weak self] frame in self?.handle(frame) }
     }
 

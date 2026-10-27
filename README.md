@@ -50,7 +50,7 @@ Réglages. Pas de défilement.
      liste des **séances**. Une séance s'ouvre sur son détail : séries, cadence, récupérations
      et rythme rep par rep ; un appui long la supprime.
 - **Réglages** (roue dentée, en veille et à la fin) : mes exercices (− / + et poignée ≡ pour
-  l'ordre ; il en reste toujours un), profil, retour sonore, thème, mode analyse.
+  l'ordre ; il en reste toujours un) et « J'ai un brassard », profil, retour sonore, thème, mode analyse.
 - **Mode analyse** : ajoute à la séance l'enregistrement ●, le diagnostic des capteurs et
   la régularité du signal. Désactivé par défaut.
 
@@ -147,12 +147,19 @@ Chaque exercice fixe les capteurs écoutés.
 | Pompes | au sol, écran vers le haut, au niveau de la tête | profondeur, visage, image |
 | Abdos | à plat contre la poitrine | gyroscope (vitesse de rotation) |
 | Squats | à la main ou contre la poitrine | accélération verticale, inclinaison |
-| Biceps | brassard sur l'avant-bras qui travaille, près du poignet | inclinaison, gyroscope |
-| Développé épaules | brassard sur l'avant-bras qui pousse | accélération verticale, inclinaison |
+| Biceps | posé face à toi à 2 m (sans brassard) · brassard sur l'avant-bras | squelette, image (+ mouvement) · inclinaison, gyroscope |
+| Développé épaules | posé face à toi à 2 m (sans brassard) · brassard sur l'avant-bras | squelette, image (+ mouvement) · accélération verticale, inclinaison |
 | Fentes | à la main ou contre la poitrine | accélération verticale, inclinaison |
 | Tractions | poche de pantalon ajustée | accélération verticale, inclinaison |
 | Dips | poche de pantalon ajustée | accélération verticale, inclinaison |
-| Rowing haltère | brassard sur l'avant-bras qui tire, près du poignet | inclinaison, gyroscope |
+| Rowing haltère | posé sur le côté à 2 m, toi de profil (sans brassard) · brassard sur l'avant-bras | squelette, image (+ mouvement) · inclinaison, gyroscope |
+
+**Brassard** (Réglages › Mes exercices › « J'ai un brassard », désactivé par défaut) : la plupart
+des gens n'en ont pas, alors biceps, développé et rowing se comptent par défaut à la caméra,
+iPhone posé (squelette Vision ; la profondeur TrueDepth ne porte pas à 2 m). Les capteurs de
+mouvement restent à l'écoute si l'iPhone est malgré tout porté au bras. Avec un brassard
+déclaré, ces exercices se comptent comme avant aux capteurs de mouvement seuls : plus précis,
+sans caméra (ni batterie ni autorisation). Le réglage change la consigne sous le cadran.
 
 Fentes, tractions, dips et rowing reprennent des profils déjà validés (squats pour les trois
 premiers, biceps pour le rowing) ; ils restent à vérifier sur des enregistrements réels.

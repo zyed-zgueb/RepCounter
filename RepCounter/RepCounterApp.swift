@@ -25,6 +25,7 @@ struct RootView: View {
 
     @AppStorage(RootView.exerciseKey) private var exerciseID = Exercise.pushups.rawValue
     @AppStorage(Exercise.mineKey) private var mineValue = Exercise.defaultMineValue
+    @AppStorage(Exercise.armbandKey) private var hasArmband = false
     /// L'écran du nouvel exercice démarre sa séance dès son affichage.
     @State private var startsSession = false
 
@@ -42,7 +43,8 @@ struct RootView: View {
             startsSession = start
             exerciseID = selected.rawValue
         }
-            .id(exercise)
+            // Brassard déclaré ou retiré : l'écran d'un exercice de bras change de capteurs
+            .id(exercise.isArmExercise ? "\(exercise.rawValue).\(hasArmband)" : exercise.rawValue)
             .transition(.identity)
             .statusBarHidden()
     }
