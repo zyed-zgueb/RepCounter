@@ -626,10 +626,8 @@ private struct SessionsPanel: View {
 
     private func row(_ session: SessionRecord, isRecord: Bool) -> some View {
         HStack(spacing: 12) {
-            if showsExercise {
-                ExerciseIcon(exercise: session.exercise, size: 22)
-                    .foregroundStyle(theme.primary)
-            }
+            ExerciseIcon(exercise: session.exercise, size: 22)
+                .foregroundStyle(theme.primary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(Format.time(session.start))
                     .font(theme.font(15, .bold))
