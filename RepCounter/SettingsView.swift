@@ -13,11 +13,16 @@ struct SettingsView: View {
     @AppStorage(Profile.sexKey) private var sexID = ""
     @AppStorage(Profile.birthYearKey) private var birthYear = 0
 
-    /// Années proposées, des plus récentes aux plus anciennes.
+    @State private var showsYearWheel = false
+
+    /// Années proposées, des plus anciennes aux plus récentes (ordre de la roue des dates d'iOS).
     private static let birthYears: [Int] = {
         let current = Calendar.current.component(.year, from: Date())
-        return Array((current - 95...current - 10).reversed())
+        return Array(current - 95...current - 10)
     }()
+
+    /// Position de départ de la roue quand aucune année n'est choisie.
+    private static let defaultBirthYear = 1985
 
     var body: some View {
         VStack(spacing: 0) {
@@ -66,20 +71,56 @@ struct SettingsView: View {
                                         .buttonStyle(MonitorButtonStyle(filled: sexID == option.rawValue, height: 40, fontSize: 11))
                                 }
                             }
-                            HStack {
-                                Text("ANNÉE DE NAISSANCE")
-                                    .font(theme.font(11, .semibold))
-                                    .tracking(1)
-                                    .foregroundStyle(theme.text)
-                                Spacer()
+                            // Année : une roue (comme les dates d'iOS), qui s'ouvre sous la ligne
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    if birthYear == 0 { birthYear = Self.defaultBirthYear }
+                                    showsYearWheel.toggle()
+                                }
+                            } label: {
+                                HStack {
+                                    Text("ANNÉE DE NAISSANCE")
+                                        .font(theme.font(11, .semibold))
+                                        .tracking(1)
+                                        .foregroundStyle(theme.text)
+                                    Spacer()
+                                    Text(birthYear == 0 ? "—" : String(birthYear))
+                                        .font(theme.font(14, .semibold))
+                                        .foregroundStyle(theme.primary)
+                                        .monospacedDigit()
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(theme.dim)
+                                        .rotationEffect(.degrees(showsYearWheel ? 180 : 0))
+                                }
+                                .frame(height: 36)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            if showsYearWheel {
                                 Picker("Année de naissance", selection: $birthYear) {
-                                    Text("—").tag(0)
                                     ForEach(Self.birthYears, id: \.self) { year in
-                                        Text(String(year)).tag(year)
+                                        Text(String(year))
+                                            .font(theme.font(18, .semibold))
+                                            .foregroundStyle(theme.text)
+                                            .tag(year)
                                     }
                                 }
-                                .pickerStyle(.menu)
-                                .tint(theme.primary)
+                                .pickerStyle(.wheel)
+                                .frame(height: 150)
+                                .clipped()
+                                HStack {
+                                    Button("Effacer") {
+                                        withAnimation(.easeInOut(duration: 0.25)) { birthYear = 0; showsYearWheel = false }
+                                    }
+                                    .foregroundStyle(theme.dim)
+                                    Spacer()
+                                    Button("OK") {
+                                        withAnimation(.easeInOut(duration: 0.25)) { showsYearWheel = false }
+                                    }
+                                    .foregroundStyle(theme.primary)
+                                }
+                                .font(theme.font(13, .bold))
                             }
                             note("Facultatif, reste sur ton iPhone. Sert à situer ton niveau en pompes sur le barème de référence (score d'endurance).")
                         }

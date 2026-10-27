@@ -786,7 +786,7 @@ private struct SessionSummary: View {
             }
 
             HStack {
-                summaryStat("Endurance", record?.performanceIndex.map { "\(Int($0.rounded()))" } ?? "—")
+                summaryStat("Score endurance", record?.performanceIndex.map { "\(Int($0.rounded()))" } ?? "—")
                 summaryStat("Moyenne", record?.averagePerSet.map { Format.decimal($0) } ?? "—", unit: "/série")
                 summaryStat("Cadence", record?.cadence.map { Format.decimal($0) } ?? "—", unit: "s")
                 summaryStat("Fatigue", record?.fatigue.map { Format.percent($0) } ?? "—", unit: "%",
@@ -898,6 +898,7 @@ private struct SessionSummary: View {
     private func summaryStat(_ label: String, _ value: String, unit: String? = nil, color: Color? = nil) -> some View {
         VStack(spacing: 4) {
             MonitorLabel(label)
+                .minimumScaleFactor(0.6)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(value)
                     .font(theme.font(18, .semibold))

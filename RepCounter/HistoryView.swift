@@ -623,7 +623,7 @@ struct SessionDetailView: View {
                     .foregroundStyle(theme.warn)
                 }
                 if let index = session.performanceIndex {
-                    Text("Endurance \(Int(index.rounded()))" + (session.load.map { " · \(Format.kilograms($0))" } ?? ""))
+                    Text("Score d'endurance \(Int(index.rounded()))" + (session.load.map { " · \(Format.kilograms($0))" } ?? ""))
                         .font(theme.font(12, .bold))
                         .foregroundStyle(theme.text)
                 }

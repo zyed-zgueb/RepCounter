@@ -46,7 +46,7 @@ struct EnduranceGauge: View {
         }
         .aspectRatio(1, contentMode: .fit)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Endurance \(score)" + (level.map { ", niveau \($0.title)" } ?? ""))
+        .accessibilityLabel("Score d'endurance \(score)" + (level.map { ", niveau \($0.title)" } ?? ""))
     }
 
     private func draw(in context: GraphicsContext, size: CGSize) {
@@ -78,7 +78,7 @@ struct EnduranceGauge: View {
     }
 }
 
-/// « Endurance » dans l'historique d'un exercice : la jauge, l'évolution sur 4 semaines, la
+/// « Score d'endurance » dans l'historique d'un exercice : la jauge, l'évolution sur 4 semaines, la
 /// courbe sur 12, et le niveau selon le barème quand il y en a un. (i) explique le calcul.
 struct EndurancePanel: View {
     @Environment(\.theme) private var theme
@@ -96,7 +96,7 @@ struct EndurancePanel: View {
         let record = stats.sessions.compactMap(\.performanceIndex).max()
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                MonitorLabel("Endurance")
+                MonitorLabel("Score d'endurance")
                 Spacer()
                 Button { showsInfo = true } label: {
                     Image(systemName: "info.circle")
@@ -182,7 +182,7 @@ struct EnduranceInfoView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("ENDURANCE")
+                Text("SCORE D'ENDURANCE")
                     .font(theme.font(16, .bold))
                     .tracking(3)
                     .foregroundStyle(theme.text)
