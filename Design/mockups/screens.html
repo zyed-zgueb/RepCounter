@@ -537,15 +537,26 @@ function render(t, s) {
       ? `<div class="row" style="gap:8px;align-items:stretch">${record("Série", "12", "aujourd'hui", true)}${record("Séance", "22", "aujourd'hui", true)}${record("Semaine", "34", "cette semaine", true)}</div>`
       : `<div class="row" style="gap:8px;align-items:stretch">${record("Série", "24", "aujourd'hui", true)}${record("Séance", "72", "12 oct.")}${record("Semaine", "172", "cette semaine", true)}</div>`;
     // Séances
-    const sessions = early ? [["Mar 27 oct", "07:40", 22, 2, "+10", true], ["Ven 23 oct", "18:20", 12, 1, ""]]
-      : [["Lun 26 oct", "19:40", 60, 5, "+6", true], ["Jeu 22 oct", "18:05", 54, 5, "−4"], ["Mar 20 oct", "07:30", 58, 5, "+2"],
-         ["Sam 17 oct", "10:12", 56, 4, "−16"], ["Lun 12 oct", "19:02", 72, 6, "+14", true], ["Jeu 8 oct", "18:40", 58, 5, "+3"]];
-    const list = sessions.map(([day, hour, total, n, delta, rec], i) => `<div class="row" style="gap:12px;padding:10px 0;${i ? `border-top:1px solid ${c.line}` : ""}">
-        <div style="flex:1"><div style="font-size:14px;font-weight:700">${day}</div><div style="font-size:11px;color:${c.dim}">${hour} · ${n} série${n > 1 ? "s" : ""}</div></div>
+    // Séances par jour : la date une fois, les séances à leurs heures ; aujourd'hui mis en avant
+    const days = early
+      ? [["Aujourd'hui", [["07:40", 22, 2, "+10", true]]], ["Ven 23 oct", [["18:20", 12, 1, ""]]]]
+      : [["Aujourd'hui", [["18:30", 62, 5, "+2", true], ["07:15", 60, 5, "+6"]]],
+         ["Hier", [["19:40", 54, 5, "−4"]]],
+         ["Jeu 22 oct", [["12:10", 58, 5, "+2"], ["07:30", 56, 4, "−16"]]],
+         ["Lun 12 oct", [["19:02", 72, 6, "+14", true]]]];
+    const sessions = days.flatMap(d => d[1]);
+    const list = `<div style="display:flex;flex-direction:column;gap:14px">${days.map(([day, rows], g) => {
+      const today = day === "Aujourd'hui", total = rows.reduce((a, x) => a + x[1], 0);
+      const body = rows.map(([hour, tot, n, delta, rec], i) => `<div class="row" style="gap:12px;padding:10px 0;${i ? `border-top:1px solid ${c.line}` : ""}">
+        <div style="flex:1"><div style="font-size:15px;font-weight:700">${hour}</div><div style="font-size:11px;color:${c.dim}">${n} série${n > 1 ? "s" : ""}</div></div>
         ${rec ? icon("star", c.warn, 13) : ""}
         <span style="font-size:11px;font-weight:700;color:${delta.startsWith("+") ? c.ok : c.dim}">${delta}</span>
-        <span style="font-size:22px;font-weight:700;min-width:36px;text-align:right">${total}</span>
+        <span style="font-size:22px;font-weight:700;min-width:36px;text-align:right">${tot}</span>
         ${chevronRight(c.dim, 12)}</div>`).join("");
+      return `<div style="${today ? `margin:0 -10px;padding:10px 10px 0;border-radius:${r}px;background:${hexA(c.primary, .07)};border:1px solid ${hexA(c.primary, .35)}` : ""}">
+        <div class="row" style="justify-content:space-between;padding-bottom:2px"><span style="font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:${today ? c.primary : c.text}">${day}</span>
+        ${label(`${total} reps${rows.length > 1 ? ` · ${rows.length} séances` : ""}`)}</div>${body}</div>`;
+    }).join("")}</div>`;
     return `${header("HISTORIQUE")}
       <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
         ${exerciseBar(1)}
@@ -553,7 +564,7 @@ function render(t, s) {
         <div class="row" style="gap:10px;align-items:stretch">${tiles}</div>
         ${activityPanel(early)}
         ${panel("Records", "", records)}
-        ${panel("Séances", label(`${sessions.length === 2 ? 2 : 42} au total`), list)}
+        ${panel("Séances", label(`${early ? 2 : 42} au total`), list)}
       </div>`;
   }
 

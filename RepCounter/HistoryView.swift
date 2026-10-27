@@ -542,32 +542,86 @@ private struct RegularityCalendar: View {
     }
 }
 
-/// Liste des séances, la plus récente d'abord ; une touche ouvre le détail, un appui long propose
-/// de supprimer.
+/// Liste des séances par jour, le plus récent d'abord : la date une seule fois, puis les séances
+/// du jour à leurs heures. Aujourd'hui est mis en avant. Une touche ouvre le détail d'une séance,
+/// un appui long propose de la supprimer.
 private struct SessionsPanel: View {
     @Environment(\.theme) private var theme
     let stats: HistoryStats
     let showsExercise: Bool
     let onDelete: (SessionRecord) -> Void
 
+    /// Séances regroupées par jour (les séances arrivent déjà de la plus récente à la plus ancienne).
+    private var days: [(day: Date, sessions: [SessionRecord])] {
+        var groups: [(day: Date, sessions: [SessionRecord])] = []
+        for session in stats.sessions {
+            let day = stats.calendar.startOfDay(for: session.start)
+            if groups.last?.day == day {
+                groups[groups.count - 1].sessions.append(session)
+            } else {
+                groups.append((day, [session]))
+            }
+        }
+        return groups
+    }
+
     var body: some View {
         let records = stats.recordSessions
         HistoryPanel(title: "Séances", accessory: { MonitorLabel("\(stats.sessions.count) au total") }) {
-            VStack(spacing: 0) {
-                ForEach(Array(stats.sessions.enumerated()), id: \.element.persistentModelID) { index, session in
-                    if index > 0 { Rectangle().fill(theme.line).frame(height: 1) }
-                    NavigationLink(value: session) {
-                        row(session, isRecord: records.contains(session.persistentModelID))
-                    }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        Button(role: .destructive) { onDelete(session) } label: {
-                            Label("Supprimer la séance", systemImage: "trash")
+            VStack(spacing: 14) {
+                ForEach(days, id: \.day) { group in
+                    let today = stats.calendar.isDateInToday(group.day)
+                    VStack(spacing: 0) {
+                        header(group.day, sessions: group.sessions, today: today)
+                        ForEach(Array(group.sessions.enumerated()), id: \.element.persistentModelID) { index, session in
+                            if index > 0 { Rectangle().fill(theme.line).frame(height: 1) }
+                            NavigationLink(value: session) {
+                                row(session, isRecord: records.contains(session.persistentModelID))
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu {
+                                Button(role: .destructive) { onDelete(session) } label: {
+                                    Label("Supprimer la séance", systemImage: "trash")
+                                }
+                            }
                         }
                     }
+                    // Aujourd'hui : un fond léger, la journée qui compte le plus
+                    .padding(.horizontal, today ? 10 : 0)
+                    .padding(.top, today ? 10 : 0)
+                    .background(today ? theme.primary.opacity(0.07) : .clear,
+                                in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous)
+                        .stroke(today ? theme.primary.opacity(0.35) : .clear, lineWidth: 1))
+                    .padding(.horizontal, today ? -10 : 0)
                 }
             }
         }
+    }
+
+    /// La date du jour, et ce qu'on y a fait : le total (un exercice) ou le nombre de séances (Σ).
+    private func header(_ day: Date, sessions: [SessionRecord], today: Bool) -> some View {
+        let count = sessions.count
+        let summary = showsExercise
+            ? "\(count) séance\(count > 1 ? "s" : "")"
+            : "\(sessions.reduce(0) { $0 + $1.totalReps }) reps" + (count > 1 ? " · \(count) séances" : "")
+        return HStack(alignment: .firstTextBaseline) {
+            Text(dayTitle(day).uppercased())
+                .font(theme.font(12, .bold))
+                .tracking(1.5)
+                .foregroundStyle(today ? theme.primary : theme.text)
+            Spacer(minLength: 8)
+            MonitorLabel(summary)
+        }
+        .padding(.bottom, 2)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private func dayTitle(_ day: Date) -> String {
+        if stats.calendar.isDateInToday(day) { return "Aujourd'hui" }
+        if stats.calendar.isDateInYesterday(day) { return "Hier" }
+        return Format.shortDay(day)
     }
 
     private func row(_ session: SessionRecord, isRecord: Bool) -> some View {
@@ -577,10 +631,11 @@ private struct SessionsPanel: View {
                     .foregroundStyle(theme.primary)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(Format.shortDay(session.start))
-                    .font(theme.font(14, .bold))
+                Text(Format.time(session.start))
+                    .font(theme.font(15, .bold))
                     .foregroundStyle(theme.text)
-                Text("\(Format.time(session.start)) · \(session.orderedSets.count) série\(session.orderedSets.count > 1 ? "s" : "")")
+                    .monospacedDigit()
+                Text("\(session.orderedSets.count) série\(session.orderedSets.count > 1 ? "s" : "")")
                     .font(theme.font(11))
                     .foregroundStyle(theme.dim)
             }

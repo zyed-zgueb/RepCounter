@@ -47,7 +47,8 @@ Réglages. Pas de défilement.
      temps, semaines d'affilée) et la régularité sur 16 semaines — une touche ouvre le volume
      sur 12 semaines ;
   4. **Records** (série, séance, semaine ; en orange quand ils datent de la semaine) et la
-     liste des **séances**. Une séance s'ouvre sur son détail : séries, cadence, récupérations
+     liste des **séances**, par jour (la date une fois, puis les séances à leurs heures ;
+     aujourd'hui mis en avant). Une séance s'ouvre sur son détail : séries, cadence, récupérations
      et rythme rep par rep ; un appui long la supprime.
 - **Réglages** (roue dentée, en veille et à la fin) : mes exercices (− / + et poignée ≡ pour
   l'ordre ; il en reste toujours un) et « J'ai un brassard », profil, retour sonore, thème, mode analyse.
