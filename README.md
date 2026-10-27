@@ -108,6 +108,13 @@ clair/sombre, gratuit ou premium), choisis dans les Réglages. Aucun écran n'a 
 (StoreKit à brancher ; en attendant, tous les thèmes sont utilisables). Thèmes livrés :
 Moniteur (gratuit), Phosphore, Clinique (clair), Néon.
 
+## Pictogrammes
+Dix pictogrammes dessinés (`ExerciseIcon.swift`), sur un squelette unique : tronc, cou, tête,
+bras, avant-bras, cuisse et tibia ont des longueurs fixes, chaque exercice n'est qu'une pose ;
+les proportions sont donc justes et identiques partout. Trait 1,2 (repère 20 × 20). Le matériel
+(barres, banc, haltères, sol) prend la couleur de la silhouette, atténuée à 40 %. Prototype et
+comparaisons : `Design/icon/pictogrammes.html`.
+
 ## Maquettes
 `Design/mockups/` reproduit les écrans en HTML à partir du même `Themes.json`, pour valider
 le rendu sans Mac : `node Design/mockups/render.js` → `Design/mockups/out/*.png`. Polices

@@ -50,19 +50,6 @@ enum Exercise: String, CaseIterable, Identifiable {
         }
     }
 
-    var symbol: String {
-        switch self {
-        case .auto: return "sparkles"
-        case .pushups: return "figure.cross.training"   // non affiché : voir ExerciseIcon
-        case .crunches: return "figure.core.training"
-        case .squats: return "figure.strengthtraining.functional"
-        case .curls: return "dumbbell.fill"
-        // Non affichés : pictogrammes dessinés, voir ExerciseIcon
-        case .press: return "figure.strengthtraining.traditional"
-        case .lunges, .pullups, .dips, .row: return "figure.strengthtraining.functional"
-        }
-    }
-
     /// Où mettre le téléphone.
     var placement: String {
         switch self {
