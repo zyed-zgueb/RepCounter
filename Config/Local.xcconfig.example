@@ -1,0 +1,8 @@
+// Copie ce fichier en Local.xcconfig (même dossier) et remplis-le. Local.xcconfig n'est pas
+// versionné : il reste sur ton Mac et n'entre jamais en conflit.
+
+// Ton équipe : Xcode › Settings › Accounts › ton compte › Team ID (10 caractères).
+DEVELOPMENT_TEAM = ABCDE12345
+
+// Identifiant unique de l'app sur ton compte (celui que tu utilises déjà dans Xcode).
+PRODUCT_BUNDLE_IDENTIFIER = com.tonnom.RepCounter

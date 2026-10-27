@@ -8,7 +8,7 @@ files = ["RepCounterApp.swift","Theme.swift","Audio.swift","ExerciseCarousel.swi
 def i(p,n): return p + "0"*(23-len(str(n))) + str(n)
 fref = {f: i("F",k+1) for k,f in enumerate(files)}
 bf = {f: i("B",k+1) for k,f in enumerate(files)}
-PRODUCT=i("F",99); ASSETS=i("F",98); ASSETS_BF=i("B",98); THEMES=i("F",97); THEMES_BF=i("B",97); SOUNDS=i("F",96); SOUNDS_BF=i("B",96); GMAIN=i("C",1); GSRC=i("C",2); GPROD=i("C",3)
+PRODUCT=i("F",99); ASSETS=i("F",98); ASSETS_BF=i("B",98); THEMES=i("F",97); THEMES_BF=i("B",97); SOUNDS=i("F",96); SOUNDS_BF=i("B",96); XCCONFIG=i("F",95); GCONFIG=i("C",4); GMAIN=i("C",1); GSRC=i("C",2); GPROD=i("C",3)
 TARGET=i("D",1); PROJ=i("E",1); PSRC=i("A",1); PFW=i("A",2); PRES=i("A",3)
 CPD=i("9",1); CPR=i("9",2); CTD=i("9",3); CTR=i("9",4); LP=i("8",1); LT=i("8",2)
 nl="\n"
@@ -62,7 +62,6 @@ common = '''				ALWAYS_SEARCH_USER_PATHS = NO;
 target = '''				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Reps;
 				INFOPLIST_KEY_NSCameraUsageDescription = "La caméra sert à suivre tes mouvements pour compter tes répétitions. Rien n'est enregistré.";
@@ -76,7 +75,6 @@ target = '''				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.RepCounter;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -102,6 +100,7 @@ out = f'''// !$*UTF8*$!
 		{ASSETS} /* Assets.xcassets */ = {{isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; }};
 		{THEMES} /* Themes.json */ = {{isa = PBXFileReference; lastKnownFileType = text.json; path = Themes.json; sourceTree = "<group>"; }};
 		{SOUNDS} /* Sounds */ = {{isa = PBXFileReference; lastKnownFileType = folder; path = Sounds; sourceTree = "<group>"; }};
+		{XCCONFIG} /* Base.xcconfig */ = {{isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; }};
 		{PRODUCT} /* RepCounter.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RepCounter.app; sourceTree = BUILT_PRODUCTS_DIR; }};
 /* End PBXFileReference section */
 
@@ -120,8 +119,17 @@ out = f'''// !$*UTF8*$!
 			isa = PBXGroup;
 			children = (
 				{GSRC} /* RepCounter */,
+				{GCONFIG} /* Config */,
 				{GPROD} /* Products */,
 			);
+			sourceTree = "<group>";
+		}};
+		{GCONFIG} /* Config */ = {{
+			isa = PBXGroup;
+			children = (
+				{XCCONFIG} /* Base.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		}};
 		{GSRC} /* RepCounter */ = {{
@@ -243,12 +251,14 @@ out = f'''// !$*UTF8*$!
 		}};
 		{CTD} /* Debug */ = {{
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = {XCCONFIG} /* Base.xcconfig */;
 			buildSettings = {{
 {target}			}};
 			name = Debug;
 		}};
 		{CTR} /* Release */ = {{
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = {XCCONFIG} /* Base.xcconfig */;
 			buildSettings = {{
 {target}			}};
 			name = Release;

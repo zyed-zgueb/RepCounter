@@ -8,3 +8,6 @@ build/
 # Python
 __pycache__/
 Design/sound/out/*.wav
+
+# Réglages propres à chaque Mac (équipe de signature, identifiant)
+Config/Local.xcconfig

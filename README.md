@@ -95,6 +95,12 @@ approchées (JetBrains Mono ≈ SF Mono, Inter ≈ SF Pro), pictogrammes approch
 ## Projet Xcode
 `RepCounter.xcodeproj` est généré : après l'ajout ou le retrait d'un fichier Swift, ajouter
 son nom dans `Tools/gen_xcodeproj.py` puis `python3 Tools/gen_xcodeproj.py`.
+
+Les réglages propres à chaque Mac (équipe de signature, identifiant de l'app) ne sont pas dans
+le fichier projet mais dans `Config/Local.xcconfig`, non versionné (modèle :
+`Config/Local.xcconfig.example`), inclus par `Config/Base.xcconfig`. Ainsi Xcode ne modifie pas
+le fichier projet et un pull n'entre jamais en conflit. Ne pas régler l'équipe dans
+Signing & Capabilities.
 - La caméra ne s'allume que pour les exercices qui en ont besoin (Pompes, Autre exercice).
 
 ## Exercices
