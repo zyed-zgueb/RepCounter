@@ -11,7 +11,9 @@ fs.mkdirSync(out, { recursive: true });
 const SCREENS = [
   ["1-ouverture", { phase: "ready", signal: "ok", caption: "Ouverture de l'app (veille)" }],
   ["2-glissement", { phase: "ready", exercise: 0, drag: -95, signal: "ok", caption: "Glisser vers la gauche" }],
-  ["2c-biceps", { phase: "ready", exercise: 3, signal: "ok", caption: "Biceps : charge de l'haltère" }],
+  ["2c-biceps", { phase: "ready", exercise: 6, signal: "ok", caption: "Biceps : charge de l'haltère" }],
+  ["2d-tractions", { phase: "ready", exercise: 4, signal: "ok", caption: "Tractions" }],
+  ["2e-rowing", { phase: "ready", exercise: 7, signal: "ok", caption: "Rowing haltère" }],
   ["2b-abdos", { phase: "ready", exercise: 1, signal: "weak", caption: "Abdos choisis" }],
   ["3-depart", { phase: "countdown", caption: "Départ (bips 3, 2, 1, accord)" }],
   ["4-detection", { phase: "acquiring", tentative: 2, caption: "Détection 2/3" }],

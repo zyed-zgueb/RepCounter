@@ -3,7 +3,7 @@ import Foundation
 /// Exercice choisi par l'utilisateur : où est le téléphone, quels capteurs écouter.
 /// Mêmes profils que `PROFILES` dans Simulation/simulate_counter.py.
 enum Exercise: String, CaseIterable, Identifiable {
-    case pushups, crunches, squats, curls, press, auto
+    case pushups, crunches, squats, lunges, pullups, dips, curls, row, press, auto
 
     var id: String { rawValue }
 
@@ -13,17 +13,21 @@ enum Exercise: String, CaseIterable, Identifiable {
         case .pushups: return "Pompes"
         case .crunches: return "Abdos"
         case .squats: return "Squats"
+        case .lunges: return "Fentes"
+        case .pullups: return "Tractions"
+        case .dips: return "Dips"
         case .curls: return "Biceps"
+        case .row: return "Rowing haltère"
         case .press: return "Développé épaules"
         }
     }
 
     /// Exercice avec haltère : sa charge est demandée et entre dans l'indice de performance.
-    var isWeighted: Bool { self == .curls || self == .press }
+    var isWeighted: Bool { self == .curls || self == .press || self == .row }
 
     /// Équipement choisi pour cet exercice (1 haltère, 2 haltères ou une barre), mémorisé.
     var loadKind: LoadKind {
-        get { UserDefaults.standard.string(forKey: "loadKind.\(rawValue)").flatMap(LoadKind.init) ?? .two }
+        get { UserDefaults.standard.string(forKey: "loadKind.\(rawValue)").flatMap(LoadKind.init) ?? (self == .row ? .one : .two) }
         nonmutating set { UserDefaults.standard.set(newValue.rawValue, forKey: "loadKind.\(rawValue)") }
     }
 
@@ -41,6 +45,7 @@ enum Exercise: String, CaseIterable, Identifiable {
         switch self {
         case .auto: return "Autre"
         case .press: return "Développé"
+        case .row: return "Rowing"
         default: return title
         }
     }
@@ -52,7 +57,9 @@ enum Exercise: String, CaseIterable, Identifiable {
         case .crunches: return "figure.core.training"
         case .squats: return "figure.strengthtraining.functional"
         case .curls: return "dumbbell.fill"
-        case .press: return "figure.strengthtraining.traditional"   // non affiché : voir ExerciseIcon
+        // Non affichés : pictogrammes dessinés, voir ExerciseIcon
+        case .press: return "figure.strengthtraining.traditional"
+        case .lunges, .pullups, .dips, .row: return "figure.strengthtraining.functional"
         }
     }
 
@@ -65,6 +72,10 @@ enum Exercise: String, CaseIterable, Identifiable {
         case .squats: return "Téléphone tenu à la main ou contre la poitrine."
         case .curls: return "Téléphone dans un brassard sur l'avant-bras qui travaille, près du poignet."
         case .press: return "Téléphone dans un brassard sur l'avant-bras qui pousse."
+        case .lunges: return "Téléphone tenu à la main ou contre la poitrine."
+        case .pullups: return "Téléphone dans une poche de pantalon ajustée."
+        case .dips: return "Téléphone dans une poche de pantalon ajustée."
+        case .row: return "Téléphone dans un brassard sur l'avant-bras qui tire, près du poignet."
         }
     }
 
@@ -75,8 +86,8 @@ enum Exercise: String, CaseIterable, Identifiable {
         case .pushups: return "CAM 3D"
         case .crunches: return "GYRO"
         case .squats: return "ACCÉL"
-        case .curls: return "INCL"
-        case .press: return "ACCÉL"
+        case .curls, .row: return "INCL"
+        case .press, .lunges, .pullups, .dips: return "ACCÉL"
         }
     }
 
@@ -91,6 +102,10 @@ enum Exercise: String, CaseIterable, Identifiable {
         case .squats: return [.vertical, .motion]
         case .curls: return [.motion, .rotation]
         case .press: return [.vertical, .motion]
+        // Le corps monte et descend : le téléphone (en poche ou tenu) le suit
+        case .lunges, .pullups, .dips: return [.vertical, .motion]
+        // Comme les flexions : le téléphone pivote avec l'avant-bras qui tire
+        case .row: return [.motion, .rotation]
         }
     }
 

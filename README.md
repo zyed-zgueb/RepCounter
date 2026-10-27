@@ -135,6 +135,13 @@ Chaque exercice fixe les capteurs écoutés.
 | Squats | à la main ou contre la poitrine | accélération verticale, inclinaison |
 | Biceps | brassard sur l'avant-bras qui travaille, près du poignet | inclinaison, gyroscope |
 | Développé épaules | brassard sur l'avant-bras qui pousse | accélération verticale, inclinaison |
+| Fentes | à la main ou contre la poitrine | accélération verticale, inclinaison |
+| Tractions | poche de pantalon ajustée | accélération verticale, inclinaison |
+| Dips | poche de pantalon ajustée | accélération verticale, inclinaison |
+| Rowing haltère | brassard sur l'avant-bras qui tire, près du poignet | inclinaison, gyroscope |
+
+Fentes, tractions, dips et rowing reprennent des profils déjà validés (squats pour les trois
+premiers, biceps pour le rowing) ; ils restent à vérifier sur des enregistrements réels.
 
 Abdos : le gyroscope mesure la vitesse de rotation. Un petit basculement rapide des
 épaules (4 à 6°) y est environ 7 fois plus fort qu'une respiration de même angle, ce que

@@ -112,14 +112,15 @@ extension HistoryPanel where Accessory == EmptyView {
     }
 }
 
-/// Σ et les six exercices, sur une ligne.
+/// Σ et les exercices, en grille.
 private struct ExerciseFilter: View {
     @Environment(\.theme) private var theme
     @Binding var selection: Exercise?
 
     var body: some View {
         VStack(spacing: 8) {
-            HStack(spacing: 6) {
+            // Σ et les exercices : une grille de 6 colonnes, sans défilement
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                 item(nil) {
                     Text("Σ").font(.system(size: 18, weight: .bold))
                 }

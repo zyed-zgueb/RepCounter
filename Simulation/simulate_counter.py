@@ -53,6 +53,10 @@ PROFILES = {
     "squats": dict(sources=["vertical", "motion"]),
     "curls": dict(sources=["motion", "rotation"]),
     "press": dict(sources=["vertical", "motion"]),
+    "lunges": dict(sources=["vertical", "motion"]),
+    "pullups": dict(sources=["vertical", "motion"]),
+    "dips": dict(sources=["vertical", "motion"]),
+    "row": dict(sources=["motion", "rotation"]),
 }
 
 

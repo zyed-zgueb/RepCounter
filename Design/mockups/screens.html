@@ -35,7 +35,11 @@ const EXERCISES = [
   ["pushup", "Pompes", "Téléphone au sol, écran vers le haut, au niveau de ta tête.", "CAM 3D"],
   ["crunch", "Abdos", "Téléphone tenu à plat contre la poitrine.", "GYRO"],
   ["squat", "Squats", "Téléphone tenu à la main ou contre la poitrine.", "ACCÉL"],
+  ["lunge", "Fentes", "Téléphone tenu à la main ou contre la poitrine.", "ACCÉL"],
+  ["pullup", "Tractions", "Téléphone dans une poche de pantalon ajustée.", "ACCÉL"],
+  ["dips", "Dips", "Téléphone dans une poche de pantalon ajustée.", "ACCÉL"],
   ["dumbbell", "Biceps", "Téléphone dans un brassard sur l'avant-bras qui travaille, près du poignet.", "INCL"],
+  ["row", "Rowing", "Téléphone dans un brassard sur l'avant-bras qui tire, près du poignet.", "INCL"],
   ["press", "Développé", "Téléphone dans un brassard sur l'avant-bras qui pousse.", "ACCÉL"],
   ["sparkles", "Autre", "Téléphone posé face à toi ou porté sur toi.", "MULTI"],
 ];
@@ -50,6 +54,10 @@ const ICONS = {
   squat: `<circle cx="11.6" cy="3.2" r="1.9" stroke="none"/><path d="M11 5.6 L8 11 L13.4 12.2 L12.2 18.4 M10.6 7.2 L16.6 8.4" ${L}/>`,
   dumbbell: '<path d="M3 10 H17" stroke-width="2"/><rect x="3.5" y="5.5" width="3.4" height="9" rx="1" stroke="none"/><rect x="13.1" y="5.5" width="3.4" height="9" rx="1" stroke="none"/>',
   sparkles: '<path d="M10 3 L11.5 8.5 L17 10 L11.5 11.5 L10 17 L8.5 11.5 L3 10 L8.5 8.5 Z" stroke="none"/>',
+  lunge: `<circle cx="9.6" cy="2.9" r="1.8" stroke="none"/><path d="M9.6 5.2 V10.6 L13.8 12.8 V17.2 M9.6 10.6 L6.6 15.6 L2.8 15.8" ${L}/><path d="M1.5 18.4 H18.5" stroke-width="1" stroke-linecap="round" opacity=".55"/>`,
+  pullup: `<path d="M2.5 2.4 H17.5" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="5.7" r="1.8" stroke="none"/><path d="M6.4 2.6 L8.2 8.6 L11.8 8.6 L13.6 2.6 M10 8.6 V13.6 M10 13.6 L8.7 18.4 M10 13.6 L11.3 18.4" ${L}/>`,
+  dips: `<path d="M3.4 10 V18.6 M16.6 10 V18.6" stroke-width="1.2" stroke-linecap="round" opacity=".55"/><path d="M2.5 10 H6.2 M13.8 10 H17.5" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="3.4" r="1.8" stroke="none"/><path d="M5.2 10 L8 6.2 H12 L14.8 10 M10 6.2 V12.6 M10 12.6 L8.8 18 M10 12.6 L11.2 18" ${L}/>`,
+  row: `<circle cx="3.8" cy="6.2" r="1.8" stroke="none"/><path d="M6 7.4 L14.6 9.4 L13.6 18.2 M14.6 9.4 L17 18.2" ${L}/><path d="M8.2 8 L11.6 5.6 L11.2 11.2" ${L}/><rect x="9.1" y="11.2" width="4.2" height="1.9" rx=".6" stroke="none"/>`,
   gear: '<circle cx="10" cy="10" r="2.6" fill="none" stroke-width="1.8"/><path d="M10 2.5 V5 M10 15 V17.5 M2.5 10 H5 M15 10 H17.5 M4.7 4.7 L6.5 6.5 M13.5 13.5 L15.3 15.3 M4.7 15.3 L6.5 13.5 M13.5 6.5 L15.3 4.7" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="5.6" fill="none" stroke-width="1.8"/>',
   chart: '<rect x="3" y="10" width="3" height="7" rx="1" stroke="none"/><rect x="8.5" y="6" width="3" height="11" rx="1" stroke="none"/><rect x="14" y="3" width="3" height="14" rx="1" stroke="none"/>',
   back: '<path d="M12.5 4.5 L7 10 L12.5 15.5" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
@@ -182,10 +190,10 @@ function render(t, s) {
             <div class="row" style="position:absolute;left:0;right:0;top:${side / 2 + side * 0.19 - 2.5}px;justify-content:center;gap:6px">${dots}</div>
           </div>` })}
         <div style="font-size:12px;color:${c.dim};max-width:300px;line-height:1.45;text-align:center">${EXERCISES[index][2]}</div>
-        <div class="row" style="gap:10px;height:40px;opacity:${index === 3 || index === 4 ? 1 : 0}">
-          <span class="row" style="gap:4px;height:36px;padding:0 10px;border:1px solid ${hexA(c.primary, .5)};border-radius:${r}px;color:${c.primary};font-size:11px;font-weight:700;letter-spacing:1px">2 HALTÈRES <span style="font-size:9px">⇅</span></span>
+        <div class="row" style="gap:10px;height:40px;opacity:${[6, 7, 8].includes(index) ? 1 : 0}">
+          <span class="row" style="gap:4px;height:36px;padding:0 10px;border:1px solid ${hexA(c.primary, .5)};border-radius:${r}px;color:${c.primary};font-size:11px;font-weight:700;letter-spacing:1px">${index === 7 ? "1 HALTÈRE" : "2 HALTÈRES"} <span style="font-size:9px">⇅</span></span>
           <span style="width:36px;height:36px;border-radius:${r}px;border:1px solid ${c.line};display:flex;align-items:center;justify-content:center">${icon("minus", c.text, 13)}</span>
-          <span style="font-size:15px;font-weight:700;min-width:84px;text-align:center">${s.load || "2 × 5 kg"}</span>
+          <span style="font-size:15px;font-weight:700;min-width:84px;text-align:center">${s.load || (index === 7 ? "1 × 8 kg" : "2 × 5 kg")}</span>
           <span style="width:36px;height:36px;border-radius:${r}px;border:1px solid ${c.line};display:flex;align-items:center;justify-content:center">${icon("plus", c.text, 13)}</span></div>
       </div>
       <div class="bottom">${signalStrip(s.signal || "ok")}${btn("Démarrer", c.primary, true, 64)}</div>`;
@@ -321,10 +329,10 @@ function render(t, s) {
 
   function exerciseBar(selected) {
     const items = [["Σ", "Tout"], ...EXERCISES.map(e => [e[0], e[1]])];
-    return `<div class="row" style="gap:6px;justify-content:space-between">${items.map(([ic, name], i) => {
+    return `<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px">${items.map(([ic, name], i) => {
       const on = i === selected;
       const content = ic === "Σ" ? `<span style="font-size:18px;font-weight:700;color:${on ? c.primary : c.dim}">Σ</span>` : icon(ic, on ? c.primary : c.dim, 22);
-      return `<div style="flex:1;height:46px;border-radius:${Math.max(r, 4) * 2}px;display:flex;align-items:center;justify-content:center;
+      return `<div style="height:46px;border-radius:${Math.max(r, 4) * 2}px;display:flex;align-items:center;justify-content:center;
         border:1px solid ${on ? c.primary : c.line};background:${on ? hexA(c.primary, .12) : c.panel}">${content}</div>`;
     }).join("")}</div>
     <div style="text-align:center;margin-top:-4px">${label(items[selected][1], c.text)}</div>`;
