@@ -91,7 +91,8 @@ struct EndurancePanel: View {
     var body: some View {
         let score = stats.performanceIndex()
         let previous = stats.previousPerformanceIndex
-        let weekly = stats.weeklyBestIndex()
+        let curve = stats.sessionIndices()
+        let first = stats.firstScored
         let assessment = EnduranceAssessment.make(exercise: exercise, bestSet: stats.bestSet(lastDays: 28))
         let record = stats.sessions.compactMap(\.performanceIndex).max()
         VStack(alignment: .leading, spacing: 12) {
@@ -117,6 +118,7 @@ struct EndurancePanel: View {
                         .frame(width: 150, height: 150)
                     VStack(alignment: .leading, spacing: 8) {
                         if let previous, previous > 0 {
+                            // Assez d'historique : évolution sur 4 semaines
                             let change = (score - previous) / previous * 100
                             Text("\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) %")
                                 .font(theme.font(20, .bold))
@@ -125,9 +127,19 @@ struct EndurancePanel: View {
                                 .font(theme.font(11))
                                 .foregroundStyle(theme.dim)
                                 .padding(.top, -6)
+                        } else if let first, curve.points.count >= 2 {
+                            // Au début : évolution depuis la première séance notée
+                            let change = Int(score.rounded()) - Int(first.value.rounded())
+                            Text("\(change >= 0 ? "▲" : "▼") \(Format.signed(change))")
+                                .font(theme.font(20, .bold))
+                                .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
+                            Text("depuis le \(Format.shortDate(first.date))")
+                                .font(theme.font(11))
+                                .foregroundStyle(theme.dim)
+                                .padding(.top, -6)
                         }
-                        if weekly.count >= 2 {
-                            LineChart(points: weekly, weeks: 12)
+                        if curve.points.count >= 2 {
+                            LineChart(points: curve.points, span: curve.span)
                                 .frame(height: 40)
                         }
                         if assessment == nil, let record {

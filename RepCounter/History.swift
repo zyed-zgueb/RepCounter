@@ -254,11 +254,20 @@ struct HistoryStats {
         performanceIndex(at: now.addingTimeInterval(-28 * 86_400))
     }
 
-    /// Meilleur indice de chaque semaine (celles qui en ont un), sur les `weeks` dernières.
-    func weeklyBestIndex(weeks: Int = 12) -> [(week: Int, value: Double)] {
-        lastWeeks(weeks).enumerated().compactMap { index, week in
-            sessions(inWeek: week).compactMap(\.performanceIndex).max().map { (index, $0) }
-        }
+    /// Un point par séance notée sur les `weeks` dernières semaines, de la plus ancienne à la
+    /// plus récente : x en semaines depuis le début de la période (de 0 à `span`).
+    func sessionIndices(weeks: Int = 12) -> (points: [(x: Double, value: Double)], span: Double) {
+        let start = lastWeeks(weeks).first ?? thisWeek
+        let week = 7.0 * 86_400
+        let points = sessions.reversed()
+            .filter { $0.start >= start }
+            .compactMap { session in session.performanceIndex.map { (x: session.start.timeIntervalSince(start) / week, value: $0) } }
+        return (points, max(now.timeIntervalSince(start) / week, 1))
+    }
+
+    /// Première séance notée : point de comparaison tant qu'il n'y a pas 4 semaines d'historique.
+    var firstScored: (date: Date, value: Double)? {
+        sessions.last { $0.performanceIndex != nil }.flatMap { session in session.performanceIndex.map { (date: session.start, value: $0) } }
     }
 
     // Régularité

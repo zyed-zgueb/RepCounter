@@ -335,7 +335,7 @@ private struct ProgressionPanel: View {
         let fatigue = stats.weekly { $0.fatigue }
         HistoryPanel(title: "Progression · 12 semaines") {
             if perSet.count >= 2 {
-                LineChart(points: perSet, weeks: 12)
+                LineChart(points: perSet.map { (x: Double($0.week), value: $0.value) }, span: 11)
                     .frame(height: 72)
             } else {
                 Text("La courbe apparaît après deux semaines d'entraînement.")
@@ -374,18 +374,19 @@ private struct ProgressionPanel: View {
 }
 
 /// Courbe d'une valeur par semaine (points aux semaines qui en ont).
+/// Courbe d'une valeur : x de 0 (à gauche) à `span` (à droite).
 struct LineChart: View {
     @Environment(\.theme) private var theme
-    let points: [(week: Int, value: Double)]
-    let weeks: Int
+    let points: [(x: Double, value: Double)]
+    let span: Double
 
     var body: some View {
         Canvas { context, size in
             let values = points.map(\.value)
             guard let low = values.min(), let high = values.max() else { return }
             let span = max(high - low, 0.5)
-            let location = { (point: (week: Int, value: Double)) -> CGPoint in
-                CGPoint(x: size.width * CGFloat(point.week) / CGFloat(max(weeks - 1, 1)),
+            let location = { (point: (x: Double, value: Double)) -> CGPoint in
+                CGPoint(x: size.width * CGFloat(min(max(point.x / max(span, 0.001), 0), 1)),
                         y: 4 + (size.height - 8) * CGFloat(1 - (point.value - low) / span))
             }
             var path = Path()
