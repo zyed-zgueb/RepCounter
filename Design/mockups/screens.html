@@ -458,9 +458,9 @@ function render(t, s) {
         <div style="display:flex;flex-direction:column;gap:14px;width:100%;padding:0 6px">
           ${line(1, "Échauffe-toi : <b>5 pompes faciles</b>.")}
           ${line(2, "Place le téléphone au sol, au niveau de ta tête.")}
-          ${line(3, "Fais <b>3 pompes aussi vite que possible</b>, en descendant et en remontant complètement.")}
+          ${line(3, "Fais <b>4 pompes aussi vite que possible</b>, en gardant toute l'amplitude.")}
         </div>
-        <div style="font-size:12px;color:${c.dim};text-align:center;line-height:1.45;max-width:300px">L'app s'arrête seule après la 3e. Fais-le si possible à la même heure, pour comparer ce qui est comparable.</div>
+        <div style="font-size:12px;color:${c.dim};text-align:center;line-height:1.45;max-width:300px">L'app s'arrête seule après la 4e. Fais-le si possible à la même heure, pour comparer ce qui est comparable.</div>
       </div>
       <div class="bottom">${btn("Commencer", c.primary, true, 64)}</div>`;
   }
@@ -468,15 +468,15 @@ function render(t, s) {
   // Pendant le test : le cadran compte jusqu'à 3 ; une répétition incomplète est refusée
   function testRun() {
     const n = s.reps, invalid = s.invalid;
-    const pips = [0, 1, 2].map(i => `<span style="width:22px;height:7px;border-radius:2px;background:${i < n ? c.primary : c.line}"></span>`).join("");
+    const pips = [0, 1, 2, 3].map(i => `<span style="width:22px;height:7px;border-radius:2px;background:${i < n ? c.primary : c.line}"></span>`).join("");
     const banner = invalid ? `<div class="row" style="gap:8px;justify-content:center;padding:10px 14px;border-radius:${r}px;background:${hexA(c.warn, .12)};border:1px solid ${hexA(c.warn, .5)};color:${c.warn};font-size:13px;font-weight:700">
-        Répétition incomplète : descends jusqu'en bas</div>` : `<div style="height:40px"></div>`;
+        Répétition incomplète : on recommence, en gardant toute l'amplitude.</div>` : `<div style="height:40px"></div>`;
     return `${status("Test de forme", c.primary, "")}
       <div class="hero">
-        ${ring({ lit: Math.round(n / 3 * 60), size: 330, content: `
+        ${ring({ lit: Math.round(n / 4 * 60), size: 330, content: `
           <div style="font-size:170px;font-weight:700;line-height:1">${n}</div>
           <div class="row" style="gap:6px;margin-top:10px">${pips}</div>
-          <div style="margin-top:8px">${label("sur 3 · vite et complet")}</div>` })}
+          <div style="margin-top:8px">${label("sur 4 · vite et complet")}</div>` })}
         ${banner}
       </div>
       <div class="bottom">${btn("Annuler", c.dim, false, 52)}</div>`;

@@ -388,6 +388,9 @@ final class AutoCounter {
         var tentative: Int
         /// Répétition comptée : il y a combien de secondes son mouvement a eu lieu.
         var repAge: Double?
+        /// Test de forme : mouvement détecté sur la source du test (instant de son extrême, en
+        /// temps des mesures, et son ampleur), sans attendre que le comptage démarre.
+        var testPeak: (time: Double, swing: Float)?
     }
 
     /// Cycles réguliers exigés pour démarrer le comptage d'une série.
@@ -420,6 +423,20 @@ final class AutoCounter {
 
     /// Remise à zéro : démarrage d'une séance (fin du compte à rebours) ou série annulée.
     /// Ce qui précède est ignoré : le compteur ne retient que les cycles postérieurs.
+    /// Source suivie pendant un test de forme (nil hors test).
+    private var testSource: SignalSource?
+
+    /// Test de forme : chaque mouvement de la source principale de l'exercice est signalé
+    /// aussitôt (Output.testPeak). Les cycles antérieurs sont oubliés.
+    func startTest() {
+        testSource = exercise.sources.first
+        if let testSource { trackers[testSource]?.forgetCycles(before: lastFrameTime) }
+    }
+
+    func stopTest() {
+        testSource = nil
+    }
+
     func reset() {
         count = 0
         leader = nil
@@ -496,7 +513,12 @@ final class AutoCounter {
                       cadence: leader.flatMap { trackers[$0]?.period },
                       regularity: leader.flatMap { trackers[$0]?.lastRegularity } ?? 0,
                       tentative: tentative(at: t),
-                      repAge: didCount ? leader.flatMap { trackers[$0] }.map { max(0, t - $0.lastRepPeak) } : nil)
+                      repAge: didCount ? leader.flatMap { trackers[$0] }.map { max(0, t - $0.lastRepPeak) } : nil,
+                      testPeak: testSource.flatMap { source in
+                          guard completed.contains(source), let tracker = trackers[source],
+                                let swing = tracker.cycleSwings.last else { return nil }
+                          return (time: tracker.lastRepPeak, swing: swing)
+                      })
     }
 
     private func tentative(at t: Double) -> Int {

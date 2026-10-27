@@ -13,7 +13,7 @@ struct RepCounterApp: App {
                 .preferredColorScheme(themeStore.current.colorScheme)
         }
         // Historique des séances, sur l'iPhone (iCloud activable plus tard : modèle compatible CloudKit)
-        .modelContainer(for: SessionRecord.self)
+        .modelContainer(for: [SessionRecord.self, FormTest.self])
     }
 }
 
@@ -23,16 +23,16 @@ struct RootView: View {
     static let exerciseKey = "exercise"
 
     @AppStorage(RootView.exerciseKey) private var exerciseID = Exercise.pushups.rawValue
-    /// L'écran du nouvel exercice démarre sa séance dès son affichage.
-    @State private var startsSession = false
+    /// Ce que l'écran du nouvel exercice lance dès son affichage.
+    @State private var startAction = StartAction.none
 
     private var exercise: Exercise { Exercise(rawValue: exerciseID) ?? .pushups }
 
     var body: some View {
         // Un écran par exercice : changer d'exercice arrête ses capteurs et démarre ceux du suivant.
         // Le nouvel écran s'affiche à l'identique (même exercice dans le cadran) : pas de transition.
-        WorkoutView(exercise: exercise, startsSession: startsSession) { selected, start in
-            startsSession = start
+        WorkoutView(exercise: exercise, startAction: startAction) { selected, action in
+            startAction = action
             exerciseID = selected.rawValue
         }
             .id(exercise)

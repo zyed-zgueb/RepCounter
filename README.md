@@ -54,6 +54,27 @@ séances passées. Le modèle suit les règles de CloudKit (valeurs par défaut,
 optionnelles) : la synchronisation iCloud pourra être activée sans migration. Les statistiques
 sont calculées dans `HistoryStats`, les écrans sont dans `HistoryView.swift`.
 
+## Test de forme
+Depuis le panneau Forme de l'historique d'un exercice : une consigne, 5 s pour se placer, puis
+**4 répétitions aussi vite que possible, amplitude complète**. L'app s'arrête seule. La durée de
+chaque répétition (d'un extrême du mouvement au suivant : 3 mesures) est comparée à la
+référence personnelle (médiane des 10 derniers tests) : **forme en %** (100 = comme d'habitude,
+plus = plus rapide), zone fatigué / normal / frais au-delà de la variation normale (1,5 fois
+l'écart-type relatif des derniers tests, au moins 3 %). Les 3 premiers tests établissent la
+référence. Une répétition nettement moins ample que les autres (moins de 75 %) fait recommencer
+le test. Principe : l'entraînement basé sur la vitesse (la vitesse des premières répétitions
+reflète la fraîcheur neuromusculaire). Le compteur signale chaque mouvement de la source
+principale de l'exercice sans attendre le démarrage du comptage (`FormTest.swift`,
+`FormTestView.swift`).
+
+## Conseil
+En tête de l'historique d'un exercice, au plus un conseil, le plus important d'abord
+(`Advice.swift`) : **signal de fatigue** (test de forme fatigué depuis moins de 3 jours, ou score
+d'endurance en baisse 2 séances de suite sans baisse de volume), **pic de charge** (volume de la
+semaine > 1,5 × la moyenne des 4 précédentes), **plateau** (3 séances notées en 3 semaines sans
+dépasser le meilleur score d'avant), **record à portée** (une série récente à 1 ou 2 répétitions
+du record de série).
+
 ## Score d'endurance
 Score d'endurance musculaire, par séance d'au moins 3 séries : **r₁ + r₂·k(R₂) + r₃·k(R₃)**, les répétitions des 3 premières
 séries, chacune pondérée par le repos R qui la précède, **k(R) = (60 s / R)^0,2** (1 avec 60 s,

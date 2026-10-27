@@ -11,8 +11,13 @@ struct HistoryView: View {
     /// nil : tous les exercices.
     @State private var exercise: Exercise?
 
-    init(exercise: Exercise?) {
+    @Query(sort: \FormTest.date) private var formTests: [FormTest]
+    /// « Faire un test de forme » sur un exercice.
+    let onStartTest: (Exercise) -> Void
+
+    init(exercise: Exercise?, onStartTest: @escaping (Exercise) -> Void = { _ in }) {
         _exercise = State(initialValue: exercise)
+        self.onStartTest = onStartTest
     }
 
     var body: some View {
@@ -33,6 +38,13 @@ struct HistoryView: View {
                 ScrollView {
                     VStack(spacing: 14) {
                         ExerciseFilter(selection: $exercise)
+                        if let exercise {
+                            let tests = formTests.filter { $0.exercise == exercise }
+                            if let advice = Advice.make(stats: stats, tests: tests) { AdviceCard(advice: advice) }
+                            if exercise.supportsFormTest {
+                                FormPanel(exercise: exercise, tests: tests) { onStartTest(exercise) }
+                            }
+                        }
                         if stats.isEmpty {
                             emptyState
                         } else {
