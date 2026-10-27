@@ -1,0 +1,38 @@
+<body style="background:#0D1217;margin:0;padding:24px;font-family:Inter,sans-serif;color:#8aa">
+<div id="r"></div>
+<script>
+const L='fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+const FLOOR=(x1=1.5,x2=18.5,y=18.4)=>`<path d="M${x1} ${y} H${x2}" stroke-width="1" stroke-linecap="round" opacity=".55"/>`;
+// Jeu actuel (tracés de l'app ; abdos, squats, biceps et « autre » sont des SF Symbols dans l'app, ici leur approximation)
+const OLD={
+ Pompes:`<circle cx="3.4" cy="7.6" r="1.9" stroke="none"/><path d="M5.8 9.4 L18.4 16.2 M6.2 9.6 L6.6 16.2" ${L}/>${FLOOR(1.5,18.5,17.6)}`,
+ Abdos:`<circle cx="4.2" cy="7.8" r="1.9" stroke="none"/><path d="M5.6 10 L9 15.6 L13.6 10.6 L17.4 15.6" ${L}/>${FLOOR(1.5,18.5,17.6)}`,
+ Squats:`<circle cx="11.6" cy="3.2" r="1.9" stroke="none"/><path d="M11 5.6 L8 11 L13.4 12.2 L12.2 18.4 M10.6 7.2 L16.6 8.4" ${L}/>`,
+ Fentes:`<circle cx="9.6" cy="2.9" r="1.8" stroke="none"/><path d="M9.6 5.2 V10.6 L13.8 12.8 V17.2 M9.6 10.6 L6.6 15.6 L2.8 15.8" ${L}/>${FLOOR()}`,
+ Tractions:`<path d="M2.5 2.4 H17.5" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="5.7" r="1.8" stroke="none"/><path d="M6.4 2.6 L8.2 8.6 L11.8 8.6 L13.6 2.6 M10 8.6 V13.6 M10 13.6 L8.7 18.4 M10 13.6 L11.3 18.4" ${L}/>`,
+ Dips:`<path d="M3.4 10 V18.6 M16.6 10 V18.6" stroke-width="1.2" stroke-linecap="round" opacity=".55"/><path d="M2.5 10 H6.2 M13.8 10 H17.5" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="3.4" r="1.8" stroke="none"/><path d="M5.2 10 L8 6.2 H12 L14.8 10 M10 6.2 V12.6 M10 12.6 L8.8 18 M10 12.6 L11.2 18" ${L}/>`,
+ Biceps:'<path d="M3 10 H17" stroke-width="2"/><rect x="3.5" y="5.5" width="3.4" height="9" rx="1" stroke="none"/><rect x="13.1" y="5.5" width="3.4" height="9" rx="1" stroke="none"/>',
+ Rowing:`<circle cx="3.8" cy="6.2" r="1.8" stroke="none"/><path d="M6 7.4 L14.6 9.4 L13.6 18.2 M14.6 9.4 L17 18.2" ${L}/><path d="M8.2 8 L11.6 5.6 L11.2 11.2" ${L}/><rect x="9.1" y="11.2" width="4.2" height="1.9" rx=".6" stroke="none"/>`,
+ Développé:`<circle cx="10" cy="7.2" r="1.9" stroke="none"/><path d="M2.5 2.6 H17.5" stroke-width="1.6" stroke-linecap="round"/><rect x="2.6" y="0.8" width="2" height="3.6" rx=".6" stroke="none"/><rect x="15.4" y="0.8" width="2" height="3.6" rx=".6" stroke="none"/><path d="M6.2 2.8 L7.6 10 H12.4 L13.8 2.8 M10 10 V13.4 M10 13.4 L7.6 18.6 M10 13.4 L12.4 18.6" ${L}/>`,
+ Autre:'<path d="M10 3 L11.5 8.5 L17 10 L11.5 11.5 L10 17 L8.5 11.5 L3 10 L8.5 8.5 Z" stroke="none"/>',
+};
+// Jeu proposé : une seule grammaire (trait 2, tête pleine r 1,9, sol fin sous les exercices posés au sol)
+const F=FLOOR(1.5,18.5,18.3);
+const NEW={
+ Pompes:`<circle cx="3.4" cy="8.4" r="1.9" stroke="none"/><path d="M5.8 10.2 L18.4 16.6 M6.2 10.4 L6.6 16.6" ${L}/>${F}`,
+ Abdos:`<circle cx="3.6" cy="9.4" r="1.9" stroke="none"/><path d="M5.6 11.2 L9.4 16.4 L13.8 11 L17.6 16.4 M6.6 11.6 L9.8 9.8" ${L}/>${F}`,
+ Squats:`<circle cx="10.4" cy="3.2" r="1.9" stroke="none"/><path d="M10 5.4 L7.4 10.8 L12.6 11.8 L11.6 16.6 M9.4 6.8 L15.6 7.8" ${L}/>${F}`,
+ Fentes:`<circle cx="9.6" cy="2.9" r="1.9" stroke="none"/><path d="M9.6 5.2 V10.6 L13.8 12.8 V16.6 M9.6 10.6 L6.6 15.6 L2.8 15.8" ${L}/>${F}`,
+ Tractions:`<path d="M2.5 2.4 H17.5" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="5.6" r="1.9" stroke="none"/><path d="M5.6 2.6 L7.8 8.8 H12.2 L14.4 2.6 M10 8.8 V13.6 M10 13.6 L8.6 17.4 M10 13.6 L11.4 17.4" ${L}/>`,
+ Dips:`<path d="M3.4 10 V18.3 M16.6 10 V18.3" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>${F}<path d="M2.5 10 H6.2 M13.8 10 H17.5" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="3.4" r="1.9" stroke="none"/><path d="M5.2 10 L8 6.2 H12 L14.8 10 M10 6.2 V12.2 M10 12.2 L8.9 15.8 M10 12.2 L11.1 15.8" ${L}/>`,
+ Biceps:`<circle cx="8.4" cy="3.2" r="1.9" stroke="none"/><path d="M8.4 5.4 V11.8 M8.4 11.8 L7.2 16.6 M8.4 11.8 L9.8 16.6 M8.6 6.4 L9.6 10.6 L13.6 7.2" ${L}/><rect x="11.5" y="6.25" width="4.2" height="1.9" rx=".6" stroke="none" transform="rotate(50 13.6 7.2)"/>${F}`,
+ Rowing:`<circle cx="3.8" cy="7" r="1.9" stroke="none"/><path d="M6 8.2 L14.4 9.6 L13.4 13.4 L14.4 16.6 M14.4 9.6 L16.8 16.6" ${L}/><path d="M8.4 8.6 L11.4 6 L11.2 11.4" ${L}/><rect x="9.1" y="11.4" width="4.2" height="1.9" rx=".6" stroke="none"/>${F}`,
+ Développé:`<circle cx="10" cy="6.6" r="1.9" stroke="none"/><path d="M2.5 2.4 H17.5" stroke-width="1.6" stroke-linecap="round"/><rect x="2.6" y="0.6" width="2" height="3.6" rx=".6" stroke="none"/><rect x="15.4" y="0.6" width="2" height="3.6" rx=".6" stroke="none"/><path d="M6.2 2.6 L7.6 9.4 H12.4 L13.8 2.6 M10 9.4 V12.8 M10 12.8 L8 16.6 M10 12.8 L12 16.6" ${L}/>${F}`,
+ Autre:`<path d="M15.2 5.8 A6.6 6.6 0 1 0 16.4 11.6" ${L}/><path d="M15.6 2.4 L15.4 6.2 L11.8 5.8" ${L}/><circle cx="10" cy="10.2" r="1.9" stroke="none"/>`,
+};
+const row=(set,title)=>`<div style="font:600 12px Inter;letter-spacing:1px;margin:10px 0 8px">${title}</div><div style="display:flex;gap:14px">`+
+  Object.entries(set).map(([k,v])=>`<div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:66px">
+   <svg width="56" height="56" viewBox="0 0 20 20" fill="#3DC2FF" stroke="#3DC2FF" style="background:#141c23;border-radius:8px">${v}</svg>
+   <svg width="22" height="22" viewBox="0 0 20 20" fill="#3DC2FF" stroke="#3DC2FF">${v}</svg><span style="font-size:10px">${k}</span></div>`).join("")+`</div>`;
+document.getElementById("r").innerHTML=row(OLD,"ACTUEL")+row(NEW,"PROPOSÉ");
+</script></body>
