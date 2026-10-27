@@ -24,6 +24,7 @@ struct WorkoutView: View {
     @State private var autoStarted = false
     /// Brassard déclaré quand l'écran a été créé (ses capteurs en dépendent).
     @State private var builtWithArmband = Exercise.hasArmband
+    @State private var pausedForSettings = false
     /// Adopte un autre exercice : l'écran est recréé avec ses capteurs.
     /// Le second paramètre demande de démarrer la séance aussitôt (Démarrer touché en glissant).
     let onSelectExercise: (Exercise, Bool) -> Void
@@ -36,13 +37,16 @@ struct WorkoutView: View {
     let onOpenSettings: () -> Void
     /// Demande à recréer l'écran : ses capteurs ne correspondent plus au réglage du brassard.
     let onRebuild: () -> Void
+    /// Réglages ouverts : un changement de brassard attend leur fermeture (pas de caméra qui
+    /// s'allume derrière eux à chaque essai).
+    let settingsShown: Bool
 
     /// Délai sans geste avant d'adopter l'exercice affiché : passer vite de Pompes à Biceps
     /// n'allume pas et n'éteint pas la caméra à chaque étape.
     private static let selectionDelay = 0.4
 
     init(exercise: Exercise, exercises: [Exercise], startsSession: Bool = false,
-         onOpenSettings: @escaping () -> Void, onRebuild: @escaping () -> Void,
+         settingsShown: Bool, onOpenSettings: @escaping () -> Void, onRebuild: @escaping () -> Void,
          onSelectExercise: @escaping (Exercise, Bool) -> Void) {
         _model = StateObject(wrappedValue: WorkoutModel(exercise: exercise))
         _browsing = State(initialValue: exercise)
@@ -53,6 +57,7 @@ struct WorkoutView: View {
         self.exercises = exercises
         self.onOpenSettings = onOpenSettings
         self.onRebuild = onRebuild
+        self.settingsShown = settingsShown
     }
 
     var body: some View {
@@ -119,7 +124,19 @@ struct WorkoutView: View {
                 rebuildIfNeeded()
             }
         }
-        .onChange(of: hasArmband) { _ in rebuildIfNeeded() }
+        // Réglages ouverts : capteurs en pause (rien à compter, caméra éteinte, interface fluide).
+        // À leur fermeture, l'écran reprend, ou se recrée si le brassard a changé.
+        .onChange(of: settingsShown) { shown in
+            if shown {
+                // Un enregistrement en cours (mode analyse) continue
+                guard !model.isRecording else { return }
+                model.stop()
+                pausedForSettings = true
+            } else if !rebuildIfNeeded(), pausedForSettings {
+                pausedForSettings = false
+                model.start()
+            }
+        }
         .sheet(isPresented: $showsHistory) {
             HistoryView(exercise: model.exercise)
                 .environment(\.theme, themeStore.current)
@@ -128,11 +145,15 @@ struct WorkoutView: View {
     }
 
     /// Brassard déclaré ou retiré pour un exercice de bras : l'écran est recréé avec les bons
-    /// capteurs, mais seulement en veille. Une séance en cours ou terminée (son résumé) reste
-    /// affichée ; le changement s'applique à la nouvelle séance.
-    private func rebuildIfNeeded() {
-        guard model.exercise.isArmExercise, hasArmband != builtWithArmband, model.phase == .ready else { return }
+    /// capteurs, une fois les Réglages refermés, et seulement en veille. Une séance terminée
+    /// (son résumé) reste affichée ; le changement s'applique à la nouvelle séance.
+    /// - Returns: vrai si l'écran va être recréé.
+    @discardableResult
+    private func rebuildIfNeeded() -> Bool {
+        guard model.exercise.isArmExercise, hasArmband != builtWithArmband,
+              model.phase == .ready, !settingsShown else { return false }
         onRebuild()
+        return true
     }
 
     // MARK: - Fond

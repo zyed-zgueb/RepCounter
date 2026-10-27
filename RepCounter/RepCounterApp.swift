@@ -29,12 +29,16 @@ struct RootView: View {
     /// L'écran du nouvel exercice démarre sa séance dès son affichage.
     @State private var startsSession = false
     @State private var showsSettings = false
+    /// Exercice affiché à l'ouverture des Réglages : il le reste tant qu'ils sont ouverts, même
+    /// si on le retire de Mes exercices (l'écran ne change qu'à leur fermeture).
+    @State private var exerciseUnderSettings: Exercise?
     /// Incrémenté pour recréer l'écran avec d'autres capteurs (brassard).
     @State private var generation = 0
 
     private var mine: [Exercise] { Exercise.decode(mineValue) }
 
     private var exercise: Exercise {
+        if let exerciseUnderSettings { return exerciseUnderSettings }
         let stored = Exercise(rawValue: exerciseID)
         return stored.flatMap { mine.contains($0) ? $0 : nil } ?? mine[0]
     }
@@ -43,7 +47,11 @@ struct RootView: View {
         // Un écran par exercice : changer d'exercice arrête ses capteurs et démarre ceux du suivant.
         // Le nouvel écran s'affiche à l'identique (même exercice dans le cadran) : pas de transition.
         WorkoutView(exercise: exercise, exercises: mine, startsSession: startsSession,
-                    onOpenSettings: { showsSettings = true },
+                    settingsShown: showsSettings,
+                    onOpenSettings: {
+                        exerciseUnderSettings = exercise
+                        showsSettings = true
+                    },
                     onRebuild: { startsSession = false; generation += 1 }) { selected, start in
             startsSession = start
             exerciseID = selected.rawValue
@@ -51,9 +59,9 @@ struct RootView: View {
             .id("\(exercise.rawValue).\(generation)")
             .transition(.identity)
             .statusBarHidden()
-            // Présentés ici, au-dessus de l'écran d'entraînement : recréer celui-ci (brassard,
-            // exercice retiré de Mes exercices) ne referme pas les Réglages
-            .sheet(isPresented: $showsSettings) {
+            // Présentés ici, au-dessus de l'écran d'entraînement. Leurs changements (brassard,
+            // exercice retiré de Mes exercices) s'appliquent à leur fermeture
+            .sheet(isPresented: $showsSettings, onDismiss: { exerciseUnderSettings = nil }) {
                 SettingsView()
                     .environmentObject(themeStore)
                     .environment(\.theme, themeStore.current)
