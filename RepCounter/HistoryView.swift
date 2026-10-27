@@ -1,8 +1,10 @@
 import SwiftData
 import SwiftUI
 
-/// Historique : un exercice (ou tous, Σ), et de haut en bas la semaine en cours, les records,
-/// le volume et la progression sur 12 semaines, la régularité sur 16, puis la liste des séances.
+/// Historique d'un exercice (ou de tous, Σ), en quatre blocs, une place pour chaque chose :
+/// le conseil (s'il y en a un), le score d'endurance et la forme côte à côte, l'activité (la
+/// semaine et la régularité), puis les records et la liste des séances. Le détail de chaque bloc
+/// s'ouvre d'une touche.
 struct HistoryView: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
@@ -13,6 +15,12 @@ struct HistoryView: View {
 
     init(exercise: Exercise?) {
         _exercise = State(initialValue: exercise)
+    }
+
+    /// Exercices pratiqués, dans l'ordre du catalogue : le filtre ne montre qu'eux.
+    private var practiced: [Exercise] {
+        let done = Set(sessions.map(\.exercise))
+        return Exercise.allCases.filter(done.contains)
     }
 
     var body: some View {
@@ -32,20 +40,27 @@ struct HistoryView: View {
 
                 ScrollView {
                     VStack(spacing: 14) {
-                        ExerciseFilter(selection: $exercise)
-                        if let exercise, !stats.isEmpty {
-                            if let advice = Advice.make(stats: stats) { AdviceCard(advice: advice) }
-                            if exercise != .auto { FormPanel(stats: stats) }
+                        if !practiced.isEmpty {
+                            ExerciseFilter(exercises: practiced, selection: $exercise)
                         }
                         if stats.isEmpty {
                             emptyState
                         } else {
-                            if let exercise { EndurancePanel(stats: stats, exercise: exercise) }
-                            WeekPanel(stats: stats)
+                            if let exercise {
+                                if let advice = Advice.make(stats: stats) { AdviceCard(advice: advice) }
+                                HStack(spacing: 10) {
+                                    NavigationLink(value: HistoryPage.endurance) {
+                                        EnduranceTile(stats: stats, exercise: exercise)
+                                    }
+                                    if exercise != .auto {
+                                        NavigationLink(value: HistoryPage.form) { FormTile(stats: stats) }
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            NavigationLink(value: HistoryPage.activity) { ActivityPanel(stats: stats) }
+                                .buttonStyle(.plain)
                             if exercise != nil { RecordsPanel(stats: stats) }
-                            VolumePanel(stats: stats)
-                            if exercise != nil { ProgressionPanel(stats: stats) }
-                            RegularityPanel(stats: stats)
                             SessionsPanel(stats: stats, showsExercise: exercise == nil) { session in
                                 withAnimation { modelContext.delete(session) }
                             }
@@ -61,8 +76,33 @@ struct HistoryView: View {
             .navigationDestination(for: SessionRecord.self) { session in
                 SessionDetailView(session: session, stats: HistoryStats(sessions: sessions, exercise: session.exercise))
             }
+            .navigationDestination(for: HistoryPage.self) { page in
+                detail(page, stats: stats)
+            }
         }
         .tint(theme.primary)
+        .onAppear { showAllIfAbsent(practiced) }
+        .onChange(of: practiced) { showAllIfAbsent($0) }
+    }
+
+    /// Un exercice jamais pratiqué (ou dont on a supprimé les séances) n'est pas dans le filtre :
+    /// on montre tous les exercices.
+    private func showAllIfAbsent(_ practiced: [Exercise]) {
+        if let exercise, !practiced.contains(exercise) { self.exercise = nil }
+    }
+
+    @ViewBuilder
+    private func detail(_ page: HistoryPage, stats: HistoryStats) -> some View {
+        switch page {
+        case .endurance:
+            HistoryDetailView(title: "Score d'endurance") {
+                if let exercise { EndurancePanel(stats: stats, exercise: exercise) }
+            }
+        case .form:
+            HistoryDetailView(title: "Forme") { FormPanel(stats: stats) }
+        case .activity:
+            HistoryDetailView(title: "Activité") { VolumePanel(stats: stats) }
+        }
     }
 
     private var emptyState: some View {
@@ -112,9 +152,76 @@ extension HistoryPanel where Accessory == EmptyView {
     }
 }
 
-/// Σ et les exercices, en grille.
+/// Détails de l'historique, ouverts d'une touche sur leur bloc.
+enum HistoryPage: Hashable {
+    case endurance, form, activity
+}
+
+/// Une tuile (moitié de largeur) : un titre, une valeur, une mini-courbe ; une touche ouvre son détail.
+struct HistoryTile<Content: View>: View {
+    @Environment(\.theme) private var theme
+    let title: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                MonitorLabel(title)
+                    .minimumScaleFactor(0.7)
+                Spacer(minLength: 2)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(theme.dim)
+            }
+            content()
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 136, alignment: .topLeading)
+        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+        .contentShape(Rectangle())
+    }
+}
+
+/// Écran de détail de l'historique : retour, titre, contenu.
+private struct HistoryDetailView<Content: View>: View {
+    @Environment(\.theme) private var theme
+    @Environment(\.dismiss) private var dismiss
+    let title: String
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                IconButton(systemImage: "chevron.left") { dismiss() }
+                Spacer()
+                Text(title.uppercased())
+                    .font(theme.font(13, .bold))
+                    .tracking(2)
+                    .foregroundStyle(theme.text)
+                    .lineLimit(1)
+                Spacer()
+                Color.clear.frame(width: 36, height: 36)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+
+            ScrollView {
+                VStack(spacing: 14) { content() }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+            }
+            .bounceOnlyIfNeeded()
+        }
+        .background(theme.background.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
+    }
+}
+
+/// Σ et les exercices pratiqués, en grille.
 private struct ExerciseFilter: View {
     @Environment(\.theme) private var theme
+    let exercises: [Exercise]
     @Binding var selection: Exercise?
 
     var body: some View {
@@ -124,7 +231,7 @@ private struct ExerciseFilter: View {
                 item(nil) {
                     Text("Σ").font(.system(size: 18, weight: .bold))
                 }
-                ForEach(Exercise.allCases) { exercise in
+                ForEach(exercises) { exercise in
                     item(exercise) { ExerciseIcon(exercise: exercise, size: 22) }
                 }
             }
@@ -154,54 +261,69 @@ private struct ExerciseFilter: View {
     }
 }
 
+/// L'activité : la semaine en cours (cadran rempli selon la meilleure semaine, et les chiffres
+/// clés), puis la régularité sur 16 semaines. Une touche ouvre le volume sur 12 semaines.
+private struct ActivityPanel: View {
+    @Environment(\.theme) private var theme
+    let stats: HistoryStats
+
+    var body: some View {
+        HistoryPanel(title: "Activité", accessory: {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(theme.dim)
+        }) {
+            WeekSummary(stats: stats)
+            Rectangle().fill(theme.line).frame(height: 1)
+            RegularityCalendar(stats: stats)
+        }
+        .contentShape(Rectangle())
+    }
+}
+
 /// Cette semaine : un cadran (rempli selon la meilleure semaine) et les chiffres clés.
-private struct WeekPanel: View {
+private struct WeekSummary: View {
     @Environment(\.theme) private var theme
     let stats: HistoryStats
 
     var body: some View {
         let volume = stats.weekVolume, previous = stats.previousWeekVolume
         let best = max(stats.bestWeek?.value ?? volume, 1)
-        let week = stats.thisWeek
-        let end = stats.calendar.date(byAdding: .day, value: 6, to: week) ?? week
-        HistoryPanel(title: "Cette semaine", accessory: {
-            MonitorLabel("\(Format.shortDate(week)) – \(Format.shortDate(end))")
-        }) {
-            HStack(spacing: 18) {
-                Dial(face: DialFace(lit: Int(Double(DialFace.tickCount) * min(Double(volume) / Double(best), 1)), palette: .gradient)) { side in
-                    VStack(spacing: 2) {
-                        Text("\(volume)")
-                            .font(theme.font(side * 0.26, .bold))
-                            .foregroundStyle(theme.text)
-                            .monospacedDigit()
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.5)
-                        MonitorLabel("reps")
-                    }
-                    .padding(side * 0.18)
+        HStack(spacing: 18) {
+            Dial(face: DialFace(lit: Int(Double(DialFace.tickCount) * min(Double(volume) / Double(best), 1)), palette: .gradient)) { side in
+                VStack(spacing: 2) {
+                    Text("\(volume)")
+                        .font(theme.font(side * 0.26, .bold))
+                        .foregroundStyle(theme.text)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                    MonitorLabel("reps")
                 }
-                .frame(width: 140, height: 140)
+                .padding(side * 0.18)
+            }
+            .frame(width: 128, height: 128)
 
-                VStack(alignment: .leading, spacing: 10) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        if previous > 0 {
-                            let change = (Double(volume) - Double(previous)) / Double(previous) * 100
-                            Text("\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) %")
-                                .font(theme.font(20, .bold))
-                                .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
-                            Text("vs semaine dernière (\(previous))")
-                                .font(theme.font(11))
-                                .foregroundStyle(theme.dim)
-                        } else {
-                            Text(volume > 0 ? "Bonne reprise" : "Pas encore de séance")
-                                .font(theme.font(14, .bold))
-                                .foregroundStyle(volume > 0 ? theme.ok : theme.dim)
-                        }
+            VStack(alignment: .leading, spacing: 10) {
+                MonitorLabel("Cette semaine", color: theme.text)
+                VStack(alignment: .leading, spacing: 2) {
+                    if previous > 0 {
+                        let change = (Double(volume) - Double(previous)) / Double(previous) * 100
+                        Text("\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) %")
+                            .font(theme.font(20, .bold))
+                            .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
+                        Text("vs semaine dernière (\(previous))")
+                            .font(theme.font(11))
+                            .foregroundStyle(theme.dim)
+                    } else {
+                        Text(volume > 0 ? "Bonne reprise" : "Pas encore de séance")
+                            .font(theme.font(14, .bold))
+                            .foregroundStyle(volume > 0 ? theme.ok : theme.dim)
                     }
-                    keyValue("Séances", "\(stats.weekSessions)")
-                    keyValue("Temps", Format.minutes(stats.weekDuration))
-                    keyValue("Régularité", stats.weekStreak > 1 ? "\(stats.weekStreak) sem. de suite" : "\(stats.weekStreak) sem.")
                 }
+                keyValue("Séances", "\(stats.weekSessions)")
+                keyValue("Temps", Format.minutes(stats.weekDuration))
+                keyValue("Régularité", stats.weekStreak > 1 ? "\(stats.weekStreak) sem. de suite" : "\(stats.weekStreak) sem.")
             }
         }
     }
@@ -329,56 +451,6 @@ private struct HorizontalLine: Shape {
     }
 }
 
-/// Moyenne par série semaine après semaine (courbe), et trois tendances sur 12 semaines.
-private struct ProgressionPanel: View {
-    @Environment(\.theme) private var theme
-    let stats: HistoryStats
-
-    var body: some View {
-        let perSet = stats.weekly { $0.averagePerSet }
-        let cadence = stats.weekly { $0.cadence }
-        let fatigue = stats.weekly { $0.fatigue }
-        HistoryPanel(title: "Progression · 12 semaines") {
-            if perSet.count >= 2 {
-                LineChart(points: perSet.map { (x: Double($0.week), value: $0.value) }, span: 11)
-                    .frame(height: 72)
-            } else {
-                Text("La courbe apparaît après deux semaines d'entraînement.")
-                    .font(theme.font(11))
-                    .foregroundStyle(theme.dim)
-            }
-            HStack(alignment: .top) {
-                trend("Moy. / série", perSet, format: Format.decimal, higherIsBetter: true)
-                Spacer()
-                trend("Cadence", cadence, format: { "\(Format.decimal($0)) s" }, higherIsBetter: nil)
-                Spacer()
-                trend("Fatigue", fatigue, format: { "\(Format.percent($0)) %" }, higherIsBetter: true)
-            }
-        }
-    }
-
-    /// Dernière valeur et écart avec la première de la période.
-    private func trend(_ name: String, _ points: [(week: Int, value: Double)], format: (Double) -> String,
-                       higherIsBetter: Bool?) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            MonitorLabel(name)
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(points.last.map { format($0.value) } ?? "—")
-                    .font(theme.font(15, .bold))
-                    .foregroundStyle(theme.text)
-                if let first = points.first, let last = points.last, points.count >= 2 {
-                    let change = last.value - first.value
-                    let good = higherIsBetter.map { $0 == (change >= 0) }
-                    Text((change >= 0 ? "+" : "−") + Format.decimal(abs(change)))
-                        .font(theme.font(10, .semibold))
-                        .foregroundStyle(good == true ? theme.ok : theme.dim)
-                }
-            }
-        }
-    }
-}
-
-/// Courbe d'une valeur par semaine (points aux semaines qui en ont).
 /// Courbe d'une valeur : x de 0 (à gauche) à `span` (à droite).
 struct LineChart: View {
     @Environment(\.theme) private var theme
@@ -411,7 +483,7 @@ struct LineChart: View {
 }
 
 /// Calendrier des 16 dernières semaines : un carré par jour, plus intense quand on a fait plus.
-private struct RegularityPanel: View {
+private struct RegularityCalendar: View {
     @Environment(\.theme) private var theme
     let stats: HistoryStats
     private static let weeks = 16
@@ -422,7 +494,7 @@ private struct RegularityPanel: View {
         let today = stats.calendar.startOfDay(for: stats.now)
         let most = max(daily.values.max() ?? 1, 1)
         let activeDays = daily.keys.filter { $0 >= firstWeek }.count
-        HistoryPanel(title: "Régularité", accessory: { MonitorLabel("\(Self.weeks) semaines") }) {
+        VStack(alignment: .leading, spacing: 12) {
             VStack(spacing: 4) {
                 ForEach(0..<7, id: \.self) { day in
                     HStack(spacing: 0) {
@@ -441,7 +513,7 @@ private struct RegularityPanel: View {
                 }
             }
             HStack {
-                Text("\(activeDays) jour\(activeDays > 1 ? "s" : "") actif\(activeDays > 1 ? "s" : "")")
+                Text("\(activeDays) jour\(activeDays > 1 ? "s" : "") actif\(activeDays > 1 ? "s" : "") en \(Self.weeks) sem.")
                 Spacer()
                 Text("moins")
                 ForEach(0..<4, id: \.self) { level in
@@ -638,10 +710,7 @@ struct SessionDetailView: View {
                         .font(theme.font(12, .bold))
                         .foregroundStyle(formColor(form.zone, theme: theme))
                 }
-                Text([Format.clock(session.duration),
-                      "\(session.orderedSets.count) série\(session.orderedSets.count > 1 ? "s" : "")",
-                      session.fatigue.map { "fatigue \(Format.percent($0)) %" }]
-                    .compactMap { $0 }.joined(separator: " · "))
+                Text("\(Format.clock(session.duration)) · \(session.orderedSets.count) série\(session.orderedSets.count > 1 ? "s" : "")")
                     .font(theme.font(12))
                     .foregroundStyle(theme.dim)
                     .fixedSize(horizontal: false, vertical: true)

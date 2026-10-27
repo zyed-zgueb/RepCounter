@@ -31,12 +31,6 @@ final class SessionRecord {
     var totalReps: Int { orderedSets.reduce(0) { $0 + $1.reps } }
     var duration: TimeInterval { max(0, end.timeIntervalSince(start)) }
     var bestSet: Int { orderedSets.map(\.reps).max() ?? 0 }
-    var averagePerSet: Double? {
-        let sets = orderedSets
-        return sets.isEmpty ? nil : Double(totalReps) / Double(sets.count)
-    }
-    /// Cadence moyenne (s par répétition).
-    var cadence: Double? { average(orderedSets.compactMap(\.pace)) }
     /// Récupération avant une série : de la fin de la précédente au début de celle-ci.
     func rest(before index: Int) -> TimeInterval? {
         let sets = orderedSets
@@ -76,13 +70,6 @@ final class SessionRecord {
     }
 
     static let indexSets = 3
-
-    /// Écart entre la dernière et la première série, en % de la première (négatif quand on faiblit).
-    var fatigue: Double? {
-        let sets = orderedSets
-        guard sets.count >= 2, let first = sets.first, let last = sets.last, first.reps > 0 else { return nil }
-        return Double(last.reps - first.reps) / Double(first.reps) * 100
-    }
 }
 
 /// Une série d'une séance enregistrée.
@@ -238,14 +225,6 @@ struct HistoryStats {
     /// Séance précédente du même exercice.
     func previous(of session: SessionRecord) -> SessionRecord? {
         sessions.first { $0.exercise == session.exercise && $0.start < session.start }
-    }
-
-    // Progression (un exercice) : une valeur par semaine qui a des séances
-
-    func weekly(weeks: Int = 12, _ value: (SessionRecord) -> Double?) -> [(week: Int, value: Double)] {
-        lastWeeks(weeks).enumerated().compactMap { index, week in
-            average(sessions(inWeek: week).compactMap(value)).map { (index, $0) }
-        }
     }
 
     // Indice de performance (un exercice)

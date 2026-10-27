@@ -168,6 +168,51 @@ struct FormPanel: View {
     }
 }
 
+/// La tuile Forme de l'historique : la forme de la dernière séance mesurable, sa zone et la
+/// courbe. Tant que la référence se construit, où l'on en est (« 2 / 3 séances »).
+struct FormTile: View {
+    @Environment(\.theme) private var theme
+    let stats: HistoryStats
+
+    var body: some View {
+        let results = stats.formResults
+        HistoryTile(title: "Forme") {
+            if let last = results.last {
+                let color = formColor(last.result.zone, theme: theme)
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text("\(Int(last.result.percent.rounded()))")
+                        .font(theme.font(32, .bold))
+                        .monospacedDigit()
+                    Text("%")
+                        .font(theme.font(14, .bold))
+                }
+                .foregroundStyle(color)
+                Text(last.result.zone.title)
+                    .font(theme.font(11, .bold))
+                    .foregroundStyle(color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+                if results.count >= 2 {
+                    FormChart(results: results.suffix(12).map(\.result), dots: false)
+                        .frame(height: 26)
+                }
+            } else {
+                // En cours : la référence demande 3 séances mesurables ; la suivante a sa forme
+                let count = min(stats.measuredSessionCount, FormResult.baselineSessions)
+                Text("\(count) / \(FormResult.baselineSessions)")
+                    .font(theme.font(32, .bold))
+                    .foregroundStyle(theme.dim)
+                    .monospacedDigit()
+                Text(count < FormResult.baselineSessions ? "séances de référence" : "référence prête : forme à la prochaine séance")
+                    .font(theme.font(11))
+                    .foregroundStyle(theme.dim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
 /// Couleur d'une zone de forme.
 func formColor(_ zone: FormZone, theme: AppTheme) -> Color {
     switch zone {
@@ -181,6 +226,8 @@ func formColor(_ zone: FormZone, theme: AppTheme) -> Color {
 private struct FormChart: View {
     @Environment(\.theme) private var theme
     let results: [FormResult]
+    /// Points colorés par zone (masqués dans la tuile, trop petite).
+    var dots = true
     private static let low = 85.0, high = 115.0
 
     var body: some View {
@@ -203,7 +250,7 @@ private struct FormChart: View {
                 if index == 0 { line.move(to: point) } else { line.addLine(to: point) }
             }
             context.stroke(line, with: .color(theme.primary.opacity(0.7)), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
-            for (index, point) in points.enumerated() {
+            for (index, point) in points.enumerated() where dots || index == points.count - 1 {
                 let radius: CGFloat = index == points.count - 1 ? 4.5 : 2.5
                 let zone = results[index].zone
                 let color = zone == .tired ? theme.warn : (zone == .fresh ? theme.ok : theme.primary)

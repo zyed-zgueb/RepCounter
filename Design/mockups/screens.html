@@ -142,6 +142,10 @@ const ICONS = {
   minus: '<path d="M5 10 H15" stroke-width="2.4" stroke-linecap="round"/>',
   plus: '<path d="M5 10 H15 M10 5 V15" stroke-width="2.4" stroke-linecap="round"/>',
   chevron: '<path d="M5.5 8 L10 12.5 L14.5 8" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  right: '<path d="M8 4.5 L13.5 10 L8 15.5" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+  grip: '<path d="M4 7 H16 M4 10 H16 M4 13 H16" stroke-width="1.4" stroke-linecap="round"/>',
+  addc: '<circle cx="10" cy="10" r="8" stroke="none"/><path d="M6 10 H14 M10 6 V14" stroke="#fff" stroke-width="2" stroke-linecap="round"/>',
+  remc: '<circle cx="10" cy="10" r="8" stroke="none"/><path d="M6 10 H14" stroke="#fff" stroke-width="2" stroke-linecap="round"/>',
   xmark: '<path d="M5 5 L15 15 M15 5 L5 15" stroke-width="2" stroke-linecap="round"/>',
   check: '<path d="M5 10.5 L8.5 14 L15 6.5" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
   speaker: '<path d="M3 8 H6 L10 5 V15 L6 12 H3 Z" stroke="none"/><path d="M13 7 Q15 10 13 13 M15 5 Q19 10 15 15" fill="none" stroke-width="1.5" stroke-linecap="round"/>',
@@ -178,6 +182,7 @@ function render(t, s) {
     case "resting": html = resting(); break;
     case "finished": html = finished(); break;
     case "settings": html = settings(); break;
+    case "exercises": html = myExercises(); break;
     case "history": html = history(); break;
     case "session": html = sessionDetail(); break;
     case "info": html = enduranceInfo(); break;
@@ -248,14 +253,15 @@ function render(t, s) {
 
   function ready() {
     const side = 330, page = side * 0.5, index = s.exercise ?? 0, drag = s.drag || 0;
-    const items = EXERCISES.map(([ic, name], i) => {
-      const x = (i - index) * page + drag, opacity = Math.max(0, 1 - Math.abs(x) / page);
+    const mine = s.mine || [0, 1, 2, 3, 4], at = mine.indexOf(index);
+    const items = mine.map(e => EXERCISES[e]).map(([ic, name], i) => {
+      const x = (i - at) * page + drag, opacity = Math.max(0, 1 - Math.abs(x) / page);
       if (!opacity) return "";
       return `<div class="center" style="position:absolute;inset:0;gap:${side * 0.04}px;transform:translate(${x}px, ${-side * 0.03}px);opacity:${opacity}">
         ${icon(ic, c.primary, side * 0.24)}
         <span style="font-size:15px;font-weight:700;letter-spacing:2px;text-transform:uppercase">${name}</span></div>`;
     }).join("");
-    const dots = EXERCISES.map((_, i) => `<span style="width:5px;height:5px;border-radius:50%;background:${i === index ? c.primary : hexA(c.dim, .45)}"></span>`).join("");
+    const dots = mine.map((_, i) => `<span style="width:5px;height:5px;border-radius:50%;background:${i === at ? c.primary : hexA(c.dim, .45)}"></span>`).join("");
     const inner = side * 0.76, disc = side * 0.58;
     return `<div class="top">${iconBtn("chart")}${iconBtn("gear")}</div>
       <div class="hero">
@@ -307,8 +313,7 @@ function render(t, s) {
           <div style="font-size:170px;font-weight:700;line-height:1;letter-spacing:-4px">${s.reps}</div>
           <div style="margin-top:4px">${label("reps")}</div>` })}
         <div class="row" style="gap:18px;font-size:12px;color:${c.dim};letter-spacing:1px">
-          <span>TOTAL <b style="color:${c.text};font-size:15px">${s.total}</b></span>
-          <span>CADENCE <b style="color:${c.text};font-size:15px">1.6</b> s</span></div>
+          <span>TOTAL <b style="color:${c.text};font-size:15px">${s.total}</b></span></div>
       </div>
       ${effortControls()}`;
   }
@@ -339,7 +344,7 @@ function render(t, s) {
   }
 
   // Fin de séance : total, comparaison avec la dernière séance, records, séries (corrigeables),
-  // et quatre mesures dont la fatigue.
+  // et trois mesures : score d'endurance, forme, durée (ou leur état « en cours »).
   function finished() {
     const sets = s.sets, max = Math.max(...sets), editing = s.editing;
     const bars = sets.map((n, i) => {
@@ -350,8 +355,8 @@ function render(t, s) {
              background:${on ? c.text : `linear-gradient(180deg,${c.primary},${hexA(c.secondary, .85)})`};${glow ? `box-shadow:0 0 ${10 * glow}px ${hexA(c.primary, .3)}` : ""}"></div>
         <span style="font-size:10px;color:${on ? c.text : c.dim}">S${String(i + 1).padStart(2, "0")}</span></div>`;
     }).join("");
-    const stat = (name, value, unit = "", color = c.text) => `<div class="center" style="flex:1;gap:4px">${label(name)}
-        <span style="font-size:18px;font-weight:600;color:${color}">${value}<span style="font-size:10px;color:${c.dim};margin-left:2px">${unit}</span></span></div>`;
+    const stat = (name, value, unit = "", color = c.text, pending = false) => `<div class="center" style="flex:1;gap:4px">${label(name)}
+        <span style="font-size:${pending ? 13 : 18}px;font-weight:600;color:${pending ? c.dim : color}">${value}<span style="font-size:10px;color:${c.dim};margin-left:2px">${unit}</span></span></div>`;
     const corrector = editing != null ? `<div class="row" style="justify-content:center;gap:14px;padding:8px 12px;border:1px solid ${c.line};border-radius:${r}px;background:${c.panel}">
         ${label(`Série ${String(editing + 1).padStart(2, "0")}`, c.text)}
         <span style="width:36px;height:36px;border-radius:${r}px;border:1px solid ${c.line};display:flex;align-items:center;justify-content:center">${icon("minus", c.text, 14)}</span>
@@ -370,7 +375,9 @@ function render(t, s) {
         </div>
         <div class="row" style="width:100%;height:100px;gap:10px;align-items:flex-end">${bars}</div>
         ${corrector}
-        <div class="row" style="width:100%;border-top:1px solid ${c.line};padding-top:12px">${stat("Score endurance", "39")}${stat("Forme", "102", "%")}${stat("Cadence", "1.6", "s")}${stat("Fatigue", "−29", "%", c.warn)}</div>
+        <div class="row" style="width:100%;border-top:1px solid ${c.line};padding-top:12px">${s.pending
+          ? stat("Score endurance", "2 / 3 séries", "", c.text, true) + stat("Forme", "réf. 2 / 3", "", c.text, true) + stat("Durée", "4:12")
+          : stat("Score endurance", "39") + stat("Forme", "102", "%", c.primary) + stat("Durée", "12:08")}</div>
       </div>
       <div class="bottom">${btn("Nouvelle séance", c.primary, true, 58)}</div>`;
   }
@@ -404,8 +411,9 @@ function render(t, s) {
       <div class="row" style="justify-content:space-between">${label(title)}${accessory || ""}</div>${body}</div>`;
   }
 
+  // Filtre : Σ et les exercices pratiqués seulement
   function exerciseBar(selected) {
-    const items = [["Σ", "Tout"], ...EXERCISES.map(e => [e[0], e[1]])];
+    const items = [["Σ", "Tous les exercices"], ...[0, 1, 2, 6].map(e => [EXERCISES[e][0], EXERCISES[e][1]])];
     return `<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px">${items.map(([ic, name], i) => {
       const on = i === selected;
       const content = ic === "Σ" ? `<span style="font-size:18px;font-weight:700;color:${on ? c.primary : c.dim}">Σ</span>` : icon(ic, on ? c.primary : c.dim, 22);
@@ -415,23 +423,52 @@ function render(t, s) {
     <div style="text-align:center;margin-top:-4px">${label(items[selected][1], c.text)}</div>`;
   }
 
-  function history() {
+  function chevronRight(color = c.dim, size = 11) { return icon("right", color, size); }
+  function header(title, back) { return back
+    ? `<div class="top">${iconBtn("back", c.text)}<span style="font-size:13px;font-weight:700;letter-spacing:2px">${title}</span><span style="width:40px"></span></div>`
+    : `<div class="top"><span style="font-size:16px;font-weight:700;letter-spacing:3px">${title}</span>${iconBtn("xmark", c.text)}</div>`; }
+  function sparkline(pts, w, h, color = c.primary) {
+    const lo = Math.min(...pts), hi = Math.max(...pts), k = v => (h - (v - lo) / Math.max(hi - lo, .5) * h).toFixed(1);
+    return `<svg width="100%" height="${h + 8}" viewBox="-4 -4 ${w + 8} ${h + 8}" preserveAspectRatio="none" style="display:block">
+      <polyline points="${pts.map((v, i) => `${(i / (pts.length - 1) * w).toFixed(1)},${k(v)}`).join(" ")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+  }
+  function tile(title, body) { return `<div style="flex:1;min-height:136px;padding:14px;border:1px solid ${c.line};border-radius:${r}px;background:${c.panel};display:flex;flex-direction:column;gap:6px">
+      <div class="row" style="justify-content:space-between">${label(title)}${chevronRight()}</div>${body}</div>`; }
+
+  // Score d'endurance : jauge, évolution, courbe (détail)
+  function endurancePanel() {
+    const pts = [31, 32, 32, 34, 35, 35, 36, 37, 37, 38, 39], w = 150, h = 40, lo = 30, hi = 40;
+    const line = pts.map((v, i) => `${(i / 10 * w).toFixed(1)},${(h - (v - lo) / (hi - lo) * h).toFixed(1)}`).join(" ");
+    return panel("Score d'endurance", `<span style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${c.dim};color:${c.dim};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif">i</span>`,
+      `<div class="row" style="gap:16px;align-items:center">
+        ${gauge({ score: 39, fill: 0.52, level: "Bon" })}
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div><div style="font-size:20px;font-weight:700;color:${c.ok}">▲ +8 %</div><div style="font-size:11px;color:${c.dim}">en 4 semaines</div></div>
+          <svg width="${w}" height="${h + 6}" viewBox="0 -3 ${w} ${h + 6}"><polyline points="${line}" fill="none" stroke="${c.primary}" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="${w}" cy="${h - (39 - lo) / (hi - lo) * h}" r="4" fill="${c.primary}"/></svg></div></div>
+        <div style="font-size:11px;color:${c.dim};line-height:1.4">Meilleure série : 22 pompes · niveau bon pour un homme de 30-39 ans (barème SCPE).</div>`);
+  }
+
+  // Forme : dernière séance, zone, courbe sur la bande normale (détail)
+  function formPanel() {
+    const pts = [99, 101, 97, 103, 100, 98, 104, 101, 96, 100, 99, 102], w = 310, h = 70, lo = 85, hi = 115;
+    const y = v => (4 + (h - 8) * (1 - (v - lo) / (hi - lo))).toFixed(1);
+    const x = i => (i / (pts.length - 1) * w).toFixed(1);
+    const chart = `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+        <rect x="0" y="${y(104)}" width="${w}" height="${y(96) - y(104)}" fill="${hexA(c.primary, .08)}"/>
+        <line x1="0" x2="${w}" y1="${y(100)}" y2="${y(100)}" stroke="${hexA(c.dim, .6)}" stroke-dasharray="3 3"/>
+        <polyline points="${pts.map((v, i) => `${x(i)},${y(v)}`).join(" ")}" fill="none" stroke="${hexA(c.primary, .7)}" stroke-width="1.5"/>
+        ${pts.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${i === pts.length - 1 ? 4.5 : 2.5}" fill="${v < 96 ? c.warn : v > 104 ? c.ok : c.primary}"/>`).join("")}</svg>`;
+    return panel("Forme", "", `<div class="row" style="gap:12px;align-items:baseline"><span style="font-size:40px;font-weight:700;color:${c.primary}">102 %</span>
+        <span style="font-size:13px;font-weight:700;color:${c.primary}">FORME NORMALE</span><span style="flex:1"></span><span style="font-size:11px;color:${c.dim}">lundi</span></div>
+      ${chart}<div class="row" style="justify-content:space-between;font-size:11px;color:${c.dim}"><span>12 dernières séances</span><span>bande : ta variation normale</span></div>
+      <div style="font-size:11px;color:${c.dim};line-height:1.4">Vitesse de tes répétitions et maintien de cette vitesse au fil des séries, comparés à tes séances habituelles.</div>`);
+  }
+
+  // Volume sur 12 semaines (détail de l'activité)
+  function volumePanel() {
     const weeks = [60, 0, 85, 110, 95, 120, 140, 0, 130, 165, 150, 172];
     const best = Math.max(...weeks), avg = weeks.reduce((a, b) => a + b) / weeks.length;
-    // Cette semaine : cadran + chiffres clés
-    const week = `<div class="row" style="gap:18px">
-        ${ring({ lit: 60, size: 150, content: `<div style="font-size:42px;font-weight:700;line-height:1">172</div><div style="margin-top:4px">${label("reps")}</div>` })}
-        <div style="display:flex;flex-direction:column;gap:10px;flex:1">
-          <div><span style="font-size:20px;font-weight:700;color:${c.ok}">▲ +15 %</span><div style="font-size:11px;color:${c.dim}">vs semaine dernière (150)</div></div>
-          ${[["Séances", "3"], ["Temps", "38 min"], ["Régularité", "6 sem. de suite"]].map(([k, v]) =>
-            `<div class="row" style="justify-content:space-between">${label(k)}<span style="font-size:14px;font-weight:700">${v}</span></div>`).join("")}
-        </div></div>`;
-    // Records
-    const record = (name, value, date, fresh) => `<div style="flex:1;padding:10px;border:1px solid ${fresh ? hexA(c.warn, .6) : c.line};border-radius:${r}px;background:${fresh ? hexA(c.warn, .06) : "transparent"}">
-        ${label(name)}<div class="row" style="gap:4px;margin-top:6px"><span style="font-size:24px;font-weight:700;color:${fresh ? c.warn : c.text}">${value}</span>${fresh ? icon("star", c.warn, 12) : ""}</div>
-        <div style="font-size:10px;color:${c.dim};margin-top:2px">${date}</div></div>`;
-    const records = `<div class="row" style="gap:8px;align-items:stretch">${record("Série", "14", "aujourd'hui", true)}${record("Séance", "72", "12 oct.")}${record("Semaine", "172", "cette semaine", true)}</div>`;
-    // Volume sur 12 semaines
     const vbars = weeks.map((v, i) => {
       const last = i === weeks.length - 1;
       return `<div class="center" style="flex:1;gap:5px;justify-content:flex-end;height:100%">
@@ -440,63 +477,83 @@ function render(t, s) {
           background:${last ? `linear-gradient(180deg,${c.primary},${c.secondary})` : hexA(c.primary, v ? .35 : .15)}"></div>
         <span style="font-size:9px;color:${c.dim}">${i % 3 === 2 ? ["S35", "S38", "S41", "S44"][(i - 2) / 3] : "&nbsp;"}</span></div>`;
     }).join("");
-    const volume = `<div style="position:relative;height:112px"><div class="row" style="height:100%;gap:6px;align-items:flex-end">${vbars}</div>
+    return panel("Volume · 12 semaines", label("reps / semaine"), `<div style="position:relative;height:112px"><div class="row" style="height:100%;gap:6px;align-items:flex-end">${vbars}</div>
         <div style="position:absolute;left:0;right:0;bottom:${20 + avg / best * 78}px;border-top:1px dashed ${hexA(c.dim, .6)}"></div>
-        <span style="position:absolute;left:0;bottom:${23 + avg / best * 78}px;font-size:9px;color:${c.dim};background:${c.panel};padding-right:4px">moy. ${Math.round(avg)}</span></div>`;
-    // Progression : moyenne par série (courbe)
-    const avgSeries = [8.2, 8.6, 9.0, 9.1, 9.6, 9.8, 10.1, 10.4, 10.3, 11.0, 11.4, 12.0];
-    const w = 310, h = 70, lo = 7.5, hi = 12.5;
-    const pts = avgSeries.map((v, i) => `${(i / 11 * w).toFixed(1)},${(h - (v - lo) / (hi - lo) * h).toFixed(1)}`);
-    const progression = `<svg width="100%" height="${h + 6}" viewBox="0 -3 ${w} ${h + 6}" preserveAspectRatio="none">
-        <polyline points="${pts.join(" ")}" fill="none" stroke="${c.primary}" stroke-width="2" stroke-linejoin="round"/>
-        ${avgSeries.map((v, i) => `<circle cx="${i / 11 * w}" cy="${h - (v - lo) / (hi - lo) * h}" r="${i === 11 ? 4 : 2}" fill="${c.primary}"/>`).join("")}</svg>
-      <div class="row" style="justify-content:space-between">${[["Moy. / série", "12,0", "+3,8"], ["Cadence", "1,5 s", "−0,2"], ["Fatigue", "−24 %", "+9 pts"]].map(([k, v, d]) =>
-        `<div>${label(k)}<div style="font-size:15px;font-weight:700;margin-top:3px">${v} <span style="font-size:10px;color:${c.ok}">${d}</span></div></div>`).join("")}</div>`;
-    // Régularité : calendrier 16 semaines
+        <span style="position:absolute;left:0;bottom:${23 + avg / best * 78}px;font-size:9px;color:${c.dim};background:${c.panel};padding-right:4px">moy. ${Math.round(avg)}</span></div>`);
+  }
+
+  // Activité : la semaine (cadran + chiffres clés) et la régularité sur 16 semaines
+  function activityPanel(early) {
+    const week = `<div class="row" style="gap:18px">
+        ${ring({ lit: early ? 20 : 60, size: 128, content: `<div style="font-size:36px;font-weight:700;line-height:1">${early ? 34 : 172}</div><div style="margin-top:4px">${label("reps")}</div>` })}
+        <div style="display:flex;flex-direction:column;gap:10px;flex:1">
+          ${label("Cette semaine", c.text)}
+          ${early ? `<span style="font-size:14px;font-weight:700;color:${c.ok}">Bonne reprise</span>`
+                  : `<div><span style="font-size:20px;font-weight:700;color:${c.ok}">▲ +15 %</span><div style="font-size:11px;color:${c.dim}">vs semaine dernière (150)</div></div>`}
+          ${[["Séances", early ? "2" : "3"], ["Temps", early ? "9 min" : "38 min"], ["Régularité", early ? "1 sem." : "6 sem. de suite"]].map(([k, v]) =>
+            `<div class="row" style="justify-content:space-between">${label(k)}<span style="font-size:14px;font-weight:700">${v}</span></div>`).join("")}
+        </div></div>`;
     let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
     const days = ["L", "M", "M", "J", "V", "S", "D"];
     let grid = "";
     for (let d = 0; d < 7; d++) {
       grid += `<span style="font-size:9px;color:${c.dim};width:10px">${days[d]}</span>`;
       for (let wk = 0; wk < 16; wk++) {
-        const future = wk === 15 && d > 0;
-        const v = future ? -1 : (rnd() < 0.42 ? Math.ceil(rnd() * 3) : 0);
+        const future = wk === 15 && d > 1;
+        let v = future ? -1 : (rnd() < 0.42 ? Math.ceil(rnd() * 3) : 0);
+        if (early && v >= 0) v = (wk === 15 && d === 1) || (wk === 14 && d === 4) ? 2 : 0;
         const bg = v < 0 ? "transparent" : v === 0 ? hexA(c.line, .9) : hexA(c.primary, [0, .35, .65, 1][v]);
         grid += `<span style="width:14px;height:14px;border-radius:3px;background:${bg}"></span>`;
       }
     }
     const calendar = `<div style="display:grid;grid-template-columns:12px repeat(16, 14px);gap:4px;justify-content:space-between">${grid}</div>
-      <div class="row" style="justify-content:space-between;font-size:11px;color:${c.dim}"><span>41 jours actifs sur 106</span>
+      <div class="row" style="justify-content:space-between;font-size:11px;color:${c.dim}"><span>${early ? 2 : 41} jours actifs en 16 sem.</span>
         <span class="row" style="gap:3px">moins ${[0, .35, .65, 1].map(a => `<span style="width:9px;height:9px;border-radius:2px;background:${a ? hexA(c.primary, a) : c.line}"></span>`).join("")} plus</span></div>`;
+    return panel("Activité", chevronRight(), `${week}<div style="height:1px;background:${c.line}"></div>${calendar}`);
+  }
+
+  function history() {
+    if (s.sub === "endurance") return `${header("SCORE D'ENDURANCE", true)}<div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">${endurancePanel()}</div>`;
+    if (s.sub === "form") return `${header("FORME", true)}<div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">${formPanel()}</div>`;
+    if (s.sub === "activity") return `${header("ACTIVITÉ", true)}<div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">${volumePanel()}</div>`;
+    const early = s.sub === "early";
+    // Conseil (seulement s'il y a lieu)
+    const advice = early ? "" : `<div style="padding:14px;border:1px solid ${c.line};border-radius:${r}px;background:${c.panel};display:flex;flex-direction:column;gap:12px">${label("Conseil")}
+        <div class="row" style="gap:12px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:${c.ok};margin-top:6px;flex:none"></span>
+        <div><div style="font-size:14px;font-weight:700">Record à portée</div><div style="font-size:12px;color:${c.dim};line-height:1.5;margin-top:3px">Ton record de série est 24. Tu en as fait 22 récemment : il t'en manque 2.</div></div></div></div>`;
+    // Score d'endurance et Forme, côte à côte
+    const big = (text, color) => `<span style="font-size:32px;font-weight:700;line-height:1.1;color:${color}">${text}</span>`;
+    const small = (text, color = c.dim, bold = false) => `<span style="font-size:11px;font-weight:${bold ? 700 : 400};color:${color};line-height:1.35">${text}</span>`;
+    const gradientText = text => `<span style="font-size:32px;font-weight:700;line-height:1.1;background:linear-gradient(90deg,${c.secondary},${c.primary});-webkit-background-clip:text;color:transparent;align-self:flex-start">${text}</span>`;
+    const tiles = early
+      ? tile("Score d'endurance", big("2 / 3", c.dim) + small("séries dans une séance")) + tile("Forme", big("2 / 3", c.dim) + small("séances de référence"))
+      : tile("Score d'endurance", gradientText("39") + small("Bon", c.primary, true) + `<span style="flex:1"></span>` + sparkline([31, 32, 32, 34, 35, 35, 36, 37, 37, 38, 39], 140, 22))
+        + tile("Forme", `<span style="font-size:32px;font-weight:700;line-height:1.1;color:${c.primary}">102<span style="font-size:14px"> %</span></span>` + small("Forme normale", c.primary, true) + `<span style="flex:1"></span>` + sparkline([99, 101, 97, 103, 100, 98, 104, 101, 96, 100, 99, 102], 140, 22, hexA(c.primary, .7)));
+    // Records
+    const record = (name, value, date, fresh) => `<div style="flex:1;padding:10px;border:1px solid ${fresh ? hexA(c.warn, .6) : c.line};border-radius:${r}px;background:${fresh ? hexA(c.warn, .06) : "transparent"}">
+        ${label(name)}<div class="row" style="gap:4px;margin-top:6px"><span style="font-size:24px;font-weight:700;color:${fresh ? c.warn : c.text}">${value}</span>${fresh ? icon("star", c.warn, 12) : ""}</div>
+        <div style="font-size:10px;color:${c.dim};margin-top:2px">${date}</div></div>`;
+    const records = early
+      ? `<div class="row" style="gap:8px;align-items:stretch">${record("Série", "12", "aujourd'hui", true)}${record("Séance", "22", "aujourd'hui", true)}${record("Semaine", "34", "cette semaine", true)}</div>`
+      : `<div class="row" style="gap:8px;align-items:stretch">${record("Série", "24", "aujourd'hui", true)}${record("Séance", "72", "12 oct.")}${record("Semaine", "172", "cette semaine", true)}</div>`;
     // Séances
-    const sessions = [["Lun 26 oct", "19:40", 60, 5, "+6", true], ["Jeu 22 oct", "18:05", 54, 5, "−4"], ["Mar 20 oct", "07:30", 58, 5, "+2"],
-                      ["Sam 17 oct", "10:12", 56, 4, "−16"], ["Lun 12 oct", "19:02", 72, 6, "+14", true], ["Jeu 8 oct", "18:40", 58, 5, "+3"]];
+    const sessions = early ? [["Mar 27 oct", "07:40", 22, 2, "+10", true], ["Ven 23 oct", "18:20", 12, 1, ""]]
+      : [["Lun 26 oct", "19:40", 60, 5, "+6", true], ["Jeu 22 oct", "18:05", 54, 5, "−4"], ["Mar 20 oct", "07:30", 58, 5, "+2"],
+         ["Sam 17 oct", "10:12", 56, 4, "−16"], ["Lun 12 oct", "19:02", 72, 6, "+14", true], ["Jeu 8 oct", "18:40", 58, 5, "+3"]];
     const list = sessions.map(([day, hour, total, n, delta, rec], i) => `<div class="row" style="gap:12px;padding:10px 0;${i ? `border-top:1px solid ${c.line}` : ""}">
-        <div style="flex:1"><div style="font-size:14px;font-weight:700">${day}</div><div style="font-size:11px;color:${c.dim}">${hour} · ${n} séries</div></div>
+        <div style="flex:1"><div style="font-size:14px;font-weight:700">${day}</div><div style="font-size:11px;color:${c.dim}">${hour} · ${n} série${n > 1 ? "s" : ""}</div></div>
         ${rec ? icon("star", c.warn, 13) : ""}
         <span style="font-size:11px;font-weight:700;color:${delta.startsWith("+") ? c.ok : c.dim}">${delta}</span>
         <span style="font-size:22px;font-weight:700;min-width:36px;text-align:right">${total}</span>
-        ${icon("chevron", c.dim, 12).replace('viewBox="0 0 20 20"', 'viewBox="0 0 20 20" style="transform:rotate(-90deg)"')}</div>`).join("");
-    return `<div class="top"><span style="font-size:16px;font-weight:700;letter-spacing:3px">HISTORIQUE</span>${iconBtn("xmark", c.text)}</div>
+        ${chevronRight(c.dim, 12)}</div>`).join("");
+    return `${header("HISTORIQUE")}
       <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
         ${exerciseBar(1)}
-        ${panel("Score d'endurance", `<span style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${c.dim};color:${c.dim};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif">i</span>`, (() => {
-          const pts = [31, 32, 32, 34, 35, 35, 36, 37, 37, 38, 39], w = 150, h = 40, lo = 30, hi = 40;
-          const line = pts.map((v, i) => `${(i / 10 * w).toFixed(1)},${(h - (v - lo) / (hi - lo) * h).toFixed(1)}`).join(" ");
-          return `<div class="row" style="gap:16px;align-items:center">
-            ${gauge({ score: 39, fill: 0.52, level: "Bon" })}
-            <div style="display:flex;flex-direction:column;gap:8px">
-              <div><div style="font-size:20px;font-weight:700;color:${c.ok}">▲ +8 %</div><div style="font-size:11px;color:${c.dim}">en 4 semaines</div></div>
-              <svg width="${w}" height="${h + 6}" viewBox="0 -3 ${w} ${h + 6}"><polyline points="${line}" fill="none" stroke="${c.primary}" stroke-width="2" stroke-linejoin="round"/>
-                <circle cx="${w}" cy="${h - (39 - lo) / (hi - lo) * h}" r="4" fill="${c.primary}"/></svg></div></div>
-            <div style="font-size:11px;color:${c.dim};line-height:1.4">Meilleure série : 22 pompes · niveau bon pour un homme de 30-39 ans (barème SCPE).</div>`;
-        })())}
-        ${panel("Cette semaine", label("26 oct. – 1 nov."), week)}
+        ${advice}
+        <div class="row" style="gap:10px;align-items:stretch">${tiles}</div>
+        ${activityPanel(early)}
         ${panel("Records", "", records)}
-        ${panel("Volume · 12 semaines", label("reps / semaine"), volume)}
-        ${panel("Progression · 12 semaines", "", progression)}
-        ${panel("Régularité", label("16 semaines"), calendar)}
-        ${panel("Séances", label("42 au total"), list)}
+        ${panel("Séances", label(`${sessions.length === 2 ? 2 : 42} au total`), list)}
       </div>`;
   }
 
@@ -546,11 +603,28 @@ function render(t, s) {
             <div class="row" style="gap:6px">${icon("pushup", c.primary, 20)}<span style="font-size:14px;font-weight:700;letter-spacing:1.5px">POMPES</span></div>
             <span style="font-size:13px;font-weight:700;color:${c.ok}">▲ +6 vs jeudi 22</span>
             <span class="row" style="gap:4px;font-size:12px;font-weight:700;color:${c.warn}">${icon("star", c.warn, 11)} Record de série (14)</span>
-            <span style="font-size:12px;color:${c.dim}">12:08 · 5 séries · fatigue −29 %</span>
+            <span style="font-size:12px;color:${c.dim}">12:08 · 5 séries</span>
           </div></div>
         ${panel("Séries", "", head + `<div>${rows}</div>`)}
         ${panel("Rythme", label("s / rep"), rhythm)}
       </div>`;
+  }
+
+  // Mes exercices : ceux du cadran (− pour retirer, ≡ pour l'ordre), puis les autres (+ pour ajouter)
+  function myExercises() {
+    const mine = [0, 1, 2, 3, 4], others = [5, 6, 7, 8, 9];
+    const row = (e, adding, first) => `<div class="row" style="gap:12px;height:52px;padding:0 14px;${first ? "" : `border-top:1px solid ${c.line}`}">
+        ${icon(adding ? "addc" : "remc", adding ? c.ok : c.warn, 20)}
+        ${icon(EXERCISES[e][0], adding ? c.dim : c.primary, 26)}
+        <span style="flex:1;font-size:15px;font-weight:600;color:${adding ? c.dim : c.text}">${["Pompes", "Abdos", "Squats", "Fentes", "Tractions", "Dips", "Biceps", "Rowing haltère", "Développé épaules", "Autre exercice"][e]}</span>
+        ${adding ? "" : icon("grip", c.dim, 18)}</div>`;
+    const group = (title, list, adding, footer = "") => `<div style="display:flex;flex-direction:column;gap:6px"><div style="padding-left:14px">${label(title)}</div>
+        <div style="border-radius:${Math.max(r, 10)}px;background:${c.panel};overflow:hidden">${list.map((e, i) => row(e, adding, i === 0)).join("")}</div>
+        ${footer ? `<div style="padding-left:14px;font-size:11px;color:${c.dim}">${footer}</div>` : ""}</div>`;
+    return `<div class="top"><span style="font-size:16px;font-weight:700;letter-spacing:3px">MES EXERCICES</span>${iconBtn("xmark", c.text)}</div>
+      <div style="display:flex;flex-direction:column;gap:22px;margin-top:12px">
+        ${group("Dans le cadran", mine, false, "Glisse ≡ pour changer l'ordre.")}
+        ${group("Autres exercices", others, true)}</div>`;
   }
 
   function settings() {
@@ -572,14 +646,16 @@ function render(t, s) {
       ${note("Affiche pendant la séance l'enregistrement des mesures (●) et le diagnostic des capteurs, pour analyser une séance qui compte mal.")}`;
     return `<div class="top"><span style="font-size:16px;font-weight:700;letter-spacing:3px">RÉGLAGES</span>${iconBtn("xmark", c.text)}</div>
       <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px">
+      ${panel("Mes exercices", `<div class="row" style="gap:8px;height:36px">${[0, 1, 2, 3, 4].map(e => icon(EXERCISES[e][0], c.primary, 22)).join("")}<span style="flex:1"></span>${icon("right", c.dim, 11)}</div>
+        ${note("Les exercices du cadran, dans l'ordre où ils défilent.")}`)}
+      ${panel("Profil", `<div class="row">${choice("Femme", false)}${choice("Homme", true)}</div>
+        <div class="row" style="justify-content:space-between"><span style="font-size:11px;font-weight:600;letter-spacing:1px">ANNÉE DE NAISSANCE</span><span style="font-size:14px;color:${c.primary}">1988 ⌄</span></div>
+        ${note("Facultatif, reste sur ton iPhone. Sert à situer ton niveau en pompes sur le barème de référence (score d'endurance).")}`)}
       ${panel("Retour sonore", `<div class="row">${choice("Sons", s.audio === "sons")}${choice("Sons + voix", s.audio === "voix")}${choice("Silence", s.audio === "silence")}</div>
         ${note({ sons: "Une note par répétition, deux notes tous les 5, trois tous les 10. Notes de départ, fin de série, fin de séance.",
                  voix: "Les sons, plus la voix aux paliers (5, 10, 15…) et en fin de série. Voix : Audrey.",
                  silence: "Aucun son. Les vibrations restent." }[s.audio])}`)}
       ${panel("Thème", `<div style="display:flex;flex-direction:column;gap:8px">${themes}</div>`)}
-      ${panel("Profil", `<div class="row">${choice("Femme", false)}${choice("Homme", true)}</div>
-        <div class="row" style="justify-content:space-between"><span style="font-size:11px;font-weight:600;letter-spacing:1px">ANNÉE DE NAISSANCE</span><span style="font-size:14px;color:${c.primary}">1988 ⌄</span></div>
-        ${note("Facultatif, reste sur ton iPhone. Sert à situer ton niveau en pompes sur le barème de référence (score d'endurance).")}`)}
       ${panel("Analyse", toggle)}
       <div style="font-size:10px;color:${c.dim};text-align:center">Comptage par caméra 3D et capteurs de mouvement · aucune image enregistrée</div></div>`;
   }

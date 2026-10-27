@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Réglages, rangés hors de l'écran d'entraînement : retour sonore, thème, outils d'analyse.
+/// Réglages, rangés hors de l'écran d'entraînement : mes exercices, profil, retour sonore, thème,
+/// outils d'analyse.
 struct SettingsView: View {
     /// Mode analyse : affiche pendant la séance l'enregistrement des mesures et le diagnostic.
     static let analysisModeKey = "analysisMode"
@@ -12,8 +13,10 @@ struct SettingsView: View {
     @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
     @AppStorage(Profile.sexKey) private var sexID = ""
     @AppStorage(Profile.birthYearKey) private var birthYear = 0
+    @AppStorage(Exercise.mineKey) private var mineValue = Exercise.defaultMineValue
 
     @State private var showsYearWheel = false
+    @State private var showsExercises = false
 
     /// Années proposées, des plus anciennes aux plus récentes (ordre de la roue des dates d'iOS).
     private static let birthYears: [Int] = {
@@ -39,27 +42,25 @@ struct SettingsView: View {
             // Liste de réglages : défile seulement si l'écran est trop petit
             ScrollView {
                 VStack(spacing: 14) {
-                    MonitorPanel("Retour sonore") {
+                    MonitorPanel("Mes exercices") {
                         VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 8) {
-                                ForEach(AudioMode.allCases) { mode in
-                                    Button(mode.title) { audioMode = mode }
-                                        .buttonStyle(MonitorButtonStyle(filled: audioMode == mode, height: 40, fontSize: 11))
+                            Button { showsExercises = true } label: {
+                                HStack(spacing: 8) {
+                                    ForEach(Exercise.decode(mineValue)) { exercise in
+                                        ExerciseIcon(exercise: exercise, size: 22)
+                                            .foregroundStyle(theme.primary)
+                                    }
+                                    Spacer(minLength: 4)
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(theme.dim)
                                 }
+                                .frame(height: 36)
+                                .contentShape(Rectangle())
                             }
-                            note(audioNote)
-                        }
-                    }
-
-                    MonitorPanel("Thème") {
-                        VStack(spacing: 8) {
-                            ForEach(themeStore.themes) { option in
-                                ThemeRow(option: option,
-                                         selected: option.id == themeStore.current.id,
-                                         unlocked: themeStore.isUnlocked(option)) {
-                                    themeStore.selectedID = option.id
-                                }
-                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Mes exercices : " + Exercise.decode(mineValue).map(\.title).joined(separator: ", "))
+                            note("Les exercices du cadran, dans l'ordre où ils défilent.")
                         }
                     }
 
@@ -126,6 +127,30 @@ struct SettingsView: View {
                         }
                     }
 
+                    MonitorPanel("Retour sonore") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(spacing: 8) {
+                                ForEach(AudioMode.allCases) { mode in
+                                    Button(mode.title) { audioMode = mode }
+                                        .buttonStyle(MonitorButtonStyle(filled: audioMode == mode, height: 40, fontSize: 11))
+                                }
+                            }
+                            note(audioNote)
+                        }
+                    }
+
+                    MonitorPanel("Thème") {
+                        VStack(spacing: 8) {
+                            ForEach(themeStore.themes) { option in
+                                ThemeRow(option: option,
+                                         selected: option.id == themeStore.current.id,
+                                         unlocked: themeStore.isUnlocked(option)) {
+                                    themeStore.selectedID = option.id
+                                }
+                            }
+                        }
+                    }
+
                     MonitorPanel("Analyse") {
                         VStack(alignment: .leading, spacing: 8) {
                             Toggle(isOn: $analysisMode) {
@@ -149,6 +174,11 @@ struct SettingsView: View {
         }
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.large])
+        .sheet(isPresented: $showsExercises) {
+            MyExercisesView()
+                .environment(\.theme, theme)
+                .preferredColorScheme(theme.colorScheme)
+        }
     }
 
     private var audioNote: String {
@@ -169,6 +199,90 @@ struct SettingsView: View {
             .font(theme.font(11))
             .foregroundStyle(theme.dim)
             .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// Mes exercices : ceux du cadran, dans l'ordre (poignée ≡ pour le changer), puis les autres
+/// exercices du catalogue. − retire un exercice du cadran, + l'y ajoute ; il en reste toujours un.
+private struct MyExercisesView: View {
+    @Environment(\.theme) private var theme
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage(Exercise.mineKey) private var mineValue = Exercise.defaultMineValue
+
+    private var mine: [Exercise] { Exercise.decode(mineValue) }
+    private var others: [Exercise] { Exercise.allCases.filter { !mine.contains($0) } }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("MES EXERCICES")
+                    .font(theme.font(16, .bold))
+                    .tracking(3)
+                    .foregroundStyle(theme.text)
+                Spacer()
+                IconButton(systemImage: "xmark") { dismiss() }
+            }
+            .padding(16)
+
+            List {
+                Section {
+                    ForEach(mine) { exercise in
+                        row(exercise, adding: false)
+                    }
+                    .onMove { from, to in
+                        var list = mine
+                        list.move(fromOffsets: from, toOffset: to)
+                        mineValue = Exercise.encode(list)
+                    }
+                } header: {
+                    MonitorLabel("Dans le cadran")
+                } footer: {
+                    Text("Glisse ≡ pour changer l'ordre.")
+                        .font(theme.font(11))
+                        .foregroundStyle(theme.dim)
+                }
+                if !others.isEmpty {
+                    Section {
+                        ForEach(others) { exercise in
+                            row(exercise, adding: true)
+                        }
+                    } header: {
+                        MonitorLabel("Autres exercices")
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .environment(\.editMode, .constant(.active))
+        }
+        .background(theme.background.ignoresSafeArea())
+        .presentationDetents([.large])
+    }
+
+    private func row(_ exercise: Exercise, adding: Bool) -> some View {
+        let locked = !adding && mine.count == 1
+        return HStack(spacing: 12) {
+            Button {
+                UISelectionFeedbackGenerator().selectionChanged()
+                withAnimation {
+                    mineValue = Exercise.encode(adding ? mine + [exercise] : mine.filter { $0 != exercise })
+                }
+            } label: {
+                Image(systemName: adding ? "plus.circle.fill" : "minus.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(adding ? theme.ok : (locked ? theme.dim.opacity(0.4) : theme.warn))
+            }
+            .buttonStyle(.plain)
+            .disabled(locked)
+            .accessibilityLabel(adding ? "Ajouter \(exercise.title)" : "Retirer \(exercise.title)")
+            ExerciseIcon(exercise: exercise, size: 26)
+                .foregroundStyle(adding ? theme.dim : theme.primary)
+            Text(exercise.title)
+                .font(theme.font(15, .semibold))
+                .foregroundStyle(adding ? theme.dim : theme.text)
+        }
+        .padding(.vertical, 4)
+        .listRowBackground(theme.panel)
     }
 }
 

@@ -139,3 +139,25 @@ enum LoadKind: String, CaseIterable {
         self == .bar ? Format.kilograms(weight) : "\(pieces) × \(Format.kilograms(weight))"
     }
 }
+
+// MARK: - Mes exercices
+
+extension Exercise {
+    /// Exercices du cadran, dans l'ordre où ils défilent (Réglages › Mes exercices). Les autres
+    /// restent au catalogue, prêts à être ajoutés.
+    static let mineKey = "myExercises"
+    static let defaultMine: [Exercise] = [.pushups, .crunches, .squats, .lunges, .pullups]
+    static let defaultMineValue = encode(defaultMine)
+
+    static func decode(_ value: String) -> [Exercise] {
+        var list: [Exercise] = []
+        for raw in value.split(separator: ",") {
+            if let exercise = Exercise(rawValue: String(raw)), !list.contains(exercise) { list.append(exercise) }
+        }
+        return list.isEmpty ? defaultMine : list
+    }
+
+    static func encode(_ list: [Exercise]) -> String {
+        list.map(\.rawValue).joined(separator: ",")
+    }
+}

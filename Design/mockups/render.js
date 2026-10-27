@@ -11,9 +11,9 @@ fs.mkdirSync(out, { recursive: true });
 const SCREENS = [
   ["1-ouverture", { phase: "ready", signal: "ok", caption: "Ouverture de l'app (veille)" }],
   ["2-glissement", { phase: "ready", exercise: 0, drag: -95, signal: "ok", caption: "Glisser vers la gauche" }],
-  ["2c-biceps", { phase: "ready", exercise: 6, signal: "ok", caption: "Biceps : charge de l'haltère" }],
+  ["2c-biceps", { phase: "ready", exercise: 6, mine: [0, 1, 2, 6, 7], signal: "ok", caption: "Biceps : charge de l'haltère" }],
   ["2d-tractions", { phase: "ready", exercise: 4, signal: "ok", caption: "Tractions" }],
-  ["2e-rowing", { phase: "ready", exercise: 7, signal: "ok", caption: "Rowing haltère" }],
+  ["2e-rowing", { phase: "ready", exercise: 7, mine: [0, 1, 2, 6, 7], signal: "ok", caption: "Rowing haltère" }],
   ["2b-abdos", { phase: "ready", exercise: 1, signal: "weak", caption: "Abdos choisis" }],
   ["3-depart", { phase: "countdown", caption: "Départ (bips 3, 2, 1, accord)" }],
   ["4-detection", { phase: "acquiring", tentative: 2, caption: "Détection 2/3" }],
@@ -21,10 +21,16 @@ const SCREENS = [
   ["6-recuperation", { phase: "resting", sets: [12, 11, 10, 11, 10, 10], caption: "Récupération" }],
   ["7-fin", { phase: "finished", total: 60, sets: [14, 13, 12, 11, 10], recordSet: 0, caption: "Fin de séance" }],
   ["7b-fin-correction", { phase: "finished", total: 60, sets: [14, 13, 12, 11, 10], recordSet: 0, editing: 2, caption: "Correction d'une série" }],
-  ["9-historique", { phase: "history", height: 1960, caption: "Historique (défile)" }],
+  ["7c-fin-en-cours", { phase: "finished", total: 22, sets: [12, 10], pending: true, caption: "Fin de séance : états en cours" }],
+  ["9-historique", { phase: "history", height: 1500, caption: "Historique en 4 blocs (défile)" }],
+  ["9b-historique-debut", { phase: "history", sub: "early", height: 1080, caption: "Historique : premières séances" }],
+  ["9c-endurance", { phase: "history", sub: "endurance", caption: "Détail : score d'endurance" }],
+  ["9d-forme", { phase: "history", sub: "form", caption: "Détail : forme" }],
+  ["9e-activite", { phase: "history", sub: "activity", caption: "Détail : activité" }],
   ["11-endurance-info", { phase: "info", caption: "(i) Endurance" }],
   ["10-seance", { phase: "session", caption: "Détail d'une séance" }],
-  ["8-reglages", { phase: "settings", audio: "sons", themes, height: 1010, caption: "Réglages (roue dentée)" }],
+  ["8-reglages", { phase: "settings", audio: "sons", themes, height: 1110, caption: "Réglages (roue dentée)" }],
+  ["8b-mes-exercices", { phase: "exercises", caption: "Mes exercices" }],
 ];
 
 (async () => {

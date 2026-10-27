@@ -17,21 +17,28 @@ struct RepCounterApp: App {
     }
 }
 
-/// L'app s'ouvre sur le cadran, réglé sur le dernier exercice. Changer d'exercice (en glissant
-/// dans le cadran) recrée l'écran avec les capteurs du nouvel exercice.
+/// L'app s'ouvre sur le cadran, réglé sur le dernier exercice (s'il fait toujours partie de « Mes
+/// exercices »). Changer d'exercice (en glissant dans le cadran) recrée l'écran avec les capteurs
+/// du nouvel exercice.
 struct RootView: View {
     static let exerciseKey = "exercise"
 
     @AppStorage(RootView.exerciseKey) private var exerciseID = Exercise.pushups.rawValue
+    @AppStorage(Exercise.mineKey) private var mineValue = Exercise.defaultMineValue
     /// L'écran du nouvel exercice démarre sa séance dès son affichage.
     @State private var startsSession = false
 
-    private var exercise: Exercise { Exercise(rawValue: exerciseID) ?? .pushups }
+    private var mine: [Exercise] { Exercise.decode(mineValue) }
+
+    private var exercise: Exercise {
+        let stored = Exercise(rawValue: exerciseID)
+        return stored.flatMap { mine.contains($0) ? $0 : nil } ?? mine[0]
+    }
 
     var body: some View {
         // Un écran par exercice : changer d'exercice arrête ses capteurs et démarre ceux du suivant.
         // Le nouvel écran s'affiche à l'identique (même exercice dans le cadran) : pas de transition.
-        WorkoutView(exercise: exercise, startsSession: startsSession) { selected, start in
+        WorkoutView(exercise: exercise, exercises: mine, startsSession: startsSession) { selected, start in
             startsSession = start
             exerciseID = selected.rawValue
         }

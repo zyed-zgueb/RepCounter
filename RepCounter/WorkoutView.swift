@@ -27,18 +27,22 @@ struct WorkoutView: View {
     let onSelectExercise: (Exercise, Bool) -> Void
     /// Démarrer la séance dès l'affichage.
     let startsSession: Bool
+    /// Les exercices du cadran (Mes exercices), dans l'ordre.
+    let exercises: [Exercise]
 
     /// Délai sans geste avant d'adopter l'exercice affiché : passer vite de Pompes à Biceps
     /// n'allume pas et n'éteint pas la caméra à chaque étape.
     private static let selectionDelay = 0.4
 
-    init(exercise: Exercise, startsSession: Bool = false, onSelectExercise: @escaping (Exercise, Bool) -> Void) {
+    init(exercise: Exercise, exercises: [Exercise], startsSession: Bool = false,
+         onSelectExercise: @escaping (Exercise, Bool) -> Void) {
         _model = StateObject(wrappedValue: WorkoutModel(exercise: exercise))
         _browsing = State(initialValue: exercise)
         _load = State(initialValue: exercise.load)
         _loadKind = State(initialValue: exercise.loadKind)
         self.onSelectExercise = onSelectExercise
         self.startsSession = startsSession
+        self.exercises = exercises
     }
 
     var body: some View {
@@ -204,7 +208,7 @@ struct WorkoutView: View {
             switch model.phase {
             case .ready:
                 Dial(face: LiveDialFace(live: model.live, palette: .idle)) { side in
-                    ExerciseCarousel(selection: $browsing, side: side)
+                    ExerciseCarousel(selection: $browsing, exercises: exercises, side: side)
                 }
                 placementText(browsing)
                 loadControl
@@ -367,11 +371,10 @@ struct WorkoutView: View {
     private static let longestPlacement = Exercise.allCases.map(\.placement).max { $0.count < $1.count } ?? ""
 
 
-    /// Une ligne discrète sous le cadran : total de la séance et cadence (et régularité en mode analyse).
+    /// Une ligne discrète sous le cadran : total de la séance (et régularité en mode analyse).
     private var statsLine: some View {
         HStack(spacing: 18) {
             stat("Total", "\(model.totalReps)")
-            stat("Cadence", model.cadence.map { String(format: "%.1f", $0) } ?? "—", unit: "s")
             if analysisMode {
                 stat("Régul.", model.regularity > 0 ? "\(Int((model.regularity * 100).rounded()))" : "—", unit: "%")
             }
@@ -770,7 +773,8 @@ private struct SignalTrace: View {
 // MARK: - Fin de séance
 
 /// Le total dans le cadran, l'écart avec la séance précédente et les records battus, les séries
-/// (une touche sur une barre pour corriger son compte), quatre mesures, et « Nouvelle séance ».
+/// (une touche sur une barre pour corriger son compte), trois mesures (score d'endurance, forme,
+/// durée), et « Nouvelle séance ».
 private struct SessionSummary: View {
     @Environment(\.theme) private var theme
     @ObservedObject var model: WorkoutModel
@@ -811,16 +815,15 @@ private struct SessionSummary: View {
                 MonitorLabel("Aucune série comptée")
             }
 
-            HStack {
-                summaryStat("Score endurance", record?.performanceIndex.map { "\(Int($0.rounded()))" } ?? "—")
-                summaryStat("Forme", form.map { "\(Int($0.percent.rounded()))" } ?? "—", unit: form == nil ? nil : "%",
-                            color: form.map { formColor($0.zone, theme: theme) })
-                summaryStat("Cadence", record?.cadence.map { Format.decimal($0) } ?? "—", unit: "s")
-                summaryStat("Fatigue", record?.fatigue.map { Format.percent($0) } ?? "—", unit: "%",
-                            color: (record?.fatigue ?? 0) < 0 ? theme.warn : theme.text)
+            if let record {
+                HStack {
+                    enduranceStat(record)
+                    if record.exercise != .auto { formStat(record) }
+                    summaryStat("Durée", Format.clock(record.duration))
+                }
+                .padding(.top, 12)
+                .overlay(alignment: .top) { Rectangle().fill(theme.line).frame(height: 1) }
             }
-            .padding(.top, 12)
-            .overlay(alignment: .top) { Rectangle().fill(theme.line).frame(height: 1) }
             Spacer(minLength: 0)
 
             Button("Nouvelle séance") { model.newSession() }
@@ -830,9 +833,28 @@ private struct SessionSummary: View {
 
     private var total: Int { record?.totalReps ?? model.totalReps }
 
-    /// Forme de la séance, par rapport aux précédentes du même exercice (nil sans référence).
-    private var form: FormResult? {
-        record.flatMap { HistoryStats(sessions: history, exercise: $0.exercise).form(of: $0) }
+    /// Score d'endurance, ou où l'on en est : il faut 3 séries.
+    private func enduranceStat(_ record: SessionRecord) -> some View {
+        if let index = record.performanceIndex {
+            return summaryStat("Score endurance", "\(Int(index.rounded()))")
+        }
+        let sets = record.orderedSets.count
+        return summaryStat("Score endurance", sets < SessionRecord.indexSets ? "\(sets) / \(SessionRecord.indexSets) séries" : "—",
+                           pending: true)
+    }
+
+    /// Forme de la séance, par rapport aux précédentes du même exercice ; tant que la référence
+    /// se construit, où l'on en est.
+    private func formStat(_ record: SessionRecord) -> some View {
+        let stats = HistoryStats(sessions: history, exercise: record.exercise)
+        if let form = stats.form(of: record) {
+            return summaryStat("Forme", "\(Int(form.percent.rounded()))", unit: "%", color: formColor(form.zone, theme: theme))
+        }
+        guard record.formMeasure != nil else {
+            return summaryStat("Forme", "séries courtes", pending: true)
+        }
+        let collected = min(earlier(record).filter { $0.formMeasure != nil }.count + 1, FormResult.baselineSessions)
+        return summaryStat("Forme", "réf. \(collected) / \(FormResult.baselineSessions)", pending: true)
     }
 
     /// Séances précédentes du même exercice.
@@ -927,14 +949,16 @@ private struct SessionSummary: View {
         }
     }
 
-    private func summaryStat(_ label: String, _ value: String, unit: String? = nil, color: Color? = nil) -> some View {
+    /// Une mesure ; `pending` : un état « en cours » (plus petit, atténué) à la place d'une valeur.
+    private func summaryStat(_ label: String, _ value: String, unit: String? = nil, color: Color? = nil,
+                             pending: Bool = false) -> some View {
         VStack(spacing: 4) {
             MonitorLabel(label)
                 .minimumScaleFactor(0.6)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(value)
-                    .font(theme.font(18, .semibold))
-                    .foregroundStyle(color ?? theme.text)
+                    .font(theme.font(pending ? 13 : 18, .semibold))
+                    .foregroundStyle(pending ? theme.dim : color ?? theme.text)
                     .monospacedDigit()
                 if let unit {
                     Text(unit)

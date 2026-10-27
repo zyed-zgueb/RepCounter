@@ -15,7 +15,8 @@ Réglages. Pas de défilement.
 1. **Veille** (ouverture de l'app) : au centre du cadran, le pictogramme et le nom de
    l'exercice. **On glisse à gauche ou à droite pour changer d'exercice**, comme les cadrans
    d'une montre : le contenu défile dans le cadran, qui ne bouge pas, avec un cran de vibration ;
-   des points indiquent la position parmi les six exercices ; aux deux bouts, le contenu résiste.
+   des points indiquent la position parmi **Mes exercices** (choisis et ordonnés dans les
+   Réglages ; par défaut Pompes, Abdos, Squats, Fentes, Tractions) ; aux deux bouts, le contenu résiste.
    Un toucher esquisse le geste. Les capteurs du nouvel exercice démarrent une fois le geste
    posé (0,4 s), et l'app retient le dernier choisi. Le cadran suit déjà le mouvement capté ;
    en dessous, la consigne de placement, le tracé du mouvement capté, avec un voyant devant le nom du capteur (gris au repos, bleu pour un léger mouvement, vert quand il est assez net pour compter) et **Démarrer**.
@@ -23,7 +24,7 @@ Réglages. Pas de défilement.
 2. **Départ** : 5 s pour se mettre en position, le cadran se remplit ; une note à 3, 2 et 1,
    un accord au départ. Tout ce qui précède est ignoré.
 3. **Série** : il ne reste que le nombre, en très grand, et une ligne discrète (total de la
-   séance, cadence). Avant la validation (3 répétitions), le cadran montre les répétitions
+   séance). Avant la validation (3 répétitions), le cadran montre les répétitions
    détectées en pâle « à valider », trois témoins, une onde et une vibration légère à chacune ;
    puis tout passe en plein (les premières sont rattrapées).
 4. **Récupération** : quand tu t'arrêtes ~4 s, la série est close et le cadran devient un
@@ -32,18 +33,24 @@ Réglages. Pas de défilement.
 5. **Annuler série** annule la série en cours (ou la dernière, pendant la récupération).
    **Terminer se maintient** 0,8 s (une jauge se remplit) : pas de fin de séance par erreur.
 6. **Fin** : le total dans le cadran, l'écart avec la séance précédente (« ▲ +6 vs jeudi 22 »)
-   et le record battu, l'histogramme des séries (étoile sur la série record), durée, moyenne,
-   cadence, fatigue (écart entre la dernière et la première série) et score d'endurance. **Toucher une série
+   et le record battu, l'histogramme des séries (étoile sur la série record), puis trois mesures :
+   score d'endurance, forme, durée. Tant qu'une mesure n'est pas calculable, son état
+   « en cours » la remplace (« 2 / 3 séries », « réf. 2 / 3 »). **Toucher une série
    permet de corriger son compte** (− / +, avec le compte d'origine). Puis « Nouvelle séance ».
 
 - **Historique** (icône graphique, en veille et à la fin) : Σ (tous les exercices) ou un
-  exercice, puis la semaine en cours (cadran, écart avec la semaine précédente, séances, temps,
-  semaines d'affilée), les records (série, séance, semaine ; en orange quand ils datent de la
-  semaine), le volume sur 12 semaines avec sa moyenne, la progression (moyenne par série,
-  cadence, fatigue), la régularité sur 16 semaines (un carré par jour) et la liste des séances.
-  Une séance s'ouvre sur son détail : séries, récupérations et rythme rep par rep ; un appui
-  long la supprime.
-- **Réglages** (roue dentée, en veille et à la fin) : retour sonore, thème, mode analyse.
+  exercice pratiqué, puis quatre blocs, une place pour chaque chose :
+  1. **Conseil**, seulement quand il y a lieu ;
+  2. **Score d'endurance** et **Forme**, deux tuiles côte à côte (valeur, mini-courbe ; ou leur
+     état « en cours ») — une touche ouvre le détail (jauge et (i), courbe de forme) ;
+  3. **Activité** : la semaine en cours (cadran, écart avec la semaine précédente, séances,
+     temps, semaines d'affilée) et la régularité sur 16 semaines — une touche ouvre le volume
+     sur 12 semaines ;
+  4. **Records** (série, séance, semaine ; en orange quand ils datent de la semaine) et la
+     liste des **séances**. Une séance s'ouvre sur son détail : séries, cadence, récupérations
+     et rythme rep par rep ; un appui long la supprime.
+- **Réglages** (roue dentée, en veille et à la fin) : mes exercices (− / + et poignée ≡ pour
+  l'ordre ; il en reste toujours un), profil, retour sonore, thème, mode analyse.
 - **Mode analyse** : ajoute à la séance l'enregistrement ●, le diagnostic des capteurs et
   la régularité du signal. Désactivé par défaut.
 
