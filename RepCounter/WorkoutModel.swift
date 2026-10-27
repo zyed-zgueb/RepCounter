@@ -62,10 +62,13 @@ struct WorkoutSet: Identifiable {
     let repTimes: [TimeInterval]
 }
 
-/// Séance : prêt → compte à rebours → séries et récupérations automatiques → résumé.
+/// Séance : prêt → mise en place (si elle se vérifie) → compte à rebours → séries et
+/// récupérations automatiques → résumé.
 final class WorkoutModel: ObservableObject {
     enum Phase: Equatable {
         case ready
+        /// Le départ attend que l'iPhone et le sportif soient bien placés.
+        case positioning
         case countdown(Int)
         case active
         case finished
@@ -75,6 +78,8 @@ final class WorkoutModel: ObservableObject {
     enum Presence { case absent, weak, clear }
 
     static let countdownSeconds = 5
+    /// Après la mise en place, on est déjà en position : un compte à rebours court suffit.
+    static let placedCountdownSeconds = 3
     /// Récupération signalée toutes les 30 s.
     private static let restAnnouncementInterval = 30
 
@@ -82,6 +87,10 @@ final class WorkoutModel: ObservableObject {
     let live = LiveSignal()
 
     @Published private(set) var phase = Phase.ready
+    /// Durée du compte à rebours en cours (s).
+    @Published private(set) var countdownTotal = WorkoutModel.countdownSeconds
+    /// Mise en place : consigne, vérifications, squelette vu par la caméra.
+    @Published private(set) var placement = PlacementStatus()
     /// Répétitions de la série en cours.
     @Published private(set) var setReps = 0
     @Published private(set) var sets: [WorkoutSet] = []
@@ -123,6 +132,10 @@ final class WorkoutModel: ObservableObject {
     private let counter: AutoCounter   // utilisé uniquement sur sensors.queue
     /// La séance se compte à la caméra (sinon aux capteurs de mouvement). Fixé à la création.
     let countsWithCamera: Bool
+    /// Mise en place vérifiée avant le départ (nil : départ direct). Fixé à la création.
+    let placementKind: PlacementKind?
+    private let placementMonitor: PlacementMonitor?   // utilisé uniquement sur sensors.queue
+    private let successHaptic = UINotificationFeedbackGenerator()
     /// Retour sonore, selon le réglage lu à l'ouverture de l'écran.
     private let announcer = Announcer()
     private let haptic = UIImpactFeedbackGenerator(style: .heavy)
@@ -152,6 +165,8 @@ final class WorkoutModel: ObservableObject {
         self.exercise = exercise
         counter = AutoCounter(exercise: exercise)
         countsWithCamera = !Set(counter.sources).isDisjoint(with: [.depth, .pixels, .face, .pose])
+        placementKind = exercise.placementKind
+        placementMonitor = placementKind.map { PlacementMonitor(kind: $0) }
         sensors = SensorHub(sources: Set(counter.sources))
         sensors.onFrame = { [weak self] frame in self?.handle(frame) }
     }
@@ -199,13 +214,28 @@ final class WorkoutModel: ObservableObject {
 
     // MARK: - Séance
 
-    /// « Démarrer » : compte à rebours, le temps de se mettre en place. Silencieux, puis
-    /// une note à 3, 2 et 1, et l'accord du départ.
+    /// « Démarrer ». Si la mise en place se vérifie (pompes, abdos, exercices à la caméra), le
+    /// départ attend qu'elle soit bonne, puis un compte à rebours court ; sinon, un compte à
+    /// rebours de 5 s, le temps de se mettre en place.
     func beginSession() {
         guard phase == .ready else { return }
-        var remaining = Self.countdownSeconds
-        phase = .countdown(remaining)
         lightHaptic.impactOccurred()
+        if placementKind != nil {
+            placement = PlacementStatus()
+            sensors.queue.async { self.placementMonitor?.reset() }
+            phase = .positioning
+        } else {
+            startCountdown(Self.countdownSeconds)
+        }
+    }
+
+    /// Compte à rebours : silencieux, puis une note à 3, 2 et 1, et l'accord du départ.
+    private func startCountdown(_ seconds: Int) {
+        var remaining = seconds
+        countdownTotal = seconds
+        phase = .countdown(remaining)
+        if remaining <= 3 { announcer.play(.count) }
+        countdownTimer?.invalidate()
         countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
             guard let self else { return timer.invalidate() }
             remaining -= 1
@@ -222,8 +252,9 @@ final class WorkoutModel: ObservableObject {
         }
     }
 
+    /// Annule le départ (mise en place ou compte à rebours).
     func cancelCountdown() {
-        guard phase.isCountdown else { return }
+        guard phase.isCountdown || phase == .positioning else { return }
         countdownTimer?.invalidate()
         phase = .ready
     }
@@ -375,6 +406,7 @@ final class WorkoutModel: ObservableObject {
         frameIndex += 1
         smoothedStrength += 0.1 * (output.liveStrength - smoothedStrength)
         let presence: Presence = smoothedStrength >= 1 ? .clear : (smoothedStrength >= 0.3 ? .weak : .absent)
+        let placement = placementMonitor?.process(frame)
         if let recorder {
             recorder.append(frame, output: output)
             if frameIndex % 15 == 0 {
@@ -395,8 +427,10 @@ final class WorkoutModel: ObservableObject {
                 if self.showsDiagnostics { self.diagnostics = diagnostics }
             }
         }
+        let index = frameIndex
         DispatchQueue.main.async {
             self.live.push(phase: output.phase, value: output.liveValue, strength: output.liveStrength)
+            if let placement, self.phase == .positioning { self.applyPlacement(placement, frameIndex: index) }
             // Les propriétés suivantes ne sont publiées que quand elles changent
             if self.presence != presence { self.presence = presence }
             if output.source != nil, self.source != output.source { self.source = output.source }
@@ -404,6 +438,19 @@ final class WorkoutModel: ObservableObject {
             guard self.phase == .active else { return }
             self.apply(output)
         }
+    }
+
+    // Fil principal, mise en place : publiée quand la consigne change, et 10 fois par seconde
+    // pour le squelette ; tout est bon depuis un moment : le compte à rebours part
+    private func applyPlacement(_ status: PlacementStatus, frameIndex: Int) {
+        if status.ready {
+            placement = status
+            successHaptic.notificationOccurred(.success)
+            startCountdown(Self.placedCountdownSeconds)
+            return
+        }
+        let changed = status.instruction != placement.instruction || status.checks != placement.checks
+        if changed || frameIndex % 3 == 0 { placement = status }
     }
 
     // Fil principal, séance en cours

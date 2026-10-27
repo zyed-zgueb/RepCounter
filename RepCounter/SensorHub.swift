@@ -188,18 +188,27 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
             let box = face.boundingBox
             values[.face] = [Float(box.midX), Float(box.midY), Float(box.width)]
         }
-        if sources.contains(.pose),
-           let observation = poseRequest.results?.max(by: { $0.confidence < $1.confidence }),
-           let recognized = try? observation.recognizedPoints(.all) {
+        var joints: [Float]?
+        if sources.contains(.pose) {
             var points = [Joint: CGPoint]()
-            for (joint, point) in recognized where point.confidence > 0.3 { points[joint] = point.location }
+            if let observation = poseRequest.results?.max(by: { $0.confidence < $1.confidence }),
+               let recognized = try? observation.recognizedPoints(.all) {
+                for (joint, point) in recognized where point.confidence > 0.3 { points[joint] = point.location }
+            }
             let aspect = CGFloat(CVPixelBufferGetWidth(pixelBuffer)) / CGFloat(max(CVPixelBufferGetHeight(pixelBuffer), 1))
             if points.count >= 8, let features = poseExtractor.features(from: points, aspect: aspect) {
                 values[.pose] = features
             }
+            // Articulations vues, pour la mise en place (cadrage) : x, y en coordonnées d'image,
+            // origine en haut à gauche comme à l'écran ; −1 si non vue
+            joints = Skeleton.joints.flatMap { joint -> [Float] in
+                guard let p = points[joint] else { return [-1, -1] }
+                return [Float(p.x), Float(1 - p.y)]
+            }
         }
 
         var frame = SensorFrame(time: time, values: values)
+        if let joints { frame.extras["joints"] = joints }
         if sources.contains(.depth), let stats = latestDepthStats { frame.extras["depthStats"] = stats }
         onFrame?(frame)
     }

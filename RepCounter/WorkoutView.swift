@@ -215,6 +215,7 @@ struct WorkoutView: View {
     private var statusText: String {
         switch model.phase {
         case .ready: return ""
+        case .positioning: return model.placement.isComplete ? "Prêt" : "Mise en place"
         case .countdown: return "Mise en place"
         case .finished: return "Séance terminée"
         case .active:
@@ -227,6 +228,7 @@ struct WorkoutView: View {
     private var statusColor: Color {
         switch model.phase {
         case .ready: return theme.dim
+        case .positioning: return model.placement.isComplete ? theme.ok : theme.warn
         case .countdown: return theme.warn
         case .finished: return theme.ok
         case .active:
@@ -247,18 +249,29 @@ struct WorkoutView: View {
                 }
                 placementText(browsing)
                 loadControl
+            case .positioning:
+                PlacementView(placement: model.placement, exercise: model.exercise,
+                              showsCamera: model.placementKind?.usesCamera == true)
             case .countdown(let remaining):
-                let elapsed = Double(WorkoutModel.countdownSeconds - remaining) / Double(WorkoutModel.countdownSeconds)
+                let total = max(model.countdownTotal, 1)
+                let elapsed = Double(total - remaining) / Double(total)
                 Dial(face: DialFace(lit: Int(elapsed * Double(DialFace.tickCount)), palette: .solid(theme.warn))) { side in
                     Text("\(remaining)")
                         .font(theme.font(side * 0.5, .bold))
                         .foregroundStyle(theme.warn)
                         .contentTransition(.numericText())
                 }
-                Text("Mets-toi en position")
-                    .font(theme.font(13))
-                    .foregroundStyle(theme.text)
-                placementText(model.exercise)
+                if model.placementKind != nil {
+                    // Mise en place faite : il n'y a plus qu'à attendre le départ
+                    Text("Tu es en place, ne bouge plus")
+                        .font(theme.font(13))
+                        .foregroundStyle(theme.ok)
+                } else {
+                    Text("Mets-toi en position")
+                        .font(theme.font(13))
+                        .foregroundStyle(theme.text)
+                    placementText(model.exercise)
+                }
             case .active where model.isResting:
                 let seconds = Int(model.restDuration)
                 Dial(face: DialFace(lit: seconds % 60 == 0 && seconds > 0 ? 60 : seconds % 60, palette: .solid(theme.warn))) { side in
@@ -478,7 +491,7 @@ struct WorkoutView: View {
                         .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 64))
                 }
             }
-        case .countdown:
+        case .positioning, .countdown:
             Button("Annuler") { model.cancelCountdown() }
                 .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 52))
         case .active:

@@ -21,18 +21,28 @@ Réglages. Pas de défilement.
    posé (0,4 s), et l'app retient le dernier choisi. Le cadran suit déjà le mouvement capté ;
    en dessous, la consigne de placement, le tracé du mouvement capté, avec un voyant devant le nom du capteur (gris au repos, bleu pour un léger mouvement, vert quand il est assez net pour compter) et **Démarrer**.
    Roue dentée : les Réglages. Rien ne compte.
-2. **Départ** : 5 s pour se mettre en position, le cadran se remplit ; une note à 3, 2 et 1,
+2. **Mise en place** (pompes, abdos, exercices de bras à la caméra) : après Démarrer, le départ
+   attend que l'iPhone et le sportif soient bien placés (`Placement.swift`). Une seule consigne à
+   la fois (« Pose l'iPhone à plat », « Mets-toi en planche », « Recule d'un pas »,
+   « Plus de lumière »…), sa raison, et les vérifications cochées en direct ; le cadran se
+   remplit à mesure. Pour la caméra, il montre ce qu'elle voit : le squelette (jamais l'image)
+   dans le cadre. Tout est bon pendant 0,8 s : vibration, puis un compte à rebours de 3 s.
+   Ce qui se vérifie : l'orientation (gravité), l'immobilité (gyroscope : au sol, sur la
+   poitrine qui respire, tenu), le visage (pompes), le squelette (cadrage, distance, profil),
+   la luminosité. Les autres exercices (iPhone tenu, en poche, au bras) partent sur 5 s.
+   Seuils réglés sur les enregistrements : `python3 Simulation/placement.py <enregistrement>`.
+3. **Départ** : 5 s pour se mettre en position, le cadran se remplit ; une note à 3, 2 et 1,
    un accord au départ. Tout ce qui précède est ignoré.
-3. **Série** : il ne reste que le nombre, en très grand, et une ligne discrète (total de la
+4. **Série** : il ne reste que le nombre, en très grand, et une ligne discrète (total de la
    séance). Avant la validation (3 répétitions), le cadran montre les répétitions
    détectées en pâle « à valider », trois témoins, une onde et une vibration légère à chacune ;
    puis tout passe en plein (les premières sont rattrapées).
-4. **Récupération** : quand tu t'arrêtes ~4 s, la série est close et le cadran devient un
+5. **Récupération** : quand tu t'arrêtes ~4 s, la série est close et le cadran devient un
    chronomètre orange, avec les dernières séries sur une ligne fixe (« +N » pour les plus
    anciennes). La série suivante démarre dès que tu reprends, sans toucher l'écran.
-5. **Annuler série** annule la série en cours (ou la dernière, pendant la récupération).
+6. **Annuler série** annule la série en cours (ou la dernière, pendant la récupération).
    **Terminer se maintient** 0,8 s (une jauge se remplit) : pas de fin de séance par erreur.
-6. **Fin** : le total dans le cadran, l'écart avec la séance précédente (« ▲ +6 vs jeudi 22 »)
+7. **Fin** : le total dans le cadran, l'écart avec la séance précédente (« ▲ +6 vs jeudi 22 »)
    et le record battu, l'histogramme des séries (étoile sur la série record), puis trois mesures :
    score d'endurance, forme, durée. Tant qu'une mesure n'est pas calculable, son état
    « en cours » la remplace (« 2 / 3 séries », « réf. 2 / 3 »). **Toucher une série
