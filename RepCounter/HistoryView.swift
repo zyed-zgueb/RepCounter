@@ -11,13 +11,8 @@ struct HistoryView: View {
     /// nil : tous les exercices.
     @State private var exercise: Exercise?
 
-    @Query(sort: \FormTest.date) private var formTests: [FormTest]
-    /// « Faire un test de forme » sur un exercice.
-    let onStartTest: (Exercise) -> Void
-
-    init(exercise: Exercise?, onStartTest: @escaping (Exercise) -> Void = { _ in }) {
+    init(exercise: Exercise?) {
         _exercise = State(initialValue: exercise)
-        self.onStartTest = onStartTest
     }
 
     var body: some View {
@@ -38,12 +33,9 @@ struct HistoryView: View {
                 ScrollView {
                     VStack(spacing: 14) {
                         ExerciseFilter(selection: $exercise)
-                        if let exercise {
-                            let tests = formTests.filter { $0.exercise == exercise }
-                            if let advice = Advice.make(stats: stats, tests: tests) { AdviceCard(advice: advice) }
-                            if exercise.supportsFormTest {
-                                FormPanel(exercise: exercise, tests: tests) { onStartTest(exercise) }
-                            }
+                        if let exercise, !stats.isEmpty {
+                            if let advice = Advice.make(stats: stats) { AdviceCard(advice: advice) }
+                            if exercise != .auto { FormPanel(stats: stats) }
                         }
                         if stats.isEmpty {
                             emptyState
@@ -639,6 +631,11 @@ struct SessionDetailView: View {
                     Text("Score d'endurance \(Int(index.rounded()))" + (session.loadDescription.map { " · \($0)" } ?? ""))
                         .font(theme.font(12, .bold))
                         .foregroundStyle(theme.text)
+                }
+                if let form = stats.form(of: session) {
+                    Text("Forme \(Int(form.percent.rounded())) % · \(form.zone.title.lowercased())")
+                        .font(theme.font(12, .bold))
+                        .foregroundStyle(formColor(form.zone, theme: theme))
                 }
                 Text([Format.clock(session.duration),
                       "\(session.orderedSets.count) série\(session.orderedSets.count > 1 ? "s" : "")",

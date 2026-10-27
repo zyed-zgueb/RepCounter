@@ -21,13 +21,6 @@ const SCREENS = [
   ["7b-fin-correction", { phase: "finished", total: 60, sets: [14, 13, 12, 11, 10], recordSet: 0, editing: 2, caption: "Correction d'une série" }],
   ["9-historique", { phase: "history", height: 1960, caption: "Historique (défile)" }],
   ["11-endurance-info", { phase: "info", caption: "(i) Endurance" }],
-  ["12-test-consigne", { phase: "testIntro", caption: "Test de forme : consigne" }],
-  ["13-test-en-cours", { phase: "testRun", reps: 2, caption: "Test en cours" }],
-  ["13b-test-rep-refusee", { phase: "testRun", reps: 1, invalid: true, caption: "Répétition incomplète" }],
-  ["14-test-resultat", { phase: "testResult", value: 96, zone: "normal", reps: [["Rep 1", "0,71"], ["Rep 2", "0,69"], ["Rep 3", "0,74"]], caption: "Résultat : forme normale" }],
-  ["14b-test-fatigue", { phase: "testResult", value: 89, zone: "tired", reps: [["Rep 1", "0,79"], ["Rep 2", "0,81"], ["Rep 3", "0,84"]], caption: "Résultat : fatigué" }],
-  ["14c-test-reference", { phase: "testResult", baseline: 1, value: 100, zone: "normal", reps: [["Rep 1", "0,72"], ["Rep 2", "0,70"], ["Rep 3", "0,73"]], caption: "Premiers tests : référence" }],
-  ["15-historique-forme", { phase: "formPanel", caption: "Historique : Conseil et Forme" }],
   ["10-seance", { phase: "session", caption: "Détail d'une séance" }],
   ["8-reglages", { phase: "settings", audio: "sons", themes, height: 1010, caption: "Réglages (roue dentée)" }],
 ];

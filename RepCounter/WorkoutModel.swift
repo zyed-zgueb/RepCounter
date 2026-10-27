@@ -182,7 +182,6 @@ final class WorkoutModel: ObservableObject {
         UIApplication.shared.isIdleTimerDisabled = false
         clock?.invalidate()
         countdownTimer?.invalidate()
-        testTimer?.invalidate()
         sensors.stop()
         // Écran quitté pendant un enregistrement : on le termine sans le résultat
         if isRecording {
@@ -332,95 +331,6 @@ final class WorkoutModel: ObservableObject {
         }
     }
 
-    // MARK: - Test de forme
-
-    /// Consigne → compte à rebours → répétitions aussi vite que possible → résultat.
-    enum TestPhase: Equatable {
-        case intro
-        case countdown(Int)
-        case running
-        case result
-    }
-
-    @Published private(set) var testPhase: TestPhase?
-    /// Répétitions valides du test en cours.
-    @Published private(set) var testReps = 0
-    /// Change quand une répétition incomplète fait recommencer le test.
-    @Published private(set) var testRejectPulse = 0
-    /// Durées mesurées du dernier test (s).
-    @Published private(set) var testIntervals: [Double] = []
-    private var testPeaks: [(time: Double, swing: Float)] = []
-    private var testTimer: Timer?
-    /// Une répétition moins ample que 75 % de la plus ample du test est incomplète.
-    private static let completeSwingRatio: Float = 0.75
-
-    /// Affiche la consigne du test (en veille seulement).
-    func openTest() {
-        guard phase == .ready, exercise.supportsFormTest else { return }
-        testPhase = .intro
-    }
-
-    func closeTest() {
-        testTimer?.invalidate()
-        sensors.queue.async { self.counter.stopTest() }
-        testPhase = nil
-        testReps = 0
-        testPeaks = []
-    }
-
-    /// « Commencer » : 5 s pour se placer (notes à 3, 2, 1), puis le test.
-    func beginTest() {
-        guard testPhase == .intro || testPhase == .result else { return }
-        var remaining = Self.countdownSeconds
-        testPhase = .countdown(remaining)
-        testReps = 0
-        testPeaks = []
-        testIntervals = []
-        lightHaptic.impactOccurred()
-        testTimer?.invalidate()
-        testTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
-            guard let self else { return timer.invalidate() }
-            remaining -= 1
-            if remaining > 0 {
-                self.testPhase = .countdown(remaining)
-                if remaining <= 3 {
-                    self.announcer.play(.count)
-                    self.lightHaptic.impactOccurred()
-                }
-            } else {
-                timer.invalidate()
-                self.sensors.queue.async { self.counter.startTest() }
-                self.testPhase = .running
-                self.announcer.play(.go)
-                self.haptic.impactOccurred()
-            }
-        }
-    }
-
-    /// Un mouvement du test. Une répétition nettement moins ample que les autres (amplitude non
-    /// complète) fait recommencer ; après la dernière, les durées sont mesurées.
-    private func recordTestPeak(_ peak: (time: Double, swing: Float)) {
-        testPeaks.append(peak)
-        let swings = testPeaks.map(\.swing)
-        if let most = swings.max(), let least = swings.min(), least < Self.completeSwingRatio * most {
-            testPeaks = []
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { testReps = 0 }
-            testRejectPulse += 1
-            UINotificationFeedbackGenerator().notificationOccurred(.warning)
-            sensors.queue.async { self.counter.startTest() }
-            return
-        }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { testReps = testPeaks.count }
-        announcer.play(.rep)
-        haptic.impactOccurred()
-        guard testPeaks.count >= FormTest.reps else { return }
-        testIntervals = zip(testPeaks.dropFirst(), testPeaks).map { $0.time - $1.time }
-        sensors.queue.async { self.counter.stopTest() }
-        testPhase = .result
-        announcer.play(.finish)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-    }
-
     // MARK: - Enregistrement
 
     func toggleRecording() {
@@ -488,7 +398,6 @@ final class WorkoutModel: ObservableObject {
             if self.presence != presence { self.presence = presence }
             if output.source != nil, self.source != output.source { self.source = output.source }
             // Avant « Démarrer » et pendant le compte à rebours, rien ne compte
-            if self.testPhase == .running, let peak = output.testPeak { self.recordTestPeak(peak) }
             guard self.phase == .active else { return }
             self.apply(output)
         }

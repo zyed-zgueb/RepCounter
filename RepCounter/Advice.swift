@@ -11,18 +11,18 @@ struct Advice {
     let title: String
     let text: String
 
-    static func make(stats: HistoryStats, tests: [FormTest]) -> Advice? {
-        fatigue(stats: stats, tests: tests) ?? loadSpike(stats: stats) ?? plateau(stats: stats) ?? recordInReach(stats: stats)
+    static func make(stats: HistoryStats) -> Advice? {
+        fatigue(stats: stats) ?? loadSpike(stats: stats) ?? plateau(stats: stats) ?? recordInReach(stats: stats)
     }
 
-    /// Signal de fatigue : un test de forme récent dans la zone fatiguée, ou le score
+    /// Signal de fatigue : une séance récente avec une forme dans la zone fatiguée, ou le score
     /// d'endurance en baisse deux séances de suite alors que le volume ne baisse pas
     /// (signe de surmenage, qui précède le surentraînement).
-    private static func fatigue(stats: HistoryStats, tests: [FormTest]) -> Advice? {
-        if let last = tests.results().last, last.result.zone == .tired,
-           stats.now.timeIntervalSince(last.test.date) < 3 * 86_400 {
+    private static func fatigue(stats: HistoryStats) -> Advice? {
+        if let last = stats.formResults.last, last.result.zone == .tired,
+           stats.now.timeIntervalSince(last.session.start) < 3 * 86_400 {
             return Advice(kind: .fatigue, title: "Signal de fatigue",
-                          text: "Forme à \(Int(last.result.percent.rounded())) % \(Format.dayName(last.test.date)) : tes répétitions sont nettement plus lentes que d'habitude. Une séance légère ou un jour de repos ?")
+                          text: "Forme à \(Int(last.result.percent.rounded())) % \(Format.dayName(last.session.start)) : répétitions plus lentes ou vitesse moins bien tenue que d'habitude. Une séance légère ou un jour de repos ?")
         }
         let scores = stats.sessions.compactMap(\.performanceIndex)   // les plus récents d'abord
         if scores.count >= 3, scores[0] < scores[1], scores[1] < scores[2],
@@ -110,31 +110,29 @@ struct AdviceCard: View {
 
 // MARK: - Forme
 
-/// Le panneau Forme de l'historique : le dernier test (en % de la référence), la courbe des
-/// 12 derniers sur la bande de variation normale, et « Faire un test de forme ».
+/// Le panneau Forme de l'historique : la forme de la dernière séance mesurable (en % de la
+/// référence), et la courbe des 12 dernières sur la bande de variation normale.
 struct FormPanel: View {
     @Environment(\.theme) private var theme
-    let exercise: Exercise
-    let tests: [FormTest]
-    let onStartTest: () -> Void
+    let stats: HistoryStats
 
     var body: some View {
-        let results = tests.results()
+        let results = stats.formResults
         VStack(alignment: .leading, spacing: 12) {
             MonitorLabel("Forme")
             if let last = results.last {
                 HStack(alignment: .firstTextBaseline, spacing: 12) {
                     Text("\(Int(last.result.percent.rounded())) %")
                         .font(theme.font(40, .bold))
-                        .foregroundStyle(color(last.result.zone))
+                        .foregroundStyle(formColor(last.result.zone, theme: theme))
                         .monospacedDigit()
                     Text(last.result.zone.title.uppercased())
                         .font(theme.font(13, .bold))
-                        .foregroundStyle(color(last.result.zone))
+                        .foregroundStyle(formColor(last.result.zone, theme: theme))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                     Spacer(minLength: 4)
-                    Text(Format.dayName(last.test.date))
+                    Text(Format.dayName(last.session.start))
                         .font(theme.font(11))
                         .foregroundStyle(theme.dim)
                 }
@@ -142,24 +140,19 @@ struct FormPanel: View {
                     FormChart(results: results.suffix(12).map(\.result))
                         .frame(height: 70)
                     HStack {
-                        Text("\(min(results.count, 12)) derniers tests")
+                        Text("\(min(results.count, 12)) dernières séances")
                         Spacer()
                         Text("bande : ta variation normale")
                     }
                     .font(theme.font(11))
                     .foregroundStyle(theme.dim)
                 }
-            } else {
-                Text(tests.isEmpty
-                     ? "Mesure ta fraîcheur en une minute : \(FormTest.reps) \(exercise.testNoun) aussi vite que possible, comparés à ta référence."
-                     : "Référence en cours : \(min(tests.count, FormTest.baselineTests)) test\(tests.count > 1 ? "s" : "") sur \(FormTest.baselineTests). Encore quelques tests, à des jours différents.")
-                    .font(theme.font(12))
-                    .foregroundStyle(theme.dim)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-            Button("Faire un test de forme", action: onStartTest)
-                .buttonStyle(MonitorButtonStyle(color: theme.primary, filled: false, height: 46, fontSize: 12))
+            Text(caption(hasResult: !results.isEmpty))
+                .font(theme.font(11))
+                .foregroundStyle(theme.dim)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -167,16 +160,24 @@ struct FormPanel: View {
         .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
     }
 
-    private func color(_ zone: FormZone) -> Color {
-        switch zone {
-        case .tired: return theme.warn
-        case .normal: return theme.primary
-        case .fresh: return theme.ok
-        }
+    private func caption(hasResult: Bool) -> String {
+        let rule = "Vitesse de tes répétitions et maintien de cette vitesse au fil des séries, comparés à tes séances habituelles."
+        guard !hasResult else { return rule }
+        let count = min(stats.measuredSessionCount, FormResult.baselineSessions)
+        return "Référence en cours : \(count) séance\(count > 1 ? "s" : "") sur \(FormResult.baselineSessions) (une série d'au moins \(FormMeasure.minimumReps) répétitions). " + rule
     }
 }
 
-/// Courbe des tests (en % de la référence) sur la bande de variation normale autour de 100 %.
+/// Couleur d'une zone de forme.
+func formColor(_ zone: FormZone, theme: AppTheme) -> Color {
+    switch zone {
+    case .tired: return theme.warn
+    case .normal: return theme.primary
+    case .fresh: return theme.ok
+    }
+}
+
+/// Courbe de la forme (en % de la référence) sur la bande de variation normale autour de 100 %.
 private struct FormChart: View {
     @Environment(\.theme) private var theme
     let results: [FormResult]

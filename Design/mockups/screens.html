@@ -81,8 +81,7 @@ function render(t, s) {
     `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:${r}px;border:1px solid ${c.line};background:${hexA(c.panel, 0.7)}">${icon(name, color, 17)}</div>`;
 
   // Lueur derrière le cadran : donne de la profondeur sans décor
-  const halo = s.phase === "resting" ? c.warn : s.phase === "finished" ? c.ok
-    : s.phase === "testResult" ? ({ fresh: c.ok, normal: c.primary, tired: c.warn }[s.zone] || c.primary) : c.primary;
+  const halo = s.phase === "resting" ? c.warn : s.phase === "finished" ? c.ok : c.primary;
   const backdrop = `radial-gradient(circle at 50% 44%, ${hexA(halo, 0.13 * Math.max(glow, 0.5))} 0%, ${hexA(halo, 0)} 52%), ${c.background}`;
 
   let html;
@@ -97,10 +96,6 @@ function render(t, s) {
     case "history": html = history(); break;
     case "session": html = sessionDetail(); break;
     case "info": html = enduranceInfo(); break;
-    case "testIntro": html = testIntro(); break;
-    case "testRun": html = testRun(); break;
-    case "testResult": html = testResult(); break;
-    case "formPanel": html = formPanelScreen(); break;
   }
   document.getElementById("screen").innerHTML =
     `<div class="phone ${t.scheme}" style="height:${s.height || 844}px;background:${backdrop};font-family:${F};color:${c.text}">
@@ -290,7 +285,7 @@ function render(t, s) {
         </div>
         <div class="row" style="width:100%;height:100px;gap:10px;align-items:flex-end">${bars}</div>
         ${corrector}
-        <div class="row" style="width:100%;border-top:1px solid ${c.line};padding-top:12px">${stat("Score endurance", "39")}${stat("Moyenne", (s.total / sets.length).toFixed(1), "/série")}${stat("Cadence", "1.6", "s")}${stat("Fatigue", "−29", "%", c.warn)}</div>
+        <div class="row" style="width:100%;border-top:1px solid ${c.line};padding-top:12px">${stat("Score endurance", "39")}${stat("Forme", "102", "%")}${stat("Cadence", "1.6", "s")}${stat("Fatigue", "−29", "%", c.warn)}</div>
       </div>
       <div class="bottom">${btn("Nouvelle séance", c.primary, true, 58)}</div>`;
   }
@@ -417,119 +412,6 @@ function render(t, s) {
         ${panel("Progression · 12 semaines", "", progression)}
         ${panel("Régularité", label("16 semaines"), calendar)}
         ${panel("Séances", label("42 au total"), list)}
-      </div>`;
-  }
-
-  // ——— Test de forme ———
-  // Arc de forme : trois zones (fatigué, normal, frais) autour de 100 % de la référence
-  function formArc({ size = 300, value, zone, baseline }) {
-    const cx = size / 2, outer = size / 2 - 4, count = 51;
-    const lo = 80, hi = 115;                      // échelle affichée, en % de la référence
-    const zoneOf = v => v < 94 ? "tired" : v <= 104 ? "normal" : "fresh";
-    const colorOf = z => ({ tired: c.warn, normal: c.primary, fresh: c.ok })[z];
-    let ticks = "";
-    for (let i = 0; i < count; i++) {
-      const v = lo + (hi - lo) * i / (count - 1);
-      const a = (135 + 270 * i / (count - 1)) * Math.PI / 180;
-      const near = Math.abs(v - value) < (hi - lo) / (count - 1) / 2 + 0.01;
-      const major = Math.abs(v - 100) < 0.4, inner = outer * (major ? 0.84 : 0.92);
-      const z = zoneOf(v), on = baseline ? false : (z === zone);
-      const color = baseline ? c.line : on ? colorOf(z) : hexA(colorOf(z), .22);
-      ticks += `<line x1="${cx + Math.cos(a) * inner}" y1="${cx + Math.sin(a) * inner}" x2="${cx + Math.cos(a) * outer}" y2="${cx + Math.sin(a) * outer}" stroke="${color}" stroke-width="${major ? 3.6 : 2.4}" stroke-linecap="round"/>`;
-    }
-    if (!baseline) {
-      const i = (Math.min(Math.max(value, lo), hi) - lo) / (hi - lo) * (count - 1), a = (135 + 270 * i / (count - 1)) * Math.PI / 180;
-      ticks += `<circle cx="${cx + Math.cos(a) * (outer + 1)}" cy="${cx + Math.sin(a) * (outer + 1)}" r="6" fill="${c.text}"/>`;
-    }
-    // libellés des zones, à l'extérieur
-    // Aux deux bouts de l'arc, sous lui (comme le minimum et le maximum d'une jauge)
-    const end = (deg, text, col) => { const a = deg * Math.PI / 180;
-      return `<span style="position:absolute;left:${cx + Math.cos(a) * outer}px;top:${cx + Math.sin(a) * outer + 16}px;transform:translateX(-50%);font-size:9px;font-weight:700;letter-spacing:1px;color:${col}">${text}</span>`; };
-    const tags = baseline ? "" : end(135, "FATIGUÉ", hexA(c.warn, zone === "tired" ? 1 : .6)) + end(45, "FRAIS", hexA(c.ok, zone === "fresh" ? 1 : .6));
-    return `<div style="position:relative;width:${size}px;height:${size}px;flex:none">
-      <svg width="${size}" height="${size}" style="position:absolute;inset:0;${glow && !baseline ? `filter:drop-shadow(0 0 ${8 * Math.min(glow, 1)}px ${hexA(colorOf(zone), .4)})` : ""}">${ticks}</svg>${tags}</div>`;
-  }
-
-  // Consigne avant le test : une seule carte
-  function testIntro() {
-    const line = (n, text) => `<div class="row" style="gap:12px;align-items:flex-start"><span style="width:22px;height:22px;border-radius:50%;border:1px solid ${c.primary};color:${c.primary};font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none">${n}</span><span style="font-size:14px;line-height:1.45">${text}</span></div>`;
-    return `<div class="top">${iconBtn("xmark", c.text)}<span style="font-size:14px;font-weight:700;letter-spacing:3px">TEST DE FORME</span><span style="width:40px"></span></div>
-      <div class="hero" style="gap:22px">
-        <div class="center" style="width:150px;height:150px;border-radius:50%;background:radial-gradient(circle, ${hexA(c.primary, .12)} 0%, ${hexA(c.primary, .03)} 70%);border:1px solid ${hexA(c.primary, .3)}">${icon("pushup", c.primary, 80)}</div>
-        <div style="display:flex;flex-direction:column;gap:14px;width:100%;padding:0 6px">
-          ${line(1, "Échauffe-toi : <b>5 pompes faciles</b>.")}
-          ${line(2, "Place le téléphone au sol, au niveau de ta tête.")}
-          ${line(3, "Fais <b>4 pompes aussi vite que possible</b>, en gardant toute l'amplitude.")}
-        </div>
-        <div style="font-size:12px;color:${c.dim};text-align:center;line-height:1.45;max-width:300px">L'app s'arrête seule après la 4e. Fais-le si possible à la même heure, pour comparer ce qui est comparable.</div>
-      </div>
-      <div class="bottom">${btn("Commencer", c.primary, true, 64)}</div>`;
-  }
-
-  // Pendant le test : le cadran compte jusqu'à 3 ; une répétition incomplète est refusée
-  function testRun() {
-    const n = s.reps, invalid = s.invalid;
-    const pips = [0, 1, 2, 3].map(i => `<span style="width:22px;height:7px;border-radius:2px;background:${i < n ? c.primary : c.line}"></span>`).join("");
-    const banner = invalid ? `<div class="row" style="gap:8px;justify-content:center;padding:10px 14px;border-radius:${r}px;background:${hexA(c.warn, .12)};border:1px solid ${hexA(c.warn, .5)};color:${c.warn};font-size:13px;font-weight:700">
-        Répétition incomplète : on recommence, en gardant toute l'amplitude.</div>` : `<div style="height:40px"></div>`;
-    return `${status("Test de forme", c.primary, "")}
-      <div class="hero">
-        ${ring({ lit: Math.round(n / 4 * 60), size: 330, content: `
-          <div style="font-size:170px;font-weight:700;line-height:1">${n}</div>
-          <div class="row" style="gap:6px;margin-top:10px">${pips}</div>
-          <div style="margin-top:8px">${label("sur 4 · vite et complet")}</div>` })}
-        ${banner}
-      </div>
-      <div class="bottom">${btn("Annuler", c.dim, false, 52)}</div>`;
-  }
-
-  // Résultat : la forme en % de la référence personnelle, sa zone, et une action
-  function testResult() {
-    const baseline = s.baseline;
-    const zone = s.zone, value = s.value;
-    const word = { tired: "Fatigué", normal: "Forme normale", fresh: "Frais" }[zone];
-    const color = { tired: c.warn, normal: c.primary, fresh: c.ok }[zone];
-    const advice = { tired: "Tes répétitions sont nettement plus lentes que d'habitude. Séance légère ou repos conseillé.",
-                     normal: "Dans ta variation habituelle. Séance prévue.",
-                     fresh: "Plus rapide que d'habitude : bon jour pour viser un record." }[zone];
-    const reps = s.reps.map(d => `<div class="center" style="flex:1;gap:4px">${label(d[0])}<span style="font-size:18px;font-weight:600">${d[1]}<span style="font-size:10px;color:${c.dim}"> s</span></span></div>`).join("");
-    const center = baseline
-      ? `<div style="font-size:30px;font-weight:700;line-height:1.1;text-align:center">Référence<br>en cours</div>
-         <div class="row" style="gap:6px;margin-top:12px">${[0, 1, 2].map(i => `<span style="width:22px;height:7px;border-radius:2px;background:${i < baseline ? c.primary : c.line}"></span>`).join("")}</div>
-         <div style="margin-top:8px">${label(`test ${baseline} sur 3`)}</div>`
-      : `<div style="font-size:84px;font-weight:700;line-height:1;color:${color}">${value}<span style="font-size:30px">%</span></div>
-         <div style="margin-top:4px">${label("de ta référence")}</div>
-         <div style="margin-top:8px;font-size:15px;font-weight:700;letter-spacing:2px;color:${color};text-transform:uppercase">${word}</div>`;
-    return `${status("Test terminé", baseline ? c.primary : color, "")}
-      <div class="hero" style="gap:16px">
-        <div style="position:relative">${formArc({ size: 300, value, zone, baseline })}
-          <div class="center" style="position:absolute;inset:0">${center}</div></div>
-        <div style="font-size:13px;color:${c.text};text-align:center;line-height:1.5;max-width:320px">${baseline ? "Encore " + (3 - baseline) + " tests, à des jours différents, pour connaître ta variation normale. Ensuite, chaque test te dira si tu es frais ou fatigué." : advice}</div>
-        <div class="row" style="width:100%;border-top:1px solid ${c.line};padding-top:12px">${reps}</div>
-      </div>
-      <div class="bottom">${baseline ? btn("Terminer", c.primary, true, 58) : `<div class="row" style="gap:10px">${btn("Terminer", c.dim, false, 58)}${btn("Démarrer", c.primary, true, 58)}</div>`}</div>`;
-  }
-
-  // Dans l'historique : le panneau Forme (derniers tests) et l'entrée « Faire un test »
-  function formPanelScreen() {
-    const tests = [98, 101, 99, 97, 103, 100, 96, 91, 95, 99, 102, 96];
-    const w = 310, h = 70, lo = 85, hi = 110;
-    const y = v => h - (v - lo) / (hi - lo) * h;
-    const band = `<rect x="0" y="${y(104)}" width="${w}" height="${y(94) - y(104)}" fill="${hexA(c.primary, .08)}"/>
-      <line x1="0" x2="${w}" y1="${y(100)}" y2="${y(100)}" stroke="${hexA(c.dim, .6)}" stroke-dasharray="3 3"/>`;
-    const pts = tests.map((v, i) => `${(i / (tests.length - 1) * w).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
-    const dots = tests.map((v, i) => `<circle cx="${i / (tests.length - 1) * w}" cy="${y(v)}" r="${i === tests.length - 1 ? 4.5 : 2.5}" fill="${v < 94 ? c.warn : v > 104 ? c.ok : c.primary}"/>`).join("");
-    const formBody = `<div class="row" style="gap:14px;align-items:baseline"><span style="font-size:40px;font-weight:700;color:${c.primary}">96 %</span>
-        <span style="font-size:13px;font-weight:700;color:${c.primary}">FORME NORMALE</span><span style="font-size:11px;color:${c.dim};margin-left:auto">ce matin</span></div>
-      <svg width="100%" height="${h + 6}" viewBox="0 -3 ${w} ${h + 6}" preserveAspectRatio="none">${band}<polyline points="${pts}" fill="none" stroke="${hexA(c.primary, .7)}" stroke-width="1.5"/>${dots}</svg>
-      <div class="row" style="justify-content:space-between;font-size:11px;color:${c.dim}"><span>12 derniers tests</span><span>bande : ta variation normale</span></div>
-      ${btn("Faire un test de forme", c.primary, false, 46, "font-size:12px;letter-spacing:1.5px")}`;
-    return `<div class="top"><span style="font-size:16px;font-weight:700;letter-spacing:3px">HISTORIQUE</span>${iconBtn("xmark", c.text)}</div>
-      <div style="display:flex;flex-direction:column;gap:14px;margin-top:10px">
-        ${exerciseBar(1)}
-        ${panel("Conseil", "", `<div class="row" style="gap:12px;align-items:flex-start"><span style="width:8px;height:8px;border-radius:50%;background:${c.warn};margin-top:6px;flex:none"></span>
-          <div><div style="font-size:14px;font-weight:700">Signal de fatigue</div><div style="font-size:12px;color:${c.dim};line-height:1.45;margin-top:3px">Forme à 91 % mardi et score en baisse sur 2 séances malgré plus de volume. Une séance légère ou un jour de repos ?</div></div></div>`)}
-        ${panel("Forme", "", formBody)}
       </div>`;
   }
 

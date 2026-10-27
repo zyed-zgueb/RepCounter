@@ -1,15 +1,6 @@
 import SwiftData
 import SwiftUI
 
-/// Ce que l'écran d'un exercice lance dès son affichage (après un changement d'exercice).
-enum StartAction {
-    case none
-    /// Démarrer touché pendant un glissement.
-    case session
-    /// « Faire un test de forme » depuis l'historique.
-    case formTest
-}
-
 /// L'écran unique de l'app : le cadran. En veille, on y glisse d'un exercice à l'autre ;
 /// pendant l'effort, il n'affiche que le nombre ; en récupération, le chronomètre ; à la fin,
 /// le total. Tout le reste est rangé dans les Réglages.
@@ -31,26 +22,23 @@ struct WorkoutView: View {
     @State private var loadKind: LoadKind
     @State private var pendingSelection: DispatchWorkItem?
     @State private var autoStarted = false
-    @Query(sort: \FormTest.date) private var formTests: [FormTest]
-    /// Test de forme terminé : son résultat (nil pendant la référence) et le nombre de tests.
-    @State private var testResult: FormResult?
-    @State private var testCount = 0
-    @State private var showsTestReject = false
-    /// Adopte un autre exercice : l'écran est recréé avec ses capteurs, et lance `StartAction`.
-    let onSelectExercise: (Exercise, StartAction) -> Void
-    let startAction: StartAction
+    /// Adopte un autre exercice : l'écran est recréé avec ses capteurs.
+    /// Le second paramètre demande de démarrer la séance aussitôt (Démarrer touché en glissant).
+    let onSelectExercise: (Exercise, Bool) -> Void
+    /// Démarrer la séance dès l'affichage.
+    let startsSession: Bool
 
     /// Délai sans geste avant d'adopter l'exercice affiché : passer vite de Pompes à Biceps
     /// n'allume pas et n'éteint pas la caméra à chaque étape.
     private static let selectionDelay = 0.4
 
-    init(exercise: Exercise, startAction: StartAction = .none, onSelectExercise: @escaping (Exercise, StartAction) -> Void) {
+    init(exercise: Exercise, startsSession: Bool = false, onSelectExercise: @escaping (Exercise, Bool) -> Void) {
         _model = StateObject(wrappedValue: WorkoutModel(exercise: exercise))
         _browsing = State(initialValue: exercise)
         _load = State(initialValue: exercise.load)
         _loadKind = State(initialValue: exercise.loadKind)
         self.onSelectExercise = onSelectExercise
-        self.startAction = startAction
+        self.startsSession = startsSession
     }
 
     var body: some View {
@@ -62,9 +50,7 @@ struct WorkoutView: View {
                 if analysisMode, model.isRecording { recordingBanner.padding(.top, 8) }
                 if analysisMode, model.showsDiagnostics { diagnosticsPanel.padding(.top, 8) }
 
-                if let testPhase = model.testPhase {
-                    testContent(testPhase)
-                } else if model.phase == .finished {
+                if model.phase == .finished {
                     SessionSummary(model: model, record: record)
                 } else {
                     hero
@@ -77,13 +63,9 @@ struct WorkoutView: View {
         }
         .onAppear {
             model.start()
-            if !autoStarted {
+            if startsSession, !autoStarted {
                 autoStarted = true
-                switch startAction {
-                case .session: model.beginSession()
-                case .formTest: model.openTest()
-                case .none: break
-                }
+                model.beginSession()
             }
         }
         .onDisappear {
@@ -97,7 +79,7 @@ struct WorkoutView: View {
             loadKind = exercise.loadKind
             pendingSelection?.cancel()
             guard exercise != model.exercise else { return }
-            let selection = DispatchWorkItem { onSelectExercise(exercise, .none) }
+            let selection = DispatchWorkItem { onSelectExercise(exercise, false) }
             pendingSelection = selection
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.selectionDelay, execute: selection)
         }
@@ -114,23 +96,6 @@ struct WorkoutView: View {
             RecordingSheet(finished: finished)
                 .environment(\.theme, theme)
         }
-        .onChange(of: model.testPhase) { phase in
-            // Test terminé : enregistré aussitôt, et situé par rapport aux précédents
-            guard phase == .result else { return }
-            let previous = formTests.filter { $0.exercise == model.exercise }
-            let test = FormTest(exercise: model.exercise, date: Date(), intervals: model.testIntervals)
-            testResult = FormResult.make(test, previous: previous)
-            testCount = previous.count + 1
-            modelContext.insert(test)
-            try? modelContext.save()
-        }
-        .onChange(of: model.testRejectPulse) { _ in
-            withAnimation(.easeOut(duration: 0.2)) { showsTestReject = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                withAnimation(.easeIn(duration: 0.3)) { showsTestReject = false }
-            }
-        }
-        .animation(.easeInOut(duration: 0.35), value: model.testPhase)
         .onChange(of: model.phase) { phase in
             // Séance terminée : enregistrée aussitôt ; nouvelle séance : on repart de rien
             if phase == .finished {
@@ -140,16 +105,7 @@ struct WorkoutView: View {
             }
         }
         .sheet(isPresented: $showsHistory) {
-            HistoryView(exercise: model.exercise) { exercise in
-                // « Faire un test de forme » : sur cet écran, ou sur celui de l'exercice choisi
-                showsHistory = false
-                if exercise == model.exercise {
-                    model.openTest()
-                } else {
-                    pendingSelection?.cancel()
-                    onSelectExercise(exercise, .formTest)
-                }
-            }
+            HistoryView(exercise: model.exercise)
                 .environment(\.theme, themeStore.current)
                 .preferredColorScheme(themeStore.current.colorScheme)
         }
@@ -174,18 +130,6 @@ struct WorkoutView: View {
     }
 
     private var haloColor: Color {
-        if let testPhase = model.testPhase {
-            switch testPhase {
-            case .countdown: return theme.warn
-            case .result:
-                switch testResult?.zone {
-                case .tired?: return theme.warn
-                case .fresh?: return theme.ok
-                default: return theme.primary
-                }
-            default: return theme.primary
-            }
-        }
         switch model.phase {
         case .countdown: return theme.warn
         case .finished: return theme.ok
@@ -197,10 +141,7 @@ struct WorkoutView: View {
     // MARK: - Barre du haut
 
     private var topBar: some View {
-        if model.testPhase != nil {
-            return AnyView(testTopBar)
-        }
-        return AnyView(HStack(spacing: 8) {
+        HStack(spacing: 8) {
             if model.phase == .ready || model.phase == .finished {
                 IconButton(systemImage: "chart.bar.fill", color: theme.dim) { showsHistory = true }
             }
@@ -229,95 +170,7 @@ struct WorkoutView: View {
                 IconButton(systemImage: "gearshape", color: theme.dim) { showsSettings = true }
             }
         }
-        .frame(height: 44))
-    }
-
-    // MARK: - Test de forme
-
-    /// Pendant le test : fermer, et l'étape en cours.
-    private var testTopBar: some View {
-        HStack(spacing: 8) {
-            IconButton(systemImage: "xmark") { model.closeTest() }
-            Spacer()
-            Text(testStatus.uppercased())
-                .font(theme.font(14, .bold))
-                .tracking(3)
-                .foregroundStyle(theme.text)
-            Spacer()
-            Color.clear.frame(width: 36, height: 36)
-        }
         .frame(height: 44)
-    }
-
-    private var testStatus: String {
-        model.testPhase == .result ? "Test terminé" : "Test de forme"
-    }
-
-    @ViewBuilder
-    private func testContent(_ phase: WorkoutModel.TestPhase) -> some View {
-        switch phase {
-        case .intro:
-            FormTestIntro(exercise: model.exercise) { model.beginTest() }
-        case .countdown(let remaining):
-            VStack(spacing: 14) {
-                let elapsed = Double(WorkoutModel.countdownSeconds - remaining) / Double(WorkoutModel.countdownSeconds)
-                Dial(face: DialFace(lit: Int(elapsed * Double(DialFace.tickCount)), palette: .solid(theme.warn))) { side in
-                    Text("\(remaining)")
-                        .font(theme.font(side * 0.5, .bold))
-                        .foregroundStyle(theme.warn)
-                        .contentTransition(.numericText())
-                }
-                Text("Mets-toi en position")
-                    .font(theme.font(13))
-                    .foregroundStyle(theme.text)
-                placementText(model.exercise)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Button("Annuler") { model.closeTest() }
-                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 52))
-        case .running:
-            VStack(spacing: 14) {
-                Dial(face: DialFace(lit: model.testReps * DialFace.tickCount / FormTest.reps, palette: .gradient)) { side in
-                    VStack(spacing: 6) {
-                        Text("\(model.testReps)")
-                            .font(theme.font(side * 0.48, .bold))
-                            .foregroundStyle(theme.text)
-                            .monospacedDigit()
-                            .contentTransition(.numericText())
-                        HStack(spacing: 6) {
-                            ForEach(0..<FormTest.reps, id: \.self) { index in
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(index < model.testReps ? theme.primary : theme.line)
-                                    .frame(width: 22, height: 7)
-                            }
-                        }
-                        MonitorLabel("sur \(FormTest.reps) · vite et complet")
-                    }
-                    .padding(side * 0.12)
-                }
-                // Place réservée : le cadran ne bouge pas quand le bandeau apparaît
-                Text("Répétition incomplète : on recommence, en gardant toute l'amplitude.")
-                    .font(theme.font(13, .bold))
-                    .foregroundStyle(theme.warn)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity)
-                    .background(theme.warn.opacity(0.12), in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.warn.opacity(0.5), lineWidth: 1))
-                    .opacity(showsTestReject ? 1 : 0)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            Button("Annuler") { model.closeTest() }
-                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 52))
-        case .result:
-            FormTestResultView(exercise: model.exercise, intervals: model.testIntervals, result: testResult,
-                               testCount: testCount, onClose: { model.closeTest() },
-                               onStartSession: {
-                                   model.closeTest()
-                                   model.beginSession()
-                               })
-        }
     }
 
     private var statusText: String {
@@ -606,7 +459,7 @@ struct WorkoutView: View {
     private func start() {
         if browsing != model.exercise {
             pendingSelection?.cancel()
-            onSelectExercise(browsing, .session)
+            onSelectExercise(browsing, true)
         } else {
             model.beginSession()
         }
@@ -960,7 +813,8 @@ private struct SessionSummary: View {
 
             HStack {
                 summaryStat("Score endurance", record?.performanceIndex.map { "\(Int($0.rounded()))" } ?? "—")
-                summaryStat("Moyenne", record?.averagePerSet.map { Format.decimal($0) } ?? "—", unit: "/série")
+                summaryStat("Forme", form.map { "\(Int($0.percent.rounded()))" } ?? "—", unit: form == nil ? nil : "%",
+                            color: form.map { formColor($0.zone, theme: theme) })
                 summaryStat("Cadence", record?.cadence.map { Format.decimal($0) } ?? "—", unit: "s")
                 summaryStat("Fatigue", record?.fatigue.map { Format.percent($0) } ?? "—", unit: "%",
                             color: (record?.fatigue ?? 0) < 0 ? theme.warn : theme.text)
@@ -975,6 +829,11 @@ private struct SessionSummary: View {
     }
 
     private var total: Int { record?.totalReps ?? model.totalReps }
+
+    /// Forme de la séance, par rapport aux précédentes du même exercice (nil sans référence).
+    private var form: FormResult? {
+        record.flatMap { HistoryStats(sessions: history, exercise: $0.exercise).form(of: $0) }
+    }
 
     /// Séances précédentes du même exercice.
     private func earlier(_ record: SessionRecord) -> [SessionRecord] {

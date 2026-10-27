@@ -54,22 +54,22 @@ séances passées. Le modèle suit les règles de CloudKit (valeurs par défaut,
 optionnelles) : la synchronisation iCloud pourra être activée sans migration. Les statistiques
 sont calculées dans `HistoryStats`, les écrans sont dans `HistoryView.swift`.
 
-## Test de forme
-Depuis le panneau Forme de l'historique d'un exercice (pompes, squats, développé, flexions ; pas les abdos, où la vitesse maximale n'a pas de sens et sollicite la nuque) : une consigne, 5 s pour se placer, puis
-**4 répétitions aussi vite que possible, amplitude complète**. L'app s'arrête seule. La durée de
-chaque répétition (d'un extrême du mouvement au suivant : 3 mesures) est comparée à la
-référence personnelle (médiane des 10 derniers tests) : **forme en %** (100 = comme d'habitude,
-plus = plus rapide), zone fatigué / normal / frais au-delà de la variation normale (1,5 fois
-l'écart-type relatif des derniers tests, au moins 3 %). Les 3 premiers tests établissent la
-référence. Une répétition nettement moins ample que les autres (moins de 75 %) fait recommencer
-le test. Principe : l'entraînement basé sur la vitesse (la vitesse des premières répétitions
-reflète la fraîcheur neuromusculaire). Le compteur signale chaque mouvement de la source
-principale de l'exercice sans attendre le démarrage du comptage (`FormTest.swift`,
-`FormTestView.swift`).
+## Forme
+Par séance, à partir de la vitesse des répétitions (instant de chaque répétition) :
+la **vitesse** (durée médiane d'une répétition de la première série) et le **maintien** de
+cette vitesse (durée des 3 dernières répétitions ÷ celle des 3 premières, en moyenne sur les
+séries d'au moins 6 répétitions), comparés à la référence personnelle (médianes des 10
+dernières séances de l'exercice) :
+**Forme = 100 × √((vitesse habituelle ÷ vitesse du jour) × (ralentissement habituel ÷ ralentissement du jour))**.
+100 % = comme d'habitude ; fatigué ou en forme au-delà de la variation normale (1,5 fois
+l'écart-type des formes des séances de référence, au moins 3 %). Il faut 3 séances précédentes
+pour établir la référence. Principe : l'entraînement basé sur la vitesse (la vitesse et sa perte
+au fil d'une série reflètent la fatigue). Affichée en fin de séance, dans le détail d'une séance
+et dans le panneau Forme de l'historique (`Form.swift`).
 
 ## Conseil
 En tête de l'historique d'un exercice, au plus un conseil, le plus important d'abord
-(`Advice.swift`) : **signal de fatigue** (test de forme fatigué depuis moins de 3 jours, ou score
+(`Advice.swift`) : **signal de fatigue** (séance dans la zone fatiguée depuis moins de 3 jours, ou score
 d'endurance en baisse 2 séances de suite sans baisse de volume), **pic de charge** (volume de la
 semaine > 1,5 × la moyenne des 4 précédentes), **plateau** (3 séances notées en 3 semaines sans
 dépasser le meilleur score d'avant), **record à portée** (une série récente à 1 ou 2 répétitions
