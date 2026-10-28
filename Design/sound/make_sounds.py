@@ -10,9 +10,9 @@ Chaque son a un rôle unique, reconnaissable sans regarder l'écran :
   count    bip court (mi)           3, 2, 1
   go       accord lumineux          départ
   setEnd   deux notes descendantes  fin de série
-  rest     un battement grave         récupération : 0:15 (puis 1:15, 2:15…)
-  rest2    deux battements graves     récupération : 0:30
-  rest3    trois battements graves    récupération : 0:45
+  rest     un bip bref                récupération : 0:15 (puis 1:15, 2:15…)
+  rest2    deux bips très rapprochés  récupération : 0:30
+  rest3    trois bips très rapprochés récupération : 0:45
   restMinute  accord grave, plus long récupération : chaque minute pleine
   finish   arpège complet, longue résonance   fin de séance
 """
@@ -83,11 +83,13 @@ def palette(note):
         "go": lambda: mix((0, note(A4, decay=0.09, level=0.4)), (0, note(CS5, decay=0.09, level=0.3)),
                           (0, note(E5, decay=0.09, level=0.3))),
         "setEnd": lambda: mix((0, note(E5, level=0.45)), (0.08, note(A4, decay=0.07, level=0.55))),
-        # Récupération : des battements graves, discrets, toutes les 15 s (1, 2, 3), et à chaque
+        # Récupération : des bips, toutes les 15 s (1, 2, 3), et à chaque
         # minute pleine un accord plus long : on sait où on en est sans regarder l'écran
-        "rest": lambda: mix((0, note(A3, level=0.4))),
-        "rest2": lambda: mix((0, note(A3, level=0.4)), (0.17, note(A3, level=0.4))),
-        "rest3": lambda: mix((0, note(A3, level=0.4)), (0.17, note(A3, level=0.4)), (0.34, note(A3, level=0.4))),
+        # Bips très brefs et rapprochés (≈ 35 ms, 50 ms de silence entre eux), comme la lampe
+        # du dentiste
+        "rest": lambda: mix((0, note(A5, decay=0.012, level=0.45))),
+        "rest2": lambda: mix(*[(0.085 * k, note(A5, decay=0.012, level=0.45)) for k in range(2)]),
+        "rest3": lambda: mix(*[(0.085 * k, note(A5, decay=0.012, level=0.45)) for k in range(3)]),
         "restMinute": lambda: mix((0, note(A3, decay=0.16, level=0.4)), (0.05, note(CS4, decay=0.16, level=0.3)),
                                   (0.1, note(E4, decay=0.18, level=0.3))),
         "finish": lambda: mix(*[(0.07 * i, note(f, decay=0.06 if i < 3 else 0.12, level=0.45))
