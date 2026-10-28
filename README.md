@@ -216,7 +216,9 @@ compte pas.
 **Geste appris (abdos)** : l'app apprend en silence la forme de ta répétition, sur les
 répétitions comptées en série régulière, et la mémorise d'une séance à l'autre
 (`GestureTemplate.swift`) : la forme moyenne sur les 3 axes du gyroscope, son ampleur et sa
-durée. Dès 10 répétitions apprises, hors série régulière, un geste qui ressemble au gabarit
+durée. Oubli progressif : le poids d'une répétition apprise est divisé par deux tous les 60
+jours (12,5 % au bout de 6 mois) ; l'ampleur et la durée sont celles des 100 dernières
+répétitions. Dès 10 répétitions apprises, hors série régulière, un geste qui ressemble au gabarit
 (cosinus ≥ 0,8, ampleur de 0,5 à 2 fois la tienne, iPhone à plat) compte tout de suite : les
 séries irrégulières (pauses variables entre les répétitions) sont comptées, alors que le
 compteur, qui attend un rythme régulier, les ratait. Au démarrage d'une série régulière, les

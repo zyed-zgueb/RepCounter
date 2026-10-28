@@ -15,6 +15,10 @@ struct GestureTemplate {
     static let minReps = 10
     /// Ampleur et durée : médianes des 100 dernières répétitions apprises.
     static let recent = 100
+    /// Oubli progressif de la forme : le poids d'une répétition apprise est divisé par deux
+    /// tous les 60 jours (12,5 % au bout de 6 mois). Le geste évolue : les séances récentes
+    /// comptent davantage.
+    static let halfLife: TimeInterval = 60 * 86_400
 
     /// Forme : `samples` × 3 axes, centrée, de norme 1.
     let shape: [Float]
@@ -72,12 +76,16 @@ struct GestureSample {
 }
 
 /// Ce que l'app a appris du geste d'un exercice, au fil des séances, sur cet iPhone : la somme
-/// des formes (leur moyenne fait le gabarit) et les ampleurs et durées récentes.
+/// des formes, pondérée par leur ancienneté (leur moyenne fait le gabarit), et les ampleurs et
+/// durées récentes.
 struct LearnedGesture: Codable {
     var shapeSum: [Float] = []
+    /// Répétitions apprises en tout (le gabarit sert dès `minReps`, même après une longue pause).
     var count = 0
     var norms: [Float] = []
     var durations: [Double] = []
+    /// Dernier apprentissage : l'oubli s'applique au temps écoulé depuis.
+    var updated: Date?
 
     /// Le gabarit, une fois assez de répétitions apprises.
     var template: GestureTemplate? {
@@ -89,7 +97,13 @@ struct LearnedGesture: Codable {
                                duration: Double(median(durations.map { Float($0) }[...])))
     }
 
-    mutating func add(_ samples: [GestureSample]) {
+    mutating func add(_ samples: [GestureSample], at date: Date = Date()) {
+        // Oubli : ce qui a été appris jusqu'ici pèse moins, selon le temps écoulé
+        if let updated, !shapeSum.isEmpty {
+            let decay = Float(pow(0.5, max(0, date.timeIntervalSince(updated)) / GestureTemplate.halfLife))
+            shapeSum = shapeSum.map { $0 * decay }
+        }
+        updated = date
         for sample in samples {
             if shapeSum.isEmpty { shapeSum = [Float](repeating: 0, count: sample.shape.count) }
             guard sample.shape.count == shapeSum.count else { continue }
