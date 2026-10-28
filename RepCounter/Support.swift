@@ -4,13 +4,22 @@ import UIKit
 
 // MARK: - Soutien au développeur
 
-/// Dons par achat intégré : trois montants, consommables (on peut donner plusieurs fois).
+/// Dons par achat intégré : cinq montants, du petit merci au mécénat, consommables (on peut
+/// donner plusieurs fois).
 /// Un don ne débloque rien : l'app est entièrement gratuite, sans pub. Créé au lancement de
 /// l'app, pour clore aussi les achats terminés plus tard (validation parentale, paiement différé).
 @MainActor
 final class TipJar: ObservableObject {
-    /// Identifiants des achats, à créer à l'identique dans App Store Connect (type consommable).
-    static let productIDs = ["reps.tip.coffee", "reps.tip.breakfast", "reps.tip.patron"]
+    /// Les montants, du plus petit au plus grand. Identifiants à créer à l'identique dans App Store
+    /// Connect (type consommable), aux prix indiqués ; le prix affiché vient de l'App Store.
+    static let tiers: [(id: String, title: String, line: String)] = [
+        ("reps.tip.thanks", "Un merci", "Un petit geste qui fait plaisir."),               // 0,99 €
+        ("reps.tip.coffee", "Un café", "Pour la prochaine version."),                     // 2,99 €
+        ("reps.tip.breakfast", "Un petit-déjeuner", "De quoi tenir une soirée de code."), // 5,99 €
+        ("reps.tip.meal", "Un repas", "Une nouvelle fonction, financée."),                // 12,99 €
+        ("reps.tip.patron", "Mécène", "Merci de faire vivre le projet.")                  // 29,99 €
+    ]
+    static var productIDs: [String] { tiers.map { $0.id } }
 
     enum Status: Equatable {
         case idle, purchasing, thanked, failed
@@ -64,17 +73,14 @@ final class TipJar: ObservableObject {
         }
     }
 
-    /// Nom et phrase de chaque montant.
+    /// Nom et phrase d'un montant.
     static func wording(_ id: String) -> (title: String, line: String) {
-        switch id {
-        case "reps.tip.coffee": return ("Un café", "Pour la prochaine version.")
-        case "reps.tip.breakfast": return ("Un petit-déjeuner", "De quoi tenir une soirée de code.")
-        default: return ("Mécène", "Merci de faire vivre le projet.")
-        }
+        let tier = tiers.first { $0.id == id }
+        return (tier?.title ?? "Don", tier?.line ?? "Merci !")
     }
 }
 
-/// « Soutenir Reps » : pourquoi, les trois montants, puis un merci. Rien d'autre.
+/// « Soutenir Reps » : pourquoi, les montants, puis un merci. Rien d'autre.
 struct SupportView: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
@@ -99,7 +105,7 @@ struct SupportView: View {
                             Text("Reps est gratuit, sans pub et open source. Rien n'est collecté, rien n'est bloqué.")
                                 .font(theme.font(14, .semibold))
                                 .foregroundStyle(theme.text)
-                            Text("Il est fait par une seule personne, sur son temps libre. Si l'app te sert, un don aide à la faire vivre. Il ne débloque rien : c'est un merci.")
+                            Text("Il est fait par une seule personne, sur son temps libre. Si l'app te sert, donne ce que tu veux : du petit merci au mécénat, tout aide à la faire vivre. Un don ne débloque rien.")
                                 .font(theme.font(12))
                                 .foregroundStyle(theme.dim)
                         }

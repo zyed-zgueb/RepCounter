@@ -127,10 +127,11 @@ Moniteur, Phosphore, Clinique (clair), Néon.
 
 ## Soutien, note et signalement
 Reps est gratuit, sans pub, sans compte, et rien ne quitte l'iPhone. Rien n'est payant.
-- **Soutenir Reps** (Réglages › Reps) : trois dons en achat intégré consommable, qui ne
-  débloquent rien (`Support.swift`, `TipJar`). Identifiants à créer dans App Store Connect :
-  `reps.tip.coffee` (1,99 €), `reps.tip.breakfast` (4,99 €), `reps.tip.patron` (9,99 €). Pour
-  les tester dans Xcode : un fichier StoreKit Configuration avec ces trois consommables,
+- **Soutenir Reps** (Réglages › Reps) : cinq dons en achat intégré consommable, du petit
+  merci au mécénat, qui ne débloquent rien (`Support.swift`, `TipJar.tiers`). Identifiants à
+  créer dans App Store Connect : `reps.tip.thanks` (0,99 €), `reps.tip.coffee` (2,99 €),
+  `reps.tip.breakfast` (5,99 €), `reps.tip.meal` (12,99 €), `reps.tip.patron` (29,99 €). Pour
+  les tester dans Xcode : un fichier StoreKit Configuration avec ces cinq consommables,
   choisi dans le schéma (Run › Options › StoreKit Configuration).
 - **Après un record**, une seule fois chacun : la demande de note App Store d'Apple dès la
   5e séance, puis, à un record suivant, une ligne discrète proposant un don dès la 10e (`Ask`).
