@@ -154,6 +154,16 @@ struct EndurancePanel: View {
                     }
                 }
             }
+            if score != nil {
+                let verdict = stats.progressVerdict
+                HStack {
+                    MonitorLabel("8 semaines")
+                    Spacer()
+                    Text(verdict.kind == .pending ? verdict.title : "\(verdict.title) · \(Format.signedDecimal(verdict.weeklySlope)) / sem.")
+                        .font(theme.font(13, .bold))
+                        .foregroundStyle(verdict.kind == .pending ? theme.dim : verdictColor(verdict, theme: theme))
+                }
+            }
             Text(caption(score: score, assessment: assessment))
                 .font(theme.font(11))
                 .foregroundStyle(theme.dim)
@@ -225,6 +235,9 @@ struct EnduranceInfoView: View {
 
                     section("Ton niveau",
                             "Pour les pompes, ta meilleure série des 4 dernières semaines est comparée au barème du test de pompes de la Société canadienne de physiologie de l'exercice (SCPE), repris par l'American College of Sports Medicine : cinq niveaux, de « À améliorer » à « Excellent », selon l'âge et le sexe. Le test consiste à faire le plus de pompes possible d'affilée ; pour les femmes, il se fait genoux au sol, si bien qu'avec des pompes classiques le niveau affiché est sous-estimé. Les autres exercices n'ont pas de barème aussi solide : leur jauge se remplit jusqu'à ton record.")
+
+                    section("La tendance",
+                            "Sur 8 semaines (au moins 8 séances notées) : la pente de Theil-Sen, médiane des pentes entre toutes les paires de séances, peu sensible à une séance ratée. « En progrès » seulement si son intervalle de confiance à 99 % est entièrement au-dessus de zéro et si le gain dépasse le plus petit changement significatif (0,3 fois ta variation habituelle d'une séance à l'autre). « En recul » : l'inverse. Sinon « Stable ». Les séances d'une décharge et celles corrigées de plus de 2 répétitions sont écartées. Références : Sen (1968), J Am Stat Assoc 63:1379–1389 ; Hopkins (2000), Sports Med 30(1):1–15 ; Hopkins (2004), Sportscience 8:1–7.")
 
                     section("Les limites",
                             "Le score suppose des séries proches de ton maximum : arrêter une série bien avant la fatigue le fait baisser. Il dépend du comptage de l'app (corrige une série en fin de séance si besoin). Il ne mesure pas la qualité du mouvement (amplitude, posture). C'est un repère d'entraînement, pas une évaluation médicale.")
@@ -312,6 +325,13 @@ struct EnduranceTile: View {
                     LineChart(points: curve.points, span: curve.span)
                         .frame(height: 26)
                 }
+                let verdict = stats.progressVerdict
+                if verdict.kind != .pending {
+                    Text(verdict.title)
+                        .font(theme.font(11, .bold))
+                        .foregroundStyle(verdictColor(verdict, theme: theme))
+                        .lineLimit(1)
+                }
             } else {
                 // En cours : le score demande une séance d'au moins 3 séries
                 let needed = SessionRecord.indexSets
@@ -338,5 +358,14 @@ struct EnduranceTile: View {
             return "\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) % en 4 sem."
         }
         return " "
+    }
+}
+
+/// Couleur d'un verdict de progression.
+func verdictColor(_ verdict: ProgressVerdict, theme: AppTheme) -> Color {
+    switch verdict.kind {
+    case .up: return theme.ok
+    case .down: return theme.warn
+    case .stable, .pending: return theme.dim
     }
 }

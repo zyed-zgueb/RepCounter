@@ -18,12 +18,10 @@ struct Advice {
         plateau(stats: stats) ?? recordInReach(stats: stats)
     }
 
-    /// Plateau : au moins 3 séances notées en 3 semaines sans dépasser le meilleur score d'avant.
+    /// Plateau : le verdict de progression des 8 dernières semaines est « Stable » (aucune
+    /// tendance établie, voir `ProgressVerdict`).
     private static func plateau(stats: HistoryStats) -> Advice? {
-        let cutoff = stats.now.addingTimeInterval(-21 * 86_400)
-        let recent = stats.sessions.filter { $0.start > cutoff }.compactMap(\.performanceIndex)
-        let before = stats.sessions.filter { $0.start <= cutoff }.compactMap(\.performanceIndex)
-        guard recent.count >= 3, let best = before.max(), let recentBest = recent.max(), recentBest <= best else { return nil }
+        guard stats.progressVerdict.kind == .stable else { return nil }
         return Advice(kind: .plateau, title: "Plateau", short: "repos plus court ou une série de plus")
     }
 

@@ -105,7 +105,7 @@ confrontée à la performance mesurée (la Forme de l'exercice).
 
 | Phase | Quand | Action |
 |---|---|---|
-| Construction | Forme dans la variation habituelle | Continue (ou Plateau, Record à portée) |
+| Construction | Forme dans la variation habituelle | Continue (ou Plateau : tendance Stable ; Record à portée) |
 | Surcharge | 2 séances de suite fatiguées, après une semaine plus chargée que chacune des 4 d'avant | N'augmente plus |
 | Forme basse | la même baisse, sans hausse de charge | Séance légère |
 | Reprise | une baisse qui commence dans les 14 jours après une pause | Monte progressivement |
@@ -170,6 +170,20 @@ de la phosphocréatine) et les limites (`Endurance.swift`, `EnduranceView.swift`
 
 L'exposant 0,2 compense à peu près la baisse de répétitions qu'entraîne un repos plus court :
 point de départ, à caler sur des séances réelles.
+
+**Tendance** (sous la courbe de la tuile, et dans le détail avec la pente par semaine) : sur les
+8 dernières semaines, au moins 8 séances notées (`Progress.swift`). Pente de Theil-Sen (médiane
+des pentes entre toutes les paires de séances, Sen 1968) et son intervalle de confiance à 99 %
+sans hypothèse de loi (équation 2.6 de Sen, même calcul que `scipy.stats.theilslopes`).
+**En progrès** : intervalle entièrement au-dessus de zéro et gain sur la période au moins égal
+au plus petit changement significatif, 0,3 × l'erreur typique (Hopkins 2004 ; erreur typique =
+écart-type des différences entre séances consécutives ÷ √2, Hopkins 2000). **En recul** :
+l'inverse. Sinon **Stable**, qui donne aussi le conseil Plateau. Séances écartées : celles d'une
+décharge, et celles dont une série a été corrigée de plus de 2 répétitions. Validation :
+`python3 Simulation/progress.py` (historiques plats bruités : 0,2 % de « En progrès » à tort ;
++2 %/semaine détecté à 100 % avec 3 % de bruit, 36 % avec 8 %). La trajectoire attendue et la
+projection d'un objectif de la feuille de route ne sont pas faites : aucune référence ne fixe une
+courbe de progression attendue au poids du corps.
 
 ## Thèmes
 Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis, lueur,

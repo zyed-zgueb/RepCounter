@@ -124,6 +124,12 @@ enum Format {
         signed(Int(value.rounded()))
     }
 
+    /// « +1,2 », « −0,4 », « 0,0 » : une décimale, signée.
+    static func signedDecimal(_ value: Double) -> String {
+        let text = decimal(abs(value))
+        return value >= 0.05 ? "+\(text)" : (value <= -0.05 ? "−\(text)" : text)
+    }
+
     /// « +6 », « −4 », « 0 ».
     static func signed(_ value: Int) -> String {
         value > 0 ? "+\(value)" : (value < 0 ? "−\(-value)" : "0")
