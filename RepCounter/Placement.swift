@@ -45,6 +45,9 @@ struct PlacementStatus: Equatable {
     var instruction = ""
     var hint = ""
     var checks: [PlacementCheck] = []
+    /// L'iPhone est manipulé (pris en main, déplacé) : pendant le compte à rebours, la mise en
+    /// place est à refaire.
+    var handled = false
     /// Squelette vu par la caméra (`Skeleton.joints`), en coordonnées d'image 0…1, origine en
     /// haut à gauche, comme à l'écran (image en miroir). nil : articulation non vue.
     var skeleton: [CGPoint?] = []
@@ -70,6 +73,12 @@ final class PlacementMonitor {
         /// Posé au sol, le gyroscope ne mesure que son bruit ; sur la poitrine, la respiration.
         /// Enregistrements : 0,001 à 0,004 rad/s au sol, 0,027 à 0,033 sur la poitrine au repos.
         static let chestMinRotation: Float = 0.01
+        /// Abdos : au-delà, on est encore en train de s'installer (enregistrements : 0,07 à 0,2
+        /// rad/s juste après s'être allongé, 1 à 3 en s'allongeant).
+        static let chestMaxRotation: Float = 0.25
+        /// iPhone manipulé : au-dessus des mouvements de l'exercice lui-même (enregistrements :
+        /// abdos ≈ 0,7 rad/s en moyenne lissée, prise en main 2 à 3).
+        static let handlingRotation: Float = 1.2
         /// Posé sur un meuble, il ne bouge pas (≤ 0,004 rad/s mesuré) ; tenu, même immobile, il bouge.
         static let restingMaxRotation: Float = 0.02
         /// Pompes : un corps au-dessus de l'iPhone (profondeur mesurée au centre, en mètres).
@@ -123,6 +132,7 @@ final class PlacementMonitor {
         case .cameraFront, .cameraSide: status = camera(frame, gravity: gravity)
         }
 
+        status.handled = rotation > Tuning.handlingRotation
         // Le départ attend que tout reste bon un moment (pas sur une image chanceuse)
         if status.checks.allSatisfy(\.done) {
             if goodSince == nil { goodSince = t }
@@ -164,14 +174,21 @@ final class PlacementMonitor {
         let flat = abs(gravity[2]) > 0.75
         // Sur la poitrine, la respiration le fait bouger un peu ; au sol, rien ne bouge
         let onBody = rotation >= Tuning.chestMinRotation
+        // Installé : allongé et immobile (sinon, les mouvements de l'installation faussent le
+        // début du comptage)
+        let settled = rotation <= Tuning.chestMaxRotation
         var status = PlacementStatus(checks: [PlacementCheck(title: "iPhone à plat", done: flat),
-                                              PlacementCheck(title: "Sur ta poitrine", done: onBody)])
+                                              PlacementCheck(title: "Sur ta poitrine", done: onBody),
+                                              PlacementCheck(title: "Allongé, immobile", done: settled)])
         if !flat {
             status.instruction = "Allonge-toi, iPhone à plat"
             status.hint = "Sur le haut de ta poitrine, tenu d'une main."
         } else if !onBody {
             status.instruction = "Pose-le sur ta poitrine"
             status.hint = "Pas au sol : je compte avec le mouvement de ton buste."
+        } else if !settled {
+            status.instruction = "Allonge-toi et ne bouge plus"
+            status.hint = "Le départ est donné quand tu es installé. Attends-le pour commencer."
         }
         return status
     }

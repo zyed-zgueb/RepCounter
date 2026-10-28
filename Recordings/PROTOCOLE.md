@@ -52,6 +52,6 @@ Une séance de 3 séries par cas, avec ~1 min de repos, en notant le nombre rée
 
 | Exercice | Mode | Enregistrements | Personnes | Statut |
 |---|---|---|---|---|
-| Abdos | mouvement | 2 | 1 | exact (40/40) |
+| Abdos | mouvement | 3 | 1 | 1 erreur sur 243 (99,6 %) : fin de la 1re série du 28/10 à confirmer |
 | Pompes | caméra | 2 | 1 | exact (20/20) |
 | Tous les autres | — | 0 | 0 | non validé (simulation seulement) |

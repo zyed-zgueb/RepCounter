@@ -139,6 +139,8 @@ final class WorkoutModel: ObservableObject {
     let placementKind: PlacementKind?
     private let placementMonitor: PlacementMonitor?   // utilisé uniquement sur sensors.queue
     private let successHaptic = UINotificationFeedbackGenerator()
+    /// Pendant le compte à rebours : depuis quand l'iPhone est manipulé.
+    private var handledSince: Date?
     /// Retour sonore, selon le réglage lu à l'ouverture de l'écran.
     private let announcer = Announcer()
     private let haptic = UIImpactFeedbackGenerator(style: .heavy)
@@ -440,7 +442,13 @@ final class WorkoutModel: ObservableObject {
         let index = frameIndex
         DispatchQueue.main.async {
             self.live.push(phase: output.phase, value: output.liveValue, strength: output.liveStrength)
-            if let placement, self.phase == .positioning { self.applyPlacement(placement, frameIndex: index) }
+            if let placement {
+                if self.phase == .positioning {
+                    self.applyPlacement(placement, frameIndex: index)
+                } else if self.phase.isCountdown {
+                    self.watchCountdown(placement)
+                }
+            }
             // Les propriétés suivantes ne sont publiées que quand elles changent
             if self.presence != presence { self.presence = presence }
             if output.source != nil, self.source != output.source { self.source = output.source }
@@ -463,6 +471,22 @@ final class WorkoutModel: ObservableObject {
         if changed || frameIndex % 3 == 0 { placement = status }
     }
 
+    // Fil principal, compte à rebours après la mise en place : l'iPhone manipulé (pris en
+    // main, en train de s'allonger) une demi-seconde, et la mise en place est à refaire. Sinon,
+    // ces mouvements fausseraient le début du comptage.
+    private func watchCountdown(_ status: PlacementStatus) {
+        guard status.handled else { return handledSince = nil }
+        let since = handledSince ?? Date()
+        handledSince = since
+        guard Date().timeIntervalSince(since) >= 0.5 else { return }
+        handledSince = nil
+        countdownTimer?.invalidate()
+        placement = status
+        sensors.queue.async { self.placementMonitor?.reset() }
+        phase = .positioning
+        lightHaptic.impactOccurred()
+    }
+
     // Fil principal, séance en cours
     private func apply(_ output: AutoCounter.Output) {
         if awaitingReset {
@@ -479,6 +503,9 @@ final class WorkoutModel: ObservableObject {
             if tentative > self.tentative {
                 tentativePulse += 1
                 lightHaptic.impactOccurred()
+                // Chaque répétition sonne dès la première, même avant la validation de la
+                // série (à la 3e) : le rythme s'entend tout de suite
+                announcer.play(.rep)
             }
             self.tentative = tentative
         }

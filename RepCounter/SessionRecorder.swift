@@ -10,7 +10,7 @@ import UIKit
 /// `append` est appelé sur la file des capteurs ; `finish` une fois l'enregistreur retiré de cette file.
 final class SessionRecorder {
     /// Durée maximale : au-delà, l'enregistrement s'arrête seul (~3 Mo par minute).
-    static let maxDuration: TimeInterval = 5 * 60
+    static let maxDuration: TimeInterval = 10 * 60
 
     static var directory: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
