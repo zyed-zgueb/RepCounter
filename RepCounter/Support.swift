@@ -12,6 +12,22 @@ enum SourceCode {
     static let url = URL(string: "https://github.com/zyed-zgueb/RepCounter")!
 }
 
+// MARK: - Version
+
+/// La version de l'app et le commit d'où elle a été compilée (inscrit par Tools/build_number.sh) :
+/// « 0.1 (91) · 4a6762c » ; `git show 4a6762c` retrouve le code exact. Un « + » après
+/// l'empreinte : compilé avec des modifications non commitées.
+enum AppVersion {
+    private static func info(_ key: String) -> String {
+        Bundle.main.object(forInfoDictionaryKey: key) as? String ?? "?"
+    }
+
+    static let version = info("CFBundleShortVersionString")
+    static let build = info("CFBundleVersion")
+    static let commit = info("RepsCommit")
+    static let label = "\(version) (\(build)) · \(commit)"
+}
+
 // MARK: - Soutien au développeur
 
 /// Dons par achat intégré : cinq montants, du petit merci au mécénat, consommables (on peut
@@ -265,7 +281,6 @@ enum CountReport {
     /// Ticket GitHub pré-rempli : l'exercice, les séries (compté → réel), l'iPhone et iOS.
     /// Rien n'est envoyé par l'app : l'utilisateur relit et envoie lui-même.
     static func url(exercise: String, sets: [(counted: Int, actual: Int)]) -> URL? {
-        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let lines = sets.enumerated().map { index, set in
             "- Série \(index + 1) : comptées \(set.counted), réelles \(set.actual)"
         }
@@ -276,7 +291,7 @@ enum CountReport {
         **Placement de l'iPhone** : (à plat, en poche, à la main…)
         **Ce qui s'est passé** :
 
-        Reps \(version) · iOS \(UIDevice.current.systemVersion)
+        Reps \(AppVersion.label) · iOS \(UIDevice.current.systemVersion)
         Astuce : une capture du diagnostic (Réglages › Mode analyse) aide beaucoup.
         """
         var components = URLComponents(string: issuesURL)

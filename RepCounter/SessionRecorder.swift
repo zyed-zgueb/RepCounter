@@ -42,7 +42,9 @@ final class SessionRecorder {
             "armband": Exercise.hasArmband,
             "device": Self.deviceModel(),
             "system": UIDevice.current.systemVersion,
-            "app": Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?",
+            "app": AppVersion.version,
+            "build": AppVersion.build,
+            "commit": AppVersion.commit,
             "date": ISO8601DateFormatter().string(from: Date()),
         ]
         writeJSON(meta)

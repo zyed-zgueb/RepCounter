@@ -225,9 +225,15 @@ struct SettingsView: View {
                         }
                     }
 
-                    note("Aucune image enregistrée")
-                        .frame(maxWidth: .infinity)
-                        .multilineTextAlignment(.center)
+                    VStack(spacing: 4) {
+                        note("Aucune image enregistrée")
+                        // Version et commit : de quoi retrouver le code d'une app donnée
+                        note("Reps \(AppVersion.label)")
+                            .monospacedDigit()
+                            .textSelection(.enabled)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)

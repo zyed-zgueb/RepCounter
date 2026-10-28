@@ -9,7 +9,7 @@ def i(p,n): return p + "0"*(23-len(str(n))) + str(n)
 fref = {f: i("F",k+1) for k,f in enumerate(files)}
 bf = {f: i("B",k+1) for k,f in enumerate(files)}
 PRODUCT=i("F",99); ASSETS=i("F",98); ASSETS_BF=i("B",98); THEMES=i("F",97); THEMES_BF=i("B",97); SOUNDS=i("F",96); SOUNDS_BF=i("B",96); XCCONFIG=i("F",95); GCONFIG=i("C",4); GMAIN=i("C",1); GSRC=i("C",2); GPROD=i("C",3)
-TARGET=i("D",1); PROJ=i("E",1); PSRC=i("A",1); PFW=i("A",2); PRES=i("A",3)
+TARGET=i("D",1); PROJ=i("E",1); PSRC=i("A",1); PFW=i("A",2); PRES=i("A",3); PBUILD=i("A",4)
 CPD=i("9",1); CPR=i("9",2); CTD=i("9",3); CTR=i("9",4); LP=i("8",1); LT=i("8",2)
 nl="\n"
 # Réglages recommandés par Xcode (ceux de son modèle de projet) : sans eux, Xcode propose de
@@ -61,6 +61,7 @@ common = '''				ALWAYS_SEARCH_USER_PATHS = NO;
 '''
 target = '''				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Reps;
@@ -161,6 +162,7 @@ out = f'''// !$*UTF8*$!
 				{PSRC} /* Sources */,
 				{PFW} /* Frameworks */,
 				{PRES} /* Resources */,
+				{PBUILD} /* Numéro de build */,
 			);
 			buildRules = (
 			);
@@ -212,6 +214,26 @@ out = f'''// !$*UTF8*$!
 			runOnlyForDeploymentPostprocessing = 0;
 		}};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		{PBUILD} /* Numéro de build */ = {{
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Numéro de build";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\\"$SRCROOT/Tools/build_number.sh\\"\\n";
+			showEnvVarsInLog = 0;
+		}};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		{PSRC} /* Sources */ = {{

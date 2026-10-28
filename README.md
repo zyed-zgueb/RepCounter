@@ -176,6 +176,11 @@ le fichier projet mais dans `Config/Local.xcconfig`, non versionné (modèle :
 `Config/Local.xcconfig.example`), inclus par `Config/Base.xcconfig`. Ainsi Xcode ne modifie pas
 le fichier projet et un pull n'entre jamais en conflit. Ne pas régler l'équipe dans
 Signing & Capabilities.
+
+Numéro de build : à chaque compilation, `Tools/build_number.sh` inscrit le nombre de commits
+(`CFBundleVersion`) et l'empreinte du commit. Le bas des Réglages affiche
+`Reps 0.1 (91) · 4a6762c` ; `git show 4a6762c` retrouve le code exact (`+` : modifications
+non commitées). La version (`MARKETING_VERSION`) se règle dans `Tools/gen_xcodeproj.py`.
 - La caméra ne s'allume que pour les exercices qui en ont besoin (Pompes, Autre exercice).
 
 ## Exercices
