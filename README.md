@@ -138,11 +138,14 @@ Reps est gratuit, sans pub, sans compte, et rien ne quitte l'iPhone. Rien n'est 
   merci au mécénat, qui ne débloquent rien (`Support.swift`, `TipJar.tiers`). Identifiants à
   créer dans App Store Connect : `reps.tip.thanks` (0,99 €), `reps.tip.coffee` (2,99 €),
   `reps.tip.breakfast` (5,99 €), `reps.tip.meal` (12,99 €), `reps.tip.patron` (29,99 €). Pour
-  les tester dans Xcode : un fichier StoreKit Configuration avec ces cinq consommables,
-  choisi dans le schéma (Run › Options › StoreKit Configuration).
+  les tester dans Xcode : `Config/Dons.storekit` (les cinq consommables), à choisir dans le
+  schéma (Product › Scheme › Edit Scheme › Run › Options › StoreKit Configuration).
 - **Après un record**, une seule fois chacun : la demande de note App Store d'Apple dès la
   5e séance, puis, à un record suivant, une ligne discrète proposant un don dès la 10e (`Ask`).
   Jamais pendant une séance, jamais deux demandes à la fois.
+- **Code source privé tant que le dépôt l'est** : `SourceCode.isPublic` (`Support.swift`) masque
+  le lien « Code source », le signalement par ticket GitHub et la mention « open source » ; à
+  passer à true le jour où le dépôt devient public.
 - **Signaler un comptage faux** : dès qu'une série est corrigée en fin de séance, « Le compte
   était faux ? Signale-le » ouvre un ticket GitHub pré-rempli (exercice, séries comptées et
   réelles, version d'iOS). L'app n'envoie rien : l'utilisateur relit et envoie lui-même.

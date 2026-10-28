@@ -2,6 +2,16 @@ import StoreKit
 import SwiftUI
 import UIKit
 
+// MARK: - Code source
+
+/// Le dépôt du code. Tant qu'il est privé, l'app ne renvoie pas vers lui (un lien mènerait à
+/// une page introuvable) : ni lien « Code source », ni signalement par ticket GitHub, ni mention
+/// « open source ». Le jour où le dépôt devient public, il suffit de passer `isPublic` à true.
+enum SourceCode {
+    static let isPublic = false
+    static let url = URL(string: "https://github.com/zyed-zgueb/RepCounter")!
+}
+
 // MARK: - Soutien au développeur
 
 /// Dons par achat intégré : cinq montants, du petit merci au mécénat, consommables (on peut
@@ -102,7 +112,9 @@ struct SupportView: View {
                 VStack(spacing: 14) {
                     MonitorPanel {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Reps est gratuit, sans pub et open source. Rien n'est collecté, rien n'est bloqué.")
+                            Text(SourceCode.isPublic
+                                 ? "Reps est gratuit, sans pub et open source. Rien n'est collecté, rien n'est bloqué."
+                                 : "Reps est gratuit et sans pub. Rien n'est collecté, rien n'est bloqué.")
                                 .font(theme.font(14, .semibold))
                                 .foregroundStyle(theme.text)
                             Text("Il est fait par une seule personne, sur son temps libre. Si l'app te sert, donne ce que tu veux : du petit merci au mécénat, tout aide à la faire vivre. Un don ne débloque rien.")
@@ -251,7 +263,7 @@ struct TipPrompt: View {
 // MARK: - Signaler un comptage faux
 
 enum CountReport {
-    static let issuesURL = "https://github.com/zyed-zgueb/repcounter/issues/new"
+    static let issuesURL = SourceCode.url.absoluteString + "/issues/new"
 
     /// Ticket GitHub pré-rempli : l'exercice, les séries (compté → réel), l'iPhone et iOS.
     /// Rien n'est envoyé par l'app : l'utilisateur relit et envoie lui-même.

@@ -1091,7 +1091,7 @@ private struct SessionSummary: View {
             .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
             .transition(.opacity.combined(with: .scale(scale: 0.96)))
-        } else if sets.contains(where: { $0.reps != $0.countedReps }) {
+        } else if SourceCode.isPublic, sets.contains(where: { $0.reps != $0.countedReps }) {
             // Un compte corrigé : proposer de le signaler, pour améliorer le compteur
             Button { report(record) } label: {
                 Text("Le compte était faux ? **Signale-le**")

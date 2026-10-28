@@ -185,23 +185,27 @@ struct SettingsView: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            note("Gratuit, sans pub, open source. Un don ne débloque rien : c'est un merci.")
-                            Rectangle().fill(theme.line).frame(height: 1)
-                                .padding(.vertical, 4)
-                            Link(destination: URL(string: "https://github.com/zyed-zgueb/repcounter")!) {
-                                HStack {
-                                    Text("CODE SOURCE")
-                                        .font(theme.font(14, .bold))
-                                        .foregroundStyle(theme.text)
-                                    Spacer()
-                                    Image(systemName: "arrow.up.right")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(theme.dim)
+                            note(SourceCode.isPublic
+                                 ? "Gratuit, sans pub, open source. Un don ne débloque rien : c'est un merci."
+                                 : "Gratuit, sans pub. Un don ne débloque rien : c'est un merci.")
+                            if SourceCode.isPublic {
+                                Rectangle().fill(theme.line).frame(height: 1)
+                                    .padding(.vertical, 4)
+                                Link(destination: SourceCode.url) {
+                                    HStack {
+                                        Text("CODE SOURCE")
+                                            .font(theme.font(14, .bold))
+                                            .foregroundStyle(theme.text)
+                                        Spacer()
+                                        Image(systemName: "arrow.up.right")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundStyle(theme.dim)
+                                    }
+                                    .frame(height: 36)
+                                    .contentShape(Rectangle())
                                 }
-                                .frame(height: 36)
-                                .contentShape(Rectangle())
+                                note("Tout le code est public : chacun peut vérifier que rien ne quitte l'iPhone.")
                             }
-                            note("Tout le code est public : chacun peut vérifier que rien ne quitte l'iPhone.")
                         }
                     }
 
