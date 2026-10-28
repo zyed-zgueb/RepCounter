@@ -63,26 +63,21 @@ enum Exercise: String, CaseIterable, Identifiable {
     /// Exercice de bras compté à la caméra (pas de brassard déclaré).
     var countsWithCamera: Bool { isArmExercise && !Self.hasArmband }
 
-    /// Où mettre le téléphone.
+    /// Où mettre le téléphone : une étiquette de quelques mots (le détail est dans la fiche).
     var placement: String { placement(armband: Self.hasArmband) }
 
     func placement(armband: Bool) -> String {
         if isArmExercise, !armband {
-            return self == .row
-                ? "Téléphone posé sur le côté, à 2 m environ\u{00A0}: toi de profil, bras, buste et hanches dans l'image."
-                : "Téléphone posé face à toi, à 2 m environ\u{00A0}: bras, buste et hanches dans l'image."
+            return self == .row ? "Posé à deux pas, de profil" : "Posé à deux pas, face à toi"
         }
         switch self {
-        case .auto: return "Téléphone posé face à toi ou porté sur toi ; l'app cherche le geste répété."
-        case .pushups: return "Téléphone au sol, écran vers le haut, au niveau de ta tête."
-        case .crunches: return "Téléphone tenu à plat contre la poitrine."
-        case .squats: return "Téléphone dans une poche de pantalon ajustée, ou dans un brassard."
-        case .curls: return "Téléphone dans un brassard sur l'avant-bras qui travaille, près du poignet."
-        case .press: return "Téléphone dans un brassard sur l'avant-bras qui pousse."
-        case .lunges: return "Téléphone tenu à la main ou contre la poitrine."
-        case .pullups: return "Téléphone dans une poche de pantalon ajustée."
-        case .dips: return "Téléphone dans une poche de pantalon ajustée."
-        case .row: return "Téléphone dans un brassard sur l'avant-bras qui tire, près du poignet."
+        case .auto: return "Face à toi, ou sur toi"
+        case .pushups: return "Au sol, sous ton visage"
+        case .crunches: return "À plat sur ta poitrine"
+        case .squats: return "En poche ou au bras"
+        case .curls, .press, .row: return "Au brassard, sur l'avant-bras"
+        case .lunges: return "En main ou contre toi"
+        case .pullups, .dips: return "Dans ta poche"
         }
     }
 

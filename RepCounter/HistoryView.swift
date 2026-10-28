@@ -111,7 +111,7 @@ struct HistoryView: View {
                 MonitorLabel("Aucune séance")
             }
             .frame(width: 180, height: 180)
-            Text("Tes séances terminées s'enregistrent ici, avec leurs séries et leurs records.")
+            Text("Tes séances s'afficheront ici.")
                 .font(theme.font(12))
                 .foregroundStyle(theme.dim)
                 .multilineTextAlignment(.center)
@@ -698,7 +698,7 @@ struct SessionDetailView: View {
                         HistoryPanel(title: "Rythme", accessory: { MonitorLabel("s / rep") }) {
                             RhythmChart(sets: sets)
                                 .frame(height: 106)
-                            Text("Durée de chaque répétition : elle s'allonge en fin de série quand la fatigue arrive.")
+                            Text("Durée de chaque répétition")
                                 .font(theme.font(11))
                                 .foregroundStyle(theme.dim)
                                 .fixedSize(horizontal: false, vertical: true)

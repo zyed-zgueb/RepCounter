@@ -278,7 +278,7 @@ struct WorkoutView: View {
                 }
                 if model.placementKind != nil {
                     // Mise en place faite : il n'y a plus qu'à attendre le départ
-                    Text("Tu es en place, ne bouge plus")
+                    Text("Ne bouge plus")
                         .font(theme.font(13))
                         .foregroundStyle(theme.ok)
                 } else {
@@ -302,14 +302,8 @@ struct WorkoutView: View {
                     }
                     .padding(side * 0.14)
                 }
-                if let step = coachCard {
-                    CoachCard(step: step)
-                } else {
-                    Text("La série suivante démarre dès que tu reprends.")
-                        .font(theme.font(12))
-                        .foregroundStyle(theme.dim)
-                        .multilineTextAlignment(.center)
-                }
+                // La reprise automatique s'explique une fois (première séance), pas à chaque repos
+                if let step = coachCard { CoachCard(step: step) }
                 setsLog
             case .active:
                 let counting = model.state == .counting
@@ -434,8 +428,8 @@ struct WorkoutView: View {
     }
 
     private func placementLine(_ text: String) -> some View {
-        (Text(text + " ") + Text("Plus de détails").foregroundStyle(theme.primary).bold())
-            .font(theme.font(12))
+        (Text(text + "  ") + Text(Image(systemName: "questionmark.circle")).foregroundStyle(theme.primary))
+            .font(theme.font(13))
             .foregroundStyle(theme.dim)
             .multilineTextAlignment(.center)
             .lineSpacing(3)
@@ -667,10 +661,8 @@ struct WorkoutView: View {
                 StatusLED(color: theme.alarm)
                 MonitorLabel("Accès caméra refusé", color: theme.alarm)
             }
-            Text("\(model.exercise.title) utilise la caméra pour te voir ; rien n'est enregistré. "
-                 + (model.exercise.isArmExercise
-                    ? "Avec un brassard, active « J'ai un brassard » dans les Réglages."
-                    : "Glisse sur le cadran pour un exercice sans caméra."))
+            Text(model.exercise.isArmExercise ? "Rien n'est filmé. Ou passe au brassard (Réglages)."
+                                              : "Rien n'est filmé, rien n'est enregistré.")
                 .font(theme.font(12))
                 .foregroundStyle(theme.dim)
                 .multilineTextAlignment(.center)
@@ -1100,8 +1092,9 @@ private struct SessionSummary: View {
             }
             .buttonStyle(.plain)
             .transition(.opacity)
-        } else {
-            Text("Touche une série pour corriger son compte.")
+        } else if history.count <= 3 {
+            // Montrée aux premières séances seulement : ensuite, on sait
+            Text("Touche une série pour la corriger")
                 .font(theme.font(11))
                 .foregroundStyle(theme.dim)
                 .transition(.opacity)

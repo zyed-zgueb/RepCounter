@@ -1,12 +1,12 @@
 import SwiftUI
 
-/// Où mettre l'iPhone pour un exercice : trois repères faciles à suivre (une illustration les
-/// accompagne). Montrés la première fois qu'on démarre l'exercice, et à tout moment par
+/// Où mettre l'iPhone pour un exercice : trois repères de quelques mots (l'illustration dit
+/// le reste). Montrés la première fois qu'on démarre l'exercice, et à tout moment par
 /// « Plus de détails » au bout de la consigne.
 struct PlacementGuide {
     struct Point {
         let title: String
-        let detail: String
+        init(_ title: String) { self.title = title }
     }
 
     let exercise: Exercise
@@ -14,51 +14,26 @@ struct PlacementGuide {
     let armband: Bool
 
     var points: [Point] {
-        let nothingToTouch = Point(title: "Rien à toucher", detail: "La série démarre dès que tu bouges, la récupération dès que tu t'arrêtes.")
+        let nothingToTouch = Point("Rien à toucher")
         if exercise.isArmExercise {
             if armband {
                 let arm = exercise == .press ? "qui pousse" : (exercise == .row ? "qui tire" : "qui travaille")
-                return [Point(title: "Dans le brassard", detail: "Sur l'avant-bras \(arm), près du poignet."),
-                        Point(title: "Bien serré", detail: "Il doit suivre ton avant-bras sans tourner."),
-                        nothingToTouch]
+                return [Point("Dans le brassard"), Point("Sur l'avant-bras \(arm)"), Point("Bien serré")]
             }
-            let stand = Point(title: "Debout, à hauteur de ta taille", detail: "Sur une chaise ou une table, calé contre un objet.")
             if exercise == .row {
-                return [stand,
-                        Point(title: "Sur le côté, à deux grands pas", detail: "Toi de profil : je vois ton bras tirer."),
-                        Point(title: "Le bras qui tire côté iPhone", detail: "Pour que ton corps ne le cache pas.")]
+                return [Point("Debout, à hauteur de taille"), Point("À deux grands pas, de profil"),
+                        Point("Bras qui tire côté iPhone")]
             }
-            return [stand,
-                    Point(title: "Deux grands pas devant toi", detail: "Je dois voir tes mains, tes épaules et tes hanches."),
-                    Point(title: "Face à toi", detail: "L'écran tourné vers toi : tu vois le compte de loin.")]
+            return [Point("Debout, à hauteur de taille"), Point("À deux grands pas"), Point("Face à toi")]
         }
         switch exercise {
-        case .pushups:
-            return [Point(title: "À plat au sol", detail: "Écran vers le haut, la caméra vers toi."),
-                    Point(title: "Sous ton visage", detail: "Entre tes mains, à hauteur de tes épaules."),
-                    Point(title: "Rien à toucher", detail: "Je compte quand ta poitrine descend vers lui.")]
-        case .crunches:
-            return [Point(title: "À plat sur ta poitrine", detail: "Écran vers le haut, sur le haut du buste."),
-                    Point(title: "Tenu d'une main", detail: "Il suit ton buste sans glisser."),
-                    Point(title: "Pas au sol", detail: "Je compte avec le mouvement de ton buste.")]
-        case .squats:
-            // Avec une barre, les mains sont prises : l'iPhone va dans la poche (ou un brassard)
-            return [Point(title: "Dans ta poche", detail: "Poche avant ou arrière d'un pantalon ajusté : il ne doit pas ballotter."),
-                    Point(title: "Ou dans un brassard", detail: "Sur le haut du bras : tes mains restent libres pour la barre."),
-                    Point(title: "Le temps de t'installer", detail: "Démarre, range-le, place la barre : le comptage démarre à tes premières répétitions.")]
-        case .lunges:
-            return [Point(title: "Tenu en main", detail: "Ou contre ta poitrine, buste droit."),
-                    Point(title: "Il descend et remonte avec toi", detail: "Garde-le contre toi toute la série."),
-                    nothingToTouch]
-        case .pullups, .dips:
-            return [Point(title: "Dans ta poche", detail: "Poche avant ou arrière d'un pantalon ajusté : il ne doit pas ballotter."),
-                    Point(title: exercise == .pullups ? "Il monte avec toi" : "Il descend avec toi",
-                          detail: "Je compte le mouvement de ton corps."),
-                    Point(title: "Le temps de t'installer", detail: "Démarre, range-le, mets-toi en place : 5 s avant le départ.")]
-        default:
-            return [Point(title: "Posé face à toi, ou porté sur toi", detail: "Là où il voit ou sent ton geste."),
-                    Point(title: "Un geste qui se répète", detail: "Je trouve son rythme, puis je compte."),
-                    nothingToTouch]
+        case .pushups: return [Point("À plat au sol"), Point("Sous ton visage"), Point("Entre tes mains")]
+        case .crunches: return [Point("À plat sur ta poitrine"), Point("Tenu d'une main"), Point("Pas au sol")]
+        // Avec une barre, les mains sont prises : l'iPhone va dans la poche (ou un brassard)
+        case .squats: return [Point("Dans ta poche"), Point("Ou en brassard"), nothingToTouch]
+        case .lunges: return [Point("En main"), Point("Ou contre ta poitrine"), nothingToTouch]
+        case .pullups, .dips: return [Point("Dans ta poche"), Point("Pantalon ajusté"), Point("5 s pour t'installer")]
+        default: return [Point("Face à toi, ou sur toi"), Point("Un geste répété"), nothingToTouch]
         }
     }
 
@@ -125,16 +100,10 @@ struct PlacementGuideView: View {
                                     .foregroundStyle(theme.primary)
                                     .frame(width: 24, height: 24)
                                     .overlay(Circle().stroke(theme.primary, lineWidth: 1.5))
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(point.title)
-                                        .font(theme.font(15, .bold))
-                                        .foregroundStyle(theme.text)
-                                    Text(point.detail)
-                                        .font(theme.font(12))
-                                        .foregroundStyle(theme.dim)
-                                        .lineSpacing(2)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
+                                Text(point.title)
+                                    .font(theme.font(15, .bold))
+                                    .foregroundStyle(theme.text)
+                                    .padding(.top, 2)
                             }
                             .accessibilityElement(children: .combine)
                         }

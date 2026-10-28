@@ -66,7 +66,6 @@ struct SettingsView: View {
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Mes exercices : " + Exercise.decode(mineValue).map(\.title).joined(separator: ", "))
-                            note("Les exercices du cadran, dans l'ordre où ils défilent.")
                             Rectangle().fill(theme.line).frame(height: 1)
                                 .padding(.vertical, 4)
                             Toggle(isOn: $hasArmband) {
@@ -75,9 +74,7 @@ struct SettingsView: View {
                                     .foregroundStyle(theme.text)
                             }
                             .tint(theme.primary)
-                            note(hasArmband
-                                 ? "Biceps, développé, rowing : iPhone dans le brassard, sur l'avant-bras. Les capteurs de mouvement comptent, au plus près du geste."
-                                 : "Biceps, développé, rowing : iPhone posé à 2 m, la caméra compte ; rien n'est enregistré. Avec un brassard, le compte est encore plus précis.")
+                            note(hasArmband ? "Biceps, développé, rowing : au bras." : "Biceps, développé, rowing : à la caméra.")
                         }
                     }
 
@@ -141,7 +138,7 @@ struct SettingsView: View {
                                 }
                                 .font(theme.font(13, .bold))
                             }
-                            note("Facultatif, reste sur ton iPhone. Sert à situer ton niveau en pompes sur le barème de référence (score d'endurance).")
+                            note("Facultatif. Situe ton niveau en pompes.")
                         }
                     }
 
@@ -153,7 +150,7 @@ struct SettingsView: View {
                                         .buttonStyle(MonitorButtonStyle(filled: audioMode == mode, height: 40, fontSize: 11))
                                 }
                             }
-                            note(audioNote)
+                            if let audioNote { note(audioNote) }
                         }
                     }
 
@@ -186,9 +183,7 @@ struct SettingsView: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
-                            note(SourceCode.isPublic
-                                 ? "Gratuit, sans pub, open source. Un don ne débloque rien : c'est un merci."
-                                 : "Gratuit, sans pub. Un don ne débloque rien : c'est un merci.")
+                            note("Un don ne débloque rien : c'est un merci.")
                             if SourceCode.isPublic {
                                 Rectangle().fill(theme.line).frame(height: 1)
                                     .padding(.vertical, 4)
@@ -205,7 +200,7 @@ struct SettingsView: View {
                                     .frame(height: 36)
                                     .contentShape(Rectangle())
                                 }
-                                note("Tout le code est public : chacun peut vérifier que rien ne quitte l'iPhone.")
+                                note("Rien ne quitte l'iPhone : vérifiable.")
                             }
                         }
                     }
@@ -218,19 +213,19 @@ struct SettingsView: View {
                                     .foregroundStyle(theme.text)
                             }
                             .tint(theme.primary)
-                            note("Affiche pendant la séance l'enregistrement des mesures (●) et le diagnostic des capteurs, pour analyser une séance qui compte mal.")
+                            note("Enregistrement ● et diagnostic des capteurs.")
                             if analysisMode {
                                 AccuracyList()
                                 Rectangle().fill(theme.line).frame(height: 1)
                                     .padding(.vertical, 4)
                                 Button("Revoir l'onboarding") { replayOnboarding() }
                                     .buttonStyle(MonitorButtonStyle(color: theme.primary, filled: false, height: 44, fontSize: 12))
-                                note("Bienvenue, fiches « Placer ton iPhone » et première séance commentée, comme au premier lancement. L'historique est conservé ; l'accès à la caméra, déjà accordé, n'est pas redemandé.")
+                                note("Ton historique est conservé.")
                             }
                         }
                     }
 
-                    note("Comptage par caméra 3D et capteurs de mouvement · aucune image enregistrée")
+                    note("Aucune image enregistrée")
                         .frame(maxWidth: .infinity)
                         .multilineTextAlignment(.center)
                 }
@@ -262,16 +257,14 @@ struct SettingsView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { welcomed = false }
     }
 
-    private var audioNote: String {
+    /// Une ligne seulement quand le choix ne se comprend pas seul.
+    private var audioNote: String? {
         switch audioMode {
-        case .sounds:
-            return "Une note par répétition, deux notes tous les 5, trois tous les 10. En récupération, un battement à 15 s, deux à 30, trois à 45, un accord à chaque minute. Notes de départ, fin de série, fin de séance."
+        case .sounds: return nil
         case .voice:
-            let voice = Announcer.qualityVoiceName.map { "Voix : \($0)." }
-                ?? "Pour une voix plus naturelle, télécharge une voix française Améliorée ou Premium : Réglages de l'iPhone › Accessibilité › Contenu énoncé › Voix."
-            return "Les sons, plus la voix aux paliers (5, 10, 15…) et en fin de série. " + voice
-        case .silent:
-            return "Aucun son. Les vibrations restent."
+            return Announcer.qualityVoiceName == nil
+                ? "Voix plus naturelle : Réglages › Accessibilité › Contenu énoncé › Voix." : nil
+        case .silent: return "Les vibrations restent."
         }
     }
 
@@ -419,7 +412,7 @@ private struct AccuracyList: View {
                     .foregroundStyle(theme.text)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Text("Une série corrigée en fin de séance compte comme une erreur ; corrige chaque série fausse pour que la mesure soit juste. Objectif : 95 % de séries exactes.")
+            Text("Corrige chaque série fausse. Objectif : 95 %.")
                 .font(theme.font(11))
                 .foregroundStyle(theme.dim)
                 .fixedSize(horizontal: false, vertical: true)

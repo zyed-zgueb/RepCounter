@@ -34,7 +34,7 @@ struct WelcomeView: View {
                 .foregroundStyle(theme.text)
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
-            Text("Répétitions, séries, récupération : tout se fait seul, sans toucher l'écran. Rien n'est filmé, tout reste sur ton iPhone.")
+            Text("Rien n'est filmé. Tout reste sur ton iPhone.")
                 .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .multilineTextAlignment(.center)
@@ -70,9 +70,9 @@ enum Coach {
 
     static func text(_ step: Int) -> String {
         switch step {
-        case 1: return "Vas-y à ton rythme. Je me cale sur tes trois premières répétitions, puis elles s'ajoutent toutes au compte."
-        case 2: return "Tu t'es arrêté : je chronomètre ta récupération. Reprends quand tu veux, la série suivante démarre seule."
-        default: return "Pour finir la séance, maintiens Terminer. Sinon, reprends : une nouvelle série démarre."
+        case 1: return "À ton rythme. Je valide la série à la 3e répétition."
+        case 2: return "Repos chronométré. Reprends quand tu veux."
+        default: return "Pour finir, maintiens Terminer."
         }
     }
 }

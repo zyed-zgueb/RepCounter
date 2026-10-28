@@ -12,6 +12,11 @@ chiffres à chasse fixe, voyants d'état, tracé du signal façon électrocardio
 Principe : à l'écran, seulement ce qui sert à l'instant ; le reste est rangé dans les
 Réglages. Pas de défilement.
 
+Textes : des étiquettes, pas des phrases. Pendant l'effort, 5 ou 6 mots au plus ; le son, la
+vibration, la couleur et le pictogramme portent le sens. Une explication n'est donnée qu'une
+fois, au moment utile (première séance), ou sur demande (« ? », (i)). Les Réglages parlent
+par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
+
 0. **Premier lancement** : une page de bienvenue (« Pose ton iPhone. Entraîne-toi. Il compte. »,
    le cadran qui compte), puis rien d'autre : pas de compte, pas de questionnaire. La première
    fois qu'on démarre un exercice, la fiche **Placer ton iPhone** (une illustration, trois

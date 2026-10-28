@@ -112,12 +112,10 @@ struct SupportView: View {
                 VStack(spacing: 14) {
                     MonitorPanel {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text(SourceCode.isPublic
-                                 ? "Reps est gratuit, sans pub et open source. Rien n'est collecté, rien n'est bloqué."
-                                 : "Reps est gratuit et sans pub. Rien n'est collecté, rien n'est bloqué.")
+                            Text(SourceCode.isPublic ? "Gratuit, sans pub, open source." : "Gratuit, sans pub.")
                                 .font(theme.font(14, .semibold))
                                 .foregroundStyle(theme.text)
-                            Text("Il est fait par une seule personne, sur son temps libre. Si l'app te sert, donne ce que tu veux : du petit merci au mécénat, tout aide à la faire vivre. Un don ne débloque rien.")
+                            Text("Fait par une seule personne. Un don ne débloque rien : c'est un merci.")
                                 .font(theme.font(12))
                                 .foregroundStyle(theme.dim)
                         }
@@ -237,7 +235,7 @@ struct TipPrompt: View {
         HStack(spacing: 10) {
             Image(systemName: "cup.and.saucer.fill")
                 .foregroundStyle(theme.warn)
-            Text("Reps est gratuit et sans pub. Un café pour le développeur ?")
+            Text("Un café pour le développeur ?")
                 .font(theme.font(11))
                 .foregroundStyle(theme.text)
                 .fixedSize(horizontal: false, vertical: true)

@@ -37,13 +37,12 @@ struct PlacementCheck: Equatable {
     let done: Bool
 }
 
-/// Où en est la mise en place : une seule consigne à la fois (la première qui manque), sa
-/// raison, la liste des vérifications et, pour la caméra, le squelette qu'elle voit.
+/// Où en est la mise en place : une seule consigne à la fois (la première qui manque), la
+/// liste des vérifications et, pour la caméra, le squelette qu'elle voit.
 struct PlacementStatus: Equatable {
     /// Tout est bon depuis assez longtemps : le compte à rebours peut partir.
     var ready = false
     var instruction = ""
-    var hint = ""
     var checks: [PlacementCheck] = []
     /// L'iPhone est manipulé (pris en main, déplacé) : pendant le compte à rebours, la mise en
     /// place est à refaire.
@@ -138,7 +137,6 @@ final class PlacementMonitor {
             if goodSince == nil { goodSince = t }
             status.ready = t - (goodSince ?? t) >= Tuning.holdDuration
             status.instruction = "Parfait, ne bouge plus"
-            status.hint = "Le départ va être donné."
         } else {
             goodSince = nil
         }
@@ -160,10 +158,8 @@ final class PlacementMonitor {
                                               PlacementCheck(title: "Toi au-dessus", done: above)])
         if !flat {
             status.instruction = gravity[2] > 0.5 ? "Retourne l'iPhone" : "Pose l'iPhone à plat"
-            status.hint = "Au sol, écran vers le haut, sous ton visage."
         } else if !above {
             status.instruction = "Mets-toi en planche"
-            status.hint = "Ta poitrine au-dessus de l'iPhone : le départ attend que je te voie."
         }
         return status
     }
@@ -182,13 +178,10 @@ final class PlacementMonitor {
                                               PlacementCheck(title: "Allongé, immobile", done: settled)])
         if !flat {
             status.instruction = "Allonge-toi, iPhone à plat"
-            status.hint = "Sur le haut de ta poitrine, tenu d'une main."
         } else if !onBody {
-            status.instruction = "Pose-le sur ta poitrine"
-            status.hint = "Pas au sol : je compte avec le mouvement de ton buste."
+            status.instruction = "Sur ta poitrine, pas au sol"
         } else if !settled {
-            status.instruction = "Allonge-toi et ne bouge plus"
-            status.hint = "Le départ est donné quand tu es installé. Attends-le pour commencer."
+            status.instruction = "Allonge-toi, ne bouge plus"
         }
         return status
     }
@@ -219,16 +212,12 @@ final class PlacementMonitor {
             } else {
                 status.instruction = "Retourne l'iPhone"
             }
-            status.hint = "En hauteur, face à toi, calé contre un objet, à hauteur de ta taille."
         } else if !still {
             status.instruction = "Pose l'iPhone"
-            status.hint = "Calé sur une chaise ou une table : il ne doit plus bouger."
         } else if !light {
             status.instruction = "Plus de lumière"
-            status.hint = "Allume, ou tourne-toi vers une fenêtre."
         } else if let framing {
-            status.instruction = framing.instruction
-            status.hint = framing.hint
+            status.instruction = framing
         }
         return status
     }
@@ -266,41 +255,40 @@ final class PlacementMonitor {
     private static let imageAspect: CGFloat = 0.75
 
     /// Ce qui ne va pas dans le cadrage, dans l'ordre où il faut le corriger (nil : rien).
-    private func framingInstruction(_ body: Body) -> (instruction: String, hint: String)? {
+    private func framingInstruction(_ body: Body) -> String? {
         let side = kind == .cameraSide
         guard body.visibleCount >= 4, let neck = body.neck else {
-            return (side ? "Mets-toi de profil devant l'iPhone" : "Mets-toi face à l'iPhone",
-                    "À deux grands pas, dans le champ de la caméra.")
+            return side ? "Mets-toi de profil" : "Mets-toi face à l'iPhone"
         }
         let distance = { (a: CGPoint, b: CGPoint) in hypot((a.x - b.x) * Self.imageAspect, a.y - b.y) }
         let all = body.points.compactMap { $0 }
         let touchesEdge = all.contains { $0.y < 0.02 || $0.y > 0.98 }
         guard let hip = body.hip else {
             // Les épaules sans les hanches : trop près (ou l'iPhone trop haut)
-            return ("Recule d'un pas", "Je dois voir tes mains, tes épaules et tes hanches.")
+            return "Recule d'un pas"
         }
         let torso = distance(neck, hip)
         if torso > Tuning.torsoMax || touchesEdge {
-            return ("Recule d'un pas", "Je dois voir tes mains, tes épaules et tes hanches.")
+            return "Recule d'un pas"
         }
         if torso < Tuning.torsoMin {
-            return ("Approche d'un pas", "Tu es trop loin pour que je voie bien tes bras.")
+            return "Approche d'un pas"
         }
         // Image en miroir, comme un selfie : trop à gauche de l'image, il faut aller vers sa droite
-        if neck.x < Tuning.centerMargin { return ("Décale-toi vers ta droite", "Place-toi au milieu de l'image.") }
-        if neck.x > 1 - Tuning.centerMargin { return ("Décale-toi vers ta gauche", "Place-toi au milieu de l'image.") }
+        if neck.x < Tuning.centerMargin { return "Décale-toi vers ta droite" }
+        if neck.x > 1 - Tuning.centerMargin { return "Décale-toi vers ta gauche" }
         if let left = body.point(.leftShoulder), let right = body.point(.rightShoulder) {
             let ratio = abs(left.x - right.x) * Self.imageAspect / torso
             if side, ratio > Tuning.sideShoulderRatio {
-                return ("Tourne-toi de profil", "Le bras qui tire du côté de l'iPhone.")
+                return "Tourne-toi de profil"
             }
             if !side, ratio < Tuning.frontShoulderRatio {
-                return ("Tourne-toi face à l'iPhone", "Je dois voir tes deux bras.")
+                return "Tourne-toi face à l'iPhone"
             }
         }
         let armsVisible = side ? (body.arm(left: true) || body.arm(left: false)) : (body.arm(left: true) && body.arm(left: false))
         if !armsVisible {
-            return ("Recule d'un pas", "Je ne vois pas bien tes mains.")
+            return "Recule d'un pas"
         }
         return nil
     }

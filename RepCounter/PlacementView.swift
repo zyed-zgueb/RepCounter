@@ -47,21 +47,18 @@ struct PlacementView: View {
                 }
                 .foregroundStyle(color)
                 .contentTransition(.opacity)
+                // La fiche, d'une touche : le détail de la consigne
                 Button(action: onShowGuide) {
-                    (Text(placement.hint + " ") + Text("Plus de détails").foregroundStyle(theme.primary).bold())
-                        .font(theme.font(12))
-                        .foregroundStyle(theme.dim)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: 300, minHeight: 34, alignment: .top)
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 17))
+                        .foregroundStyle(theme.primary)
+                        .frame(width: 44, height: 32)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityHint("Ouvre la fiche pour placer ton iPhone.")
             }
             .animation(.easeInOut(duration: 0.2), value: placement.instruction)
-            .accessibilityElement(children: .combine)
 
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(placement.checks, id: \.title) { check in
