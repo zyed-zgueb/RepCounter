@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Thèmes
 
 /// Un thème d'affichage, décrit dans `Themes.json` : couleurs, police, arrondis, lueur.
-/// Ajouter un thème (ou en vendre un en achat intégré) ne demande aucun changement d'écran.
+/// Ajouter un thème ne demande aucun changement d'écran. Tous les thèmes sont gratuits.
 struct AppTheme: Decodable, Identifiable, Equatable {
     struct Palette: Decodable, Equatable {
         let background, panel, line, grid, text, dim: String
@@ -16,8 +16,6 @@ struct AppTheme: Decodable, Identifiable, Equatable {
 
     let id: String
     let name: String
-    /// Thème payant (achat intégré à venir).
-    let premium: Bool
     /// "dark" ou "light".
     let scheme: String
     /// "monospaced", "rounded" ou "default".
@@ -54,7 +52,7 @@ struct AppTheme: Decodable, Identifiable, Equatable {
 
     /// Thème de secours si `Themes.json` est absent ou illisible.
     static let fallback = AppTheme(
-        id: "monitor", name: "Moniteur", premium: false, scheme: "dark", font: "monospaced", radius: 4, glow: 1,
+        id: "monitor", name: "Moniteur", scheme: "dark", font: "monospaced", radius: 4, glow: 1,
         colors: Palette(background: "#05080A", panel: "#0D1217", line: "#212E38", grid: "#121C24",
                         text: "#DEEDF5", dim: "#738794", primary: "#3DC2FF", secondary: "#AB64FA",
                         ok: "#2EE69E", warn: "#FFB021", alarm: "#FF4F4F", onPrimary: "#000000"))
@@ -62,18 +60,13 @@ struct AppTheme: Decodable, Identifiable, Equatable {
 
 /// Thèmes disponibles et thème choisi (mémorisé).
 final class ThemeStore: ObservableObject {
-    /// Tant que les achats intégrés ne sont pas branchés, tous les thèmes sont utilisables.
-    static let premiumUnlockedForDevelopment = true
     private static let selectedKey = "theme"
 
     let themes: [AppTheme]
     @Published var selectedID: String {
         didSet { UserDefaults.standard.set(selectedID, forKey: Self.selectedKey) }
     }
-    /// Thèmes premium achetés (à alimenter par StoreKit).
-    @Published var unlockedIDs: Set<String> = []
-
-    var current: AppTheme { themes.first { $0.id == selectedID && isUnlocked($0) } ?? themes[0] }
+    var current: AppTheme { themes.first { $0.id == selectedID } ?? themes[0] }
 
     init(bundle: Bundle = .main) {
         struct File: Decodable { let themes: [AppTheme] }
@@ -82,10 +75,6 @@ final class ThemeStore: ObservableObject {
             .flatMap { try? JSONDecoder().decode(File.self, from: $0).themes } ?? []
         themes = loaded.isEmpty ? [.fallback] : loaded
         selectedID = UserDefaults.standard.string(forKey: Self.selectedKey) ?? themes[0].id
-    }
-
-    func isUnlocked(_ theme: AppTheme) -> Bool {
-        !theme.premium || unlockedIDs.contains(theme.id) || Self.premiumUnlockedForDevelopment
     }
 }
 
