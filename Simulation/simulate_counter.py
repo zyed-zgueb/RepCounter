@@ -151,9 +151,15 @@ class SignalTracker:
         self.phase = 0.0
 
     def forget_cycles(self, before):
-        """Remise à zéro du compteur : oublie les cycles passés."""
+        """Remise à zéro du compteur : oublie les cycles passés, et le sens de comptage adopté
+        pour la série précédente (sinon une nouvelle séance hérite d'un sens qui ne lui
+        correspond peut-être pas, et compte au mauvais moment du geste)."""
         self.cycles, self.cycle_swings = [], []
         self.ignore_before = before
+        self.rest_high = False
+        self.rest_in_middle = False
+        self.armed = False
+        self.skip_next = False
 
     def process(self, value, t):
         """Ajoute une mesure ; renvoie True quand un cycle complet vient de se terminer."""

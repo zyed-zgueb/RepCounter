@@ -54,4 +54,6 @@ Une séance de 3 séries par cas, avec ~1 min de repos, en notant le nombre rée
 |---|---|---|---|---|
 | Abdos | mouvement | 5 | 1 | exact (273/273), dont une série irrégulière et une séance piège |
 | Pompes | caméra | 2 | 1 | exact (20/20) |
+| Squats | mouvement | 1 | 1 | exact (20/20) |
+| Tractions | mouvement | 1 | 1 | exact (5/5) après correction (l'app en comptait 8 : sens de comptage hérité de la séance précédente) |
 | Tous les autres | — | 0 | 0 | non validé (simulation seulement) |

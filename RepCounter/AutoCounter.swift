@@ -123,10 +123,17 @@ final class SignalTracker {
     }
 
     /// Oublie les cycles passés (remise à zéro du compteur).
+    /// Remise à zéro du compteur : oublie les cycles passés, et le sens de comptage adopté pour
+    /// la série précédente (sinon une nouvelle séance hérite d'un sens qui ne lui correspond
+    /// peut-être pas, et compte au mauvais moment du geste : tractions, 8 au lieu de 5).
     func forgetCycles(before t: Double) {
         cycles = []
         cycleSwings = []
         ignoreBefore = t
+        restHigh = false
+        restInMiddle = false
+        armed = false
+        skipNext = false
     }
 
     /// Repart de zéro (téléphone manipulé : ce qui précède ne décrit pas l'exercice).
