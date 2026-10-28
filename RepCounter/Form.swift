@@ -56,15 +56,19 @@ struct FormResult {
     static let referenceWindow = 10
 
     /// Forme = 100 × √((vitesse habituelle ÷ vitesse du jour) × (ralentissement habituel ÷ ralentissement du jour)).
-    /// Référence : médianes des 10 dernières séances mesurables. Variation normale : écart-type des
-    /// formes de ces séances par rapport à la référence ; un écart ne compte qu'au-delà de 1,5 fois
-    /// cette variation, et jamais sous 3 %. Nil tant qu'il y a moins de 3 séances précédentes.
-    static func make(_ measure: FormMeasure, previous: [FormMeasure]) -> FormResult? {
-        let recent = Array(previous.suffix(referenceWindow))
-        guard recent.count >= baselineSessions,
-              let pace = median(recent.map(\.pace)), let slowdown = median(recent.map(\.slowdown)) else { return nil }
+    /// Référence : médianes des 10 dernières séances mesurables qui n'étaient pas fatiguées (une
+    /// baisse qui dure reste visible au lieu de devenir la nouvelle norme). Variation normale :
+    /// écart-type des formes des 10 dernières séances (fatiguées comprises) par rapport à la
+    /// référence ; un écart ne compte qu'au-delà de 1,5 fois cette variation, et jamais sous 3 %.
+    /// Nil tant qu'il y a moins de 3 séances de référence.
+    /// `previous` : les séances d'avant, avec leur zone (nil tant que la référence n'était pas établie).
+    /// Même calcul que `form_result` dans Simulation/phases.py.
+    static func make(_ measure: FormMeasure, previous: [(measure: FormMeasure, zone: FormZone?)]) -> FormResult? {
+        let reference = Array(previous.filter { $0.zone != .tired }.map(\.measure).suffix(referenceWindow))
+        guard reference.count >= baselineSessions,
+              let pace = median(reference.map(\.pace)), let slowdown = median(reference.map(\.slowdown)) else { return nil }
         let form = { (m: FormMeasure) in 100 * ((pace / m.pace) * (slowdown / m.slowdown)).squareRoot() }
-        let past = recent.map(form)
+        let past = previous.suffix(referenceWindow).map { form($0.measure) }
         let mean = past.reduce(0, +) / Double(past.count)
         let deviation = (past.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(past.count)).squareRoot()
         let band = max(3, 1.5 * deviation)
@@ -84,10 +88,15 @@ struct FormResult {
 extension HistoryStats {
     /// Forme de chaque séance mesurable (référence établie), de la plus ancienne à la plus récente.
     var formResults: [(session: SessionRecord, result: FormResult)] {
-        let measured = sessions.reversed().compactMap { session in session.formMeasure.map { (session: session, measure: $0) } }
-        return measured.enumerated().compactMap { index, item in
-            FormResult.make(item.measure, previous: measured[..<index].map(\.measure)).map { (session: item.session, result: $0) }
+        var previous: [(measure: FormMeasure, zone: FormZone?)] = []
+        var results: [(session: SessionRecord, result: FormResult)] = []
+        for session in sessions.reversed() {
+            guard let measure = session.formMeasure else { continue }
+            let result = FormResult.make(measure, previous: previous)
+            previous.append((measure: measure, zone: result?.zone))
+            if let result { results.append((session: session, result: result)) }
         }
+        return results
     }
 
     /// Séances mesurables de l'exercice (pour savoir où en est la référence).
@@ -97,10 +106,9 @@ extension HistoryStats {
 
     /// Forme d'une séance précise (situées par rapport aux séances d'avant).
     func form(of session: SessionRecord) -> FormResult? {
-        guard let measure = session.formMeasure else { return nil }
-        let previous = sessions.reversed()
-            .filter { $0.exercise == session.exercise && $0.start < session.start }
-            .compactMap(\.formMeasure)
-        return FormResult.make(measure, previous: previous)
+        guard session.formMeasure != nil else { return nil }
+        let same = HistoryStats(sessions: sessions.filter { $0.start <= session.start }, exercise: session.exercise,
+                                calendar: calendar, now: now)
+        return same.formResults.last { $0.session.persistentModelID == session.persistentModelID }?.result
     }
 }

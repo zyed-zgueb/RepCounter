@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 /// Historique d'un exercice (ou de tous, Σ), en quatre blocs, une place pour chaque chose :
-/// le conseil (s'il y en a un), le score d'endurance et la forme côte à côte, l'activité (la
+/// la phase d'entraînement, le score d'endurance et la forme côte à côte, l'activité (la
 /// semaine et la régularité), puis les records et la liste des séances. Le détail de chaque bloc
 /// s'ouvre d'une touche.
 struct HistoryView: View {
@@ -47,7 +47,12 @@ struct HistoryView: View {
                             emptyState
                         } else {
                             if let exercise {
-                                if let advice = Advice.make(stats: stats) { AdviceCard(advice: advice) }
+                                if exercise != .auto {
+                                    NavigationLink(value: HistoryPage.phase) {
+                                        PhaseCard(phase: stats.phase(all: sessions), advice: Advice.make(stats: stats))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                                 HStack(spacing: 10) {
                                     NavigationLink(value: HistoryPage.endurance) {
                                         EnduranceTile(stats: stats, exercise: exercise)
@@ -100,6 +105,8 @@ struct HistoryView: View {
             }
         case .form:
             HistoryDetailView(title: "Forme") { FormPanel(stats: stats) }
+        case .phase:
+            HistoryDetailView(title: "Phase") { PhasePanel(stats: stats, all: sessions) }
         case .activity:
             HistoryDetailView(title: "Activité") { VolumePanel(stats: stats) }
         }
@@ -154,7 +161,7 @@ extension HistoryPanel where Accessory == EmptyView {
 
 /// Détails de l'historique, ouverts d'une touche sur leur bloc.
 enum HistoryPage: Hashable {
-    case endurance, form, activity
+    case phase, endurance, form, activity
 }
 
 /// Une tuile (moitié de largeur) : un titre, une valeur, une mini-courbe ; une touche ouvre son détail.

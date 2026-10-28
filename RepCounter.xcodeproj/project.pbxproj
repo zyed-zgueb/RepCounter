@@ -29,10 +29,13 @@
 		B00000000000000000000020 /* Onboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000020 /* Onboarding.swift */; };
 		B00000000000000000000021 /* AutoCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000021 /* AutoCounter.swift */; };
 		B00000000000000000000022 /* GestureTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000022 /* GestureTemplate.swift */; };
-		B00000000000000000000023 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000023 /* SensorHub.swift */; };
-		B00000000000000000000024 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000024 /* PoseFeatures.swift */; };
-		B00000000000000000000025 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000025 /* SignalMath.swift */; };
-		B00000000000000000000026 /* Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000026 /* Support.swift */; };
+		B00000000000000000000023 /* Phase.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000023 /* Phase.swift */; };
+		B00000000000000000000024 /* PhaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000024 /* PhaseView.swift */; };
+		B00000000000000000000025 /* Feeling.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000025 /* Feeling.swift */; };
+		B00000000000000000000026 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000026 /* SensorHub.swift */; };
+		B00000000000000000000027 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000027 /* PoseFeatures.swift */; };
+		B00000000000000000000028 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000028 /* SignalMath.swift */; };
+		B00000000000000000000029 /* Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000029 /* Support.swift */; };
 		B00000000000000000000098 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000098 /* Assets.xcassets */; };
 		B00000000000000000000097 /* Themes.json in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000097 /* Themes.json */; };
 		B00000000000000000000096 /* Sounds in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000096 /* Sounds */; };
@@ -61,10 +64,13 @@
 		F00000000000000000000020 /* Onboarding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Onboarding.swift; sourceTree = "<group>"; };
 		F00000000000000000000021 /* AutoCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoCounter.swift; sourceTree = "<group>"; };
 		F00000000000000000000022 /* GestureTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureTemplate.swift; sourceTree = "<group>"; };
-		F00000000000000000000023 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
-		F00000000000000000000024 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
-		F00000000000000000000025 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
-		F00000000000000000000026 /* Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support.swift; sourceTree = "<group>"; };
+		F00000000000000000000023 /* Phase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phase.swift; sourceTree = "<group>"; };
+		F00000000000000000000024 /* PhaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseView.swift; sourceTree = "<group>"; };
+		F00000000000000000000025 /* Feeling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Feeling.swift; sourceTree = "<group>"; };
+		F00000000000000000000026 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
+		F00000000000000000000027 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
+		F00000000000000000000028 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
+		F00000000000000000000029 /* Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support.swift; sourceTree = "<group>"; };
 		F00000000000000000000098 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F00000000000000000000097 /* Themes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Themes.json; sourceTree = "<group>"; };
 		F00000000000000000000096 /* Sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Sounds; sourceTree = "<group>"; };
@@ -125,10 +131,13 @@
 				F00000000000000000000020 /* Onboarding.swift */,
 				F00000000000000000000021 /* AutoCounter.swift */,
 				F00000000000000000000022 /* GestureTemplate.swift */,
-				F00000000000000000000023 /* SensorHub.swift */,
-				F00000000000000000000024 /* PoseFeatures.swift */,
-				F00000000000000000000025 /* SignalMath.swift */,
-				F00000000000000000000026 /* Support.swift */,
+				F00000000000000000000023 /* Phase.swift */,
+				F00000000000000000000024 /* PhaseView.swift */,
+				F00000000000000000000025 /* Feeling.swift */,
+				F00000000000000000000026 /* SensorHub.swift */,
+				F00000000000000000000027 /* PoseFeatures.swift */,
+				F00000000000000000000028 /* SignalMath.swift */,
+				F00000000000000000000029 /* Support.swift */,
 				F00000000000000000000098 /* Assets.xcassets */,
 				F00000000000000000000097 /* Themes.json */,
 				F00000000000000000000096 /* Sounds */,
@@ -254,10 +263,13 @@
 				B00000000000000000000020 /* Onboarding.swift in Sources */,
 				B00000000000000000000021 /* AutoCounter.swift in Sources */,
 				B00000000000000000000022 /* GestureTemplate.swift in Sources */,
-				B00000000000000000000023 /* SensorHub.swift in Sources */,
-				B00000000000000000000024 /* PoseFeatures.swift in Sources */,
-				B00000000000000000000025 /* SignalMath.swift in Sources */,
-				B00000000000000000000026 /* Support.swift in Sources */,
+				B00000000000000000000023 /* Phase.swift in Sources */,
+				B00000000000000000000024 /* PhaseView.swift in Sources */,
+				B00000000000000000000025 /* Feeling.swift in Sources */,
+				B00000000000000000000026 /* SensorHub.swift in Sources */,
+				B00000000000000000000027 /* PoseFeatures.swift in Sources */,
+				B00000000000000000000028 /* SignalMath.swift in Sources */,
+				B00000000000000000000029 /* Support.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

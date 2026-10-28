@@ -2,48 +2,20 @@ import SwiftUI
 
 // MARK: - Conseil
 
-/// Un conseil d'entraînement, tiré de l'historique d'un exercice. Au plus un à la fois, le plus
-/// important d'abord, toujours avec une action proposée ; aucun quand rien ne le justifie.
+/// Un conseil d'entraînement, tiré de l'historique d'un exercice, affiché comme action de la
+/// phase Construction (`PhaseCard`). Les signaux de fatigue et de pic de charge sont devenus des
+/// phases (`Phase.swift`) ; le pic de charge, fondé sur le rapport charge aiguë / chronique,
+/// est retiré (aucun effet causal démontré : Impellizzeri et al. 2020, IJSPP 15(6):907–913).
 struct Advice {
-    enum Kind { case fatigue, loadSpike, plateau, recordInReach }
+    enum Kind { case plateau, recordInReach }
 
     let kind: Kind
     let title: String
-    let text: String
+    /// L'action, en quelques mots.
+    let short: String
 
     static func make(stats: HistoryStats) -> Advice? {
-        fatigue(stats: stats) ?? loadSpike(stats: stats) ?? plateau(stats: stats) ?? recordInReach(stats: stats)
-    }
-
-    /// Signal de fatigue : une séance récente avec une forme dans la zone fatiguée, ou le score
-    /// d'endurance en baisse deux séances de suite alors que le volume ne baisse pas
-    /// (signe de surmenage, qui précède le surentraînement).
-    private static func fatigue(stats: HistoryStats) -> Advice? {
-        if let last = stats.formResults.last, last.result.zone == .tired,
-           stats.now.timeIntervalSince(last.session.start) < 3 * 86_400 {
-            return Advice(kind: .fatigue, title: "Signal de fatigue",
-                          text: "Forme à \(Int(last.result.percent.rounded())) % \(Format.dayName(last.session.start)) : répétitions plus lentes ou vitesse moins bien tenue que d'habitude. Une séance légère ou un jour de repos ?")
-        }
-        let scores = stats.sessions.compactMap(\.performanceIndex)   // les plus récents d'abord
-        if scores.count >= 3, scores[0] < scores[1], scores[1] < scores[2],
-           stats.weekVolume >= stats.previousWeekVolume, stats.weekVolume > 0 {
-            return Advice(kind: .fatigue, title: "Signal de fatigue",
-                          text: "Score d'endurance en baisse sur 2 séances alors que ton volume ne baisse pas. Une séance légère ou un jour de repos ?")
-        }
-        return nil
-    }
-
-    /// Pic de charge : le volume de la semaine dépasse de plus de 50 % la moyenne des 4 semaines
-    /// précédentes (rapport charge aiguë / chronique au-delà de 1,5).
-    private static func loadSpike(stats: HistoryStats) -> Advice? {
-        let weeks = stats.lastWeeks(5).dropLast()
-        let volumes = weeks.map { stats.volume(inWeek: $0) }
-        guard volumes.filter({ $0 > 0 }).count >= 2 else { return nil }
-        let chronic = Double(volumes.reduce(0, +)) / Double(volumes.count)
-        guard chronic > 0, Double(stats.weekVolume) > 1.5 * chronic else { return nil }
-        let rise = Int((Double(stats.weekVolume) / chronic * 100 - 100).rounded())
-        return Advice(kind: .loadSpike, title: "Pic de charge",
-                      text: "+\(rise) % de volume par rapport à tes 4 dernières semaines. Garde ce niveau la semaine prochaine plutôt que d'augmenter encore.")
+        plateau(stats: stats) ?? recordInReach(stats: stats)
     }
 
     /// Plateau : au moins 3 séances notées en 3 semaines sans dépasser le meilleur score d'avant.
@@ -52,8 +24,7 @@ struct Advice {
         let recent = stats.sessions.filter { $0.start > cutoff }.compactMap(\.performanceIndex)
         let before = stats.sessions.filter { $0.start <= cutoff }.compactMap(\.performanceIndex)
         guard recent.count >= 3, let best = before.max(), let recentBest = recent.max(), recentBest <= best else { return nil }
-        return Advice(kind: .plateau, title: "Plateau",
-                      text: "Pas de progrès du score d'endurance depuis 3 semaines. Varie : repos plus court entre les séries, ou une série de plus.")
+        return Advice(kind: .plateau, title: "Plateau", short: "repos plus court ou une série de plus")
     }
 
     /// Record à portée : une série récente à 1 ou 2 répétitions du record de série.
@@ -62,49 +33,7 @@ struct Advice {
               record.value - recent >= 1, record.value - recent <= 2,
               stats.now.timeIntervalSince(record.date) > 14 * 86_400 else { return nil }
         let missing = record.value - recent
-        return Advice(kind: .recordInReach, title: "Record à portée",
-                      text: "Ton record de série est \(record.value). Tu en as fait \(recent) récemment : il t'en manque \(missing).")
-    }
-}
-
-/// La carte Conseil, en tête de l'historique d'un exercice.
-struct AdviceCard: View {
-    @Environment(\.theme) private var theme
-    let advice: Advice
-
-    private var color: Color {
-        switch advice.kind {
-        case .fatigue, .loadSpike: return theme.warn
-        case .plateau: return theme.primary
-        case .recordInReach: return theme.ok
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            MonitorLabel("Conseil")
-            HStack(alignment: .top, spacing: 12) {
-                Circle()
-                    .fill(color)
-                    .frame(width: 8, height: 8)
-                    .padding(.top, 6)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(advice.title)
-                        .font(theme.font(14, .bold))
-                        .foregroundStyle(theme.text)
-                    Text(advice.text)
-                        .font(theme.font(12))
-                        .foregroundStyle(theme.dim)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
-        .accessibilityElement(children: .combine)
+        return Advice(kind: .recordInReach, title: "Record à portée", short: "il t'en manque \(missing)")
     }
 }
 

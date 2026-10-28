@@ -30,6 +30,10 @@ struct WorkoutView: View {
     /// Brassard déclaré quand l'écran a été créé (ses capteurs en dépendent).
     @State private var builtWithArmband = Exercise.hasArmband
     @State private var pausedForSettings = false
+    /// Séances enregistrées (la question de fatigue n'arrive qu'après les premières).
+    @Query(sort: \SessionRecord.start, order: .reverse) private var sessions: [SessionRecord]
+    /// Fatigue notée aujourd'hui, avant la séance.
+    @State private var fatigue = Feeling.todayFatigue()
     /// Adopte un autre exercice : l'écran est recréé avec ses capteurs.
     /// Le second paramètre demande de démarrer la séance aussitôt (Démarrer touché en glissant).
     let onSelectExercise: (Exercise, Bool) -> Void
@@ -264,6 +268,10 @@ struct WorkoutView: View {
                 }
                 placementText(browsing)
                 loadControl
+                if asksFatigue {
+                    FatigueQuestion(fatigue: $fatigue)
+                        .padding(.horizontal, 20)
+                }
             case .positioning:
                 PlacementView(placement: model.placement, exercise: model.exercise,
                               showsCamera: model.placementKind?.usesCamera == true) { showGuide(model.exercise) }
@@ -318,6 +326,13 @@ struct WorkoutView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// « Fatigue ? » avant la première séance du jour (et toute la journée une fois répondu),
+    /// à partir de la 4e séance, tant que les questions de ressenti sont actives.
+    private var asksFatigue: Bool {
+        guard Feeling.asks(after: sessions.count) else { return false }
+        return fatigue != nil || !sessions.contains { Calendar.current.isDateInToday($0.start) }
     }
 
     /// Charge (Biceps, Développé), réglée avant de démarrer : l'équipement (1 haltère,
@@ -940,9 +955,13 @@ private struct SessionSummary: View {
                 }
                 .padding(.top, 12)
                 .overlay(alignment: .top) { Rectangle().fill(theme.line).frame(height: 1) }
+                phaseLine(record)
             }
             Spacer(minLength: 0)
 
+            if let record, asksFeeling(record) {
+                EffortQuestion(record: record)
+            }
             if showsTipPrompt {
                 TipPrompt(onSupport: { showsSupport = true },
                           onDismiss: { withAnimation { showsTipPrompt = false } })
@@ -952,6 +971,12 @@ private struct SessionSummary: View {
                 .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 58))
         }
         .task(id: record?.persistentModelID) { await askIfDue() }
+        .onDisappear {
+            // Ressenti : sans aucune réponse plusieurs séances de suite, on ne demande plus
+            if let record, asksFeeling(record) {
+                Feeling.sessionEnded(answered: record.effort != nil || record.feltFatigue != nil)
+            }
+        }
         .sheet(isPresented: $showsSupport, onDismiss: { showsTipPrompt = false }) {
             SupportView()
                 .environmentObject(tipJar)
@@ -977,6 +1002,32 @@ private struct SessionSummary: View {
         switch ask {
         case .review: requestReview()
         case .tip: withAnimation { showsTipPrompt = true }
+        }
+    }
+
+    /// « Effort ? » : à partir de la 4e séance, tant que les questions de ressenti sont actives.
+    private func asksFeeling(_ record: SessionRecord) -> Bool {
+        Feeling.asks(after: history.filter { $0.start < record.start }.count)
+    }
+
+    /// La phase, seulement quand elle appelle une action : rebond (prêt pour un record) ou
+    /// décharge conseillée.
+    @ViewBuilder
+    private func phaseLine(_ record: SessionRecord) -> some View {
+        let phase = HistoryStats(sessions: history, exercise: record.exercise).phase(all: history)
+        if record.exercise != .auto, phase.kind == .rebound || phase.kind == .deloadAdvised {
+            HStack(spacing: 8) {
+                Circle().fill(phase.color(theme)).frame(width: 8, height: 8)
+                Text(phase.title)
+                    .font(theme.font(13, .bold))
+                    .foregroundStyle(theme.text)
+                Text(phase.action())
+                    .font(theme.font(12))
+                    .foregroundStyle(theme.dim)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 

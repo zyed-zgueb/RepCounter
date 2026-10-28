@@ -19,6 +19,7 @@ struct SettingsView: View {
     @AppStorage(Exercise.armbandKey) private var hasArmband = false
     @AppStorage(WelcomeView.key) private var welcomed = false
     @AppStorage(Coach.key) private var coachStep = 0
+    @AppStorage(Feeling.enabledKey) private var asksFeeling = true
 
     @State private var showsYearWheel = false
     @State private var showsExercises = false
@@ -139,6 +140,15 @@ struct SettingsView: View {
                                 .font(theme.font(13, .bold))
                             }
                             note("Facultatif. Situe ton niveau en pompes.")
+                            Rectangle().fill(theme.line).frame(height: 1)
+                                .padding(.vertical, 4)
+                            Toggle(isOn: $asksFeeling) {
+                                Text("RESSENTI")
+                                    .font(theme.font(14, .bold))
+                                    .foregroundStyle(theme.text)
+                            }
+                            .tint(theme.primary)
+                            note("Fatigue avant, effort après. Facultatif.")
                         }
                     }
 

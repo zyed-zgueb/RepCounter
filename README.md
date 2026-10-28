@@ -62,7 +62,7 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
 
 - **Historique** (icône graphique, en veille et à la fin) : Σ (tous les exercices) ou un
   exercice pratiqué, puis quatre blocs, une place pour chaque chose :
-  1. **Conseil**, seulement quand il y a lieu ;
+  1. **Phase** d'entraînement (« en cours 5 / 8 » au début) — une touche ouvre la charge et le (i) ;
   2. **Score d'endurance** et **Forme**, deux tuiles côte à côte (valeur, mini-courbe ; ou leur
      état « en cours ») — une touche ouvre le détail (jauge et (i), courbe de forme) ;
   3. **Activité** : la semaine en cours (cadran, écart avec la semaine précédente, séances,
@@ -89,21 +89,62 @@ Par séance, à partir de la vitesse des répétitions (instant de chaque répé
 la **vitesse** (durée médiane d'une répétition de la première série) et le **maintien** de
 cette vitesse (durée des 3 dernières répétitions ÷ celle des 3 premières, en moyenne sur les
 séries d'au moins 6 répétitions), comparés à la référence personnelle (médianes des 10
-dernières séances de l'exercice) :
+dernières séances de l'exercice qui n'étaient pas fatiguées : une baisse qui dure reste visible
+au lieu de devenir la nouvelle norme) :
 **Forme = 100 × √((vitesse habituelle ÷ vitesse du jour) × (ralentissement habituel ÷ ralentissement du jour))**.
 100 % = comme d'habitude ; fatigué ou en forme au-delà de la variation normale (1,5 fois
-l'écart-type des formes des séances de référence, au moins 3 %). Il faut 3 séances précédentes
+l'écart-type des formes des 10 dernières séances, au moins 3 %). Il faut 3 séances précédentes
 pour établir la référence. Principe : l'entraînement basé sur la vitesse (la vitesse et sa perte
 au fil d'une série reflètent la fatigue). Affichée en fin de séance, dans le détail d'une séance
 et dans le panneau Forme de l'historique (`Form.swift`).
 
-## Conseil
-En tête de l'historique d'un exercice, au plus un conseil, le plus important d'abord
-(`Advice.swift`) : **signal de fatigue** (séance dans la zone fatiguée depuis moins de 3 jours, ou score
-d'endurance en baisse 2 séances de suite sans baisse de volume), **pic de charge** (volume de la
-semaine > 1,5 × la moyenne des 4 précédentes), **plateau** (3 séances notées en 3 semaines sans
-dépasser le meilleur score d'avant), **record à portée** (une série récente à 1 ou 2 répétitions
-du record de série).
+## Phases
+En tête de l'historique d'un exercice, la phase d'entraînement : une étiquette, une action, une
+couleur (`Phase.swift`, `PhaseView.swift`). La charge d'entraînement (toutes les séances) est
+confrontée à la performance mesurée (la Forme de l'exercice).
+
+| Phase | Quand | Action |
+|---|---|---|
+| Construction | Forme dans la variation habituelle | Continue (ou Plateau, Record à portée) |
+| Surcharge | 2 séances de suite fatiguées, après une semaine plus chargée que chacune des 4 d'avant | N'augmente plus |
+| Forme basse | la même baisse, sans hausse de charge | Séance légère |
+| Reprise | une baisse qui commence dans les 14 jours après une pause | Monte progressivement |
+| Décharge conseillée | la baisse dure depuis 14 jours | Une semaine allégée (bouton « Commencer ») |
+| Décharge | 7 jours après « Commencer » | Moins de volume |
+| Pause | plus de 7 jours sans séance | — |
+| Rebond | après une surcharge ou une décharge, 1re séance revenue à ≥ 100 % (ou un record) dans les 14 jours | Prêt pour un record |
+| Fatigue persistante | la baisse continue après une décharge ou une pause | Repos · avis médical si ça dure |
+
+Bases : Meeusen et al. 2013 (consensus ECSS / ACSM : surcharge fonctionnelle ou non selon la
+durée de la baisse, rebond après récupération ; « surentraînement » est un diagnostic médical,
+jamais employé) ; Bell et al. 2023 (consensus Delphi : la décharge réduit le volume) et
+Rogerson et al. 2024 (décharges de 6,4 ± 1,7 jours) ; Foster et al. 2001 (charge de séance =
+effort × minutes) ; Hopkins 2000 (une mesure isolée peut être du bruit : deux séances de suite).
+Le rapport charge aiguë / chronique (« Pic de charge ») est retiré : aucun effet causal démontré
+(Impellizzeri et al. 2020). Les durées (14 jours de baisse, 14 jours pour le rebond, 8 séances
+mesurables sur 4 semaines avant d'afficher) sont **provisoires** : choix de l'app, à remplacer
+par les valeurs des références une fois le texte intégral vérifié. En fin de séance, la phase ne
+s'affiche qu'au passage en Rebond ou en Décharge conseillée. Le détail montre la charge des
+12 dernières semaines (décharges marquées) ; le (i) explique le modèle et cite les références.
+
+Validation : `python3 Simulation/phases.py` (miroir Python, historiques synthétiques : surcharge
+puis rebond, surcharge sans rebond, surcharge qui dure, passage à vide, reprise après 3 semaines
+d'arrêt, 20 progressions régulières, 20 mesures bruitées). Chaque phase attendue tombe au bon
+jour (±2) ; aucune décharge conseillée ni fatigue persistante sur les historiques réguliers ou
+bruités. Limite connue : avec une mesure très bruitée (4 %), « Forme basse » apparaît parfois
+deux ou trois jours à tort.
+
+## Ressenti
+Deux questions facultatives d'un toucher, à partir de la 4e séance (`Feeling.swift`) :
+**Fatigue ?** (1 à 5, item fatigue de McLean et al. 2010, de « très frais » à « toujours
+fatigué ») sur le cadran en veille avant la première séance du jour, et **Effort ?** (0 à 10,
+échelle CR-10 modifiée de Foster et al. 2001) en fin de séance. L'effort donne la charge de
+séance ; la fatigue ressentie avec une Forme normale donne « Fatigue ressentie · surveille »
+(Saw et al. 2016 : le ressenti suit la charge mieux que les mesures objectives, et les deux
+concordent mal). Pas de question « Force ? » : aucun item validé trouvé. Après 5 séances de
+suite sans réponse, plus de question ; Réglages › Profil › Ressenti pour les réactiver.
+Foster recueille l'effort environ 30 minutes après la séance ; ici, à la fin (à 10 ou 30 minutes,
+les notes ne diffèrent pas d'après Uchida et al. 2014).
 
 ## Score d'endurance
 Score d'endurance musculaire, par séance d'au moins 3 séries : **r₁ + r₂·k(R₂) + r₃·k(R₃)**, les répétitions des 3 premières
