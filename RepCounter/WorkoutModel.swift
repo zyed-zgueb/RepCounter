@@ -104,6 +104,9 @@ final class WorkoutModel: ObservableObject {
     @Published private(set) var tentative = 0
     @Published private(set) var tentativePulse = 0
     @Published private(set) var cameraDenied = false
+    /// Accès à la caméra pas encore demandé : il l'est au premier « Démarrer », après la fiche
+    /// qui explique pourquoi, pas à l'ouverture de l'app.
+    private var cameraUndetermined = false
     /// Horloge de l'écran (1 Hz) : durée de séance et chronomètre de récupération.
     @Published private(set) var now = Date()
     @Published private(set) var sessionStart: Date?
@@ -186,11 +189,7 @@ final class WorkoutModel: ObservableObject {
         case .authorized:
             sensors.start()
         case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { granted in
-                DispatchQueue.main.async {
-                    if granted { self.sensors.start() } else { self.cameraDenied = true }
-                }
-            }
+            cameraUndetermined = true
         default:
             cameraDenied = true
         }
@@ -219,6 +218,17 @@ final class WorkoutModel: ObservableObject {
     /// rebours de 5 s, le temps de se mettre en place.
     func beginSession() {
         guard phase == .ready else { return }
+        if cameraUndetermined {
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    self.cameraUndetermined = false
+                    guard granted else { return self.cameraDenied = true }
+                    self.sensors.start()
+                    self.beginSession()
+                }
+            }
+            return
+        }
         lightHaptic.impactOccurred()
         if placementKind != nil {
             placement = PlacementStatus()

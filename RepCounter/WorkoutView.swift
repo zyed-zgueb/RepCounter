@@ -11,6 +11,10 @@ struct WorkoutView: View {
     @StateObject private var model: WorkoutModel
     @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
     @AppStorage(Exercise.armbandKey) private var hasArmband = false
+    @AppStorage(Coach.key) private var coachStep = 0
+    /// Fiche « Placer ton iPhone » affichée ; `guideStartsSession` : la séance démarre ensuite.
+    @State private var guideExercise: Exercise?
+    @State private var guideStartsSession = false
     @State private var bump = false
     @State private var showsHistory = false
     /// La séance terminée, enregistrée dans l'historique.
@@ -126,6 +130,16 @@ struct WorkoutView: View {
         }
         // Réglages ouverts : capteurs en pause (rien à compter, caméra éteinte, interface fluide).
         // À leur fermeture, l'écran reprend, ou se recrée si le brassard a changé.
+        .onChange(of: model.state) { _ in advanceCoach() }
+        .onChange(of: model.phase) { _ in advanceCoach() }
+        .sheet(item: $guideExercise) { exercise in
+            PlacementGuideView(guide: PlacementGuide(exercise: exercise, armband: hasArmband),
+                               buttonTitle: guideStartsSession ? "C'est parti" : "J'ai compris") {
+                if guideStartsSession { start() }
+            }
+            .environment(\.theme, themeStore.current)
+            .preferredColorScheme(themeStore.current.colorScheme)
+        }
         .onChange(of: settingsShown) { shown in
             if shown {
                 // Un enregistrement en cours (mode analyse) continue
@@ -251,7 +265,7 @@ struct WorkoutView: View {
                 loadControl
             case .positioning:
                 PlacementView(placement: model.placement, exercise: model.exercise,
-                              showsCamera: model.placementKind?.usesCamera == true)
+                              showsCamera: model.placementKind?.usesCamera == true) { showGuide(model.exercise) }
             case .countdown(let remaining):
                 let total = max(model.countdownTotal, 1)
                 let elapsed = Double(total - remaining) / Double(total)
@@ -287,10 +301,14 @@ struct WorkoutView: View {
                     }
                     .padding(side * 0.14)
                 }
-                Text("La série suivante démarre dès que tu reprends.")
-                    .font(theme.font(12))
-                    .foregroundStyle(theme.dim)
-                    .multilineTextAlignment(.center)
+                if let step = coachCard {
+                    CoachCard(step: step)
+                } else {
+                    Text("La série suivante démarre dès que tu reprends.")
+                        .font(theme.font(12))
+                        .foregroundStyle(theme.dim)
+                        .multilineTextAlignment(.center)
+                }
                 setsLog
             case .active:
                 let counting = model.state == .counting
@@ -299,6 +317,7 @@ struct WorkoutView: View {
                     dialCount(side: side, counting: counting)
                 }
                 if counting || model.totalReps > 0 { statsLine }
+                if !counting, let step = coachCard { CoachCard(step: step) }
             case .finished:
                 EmptyView()
             }
@@ -394,26 +413,68 @@ struct WorkoutView: View {
         .padding(side * 0.12)
     }
 
-    /// Consigne de placement. Sa hauteur est toujours celle de la plus longue consigne : le
-    /// cadran ne bouge pas d'un exercice à l'autre. Le changement de texte est un fondu sur place.
+    /// Consigne de placement, terminée par « Plus de détails » (la fiche, d'une touche). Sa
+    /// hauteur est toujours celle de la plus longue consigne : le cadran ne bouge pas d'un
+    /// exercice à l'autre. Le changement de texte est un fondu sur place.
     private func placementText(_ exercise: Exercise) -> some View {
-        ZStack(alignment: .top) {
-            placementLine(Self.longestPlacement)
-                .hidden()
-            placementLine(exercise.placement(armband: hasArmband))
-                .id(exercise)
-                .transition(.opacity)
+        Button { showGuide(exercise) } label: {
+            ZStack(alignment: .top) {
+                placementLine(Self.longestPlacement)
+                    .hidden()
+                placementLine(exercise.placement(armband: hasArmband))
+                    .id(exercise)
+                    .transition(.opacity)
+            }
+            .frame(maxWidth: 300)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: 300)
+        .buttonStyle(.plain)
+        .accessibilityHint("Ouvre la fiche pour placer ton iPhone.")
     }
 
     private func placementLine(_ text: String) -> some View {
-        Text(text)
+        (Text(text + " ") + Text("Plus de détails").foregroundStyle(theme.primary).bold())
             .font(theme.font(12))
             .foregroundStyle(theme.dim)
             .multilineTextAlignment(.center)
             .lineSpacing(3)
             .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Ouvre la fiche « Placer ton iPhone » ; `thenStart` : la séance démarre en la refermant.
+    private func showGuide(_ exercise: Exercise, thenStart: Bool = false) {
+        guideStartsSession = thenStart
+        guideExercise = exercise
+    }
+
+    /// Carte de la première séance à montrer maintenant (nil : aucune). Une étape à la fois,
+    /// dans l'ordre : la détection (1re série), la récupération (après la 1re série), la fin.
+    private var coachCard: Int? {
+        guard model.phase == .active else { return nil }
+        let step: Int
+        if model.isResting {
+            step = model.sets.count == 1 ? 2 : 3
+        } else if model.sets.isEmpty, model.state != .counting {
+            step = 1
+        } else {
+            return nil
+        }
+        return step == coachStep + 1 ? step : nil
+    }
+
+    /// Une étape est acquise quand on a vécu ce qu'elle annonce : la 1re série lancée, une
+    /// série reprise après une récupération, une séance de deux séries terminée.
+    private func advanceCoach() {
+        switch coachStep {
+        case 0 where model.state == .counting:
+            coachStep = 1
+        case 1 where model.phase == .active && !model.sets.isEmpty && model.state == .counting:
+            coachStep = 2
+        case 2 where model.phase == .finished && model.sets.count >= 2:
+            coachStep = 3
+        default:
+            break
+        }
     }
 
     private static let longestPlacement = Exercise.allCases
@@ -507,9 +568,14 @@ struct WorkoutView: View {
         }
     }
 
-    /// Démarrer. Si l'exercice affiché n'est pas encore adopté (Démarrer touché juste après
-    /// un glissement), il l'est tout de suite, et sa séance démarre dès son affichage.
+    /// Démarrer. La première fois pour un exercice, la fiche « Placer ton iPhone » d'abord.
+    /// Si l'exercice affiché n'est pas encore adopté (Démarrer touché juste après un
+    /// glissement), il l'est tout de suite, et sa séance démarre dès son affichage.
     private func start() {
+        if !PlacementGuide(exercise: browsing, armband: hasArmband).seen {
+            showGuide(browsing, thenStart: true)
+            return
+        }
         if browsing != model.exercise {
             pendingSelection?.cancel()
             onSelectExercise(browsing, true)

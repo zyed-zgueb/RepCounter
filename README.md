@@ -12,6 +12,13 @@ chiffres à chasse fixe, voyants d'état, tracé du signal façon électrocardio
 Principe : à l'écran, seulement ce qui sert à l'instant ; le reste est rangé dans les
 Réglages. Pas de défilement.
 
+0. **Premier lancement** : une page de bienvenue (« Pose ton iPhone. Entraîne-toi. Il compte. »,
+   le cadran qui compte), puis rien d'autre : pas de compte, pas de questionnaire. La première
+   fois qu'on démarre un exercice, la fiche **Placer ton iPhone** (une illustration, trois
+   repères simples), à revoir à tout moment par **Plus de détails** au bout de la consigne, sous
+   le cadran comme pendant la mise en place. L'accès à la caméra est demandé après la fiche,
+   pas à l'ouverture. La première séance est commentée par trois cartes, une seule fois : la
+   détection, la récupération automatique, « maintiens Terminer » (`Onboarding.swift`).
 1. **Veille** (ouverture de l'app) : au centre du cadran, le pictogramme et le nom de
    l'exercice. **On glisse à gauche ou à droite pour changer d'exercice**, comme les cadrans
    d'une montre : le contenu défile dans le cadran, qui ne bouge pas, avec un cran de vibration ;

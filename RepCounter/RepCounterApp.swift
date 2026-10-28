@@ -29,6 +29,8 @@ struct RootView: View {
     /// L'écran du nouvel exercice démarre sa séance dès son affichage.
     @State private var startsSession = false
     @State private var showsSettings = false
+    /// Premier lancement : la page de bienvenue, une seule fois.
+    @AppStorage(WelcomeView.key) private var welcomed = false
     /// Exercice affiché à l'ouverture des Réglages : il le reste tant qu'ils sont ouverts, même
     /// si on le retire de Mes exercices (l'écran ne change qu'à leur fermeture).
     @State private var exerciseUnderSettings: Exercise?
@@ -61,6 +63,11 @@ struct RootView: View {
             .statusBarHidden()
             // Présentés ici, au-dessus de l'écran d'entraînement. Leurs changements (brassard,
             // exercice retiré de Mes exercices) s'appliquent à leur fermeture
+            .fullScreenCover(isPresented: Binding(get: { !welcomed }, set: { welcomed = !$0 })) {
+                WelcomeView { welcomed = true }
+                    .environment(\.theme, themeStore.current)
+                    .preferredColorScheme(themeStore.current.colorScheme)
+            }
             .sheet(isPresented: $showsSettings, onDismiss: { exerciseUnderSettings = nil }) {
                 SettingsView()
                     .environmentObject(themeStore)
