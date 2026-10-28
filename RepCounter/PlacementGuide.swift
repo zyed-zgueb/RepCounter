@@ -42,9 +42,10 @@ struct PlacementGuide {
                     Point(title: "Tenu d'une main", detail: "Il suit ton buste sans glisser."),
                     Point(title: "Pas au sol", detail: "Je compte avec le mouvement de ton buste.")]
         case .squats:
-            return [Point(title: "Tenu à deux mains", detail: "Bras tendus devant toi, ou contre ta poitrine."),
-                    Point(title: "Il monte et descend avec toi", detail: "Garde-le contre toi toute la série."),
-                    nothingToTouch]
+            // Avec une barre, les mains sont prises : l'iPhone va dans la poche (ou un brassard)
+            return [Point(title: "Dans ta poche", detail: "Poche avant d'un pantalon ajusté : il ne doit pas ballotter."),
+                    Point(title: "Ou dans un brassard", detail: "Sur le haut du bras : tes mains restent libres pour la barre."),
+                    Point(title: "Le temps de t'installer", detail: "Démarre, range-le, place la barre : le comptage démarre à tes premières répétitions.")]
         case .lunges:
             return [Point(title: "Tenu en main", detail: "Ou contre ta poitrine, buste droit."),
                     Point(title: "Il descend et remonte avec toi", detail: "Garde-le contre toi toute la série."),

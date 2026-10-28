@@ -315,11 +315,10 @@ private extension Pictogram {
             let chest = lerp(hip, trunk(hip, 215).shoulder, 0.62)
             phoneMark(go(chest, 1.05, 305), length: 2.6, thickness: 0.55, degrees: 35, accent: accent)
         case .squats:
-            // Tenu à deux mains, bras tendus devant
+            // Dans la poche, sur la cuisse (avec une barre, les mains sont prises)
             let knee = go(p(8.6, 18), Self.shin, -65)
             let hip = go(knee, Self.thigh, 188)
-            let hand = arm(trunk(hip, -58).shoulder, upper: 2, fore: 2)[2]
-            phoneMark(p(hand.x + 0.2, hand.y), length: 2.2, thickness: 0.65, degrees: 90, accent: accent)
+            phoneMark(go(lerp(hip, knee, 0.45), 0.55, -82), length: 2, thickness: 0.8, degrees: 8, accent: accent)
         case .lunges:
             // Tenu en main
             let hand = arm(trunk(p(9.4, 14.3), -90).shoulder, upper: 62, fore: 18)[2]

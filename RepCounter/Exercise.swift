@@ -76,7 +76,7 @@ enum Exercise: String, CaseIterable, Identifiable {
         case .auto: return "Téléphone posé face à toi ou porté sur toi ; l'app cherche le geste répété."
         case .pushups: return "Téléphone au sol, écran vers le haut, au niveau de ta tête."
         case .crunches: return "Téléphone tenu à plat contre la poitrine."
-        case .squats: return "Téléphone tenu à la main ou contre la poitrine."
+        case .squats: return "Téléphone dans une poche de pantalon ajustée, ou dans un brassard."
         case .curls: return "Téléphone dans un brassard sur l'avant-bras qui travaille, près du poignet."
         case .press: return "Téléphone dans un brassard sur l'avant-bras qui pousse."
         case .lunges: return "Téléphone tenu à la main ou contre la poitrine."

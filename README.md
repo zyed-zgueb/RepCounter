@@ -181,7 +181,7 @@ Chaque exercice fixe les capteurs écoutés.
 | Autre exercice | posé face à toi, ou porté | tous, le plus régulier l'emporte |
 | Pompes | au sol, écran vers le haut, au niveau de la tête | profondeur, visage, image |
 | Abdos | à plat contre la poitrine | gyroscope (vitesse de rotation) |
-| Squats | à la main ou contre la poitrine | accélération verticale, inclinaison |
+| Squats | poche de pantalon ajustée, ou brassard (avec une barre, les mains sont prises) | accélération verticale, inclinaison |
 | Biceps | posé face à toi à 2 m (sans brassard) · brassard sur l'avant-bras | squelette, image (+ mouvement) · inclinaison, gyroscope |
 | Développé épaules | posé face à toi à 2 m (sans brassard) · brassard sur l'avant-bras | squelette, image (+ mouvement) · accélération verticale, inclinaison |
 | Fentes | à la main ou contre la poitrine | accélération verticale, inclinaison |
