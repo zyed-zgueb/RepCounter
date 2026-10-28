@@ -108,7 +108,7 @@ struct SupportView: View {
             }
             .padding(16)
 
-            ScrollView {
+            VerticalScroll {
                 VStack(spacing: 14) {
                     MonitorPanel {
                         VStack(alignment: .leading, spacing: 8) {
@@ -134,7 +134,6 @@ struct SupportView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
             }
-            .bounceOnlyIfNeeded()
         }
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.large])

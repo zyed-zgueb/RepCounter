@@ -105,7 +105,7 @@ struct PlacementGuideView: View {
             }
             .padding(16)
 
-            ScrollView {
+            VerticalScroll {
                 VStack(alignment: .leading, spacing: 22) {
                     PlacementIllustration(exercise: guide.exercise, armband: guide.armband, accent: theme.ok)
                         .foregroundStyle(theme.text)
@@ -141,7 +141,6 @@ struct PlacementGuideView: View {
                 }
                 .padding(.horizontal, 20)
             }
-            .bounceOnlyIfNeeded()
 
             Button(buttonTitle) {
                 guide.markSeen()

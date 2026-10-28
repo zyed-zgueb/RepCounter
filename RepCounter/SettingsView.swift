@@ -46,7 +46,7 @@ struct SettingsView: View {
             .padding(16)
 
             // Liste de réglages : défile seulement si l'écran est trop petit
-            ScrollView {
+            VerticalScroll {
                 VStack(spacing: 14) {
                     MonitorPanel("Mes exercices") {
                         VStack(alignment: .leading, spacing: 8) {
@@ -125,6 +125,7 @@ struct SettingsView: View {
                                     }
                                 }
                                 .pickerStyle(.wheel)
+                                .frame(maxWidth: .infinity)
                                 .frame(height: 150)
                                 .clipped()
                                 HStack {
@@ -236,7 +237,6 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
             }
-            .bounceOnlyIfNeeded()
         }
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.large])
@@ -457,6 +457,21 @@ private struct ThemeRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// Défilement vertical seulement : le contenu prend la largeur de l'écran, jamais plus. Un
+/// élément trop large (une roue de sélection, un texte qui ne se coupe pas) ne fait pas
+/// défiler l'écran de côté. Ne rebondit que si le contenu dépasse l'écran.
+struct VerticalScroll<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ScrollView(.vertical) {
+            content()
+                .containerRelativeFrame(.horizontal)
+        }
+        .bounceOnlyIfNeeded()
     }
 }
 

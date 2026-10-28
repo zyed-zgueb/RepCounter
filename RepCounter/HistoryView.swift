@@ -38,7 +38,7 @@ struct HistoryView: View {
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
 
-                ScrollView {
+                VerticalScroll {
                     VStack(spacing: 14) {
                         if !practiced.isEmpty {
                             ExerciseFilter(exercises: practiced, selection: $exercise)
@@ -206,12 +206,11 @@ private struct HistoryDetailView<Content: View>: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
 
-            ScrollView {
+            VerticalScroll {
                 VStack(spacing: 14) { content() }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 24)
             }
-            .bounceOnlyIfNeeded()
         }
         .background(theme.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
@@ -691,7 +690,7 @@ struct SessionDetailView: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
 
-            ScrollView {
+            VerticalScroll {
                 VStack(spacing: 14) {
                     overview
                     HistoryPanel(title: "Séries") { setsTable(sets) }

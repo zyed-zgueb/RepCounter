@@ -203,7 +203,7 @@ struct EnduranceInfoView: View {
             }
             .padding(16)
 
-            ScrollView {
+            VerticalScroll {
                 VStack(alignment: .leading, spacing: 22) {
                     section("Ce qu'il mesure",
                             "L'endurance musculaire locale : la capacité d'un groupe de muscles à répéter un mouvement série après série, avec peu de repos. Elle combine trois qualités : le nombre de répétitions d'affilée, le maintien de ce nombre d'une série à l'autre, et la vitesse de récupération entre les séries.")
