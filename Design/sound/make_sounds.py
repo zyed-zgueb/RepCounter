@@ -10,7 +10,10 @@ Chaque son a un rôle unique, reconnaissable sans regarder l'écran :
   count    bip court (mi)           3, 2, 1
   go       accord lumineux          départ
   setEnd   deux notes descendantes  fin de série
-  rest     battement grave, discret toutes les 30 s de récupération
+  rest     un battement grave         récupération : 0:15 (puis 1:15, 2:15…)
+  rest2    deux battements graves     récupération : 0:30
+  rest3    trois battements graves    récupération : 0:45
+  restMinute  accord grave, plus long récupération : chaque minute pleine
   finish   arpège complet, longue résonance   fin de séance
 """
 import os
@@ -22,7 +25,7 @@ import numpy as np
 RATE = 44_100
 OUT = os.path.join(os.path.dirname(__file__), "out")
 
-A3, E4, A4, CS5, E5, A5 = 220.0, 329.63, 440.0, 554.37, 659.26, 880.0
+A3, CS4, E4, A4, CS5, E5, A5 = 220.0, 277.18, 329.63, 440.0, 554.37, 659.26, 880.0
 
 
 def lowpass(signal, cutoff):
@@ -80,7 +83,13 @@ def palette(note):
         "go": lambda: mix((0, note(A4, decay=0.09, level=0.4)), (0, note(CS5, decay=0.09, level=0.3)),
                           (0, note(E5, decay=0.09, level=0.3))),
         "setEnd": lambda: mix((0, note(E5, level=0.45)), (0.08, note(A4, decay=0.07, level=0.55))),
-        "rest": lambda: mix((0, note(A3, level=0.35))),
+        # Récupération : des battements graves, discrets, toutes les 15 s (1, 2, 3), et à chaque
+        # minute pleine un accord plus long : on sait où on en est sans regarder l'écran
+        "rest": lambda: mix((0, note(A3, level=0.4))),
+        "rest2": lambda: mix((0, note(A3, level=0.4)), (0.17, note(A3, level=0.4))),
+        "rest3": lambda: mix((0, note(A3, level=0.4)), (0.17, note(A3, level=0.4)), (0.34, note(A3, level=0.4))),
+        "restMinute": lambda: mix((0, note(A3, decay=0.16, level=0.4)), (0.05, note(CS4, decay=0.16, level=0.3)),
+                                  (0.1, note(E4, decay=0.18, level=0.3))),
         "finish": lambda: mix(*[(0.07 * i, note(f, decay=0.06 if i < 3 else 0.12, level=0.45))
                                 for i, f in enumerate([A4, CS5, E5, A5])]),
     }
@@ -112,8 +121,9 @@ def demo_set(sounds):
         events.append((t, sounds["rep10" if rep % 10 == 0 else "rep5" if rep % 5 == 0 else "rep"]()))
         t += 1.7
     events.append((t + 2.5, sounds["setEnd"]()))
-    events.append((t + 6.5, sounds["rest"]()))
-    events.append((t + 9, sounds["finish"]()))
+    for k, name in enumerate(["rest", "rest2", "rest3", "restMinute"]):
+        events.append((t + 6.5 + 2 * k, sounds[name]()))
+    events.append((t + 15, sounds["finish"]()))
     return mix(*events)
 
 

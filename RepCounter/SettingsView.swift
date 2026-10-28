@@ -265,7 +265,7 @@ struct SettingsView: View {
     private var audioNote: String {
         switch audioMode {
         case .sounds:
-            return "Une note par répétition, deux notes tous les 5, trois tous les 10. Notes de départ, fin de série, fin de séance."
+            return "Une note par répétition, deux notes tous les 5, trois tous les 10. En récupération, un battement à 15 s, deux à 30, trois à 45, un accord à chaque minute. Notes de départ, fin de série, fin de séance."
         case .voice:
             let voice = Announcer.qualityVoiceName.map { "Voix : \($0)." }
                 ?? "Pour une voix plus naturelle, télécharge une voix française Améliorée ou Premium : Réglages de l'iPhone › Accessibilité › Contenu énoncé › Voix."

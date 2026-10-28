@@ -42,8 +42,12 @@ enum Cue: String, CaseIterable {
     case go
     /// Deux notes descendantes : fin de série.
     case setEnd
-    /// Note grave, discrète : toutes les 30 s de récupération.
+    /// Récupération, toutes les 15 s : un battement grave (0:15), deux (0:30), trois (0:45),
+    /// et un accord grave plus long à chaque minute pleine. Le cycle reprend chaque minute.
     case rest
+    case rest2
+    case rest3
+    case restMinute
     /// Arpège : fin de séance.
     case finish
 

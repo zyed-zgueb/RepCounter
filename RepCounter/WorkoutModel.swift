@@ -80,8 +80,9 @@ final class WorkoutModel: ObservableObject {
     static let countdownSeconds = 5
     /// Après la mise en place, on est déjà en position : un compte à rebours court suffit.
     static let placedCountdownSeconds = 3
-    /// Récupération signalée toutes les 30 s.
-    private static let restAnnouncementInterval = 30
+    /// Récupération marquée toutes les 15 s (un, deux, trois battements, puis un accord à la
+    /// minute) ; la voix, si elle est choisie, dit la durée toutes les 30 s.
+    private static let restAnnouncementInterval = 15
 
     let exercise: Exercise
     let live = LiveSignal()
@@ -366,13 +367,15 @@ final class WorkoutModel: ObservableObject {
 
     private func tick() {
         now = Date()
-        // Récupération annoncée toutes les 30 s
+        // Récupération marquée toutes les 15 s : on sait où on en est dans la minute sans
+        // regarder l'écran
         guard isResting else { return }
         let marks = Int(restDuration) / Self.restAnnouncementInterval
         if marks > restAnnouncements {
             restAnnouncements = marks
-            announcer.play(.rest)
-            announcer.say(Self.spokenDuration(marks * Self.restAnnouncementInterval))
+            let cues: [Cue] = [.restMinute, .rest, .rest2, .rest3]
+            announcer.play(cues[marks % 4])
+            if marks % 2 == 0 { announcer.say(Self.spokenDuration(marks * Self.restAnnouncementInterval)) }
         }
     }
 
