@@ -10,6 +10,8 @@ struct PlacementView: View {
     let placement: PlacementStatus
     let exercise: Exercise
     let showsCamera: Bool
+    /// « Plus de détails » : la fiche « Placer ton iPhone ».
+    let onShowGuide: () -> Void
 
     var body: some View {
         let complete = placement.isComplete
@@ -45,13 +47,18 @@ struct PlacementView: View {
                 }
                 .foregroundStyle(color)
                 .contentTransition(.opacity)
-                Text(placement.hint)
-                    .font(theme.font(12))
-                    .foregroundStyle(theme.dim)
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: 300, minHeight: 34, alignment: .top)
+                Button(action: onShowGuide) {
+                    (Text(placement.hint + " ") + Text("Plus de détails").foregroundStyle(theme.primary).bold())
+                        .font(theme.font(12))
+                        .foregroundStyle(theme.dim)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: 300, minHeight: 34, alignment: .top)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Ouvre la fiche pour placer ton iPhone.")
             }
             .animation(.easeInOut(duration: 0.2), value: placement.instruction)
             .accessibilityElement(children: .combine)

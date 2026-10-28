@@ -247,3 +247,125 @@ private struct Pictogram {
         head(center)
     }
 }
+
+// MARK: - Placement de l'iPhone
+
+/// Où mettre l'iPhone, en image : la pose de l'exercice (le même squelette que les
+/// pictogrammes) et l'iPhone, en couleur d'accent, là où il doit être. Pour la caméra, une scène
+/// plus large : l'iPhone debout sur une chaise, à deux grands pas.
+struct PlacementIllustration: View {
+    let exercise: Exercise
+    let armband: Bool
+    let accent: Color
+
+    private var camera: Bool { exercise.isArmExercise && !armband }
+
+    var body: some View {
+        let width: CGFloat = camera ? 38 : 20, height: CGFloat = camera ? 22 : 20
+        Canvas { context, size in
+            let scale = min(size.width / width, size.height / height)
+            context.translateBy(x: (size.width - width * scale) / 2, y: (size.height - height * scale) / 2)
+            context.scaleBy(x: scale, y: scale)
+            if camera {
+                // Le sportif à gauche (sol à 19,3), l'iPhone à droite
+                var figure = context
+                figure.translateBy(x: 0, y: 1)
+                Pictogram(context: figure).draw(exercise)
+                Pictogram(context: context).cameraScene(accent: accent)
+            } else {
+                let pictogram = Pictogram(context: context)
+                pictogram.draw(exercise)
+                pictogram.phone(for: exercise, accent: accent)
+            }
+        }
+        .aspectRatio(width / height, contentMode: .fit)
+        .accessibilityHidden(true)
+    }
+}
+
+private extension Pictogram {
+    func lerp(_ a: CGPoint, _ b: CGPoint, _ k: CGFloat) -> CGPoint {
+        CGPoint(x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k)
+    }
+
+    /// L'iPhone : un rectangle arrondi plein, de longueur `length` le long de `degrees`.
+    func phoneMark(_ center: CGPoint, length: CGFloat, thickness: CGFloat, degrees: CGFloat, accent: Color) {
+        var phone = context
+        phone.translateBy(x: center.x, y: center.y)
+        phone.rotate(by: .degrees(Double(degrees)))
+        let rect = CGRect(x: -length / 2, y: -thickness / 2, width: length, height: thickness)
+        phone.fill(Path(roundedRect: rect, cornerRadius: min(length, thickness) * 0.3), with: .color(accent))
+    }
+
+    /// L'iPhone sur la pose de l'exercice (mêmes calculs que les poses).
+    func phone(for exercise: Exercise, accent: Color) {
+        switch exercise {
+        case .pushups:
+            // À plat au sol, sous le visage ; un pointillé du visage à l'iPhone
+            let hip = go(p(17.6, 18), Self.legLength, 206)
+            let head = trunk(hip, 206).head
+            var guide = Path()
+            guide.move(to: p(head.x, head.y + Self.headRadius + 0.5))
+            guide.addLine(to: p(head.x, 17.3))
+            context.stroke(guide, with: .color(accent), style: StrokeStyle(lineWidth: 0.25, lineCap: .round, dash: [0.5, 0.45]))
+            phoneMark(p(head.x + 0.2, 17.9), length: 2.7, thickness: 0.5, degrees: 0, accent: accent)
+        case .crunches:
+            // À plat sur le haut de la poitrine
+            let hip = p(8.6, 17.4)
+            let chest = lerp(hip, trunk(hip, 215).shoulder, 0.62)
+            phoneMark(go(chest, 1.05, 305), length: 2.6, thickness: 0.55, degrees: 35, accent: accent)
+        case .squats:
+            // Tenu à deux mains, bras tendus devant
+            let knee = go(p(8.6, 18), Self.shin, -65)
+            let hip = go(knee, Self.thigh, 188)
+            let hand = arm(trunk(hip, -58).shoulder, upper: 2, fore: 2)[2]
+            phoneMark(p(hand.x + 0.2, hand.y), length: 2.2, thickness: 0.65, degrees: 90, accent: accent)
+        case .lunges:
+            // Tenu en main
+            let hand = arm(trunk(p(9.4, 14.3), -90).shoulder, upper: 62, fore: 18)[2]
+            phoneMark(p(hand.x + 0.2, hand.y), length: 2.2, thickness: 0.65, degrees: 90, accent: accent)
+        case .pullups:
+            // Dans la poche, sur la cuisse
+            let hip = p(10, 6.4 + Self.torso)
+            phoneMark(go(hip, Self.legLength * 0.38, 79) + p(0.5, 0), length: 2, thickness: 0.8, degrees: 79, accent: accent)
+        case .dips:
+            let hip = p(10, 5 + Self.torso)
+            phoneMark(go(hip, (Self.legLength - 0.6) * 0.38, 80) + p(0.5, 0), length: 2, thickness: 0.8, degrees: 80, accent: accent)
+        case .curls:
+            // Brassard sur l'avant-bras
+            let forearm = arm(trunk(p(9.2, 10.8), -90).shoulder, upper: 72, fore: -48)
+            phoneMark(lerp(forearm[1], forearm[2], 0.45), length: 1.6, thickness: 0.9, degrees: -48, accent: accent)
+        case .press:
+            let elbow = go(p(7.8, 5.6), Self.upperArm, 175)
+            let hand = go(elbow, Self.forearm, -90)
+            phoneMark(lerp(elbow, hand, 0.45), length: 1.6, thickness: 0.9, degrees: -90, accent: accent)
+        case .row:
+            let shoulder = trunk(p(12.2, 14.4 - Self.thigh), 198).shoulder
+            let pull = arm(go(shoulder, 0.6, 18), upper: -72, fore: 96)
+            phoneMark(lerp(pull[1], pull[2], 0.45), length: 1.6, thickness: 0.9, degrees: 96, accent: accent)
+        case .auto:
+            break
+        }
+    }
+
+    /// Exercices de bras à la caméra (repère 38 × 22) : le sol prolongé, une chaise, l'iPhone
+    /// debout dessus, et deux grands pas entre lui et le sportif.
+    func cameraScene(accent: Color) {
+        gearLines([[p(1.5, 19.3), p(36.5, 19.3)]], width: 0.8)
+        gearLines([[p(30, 13.2), p(36, 13.2)], [p(30.8, 13.2), p(30.8, 19.3)], [p(35.2, 13.2), p(35.2, 19.3)]], width: 0.9)
+        phoneMark(p(33.05, 11.7), length: 2.8, thickness: 1.3, degrees: 90, accent: accent)
+        var arrow = Path()
+        arrow.move(to: p(14, 20.9))
+        arrow.addLine(to: p(28.5, 20.9))
+        for (tip, back) in [(p(28.5, 20.9), CGFloat(-1)), (p(14, 20.9), CGFloat(1))] {
+            arrow.move(to: p(tip.x + back * 1.1, tip.y - 0.7))
+            arrow.addLine(to: tip)
+            arrow.addLine(to: p(tip.x + back * 1.1, tip.y + 0.7))
+        }
+        context.stroke(arrow, with: .color(accent), style: StrokeStyle(lineWidth: 0.35, lineCap: .round, lineJoin: .round))
+    }
+}
+
+private func + (a: CGPoint, b: CGPoint) -> CGPoint {
+    CGPoint(x: a.x + b.x, y: a.y + b.y)
+}

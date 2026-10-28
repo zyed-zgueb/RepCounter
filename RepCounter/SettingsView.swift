@@ -17,6 +17,8 @@ struct SettingsView: View {
     @AppStorage(Profile.birthYearKey) private var birthYear = 0
     @AppStorage(Exercise.mineKey) private var mineValue = Exercise.defaultMineValue
     @AppStorage(Exercise.armbandKey) private var hasArmband = false
+    @AppStorage(WelcomeView.key) private var welcomed = false
+    @AppStorage(Coach.key) private var coachStep = 0
 
     @State private var showsYearWheel = false
     @State private var showsExercises = false
@@ -212,7 +214,14 @@ struct SettingsView: View {
                             }
                             .tint(theme.primary)
                             note("Affiche pendant la séance l'enregistrement des mesures (●) et le diagnostic des capteurs, pour analyser une séance qui compte mal.")
-                            if analysisMode { AccuracyList() }
+                            if analysisMode {
+                                AccuracyList()
+                                Rectangle().fill(theme.line).frame(height: 1)
+                                    .padding(.vertical, 4)
+                                Button("Revoir l'onboarding") { replayOnboarding() }
+                                    .buttonStyle(MonitorButtonStyle(color: theme.primary, filled: false, height: 44, fontSize: 12))
+                                note("Bienvenue, fiches « Placer ton iPhone » et première séance commentée, comme au premier lancement. L'historique est conservé ; l'accès à la caméra, déjà accordé, n'est pas redemandé.")
+                            }
                         }
                     }
 
@@ -238,6 +247,15 @@ struct SettingsView: View {
                 .environment(\.theme, theme)
                 .preferredColorScheme(theme.colorScheme)
         }
+    }
+
+    /// Repart comme au premier lancement : les Réglages se ferment, puis la bienvenue s'affiche.
+    private func replayOnboarding() {
+        PlacementGuide.forgetAll()
+        coachStep = 0
+        dismiss()
+        // Après la fermeture des Réglages : la bienvenue ne peut pas s'ouvrir par-dessus
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { welcomed = false }
     }
 
     private var audioNote: String {

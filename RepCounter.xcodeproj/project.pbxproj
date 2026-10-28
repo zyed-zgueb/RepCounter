@@ -25,11 +25,13 @@
 		B00000000000000000000016 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000016 /* Exercise.swift */; };
 		B00000000000000000000017 /* Placement.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000017 /* Placement.swift */; };
 		B00000000000000000000018 /* PlacementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000018 /* PlacementView.swift */; };
-		B00000000000000000000019 /* AutoCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000019 /* AutoCounter.swift */; };
-		B00000000000000000000020 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000020 /* SensorHub.swift */; };
-		B00000000000000000000021 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000021 /* PoseFeatures.swift */; };
-		B00000000000000000000022 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000022 /* SignalMath.swift */; };
-		B00000000000000000000023 /* Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000023 /* Support.swift */; };
+		B00000000000000000000019 /* PlacementGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000019 /* PlacementGuide.swift */; };
+		B00000000000000000000020 /* Onboarding.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000020 /* Onboarding.swift */; };
+		B00000000000000000000021 /* AutoCounter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000021 /* AutoCounter.swift */; };
+		B00000000000000000000022 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000022 /* SensorHub.swift */; };
+		B00000000000000000000023 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000023 /* PoseFeatures.swift */; };
+		B00000000000000000000024 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000024 /* SignalMath.swift */; };
+		B00000000000000000000025 /* Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000025 /* Support.swift */; };
 		B00000000000000000000098 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000098 /* Assets.xcassets */; };
 		B00000000000000000000097 /* Themes.json in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000097 /* Themes.json */; };
 		B00000000000000000000096 /* Sounds in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000096 /* Sounds */; };
@@ -54,11 +56,13 @@
 		F00000000000000000000016 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
 		F00000000000000000000017 /* Placement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Placement.swift; sourceTree = "<group>"; };
 		F00000000000000000000018 /* PlacementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementView.swift; sourceTree = "<group>"; };
-		F00000000000000000000019 /* AutoCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoCounter.swift; sourceTree = "<group>"; };
-		F00000000000000000000020 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
-		F00000000000000000000021 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
-		F00000000000000000000022 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
-		F00000000000000000000023 /* Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support.swift; sourceTree = "<group>"; };
+		F00000000000000000000019 /* PlacementGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlacementGuide.swift; sourceTree = "<group>"; };
+		F00000000000000000000020 /* Onboarding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Onboarding.swift; sourceTree = "<group>"; };
+		F00000000000000000000021 /* AutoCounter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoCounter.swift; sourceTree = "<group>"; };
+		F00000000000000000000022 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
+		F00000000000000000000023 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
+		F00000000000000000000024 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
+		F00000000000000000000025 /* Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support.swift; sourceTree = "<group>"; };
 		F00000000000000000000098 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F00000000000000000000097 /* Themes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Themes.json; sourceTree = "<group>"; };
 		F00000000000000000000096 /* Sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Sounds; sourceTree = "<group>"; };
@@ -115,11 +119,13 @@
 				F00000000000000000000016 /* Exercise.swift */,
 				F00000000000000000000017 /* Placement.swift */,
 				F00000000000000000000018 /* PlacementView.swift */,
-				F00000000000000000000019 /* AutoCounter.swift */,
-				F00000000000000000000020 /* SensorHub.swift */,
-				F00000000000000000000021 /* PoseFeatures.swift */,
-				F00000000000000000000022 /* SignalMath.swift */,
-				F00000000000000000000023 /* Support.swift */,
+				F00000000000000000000019 /* PlacementGuide.swift */,
+				F00000000000000000000020 /* Onboarding.swift */,
+				F00000000000000000000021 /* AutoCounter.swift */,
+				F00000000000000000000022 /* SensorHub.swift */,
+				F00000000000000000000023 /* PoseFeatures.swift */,
+				F00000000000000000000024 /* SignalMath.swift */,
+				F00000000000000000000025 /* Support.swift */,
 				F00000000000000000000098 /* Assets.xcassets */,
 				F00000000000000000000097 /* Themes.json */,
 				F00000000000000000000096 /* Sounds */,
@@ -220,11 +226,13 @@
 				B00000000000000000000016 /* Exercise.swift in Sources */,
 				B00000000000000000000017 /* Placement.swift in Sources */,
 				B00000000000000000000018 /* PlacementView.swift in Sources */,
-				B00000000000000000000019 /* AutoCounter.swift in Sources */,
-				B00000000000000000000020 /* SensorHub.swift in Sources */,
-				B00000000000000000000021 /* PoseFeatures.swift in Sources */,
-				B00000000000000000000022 /* SignalMath.swift in Sources */,
-				B00000000000000000000023 /* Support.swift in Sources */,
+				B00000000000000000000019 /* PlacementGuide.swift in Sources */,
+				B00000000000000000000020 /* Onboarding.swift in Sources */,
+				B00000000000000000000021 /* AutoCounter.swift in Sources */,
+				B00000000000000000000022 /* SensorHub.swift in Sources */,
+				B00000000000000000000023 /* PoseFeatures.swift in Sources */,
+				B00000000000000000000024 /* SignalMath.swift in Sources */,
+				B00000000000000000000025 /* Support.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
