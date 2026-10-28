@@ -40,6 +40,7 @@ WEAK_CYCLE_RATIO = 0.4    # en série, un cycle plus faible que 40 % des précé
 # rythme de la série : le téléphone qu'on reprend en fin de série. Il ne compte pas, la série est finie.
 STRONG_CYCLE_RATIO = 1.4
 PAUSE_RATIO = 1.5
+CONFIRM_DELAY = 0.3      # s : une répétition après une pause attend ce délai avant de compter
 HANDLING_ROTATION = 0.5  # rad/s : au-delà, un téléphone censé être posé est manipulé
 
 # Profils d'exercice : identiques à `Exercise` dans Exercise.swift.
@@ -261,7 +262,10 @@ class SignalTracker:
         Les cycles détectés jusque-là se terminaient peut-être à l'autre extrême (le signe de
         l'ACP est arbitraire) : une pompe était alors comptée en bas, à mi-chemin, et la
         dernière de la série jamais terminée. On bascule pour compter au retour au repos.
-        `series_start` : premier cycle de la série ; la série commence au plus une période avant."""
+        `series_start` : premier cycle de la série ; la série commence au plus une période avant.
+        Gyroscope : renvoie les répétitions de la série, recomptées (voir lobe_reps) ; sinon None."""
+        if self.source == "rotation":
+            return self.lobe_reps(series_start)
         period = self.period()
         times = np.array(self.times)
         before = series_start - period
@@ -270,12 +274,12 @@ class SignalTracker:
         low = percentile(regular, 0.05)
         amplitude = percentile(regular, 0.95) - low
         if len(held) < 5 or amplitude <= 0 or np.std(held) > 0.25 * amplitude:
-            return   # pas de position tenue avant la série : on garde le sens actuel
+            return None   # pas de position tenue avant la série : on garde le sens actuel
         level = (float(np.median(held)) - low) / amplitude
         if 0.3 <= level <= 0.7:
-            # Repos au milieu (capteur de vitesse : gyroscope, accélération) : pas d'extrême
+            # Repos au milieu (capteur de vitesse : accélération) : pas d'extrême
             self.rest_in_middle = True
-            return
+            return None
         rest_high = level > 0.7
         if rest_high != self.rest_high:
             self.rest_high = rest_high
@@ -283,6 +287,62 @@ class SignalTracker:
             # retour au repos ne doit pas compter une seconde fois
             self.armed = True
             self.skip_next = True
+        return None
+
+    def lobe_reps(self, series_start):
+        """Gyroscope (vitesse de rotation) : chaque répétition fait deux bosses, l'aller puis le
+        retour, séparées des répétitions voisines par un court repos. La bosse qui suit ce repos
+        ouvre la répétition ; on arme à elle et on compte à la seconde : la répétition est
+        comptée finie, toujours au même moment de la série (sinon, selon le démarrage, on
+        comptait à l'aller, et la dernière comptait deux fois). Renvoie les répétitions de la
+        série, recomptées ainsi depuis son début."""
+        period = self.period()
+        times = np.array(self.times)
+        region = times >= series_start - period
+        regular = self.signal[times >= self.cycles[-3] - period]
+        low = percentile(regular, 0.05)
+        amplitude = percentile(regular, 0.95) - low
+        if amplitude <= 0:
+            return None
+        # Les bosses : intervalles au-delà des seuils, avec leur type et l'instant de début/fin
+        lobes = []
+        for v, time in zip((self.signal[region] - low) / amplitude, times[region]):
+            kind = "low" if v < LOW else ("high" if v > HIGH else None)
+            if kind and lobes and lobes[-1][0] == kind and lobes[-1][2] is None:
+                continue
+            if kind:
+                lobes.append([kind, time, None])
+            elif lobes and lobes[-1][2] is None:
+                lobes[-1][2] = time
+        if len(lobes) < 4:
+            return None
+        # La bosse qui ouvre une répétition : celle précédée du plus long repos
+        gaps = {"low": [], "high": []}
+        for previous, lobe in zip(lobes, lobes[1:]):
+            if previous[2] is not None:
+                gaps[lobe[0]].append(lobe[1] - previous[2])
+        if not gaps["low"] or not gaps["high"]:
+            return None
+        first_low = np.median(gaps["low"]) > np.median(gaps["high"])
+        opening = "low" if first_low else "high"
+        reps, in_rep, last_end = 0, False, None
+        for kind, start, end in lobes:
+            if kind == opening:
+                in_rep = True
+            elif in_rep:
+                reps += 1
+                in_rep = False
+                last_end = start
+        self.rest_in_middle = True
+        self.rest_high = first_low   # armer à la bosse d'ouverture, compter à la seconde
+        self.armed = in_rep
+        self.armed_since = lobes[-1][1] if in_rep else self.armed_since
+        self.skip_next = False
+        # Le dernier cycle se termine à la dernière seconde bosse (pas à celle où le comptage
+        # vient de démarrer) : la suivante n'est pas prise pour un rebond
+        if last_end is not None and self.cycles:
+            self.cycles[-1] = last_end
+        return reps
 
     def cycles_before_regular_run(self):
         """Répétitions faites avant que la série soit jugée régulière.
@@ -345,11 +405,13 @@ class AutoCounter:
         self.set_swings = []    # ampleur des répétitions de la série en cours
         self.set_times = []     # instants où elles ont été comptées
         self.weak_cycles = 0
+        self.pending = None   # instant d'une répétition après une pause, en attente de confirmation
         self.locks = []   # (instant, source, régularité) : pour comprendre les résultats
 
     def reset(self, time):
         """Remise à zéro : démarrage d'une séance ou série annulée. Ce qui précède est ignoré."""
         self.count = 0
+        self.pending = None
         self.leader = None
         self.last_count_time = -math.inf
         for tracker in self.trackers.values():
@@ -374,6 +436,22 @@ class AutoCounter:
 
         if self.leader:
             tracker = self.trackers[self.leader]
+            if self.pending is not None and time - self.pending >= CONFIRM_DELAY:
+                # Répétition après une pause, en attente : le geste a-t-il continué, bien plus
+                # ample que les répétitions de la série ? C'est le téléphone qu'on reprend.
+                start = tracker.cycles[-2] if len(tracker.cycles) >= 2 else self.pending - 2
+                since = np.array(tracker.times) > start
+                swing = float(tracker.signal[since].max() - tracker.signal[since].min())
+                usual = float(np.median(self.set_swings[-5:]))
+                pending, self.pending = self.pending, None
+                if swing > STRONG_CYCLE_RATIO * usual:
+                    self.leader = None
+                    return
+                self.count += 1
+                self.last_count_time = pending
+                self.set_swings.append(min(swing, usual))
+                self.set_times.append(pending)
+                self.weak_cycles = 0
             if self.leader in completed:
                 # Un cycle bien plus faible que les répétitions de la série (essoufflement,
                 # téléphone qu'on repose…) ne compte pas ; deux de suite : fin de série
@@ -386,7 +464,11 @@ class AutoCounter:
                     # Téléphone repris en fin de série : ne compte pas, la série est finie
                     self.leader = None
                     return
-                if swing >= WEAK_CYCLE_RATIO * usual:
+                if (swing >= WEAK_CYCLE_RATIO * usual and rhythm
+                        and time - self.last_count_time > PAUSE_RATIO * rhythm):
+                    # Après une pause : on attend un instant avant de compter
+                    self.pending = time
+                elif swing >= WEAK_CYCLE_RATIO * usual:
                     self.count += 1
                     self.last_count_time = time
                     self.set_swings.append(swing)
@@ -394,7 +476,8 @@ class AutoCounter:
                     self.weak_cycles = 0
                 else:
                     self.weak_cycles += 1
-            if self.weak_cycles >= 2 or time - self.last_count_time > max(4, 3 * (tracker.period() or 2)):
+            if self.pending is None and (self.weak_cycles >= 2
+                                         or time - self.last_count_time > max(4, 3 * (tracker.period() or 2))):
                 self.leader = None
             return
 
@@ -409,8 +492,12 @@ class AutoCounter:
             self.leader = best[0]
             tracker = self.trackers[best[0]]
             earlier, series_start = tracker.cycles_before_regular_run()
+            base = self.count
             self.count += 3 + earlier
-            tracker.adopt_rest_position(series_start)
+            # Capteur de vitesse : les répétitions de la série recomptées à la seconde bosse
+            reps = tracker.adopt_rest_position(series_start)
+            if reps is not None:
+                self.count = base + reps
             self.last_count_time = time
             self.set_swings = self.trackers[best[0]].cycle_swings[-3:]
             self.set_times = [time]

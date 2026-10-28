@@ -209,6 +209,16 @@ suite marquent la fin de la série. Ça évite de compter l'essoufflement après
 À l'inverse, un cycle 40 % plus ample que les répétitions de la série, après une pause d'au
 moins 1,5 fois son rythme, est le téléphone qu'on reprend sur la poitrine : il ne compte pas et
 clôt la série.
+Comme ce geste n'atteint toute son ampleur qu'un instant plus tard, une répétition qui arrive
+après une pause attend 0,3 s avant de compter : si le geste continue, bien plus ample, il ne
+compte pas.
+
+Gyroscope (abdos) : chaque répétition fait deux bosses de vitesse, l'aller puis le retour, et
+un court repos la sépare de la suivante. La bosse qui suit ce repos ouvre la répétition ; on
+compte à la seconde, quand la répétition est finie. Au démarrage du comptage, les répétitions de
+la série sont recomptées ainsi. Auparavant, selon la façon dont la série démarrait, on comptait
+tantôt à l'aller, tantôt au retour ; à l'aller, la dernière répétition comptait deux fois
+(séance réelle du 28/10 : 51 au lieu de 50).
 
 ## Diagnostic
 Avec le mode analyse activé (Réglages), le bouton tracé de pouls de la séance affiche ce que voit l'app : mesures par seconde

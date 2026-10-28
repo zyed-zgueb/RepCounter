@@ -66,6 +66,9 @@ private enum Tuning {
     /// le rythme de la série : le téléphone qu'on reprend en fin de série. Il ne compte pas.
     static let strongCycleRatio: Float = 1.4
     static let pauseRatio = 1.5
+    /// Une répétition après une pause attend ce délai (s) avant de compter : si le geste
+    /// continue, bien plus ample, c'est le téléphone qu'on reprend.
+    static let confirmDelay = 0.3
     /// Rotation (rad/s) au-delà de laquelle un téléphone censé être posé est manipulé.
     static let handlingRotation: Float = 0.5
 }
@@ -264,21 +267,24 @@ final class SignalTracker {
     /// pour compter au retour au repos. Sans position tenue nette, ou si le repos est au
     /// milieu (capteur de vitesse : gyroscope, accélération), on garde le sens actuel.
     /// - Parameter seriesStart: premier cycle de la série ; elle commence au plus une période avant.
-    func adoptRestPosition(seriesStart: Double) {
-        guard let period, cycles.count >= 3 else { return }
+    /// Gyroscope : renvoie les répétitions de la série, recomptées (voir `lobeReps`) ; sinon nil.
+    @discardableResult
+    func adoptRestPosition(seriesStart: Double) -> Int? {
+        if source == .rotation { return lobeReps(seriesStart: seriesStart) }
+        guard let period, cycles.count >= 3 else { return nil }
         let before = seriesStart - period
         let held = signal.indices.filter { times[$0] >= before - 1.0 && times[$0] <= before - 0.1 }.map { signal[$0] }
-        guard let regularStart = times.firstIndex(where: { $0 >= cycles[cycles.count - 3] - period }) else { return }
+        guard let regularStart = times.firstIndex(where: { $0 >= cycles[cycles.count - 3] - period }) else { return nil }
         let regular = signal[regularStart...]
         let low = percentile(regular, 0.05)
         let regularAmplitude = percentile(regular, 0.95) - low
         guard held.count >= 5, regularAmplitude > 0,
-              standardDeviation(held) <= 0.25 * regularAmplitude else { return }
+              standardDeviation(held) <= 0.25 * regularAmplitude else { return nil }
         let level = (median(held[...]) - low) / regularAmplitude
         guard level < 0.3 || level > 0.7 else {
-            // Repos au milieu (capteur de vitesse : gyroscope, accélération) : pas d'extrême
+            // Repos au milieu (capteur de vitesse : accélération) : pas d'extrême
             restInMiddle = true
-            return
+            return nil
         }
         let newRestHigh = level > 0.7
         if newRestHigh != restHigh {
@@ -288,6 +294,71 @@ final class SignalTracker {
             armed = true
             skipNext = true
         }
+        return nil
+    }
+
+    /// Gyroscope (vitesse de rotation) : chaque répétition fait deux bosses, l'aller puis le
+    /// retour, séparées des répétitions voisines par un court repos. La bosse qui suit ce repos
+    /// ouvre la répétition ; on arme à elle et on compte à la seconde : la répétition est
+    /// comptée finie, toujours au même moment de la série (sinon, selon le démarrage, on
+    /// comptait à l'aller, et la dernière comptait deux fois). Renvoie les répétitions de la
+    /// série, recomptées ainsi depuis son début.
+    func lobeReps(seriesStart: Double) -> Int? {
+        guard let period, cycles.count >= 3,
+              let regularStart = times.firstIndex(where: { $0 >= cycles[cycles.count - 3] - period }) else { return nil }
+        let regular = signal[regularStart...]
+        let low = percentile(regular, 0.05)
+        let amplitude = percentile(regular, 0.95) - low
+        guard amplitude > 0 else { return nil }
+        // Les bosses : intervalles au-delà des seuils, avec leur sens, leur début et leur fin
+        struct Lobe { let low: Bool; let start: Double; var end: Double? }
+        var lobes: [Lobe] = []
+        for i in times.indices where times[i] >= seriesStart - period {
+            let v = (signal[i] - low) / amplitude
+            let kind: Bool? = v < Tuning.lowThreshold ? true : (v > Tuning.highThreshold ? false : nil)
+            if let kind {
+                if let last = lobes.last, last.low == kind, last.end == nil { continue }
+                lobes.append(Lobe(low: kind, start: times[i], end: nil))
+            } else if let last = lobes.last, last.end == nil {
+                lobes[lobes.count - 1].end = times[i]
+            }
+        }
+        guard lobes.count >= 4 else { return nil }
+        // La bosse qui ouvre une répétition : celle précédée du plus long repos
+        var gapsLow: [Float] = [], gapsHigh: [Float] = []
+        for (previous, lobe) in zip(lobes, lobes.dropFirst()) {
+            guard let end = previous.end else { continue }
+            if lobe.low { gapsLow.append(Float(lobe.start - end)) } else { gapsHigh.append(Float(lobe.start - end)) }
+        }
+        guard !gapsLow.isEmpty, !gapsHigh.isEmpty else { return nil }
+        let firstLow = median(gapsLow[...]) > median(gapsHigh[...])
+        var reps = 0, inRep = false
+        var lastEnd: Double?
+        for lobe in lobes {
+            if lobe.low == firstLow {
+                inRep = true
+            } else if inRep {
+                reps += 1
+                inRep = false
+                lastEnd = lobe.start
+            }
+        }
+        restInMiddle = true
+        restHigh = firstLow   // armer à la bosse d'ouverture, compter à la seconde
+        armed = inRep
+        if inRep, let last = lobes.last { armedSince = last.start }
+        skipNext = false
+        // Le dernier cycle se termine à la dernière seconde bosse (pas à celle où le comptage
+        // vient de démarrer) : la suivante n'est pas prise pour un rebond
+        if let lastEnd, !cycles.isEmpty { cycles[cycles.count - 1] = lastEnd }
+        return reps
+    }
+
+    /// Ampleur du signal (max − min) depuis l'instant `start`.
+    func swing(since start: Double) -> Float {
+        let values = signal.indices.filter { times[$0] > start }.map { signal[$0] }
+        guard let high = values.max(), let low = values.min() else { return 0 }
+        return high - low
     }
 
     /// Répétitions faites avant que la série soit jugée régulière.
@@ -407,6 +478,8 @@ final class AutoCounter {
     /// Instants où elles ont été comptées.
     private var setTimes: [Double] = []
     private var weakCycles = 0
+    /// Répétition après une pause, en attente de confirmation (instant où elle s'est terminée).
+    private var pending: Double?
 
     init(exercise: Exercise) {
         self.exercise = exercise
@@ -427,6 +500,7 @@ final class AutoCounter {
         count = 0
         leader = nil
         lastCountTime = -.infinity
+        pending = nil
         resetPending = true
         for tracker in trackers.values { tracker.forgetCycles(before: lastFrameTime) }
     }
@@ -451,15 +525,39 @@ final class AutoCounter {
 
         var didCount = false
         if let leader, let tracker = trackers[leader] {
-            if completed.contains(leader), let swing = tracker.cycleSwings.last {
+            var stillLeading = true
+            if let pending, t - pending >= Tuning.confirmDelay {
+                // Répétition après une pause, en attente : le geste a-t-il continué, bien plus
+                // ample que les répétitions de la série ? C'est le téléphone qu'on reprend.
+                self.pending = nil
+                let cycles = tracker.cycles
+                let swing = tracker.swing(since: cycles.count >= 2 ? cycles[cycles.count - 2] : pending - 2)
+                let usual = median(setSwings.suffix(5))
+                if swing > Tuning.strongCycleRatio * usual {
+                    self.leader = nil
+                    stillLeading = false
+                } else {
+                    count += 1
+                    lastCountTime = pending
+                    didCount = true
+                    setSwings.append(min(swing, usual))
+                    setTimes.append(pending)
+                    weakCycles = 0
+                }
+            }
+            if stillLeading, completed.contains(leader), let swing = tracker.cycleSwings.last {
                 // Un cycle bien plus ample, après une pause : le téléphone qu'on reprend en fin
                 // de série. Il ne compte pas, la série est finie.
                 // Un cycle bien plus faible que les répétitions de la série (essoufflement,
                 // téléphone qu'on repose…) ne compte pas ; deux de suite : fin de série
                 let usual = median(setSwings.suffix(5))
-                if swing > Tuning.strongCycleRatio * usual, let rhythm = setRhythm ?? tracker.period,
-                   t - lastCountTime > Tuning.pauseRatio * rhythm {
+                let rhythm = setRhythm ?? tracker.period
+                let afterPause = rhythm.map { t - lastCountTime > Tuning.pauseRatio * $0 } ?? false
+                if swing > Tuning.strongCycleRatio * usual, afterPause {
                     self.leader = nil
+                } else if swing >= Tuning.weakCycleRatio * usual, afterPause {
+                    // Après une pause : on attend un instant avant de compter
+                    pending = t
                 } else if swing >= Tuning.weakCycleRatio * usual {
                     count += 1
                     lastCountTime = t
@@ -472,13 +570,19 @@ final class AutoCounter {
                 }
             }
             // Plus de cycle franc depuis un moment : fin de série, on cherchera à nouveau
-            if weakCycles >= 2 || t - lastCountTime > max(4, 3 * (tracker.period ?? 2)) { self.leader = nil }
+            if stillLeading, pending == nil,
+               weakCycles >= 2 || t - lastCountTime > max(4, 3 * (tracker.period ?? 2)) { self.leader = nil }
         } else if let best = bestRegularSource(among: completed, at: t), let tracker = trackers[best] {
             // Les 3 cycles réguliers comptent, plus ceux faits avant
             leader = best
+            pending = nil
             let earlier = tracker.cyclesBeforeRegularRun()
+            let base = count
             count += Self.cyclesToLock + earlier.count
-            tracker.adoptRestPosition(seriesStart: earlier.seriesStart)
+            // Gyroscope : les répétitions de la série recomptées à la seconde bosse
+            if let reps = tracker.adoptRestPosition(seriesStart: earlier.seriesStart) {
+                count = base + reps
+            }
             lastCountTime = t
             didCount = true
             setSwings = Array(tracker.cycleSwings.suffix(Self.cyclesToLock))
