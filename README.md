@@ -213,6 +213,17 @@ Comme ce geste n'atteint toute son ampleur qu'un instant plus tard, une répéti
 après une pause attend 0,3 s avant de compter : si le geste continue, bien plus ample, il ne
 compte pas.
 
+**Geste appris (abdos)** : l'app apprend en silence la forme de ta répétition, sur les
+répétitions comptées en série régulière, et la mémorise d'une séance à l'autre
+(`GestureTemplate.swift`) : la forme moyenne sur les 3 axes du gyroscope, son ampleur et sa
+durée. Dès 10 répétitions apprises, hors série régulière, un geste qui ressemble au gabarit
+(cosinus ≥ 0,8, ampleur de 0,5 à 2 fois la tienne, iPhone à plat) compte tout de suite : les
+séries irrégulières (pauses variables entre les répétitions) sont comptées, alors que le
+compteur, qui attend un rythme régulier, les ratait. Au démarrage d'une série régulière, les
+répétitions déjà comptées par le gabarit sont remplacées par le recompte. Séances réelles :
+série irrégulière 15/15 (7 sans gabarit), aucune fausse détection en se levant, en marchant,
+en posant l'iPhone. Expérience : `Simulation/experiment_template.py`.
+
 Gyroscope (abdos) : chaque répétition fait deux bosses de vitesse, l'aller puis le retour, et
 un court repos la sépare de la suivante. La bosse qui suit ce repos ouvre la répétition ; on
 compte à la seconde, quand la répétition est finie. Au démarrage du comptage, les répétitions de

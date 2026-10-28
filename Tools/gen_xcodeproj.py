@@ -4,7 +4,7 @@ Usage : python3 Tools/gen_xcodeproj.py — à relancer après l'ajout ou le retr
 """
 import os
 
-files = ["RepCounterApp.swift","Theme.swift","Audio.swift","ExerciseCarousel.swift","History.swift","HistoryView.swift","Endurance.swift","EnduranceView.swift","Form.swift","Advice.swift","SettingsView.swift","ExerciseIcon.swift","WorkoutView.swift","WorkoutModel.swift","SessionRecorder.swift","Exercise.swift","Placement.swift","PlacementView.swift","PlacementGuide.swift","Onboarding.swift","AutoCounter.swift","SensorHub.swift","PoseFeatures.swift","SignalMath.swift","Support.swift"]
+files = ["RepCounterApp.swift","Theme.swift","Audio.swift","ExerciseCarousel.swift","History.swift","HistoryView.swift","Endurance.swift","EnduranceView.swift","Form.swift","Advice.swift","SettingsView.swift","ExerciseIcon.swift","WorkoutView.swift","WorkoutModel.swift","SessionRecorder.swift","Exercise.swift","Placement.swift","PlacementView.swift","PlacementGuide.swift","Onboarding.swift","AutoCounter.swift","GestureTemplate.swift","SensorHub.swift","PoseFeatures.swift","SignalMath.swift","Support.swift"]
 def i(p,n): return p + "0"*(23-len(str(n))) + str(n)
 fref = {f: i("F",k+1) for k,f in enumerate(files)}
 bf = {f: i("B",k+1) for k,f in enumerate(files)}

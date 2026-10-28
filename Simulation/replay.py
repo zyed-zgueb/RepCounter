@@ -49,10 +49,10 @@ def load(path):
     return meta, end, frames
 
 
-def replay(frames, profile, sources=None):
+def replay(frames, profile, sources=None, template=None):
     """Rejoue les mesures ; renvoie le compteur et, par source, le signal suivi à chaque instant.
     `sources` : capteurs écoutés par l'app pendant l'enregistrement (par défaut, ceux du profil)."""
-    counter = sc.AutoCounter(profile, sources)
+    counter = sc.AutoCounter(profile, sources, template)
     traces = {source: [] for source in counter.profile["sources"]}
     counts = []
     previous_app_count, previous_time = 0, frames[0]["t"]

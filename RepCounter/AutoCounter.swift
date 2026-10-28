@@ -480,10 +480,27 @@ final class AutoCounter {
     private var weakCycles = 0
     /// Répétition après une pause, en attente de confirmation (instant où elle s'est terminée).
     private var pending: Double?
+    /// Gabarit personnel (abdos) : reconnaît une répétition seule, hors série régulière.
+    private let template: GestureTemplate?
+    /// Gyroscope brut des 4 dernières secondes (pour le gabarit).
+    private var rawTimes: [Double] = []
+    private var rawRows: [[Float]] = []
+    /// Répétitions comptées par le gabarit.
+    private var templateTimes: [Double] = []
+    private var lastTemplateCheck = -Double.infinity
+    /// Répétitions comptées en série régulière : leur forme enrichira le gabarit.
+    private var learned: [GestureSample] = []
 
-    init(exercise: Exercise) {
+    init(exercise: Exercise, template: GestureTemplate? = nil) {
         self.exercise = exercise
         sources = exercise.sources
+        self.template = exercise.learnsGesture ? template : nil
+    }
+
+    /// Les répétitions apprises depuis le dernier appel (à mémoriser en fin de séance).
+    func takeLearned() -> [GestureSample] {
+        defer { learned = [] }
+        return learned
     }
 
     /// Rythme de la série : intervalle médian entre ses dernières répétitions comptées.
@@ -501,6 +518,7 @@ final class AutoCounter {
         leader = nil
         lastCountTime = -.infinity
         pending = nil
+        templateTimes = []
         resetPending = true
         for tracker in trackers.values { tracker.forgetCycles(before: lastFrameTime) }
     }
@@ -516,6 +534,15 @@ final class AutoCounter {
            innerProduct(rotation, rotation).squareRoot() > Tuning.handlingRotation {
             for tracker in trackers.values { tracker.forgetHistory() }
         }
+        if exercise.learnsGesture, let rotation = frame.values[.rotation], rotation.count == 3 {
+            rawTimes.append(t)
+            rawRows.append(rotation)
+            let expired = rawTimes.prefix { $0 < t - 4 }.count
+            if expired > 0 {
+                rawTimes.removeFirst(expired)
+                rawRows.removeFirst(expired)
+            }
+        }
         var completed = Set<SignalSource>()
         for (source, value) in frame.values where sources.contains(source) {
             let tracker = trackers[source] ?? SignalTracker(source: source, maxPeriod: exercise.maxPeriod)
@@ -524,6 +551,7 @@ final class AutoCounter {
         }
 
         var didCount = false
+        var countedByTemplate = false
         if let leader, let tracker = trackers[leader] {
             var stillLeading = true
             if let pending, t - pending >= Tuning.confirmDelay {
@@ -560,6 +588,7 @@ final class AutoCounter {
                     pending = t
                 } else if swing >= Tuning.weakCycleRatio * usual {
                     count += 1
+                    learnRep(at: t)
                     lastCountTime = t
                     didCount = true
                     setSwings.append(swing)
@@ -572,25 +601,38 @@ final class AutoCounter {
             // Plus de cycle franc depuis un moment : fin de série, on cherchera à nouveau
             if stillLeading, pending == nil,
                weakCycles >= 2 || t - lastCountTime > max(4, 3 * (tracker.period ?? 2)) { self.leader = nil }
-        } else if let best = bestRegularSource(among: completed, at: t), let tracker = trackers[best] {
-            // Les 3 cycles réguliers comptent, plus ceux faits avant
-            leader = best
-            pending = nil
-            let earlier = tracker.cyclesBeforeRegularRun()
-            let base = count
-            count += Self.cyclesToLock + earlier.count
-            // Gyroscope : les répétitions de la série recomptées à la seconde bosse
-            if let reps = tracker.adoptRestPosition(seriesStart: earlier.seriesStart) {
-                count = base + reps
+        } else {
+            if recognize(frame, at: t) {
+                didCount = true
+                countedByTemplate = true
             }
-            lastCountTime = t
-            didCount = true
-            setSwings = Array(tracker.cycleSwings.suffix(Self.cyclesToLock))
-            setTimes = [t]
-            weakCycles = 0
+            if let best = bestRegularSource(among: completed, at: t), let tracker = trackers[best] {
+                // Les 3 cycles réguliers comptent, plus ceux faits avant
+                leader = best
+                pending = nil
+                countedByTemplate = false
+                let earlier = tracker.cyclesBeforeRegularRun()
+                // Répétitions de cette série déjà comptées par le gabarit : remplacées par le recompte
+                let seriesFrom = earlier.seriesStart - (tracker.period ?? 0)
+                let byTemplate = templateTimes.filter { $0 >= seriesFrom }.count
+                let base = count - byTemplate
+                count = base + Self.cyclesToLock + earlier.count
+                // Gyroscope : les répétitions de la série recomptées à la seconde bosse
+                if let reps = tracker.adoptRestPosition(seriesStart: earlier.seriesStart) {
+                    count = base + reps
+                }
+                count = max(count, base + byTemplate)
+                lastCountTime = t
+                didCount = true
+                setSwings = Array(tracker.cycleSwings.suffix(Self.cyclesToLock))
+                setTimes = [t]
+                weakCycles = 0
+            }
         }
 
-        let state: State = leader != nil ? .counting : (count == 0 ? .searching : .resting)
+        // Une série comptée par le gabarit dure tant que ses répétitions se suivent
+        let templateSet = template.map { tpl in templateTimes.last.map { t - $0 < max(4, 3 * tpl.duration) } ?? false } ?? false
+        let state: State = leader != nil || templateSet ? .counting : (count == 0 ? .searching : .resting)
         let phase = leader.flatMap { trackers[$0]?.phase } ?? 0
         let diagnostics = sources.compactMap { trackers[$0]?.diagnostic }
         // Signal affiché : la source qui compte, sinon celle qui bouge le plus
@@ -603,7 +645,32 @@ final class AutoCounter {
                       cadence: leader.flatMap { trackers[$0]?.period },
                       regularity: leader.flatMap { trackers[$0]?.lastRegularity } ?? 0,
                       tentative: tentative(at: t),
-                      repAge: didCount ? leader.flatMap { trackers[$0] }.map { max(0, t - $0.lastRepPeak) } : nil)
+                      repAge: didCount ? (countedByTemplate ? 0 : leader.flatMap { trackers[$0] }.map { max(0, t - $0.lastRepPeak) }) : nil)
+    }
+
+    /// Hors série régulière : une répétition reconnue par le gabarit compte tout de suite.
+    private func recognize(_ frame: SensorFrame, at t: Double) -> Bool {
+        guard let template, !rawTimes.isEmpty, t - lastTemplateCheck >= 1.0 / 15 else { return false }
+        lastTemplateCheck = t
+        // Abdos : l'iPhone reste à plat sur la poitrine
+        if let gravity = frame.values[.motion], gravity.count == 3, abs(gravity[2]) < 0.6 { return false }
+        let last = max(lastCountTime, templateTimes.last ?? -.infinity)
+        guard t - last >= 0.6 * template.duration,
+              template.score(times: rawTimes, rows: rawRows, now: t) >= GestureTemplate.match else { return false }
+        count += 1
+        templateTimes.append(t)
+        return true
+    }
+
+    /// Répétition comptée en série régulière : sa forme enrichit le gabarit.
+    private func learnRep(at t: Double) {
+        guard exercise.learnsGesture, setTimes.count >= 2, rawTimes.count >= 10 else { return }
+        let recent = Array(setTimes.suffix(6)) + [t]
+        let intervals = zip(recent.dropFirst(), recent).map { Float($0 - $1) }
+        let duration = Double(median(intervals[...]))
+        guard let first = rawTimes.first, t - duration >= first else { return }
+        let sample = GestureTemplate.resample(times: rawTimes, rows: rawRows, from: t - duration, to: t)
+        learned.append(GestureSample(shape: sample.shape, norm: sample.norm, duration: duration))
     }
 
     private func tentative(at t: Double) -> Int {

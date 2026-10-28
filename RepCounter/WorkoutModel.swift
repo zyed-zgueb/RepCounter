@@ -168,7 +168,9 @@ final class WorkoutModel: ObservableObject {
 
     init(exercise: Exercise) {
         self.exercise = exercise
-        counter = AutoCounter(exercise: exercise)
+        // Abdos : le gabarit de ton geste, appris au fil des séances précédentes
+        counter = AutoCounter(exercise: exercise,
+                              template: exercise.learnsGesture ? LearnedGesture.load(exercise).template : nil)
         countsWithCamera = !Set(counter.sources).isDisjoint(with: [.depth, .pixels, .face, .pose])
         placementKind = exercise.placementKind
         placementMonitor = placementKind.map { PlacementMonitor(kind: $0) }
@@ -318,6 +320,12 @@ final class WorkoutModel: ObservableObject {
         // Séance enregistrée : l'enregistrement s'arrête avec elle, et la feuille de fin
         // (répétitions réelles, partage) s'ouvre sur le résumé
         if isRecording { stopRecording() }
+        // Les répétitions de la séance enrichissent le gabarit (mémorisé pour les suivantes)
+        let exercise = self.exercise
+        sensors.queue.async {
+            let learned = self.counter.takeLearned()
+            DispatchQueue.main.async { LearnedGesture.remember(learned, for: exercise) }
+        }
         sensors.stop()
         announcer.play(.finish)
         announcer.say(totalReps > 0 ? "Séance terminée. \(totalReps) répétitions." : "Séance terminée.")

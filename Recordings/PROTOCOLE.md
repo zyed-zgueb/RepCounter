@@ -52,6 +52,6 @@ Une séance de 3 séries par cas, avec ~1 min de repos, en notant le nombre rée
 
 | Exercice | Mode | Enregistrements | Personnes | Statut |
 |---|---|---|---|---|
-| Abdos | mouvement | 3 | 1 | exact (243/243) |
+| Abdos | mouvement | 5 | 1 | exact (273/273), dont une série irrégulière et une séance piège |
 | Pompes | caméra | 2 | 1 | exact (20/20) |
 | Tous les autres | — | 0 | 0 | non validé (simulation seulement) |

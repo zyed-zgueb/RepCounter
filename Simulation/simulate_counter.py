@@ -50,7 +50,7 @@ PROFILES = {
     "pushups": dict(sources=["depth", "face", "pixels"], phone_at_rest=True),
     # Abdos dynamiques, téléphone sur la poitrine : le gyroscope voit un petit basculement
     # rapide des épaules ~7 fois plus fort qu'une respiration de même angle
-    "crunches": dict(sources=["rotation"], max_period=3.0),
+    "crunches": dict(sources=["rotation"], max_period=3.0, template=True),
     "squats": dict(sources=["vertical", "motion"]),
     "curls": dict(sources=["motion", "rotation"]),
     "press": dict(sources=["vertical", "motion"]),
@@ -389,10 +389,57 @@ class SignalTracker:
         return count, next_time
 
 
+TEMPLATE_SAMPLES = 32           # points d'un geste rééchantillonné
+TEMPLATE_MATCH = 0.8            # ressemblance (cosinus) au-delà de laquelle le geste est reconnu
+TEMPLATE_SCALES = (0.75, 1.0, 1.3)
+TEMPLATE_MIN_REPS = 10          # répétitions apprises avant de servir
+TEMPLATE_RECENT = 100           # ampleur et durée : médianes des 100 dernières répétitions
+
+
+class GestureTemplate:
+    """Gabarit personnel d'un geste : la forme moyenne d'une répétition sur les 3 axes du
+    gyroscope (rééchantillonnée, centrée, de norme 1), son ampleur et sa durée. Appris en
+    silence sur les répétitions comptées en série régulière ; sert à reconnaître une répétition
+    seule, quel que soit le rythme (séries irrégulières, premières répétitions)."""
+
+    def __init__(self, shape, norm, duration):
+        self.shape, self.norm, self.duration = shape, norm, duration
+
+    @staticmethod
+    def resample(times, rows, start, end):
+        grid = np.linspace(start, end, TEMPLATE_SAMPLES)
+        shape = np.stack([np.interp(grid, times, rows[:, k]) for k in range(3)], axis=1)
+        shape = shape - shape.mean(axis=0)
+        norm = float(np.linalg.norm(shape))
+        return (shape / norm if norm > 0 else shape), norm
+
+    @classmethod
+    def learn(cls, samples):
+        """samples : (forme, ampleur, durée) des répétitions apprises."""
+        if len(samples) < TEMPLATE_MIN_REPS:
+            return None
+        mean = np.mean([shape for shape, _, _ in samples], axis=0)
+        recent = samples[-TEMPLATE_RECENT:]   # ampleur et durée : les plus récentes
+        return cls(mean / np.linalg.norm(mean), float(np.median([n for _, n, _ in recent])),
+                   float(np.median([d for _, _, d in recent])))
+
+    def score(self, times, rows, now):
+        """Ressemblance du geste qui vient de finir (0 si l'ampleur ne correspond pas)."""
+        best = 0.0
+        for scale in TEMPLATE_SCALES:
+            start = now - self.duration * scale
+            if start < times[0]:
+                continue
+            shape, norm = self.resample(times, rows, start, now)
+            if 0.5 * self.norm <= norm <= 2.0 * self.norm:
+                best = max(best, float(np.sum(shape * self.shape)))
+        return best
+
+
 class AutoCounter:
     """Les sources du profil suivies en parallèle ; la première avec 3 cycles réguliers mène."""
 
-    def __init__(self, profile="auto", sources=None):
+    def __init__(self, profile="auto", sources=None, template=None):
         # Capteurs : ceux du profil, ou ceux réellement écoutés par l'app (enregistrement), qui
         # dépendent d'un réglage (brassard pour les exercices de bras)
         self.profile = dict(PROFILES[profile])
@@ -406,12 +453,46 @@ class AutoCounter:
         self.set_times = []     # instants où elles ont été comptées
         self.weak_cycles = 0
         self.pending = None   # instant d'une répétition après une pause, en attente de confirmation
+        # Gabarit personnel (gyroscope) : reconnaît une répétition seule, hors série régulière
+        self.template = template
+        self.raw_times, self.raw_rows = [], []       # gyroscope brut, 4 dernières secondes
+        self.template_times = []                     # répétitions comptées par le gabarit
+        self.last_template_check = -math.inf
+        self.learned = []                            # (forme, ampleur, durée) des répétitions en série
         self.locks = []   # (instant, source, régularité) : pour comprendre les résultats
+
+    def recognize(self, time, values):
+        """Hors série régulière : une répétition reconnue par le gabarit compte tout de suite."""
+        if (self.template is None or not self.profile.get("template") or self.leader or not self.raw_times
+                or time - self.last_template_check < 1 / 15):
+            return
+        self.last_template_check = time
+        gravity = values.get("motion")
+        if gravity is not None and abs(gravity[2]) < 0.6:
+            return   # abdos : l'iPhone reste à plat sur la poitrine
+        last = max([self.last_count_time] + self.template_times[-1:])
+        if time - last < 0.6 * self.template.duration:
+            return
+        if self.template.score(np.array(self.raw_times), np.array(self.raw_rows), time) >= TEMPLATE_MATCH:
+            self.count += 1
+            self.template_times.append(time)
+
+    def learn_rep(self, time):
+        """Répétition comptée en série régulière : sa forme enrichit le gabarit."""
+        if not self.profile.get("template") or len(self.set_times) < 2 or len(self.raw_times) < 10:
+            return
+        duration = float(np.median(np.diff(self.set_times[-6:] + [time])))
+        times = np.array(self.raw_times)
+        if time - duration < times[0]:
+            return
+        shape, norm = GestureTemplate.resample(times, np.array(self.raw_rows), time - duration, time)
+        self.learned.append((shape, norm, duration))
 
     def reset(self, time):
         """Remise à zéro : démarrage d'une séance ou série annulée. Ce qui précède est ignoré."""
         self.count = 0
         self.pending = None
+        self.template_times = []
         self.leader = None
         self.last_count_time = -math.inf
         for tracker in self.trackers.values():
@@ -425,6 +506,12 @@ class AutoCounter:
         if self.profile.get("phone_at_rest") and rotation is not None and np.linalg.norm(rotation) > HANDLING_ROTATION:
             for tracker in self.trackers.values():
                 tracker.forget_history()
+        if rotation is not None and self.profile.get("template"):
+            self.raw_times.append(time)
+            self.raw_rows.append(np.asarray(rotation, dtype=float))
+            while self.raw_times[0] < time - 4:
+                self.raw_times.pop(0)
+                self.raw_rows.pop(0)
         for source, value in values.items():
             if source not in sources:
                 continue
@@ -470,6 +557,7 @@ class AutoCounter:
                     self.pending = time
                 elif swing >= WEAK_CYCLE_RATIO * usual:
                     self.count += 1
+                    self.learn_rep(time)
                     self.last_count_time = time
                     self.set_swings.append(swing)
                     self.set_times.append(time)
@@ -480,6 +568,8 @@ class AutoCounter:
                                          or time - self.last_count_time > max(4, 3 * (tracker.period() or 2))):
                 self.leader = None
             return
+
+        self.recognize(time, values)
 
         best = None
         for source in sources:
@@ -492,12 +582,16 @@ class AutoCounter:
             self.leader = best[0]
             tracker = self.trackers[best[0]]
             earlier, series_start = tracker.cycles_before_regular_run()
-            base = self.count
-            self.count += 3 + earlier
+            period = tracker.period()
+            # Répétitions de cette série déjà comptées par le gabarit : remplacées par le recompte
+            by_template = sum(1 for x in self.template_times if x >= series_start - period)
+            base = self.count - by_template
+            self.count = base + 3 + earlier
             # Capteur de vitesse : les répétitions de la série recomptées à la seconde bosse
             reps = tracker.adopt_rest_position(series_start)
             if reps is not None:
                 self.count = base + reps
+            self.count = max(self.count, base + by_template)
             self.last_count_time = time
             self.set_swings = self.trackers[best[0]].cycle_swings[-3:]
             self.set_times = [time]

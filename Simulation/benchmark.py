@@ -12,6 +12,9 @@ référence Recordings/benchmark.json : un enregistrement exact dans la référe
 plus est une régression (code de sortie 1). Après une amélioration vérifiée :
     python3 Simulation/benchmark.py --update
 
+Les séances sont rejouées dans l'ordre (les noms commencent par l'exercice et la date) : le
+gabarit personnel de chacune est appris sur les précédentes, comme dans l'app.
+
 Usage :
     python3 Simulation/benchmark.py [--recordings Recordings] [--update]
 Dépendances : numpy.
@@ -26,6 +29,7 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import replay as rp  # noqa: E402
+import simulate_counter as sc  # noqa: E402
 
 CAMERA_SOURCES = {"depth", "pixels", "face", "pose"}
 
@@ -33,6 +37,11 @@ CAMERA_SOURCES = {"depth", "pixels", "face", "pose"}
 def mode(sources):
     """Caméra si l'app écoutait au moins un capteur de la caméra, sinon mouvement."""
     return "caméra" if CAMERA_SOURCES & set(sources or []) else "mouvement"
+
+
+# Gabarits personnels appris au fil des séances, par exercice (comme l'app : chaque séance
+# profite des répétitions des séances d'avant)
+LEARNED = {}
 
 
 def run(path):
@@ -44,7 +53,9 @@ def run(path):
         frame["t"] -= t0
     exercise = meta.get("exercise", "auto")
     sources = meta.get("sources")
-    counter, _, _ = rp.replay(frames, exercise, sources)
+    learned = LEARNED.setdefault(exercise, [])
+    counter, _, _ = rp.replay(frames, exercise, sources, sc.GestureTemplate.learn(learned))
+    learned.extend(counter.learned)
     return dict(file=os.path.basename(path), exercise=exercise, mode=mode(sources),
                 actual=end["actualReps"], app=frames[-1].get("count", 0), replayed=counter.count)
 

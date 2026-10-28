@@ -410,6 +410,15 @@ private struct AccuracyList: View {
                         .monospacedDigit()
                 }
             }
+            // Le gabarit personnel des abdos : ce que l'app a appris de ton geste
+            let learned = LearnedGesture.load(.crunches).count
+            if learned > 0 {
+                Text("Geste appris (abdos) : \(learned) répétitions" + (learned < GestureTemplate.minReps
+                     ? ", actif dès \(GestureTemplate.minReps)." : ", actif : les séries irrégulières sont comptées."))
+                    .font(theme.font(11))
+                    .foregroundStyle(theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Text("Une série corrigée en fin de séance compte comme une erreur ; corrige chaque série fausse pour que la mesure soit juste. Objectif : 95 % de séries exactes.")
                 .font(theme.font(11))
                 .foregroundStyle(theme.dim)
