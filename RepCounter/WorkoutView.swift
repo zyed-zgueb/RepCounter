@@ -1,4 +1,5 @@
 import SwiftData
+import StoreKit
 import SwiftUI
 
 /// L'écran unique de l'app : le cadran. En veille, on y glisse d'un exercice à l'autre ;
@@ -827,14 +828,19 @@ private struct SignalTrace: View {
 
 /// Le total dans le cadran, l'écart avec la séance précédente et les records battus, les séries
 /// (une touche sur une barre pour corriger son compte), trois mesures (score d'endurance, forme,
-/// durée), et « Nouvelle séance ».
+/// durée), et « Nouvelle séance ». Après un record, une seule fois : la note App Store, puis le don.
 private struct SessionSummary: View {
     @Environment(\.theme) private var theme
+    @Environment(\.requestReview) private var requestReview
+    @Environment(\.openURL) private var openURL
+    @EnvironmentObject private var tipJar: TipJar
     @ObservedObject var model: WorkoutModel
     /// La séance enregistrée (nil si aucune répétition).
     let record: SessionRecord?
     @Query(sort: \SessionRecord.start, order: .reverse) private var history: [SessionRecord]
     @State private var editing: Int?
+    @State private var showsTipPrompt = false
+    @State private var showsSupport = false
 
     var body: some View {
         VStack(spacing: 14) {
@@ -879,9 +885,47 @@ private struct SessionSummary: View {
             }
             Spacer(minLength: 0)
 
+            if showsTipPrompt {
+                TipPrompt(onSupport: { showsSupport = true },
+                          onDismiss: { withAnimation { showsTipPrompt = false } })
+                    .transition(.opacity)
+            }
             Button("Nouvelle séance") { model.newSession() }
                 .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 58))
         }
+        .task(id: record?.persistentModelID) { await askIfDue() }
+        .sheet(isPresented: $showsSupport, onDismiss: { showsTipPrompt = false }) {
+            SupportView()
+                .environmentObject(tipJar)
+                .environment(\.theme, theme)
+                .preferredColorScheme(theme.colorScheme)
+        }
+    }
+
+    /// Après un record : la note App Store (dès la 5e séance), puis, à un record suivant, le don
+    /// (dès la 10e). Une seule fois chacun.
+    @MainActor
+    private func askIfDue() async {
+        guard let record else { return }
+        // La séance vient d'être enregistrée : on compte celles d'avant, plus elle
+        let sessions = history.filter { $0.start < record.start }.count + 1
+        let beatRecord = recordSetIndex(record) != nil
+            || earlier(record).map(\.totalReps).max().map { record.totalReps > $0 } == true
+        guard let ask = Ask.next(sessions: sessions, beatRecord: beatRecord) else { return }
+        // Laisser le temps de voir le record avant de demander
+        try? await Task.sleep(for: .seconds(1.5))
+        guard !Task.isCancelled else { return }
+        ask.markAsked()
+        switch ask {
+        case .review: requestReview()
+        case .tip: withAnimation { showsTipPrompt = true }
+        }
+    }
+
+    /// Ouvre un ticket GitHub pré-rempli avec les séries corrigées.
+    private func report(_ record: SessionRecord) {
+        let sets = record.orderedSets.map { (counted: $0.countedReps, actual: $0.reps) }
+        if let url = CountReport.url(exercise: record.exercise.title, sets: sets) { openURL(url) }
     }
 
     private var total: Int { record?.totalReps ?? model.totalReps }
@@ -981,6 +1025,15 @@ private struct SessionSummary: View {
             .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
             .transition(.opacity.combined(with: .scale(scale: 0.96)))
+        } else if sets.contains(where: { $0.reps != $0.countedReps }) {
+            // Un compte corrigé : proposer de le signaler, pour améliorer le compteur
+            Button { report(record) } label: {
+                Text("Le compte était faux ? **Signale-le**")
+                    .font(theme.font(11))
+                    .foregroundStyle(theme.dim)
+            }
+            .buttonStyle(.plain)
+            .transition(.opacity)
         } else {
             Text("Touche une série pour corriger son compte.")
                 .font(theme.font(11))

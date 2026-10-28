@@ -125,6 +125,20 @@ clair/sombre), choisis dans les Réglages. Aucun écran n'a de couleur en dur : 
 `ThemeStore` mémorise le choix. Tous les thèmes sont gratuits. Thèmes livrés :
 Moniteur, Phosphore, Clinique (clair), Néon.
 
+## Soutien, note et signalement
+Reps est gratuit, sans pub, sans compte, et rien ne quitte l'iPhone. Rien n'est payant.
+- **Soutenir Reps** (Réglages › Reps) : trois dons en achat intégré consommable, qui ne
+  débloquent rien (`Support.swift`, `TipJar`). Identifiants à créer dans App Store Connect :
+  `reps.tip.coffee` (1,99 €), `reps.tip.breakfast` (4,99 €), `reps.tip.patron` (9,99 €). Pour
+  les tester dans Xcode : un fichier StoreKit Configuration avec ces trois consommables,
+  choisi dans le schéma (Run › Options › StoreKit Configuration).
+- **Après un record**, une seule fois chacun : la demande de note App Store d'Apple dès la
+  5e séance, puis, à un record suivant, une ligne discrète proposant un don dès la 10e (`Ask`).
+  Jamais pendant une séance, jamais deux demandes à la fois.
+- **Signaler un comptage faux** : dès qu'une série est corrigée en fin de séance, « Le compte
+  était faux ? Signale-le » ouvre un ticket GitHub pré-rempli (exercice, séries comptées et
+  réelles, version d'iOS). L'app n'envoie rien : l'utilisateur relit et envoie lui-même.
+
 ## Pictogrammes
 Dix pictogrammes dessinés (`ExerciseIcon.swift`), sur un squelette unique : tronc, cou, tête,
 bras, avant-bras, cuisse et tibia ont des longueurs fixes, chaque exercice n'est qu'une pose ;
@@ -288,3 +302,7 @@ données réelles. Profondeur brute : le 10e centile des distances suit la parti
 plus proche (0,58 m en haut de pompe → 0,16 m en bas, puis non mesurable ~0,25 s). Utilisé
 comme mesure, il compte aussi 10/10 ; à confirmer sur d'autres séances avant d'en changer. Le code Swift n'a pas été
 compilé (préparé sans Xcode).
+
+## Licence
+Code sous licence [Apache 2.0](LICENSE). Le nom « Reps » et l'icône de l'app ne sont pas
+couverts : voir [NOTICE](NOTICE).

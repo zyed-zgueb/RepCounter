@@ -4,11 +4,13 @@ import SwiftUI
 @main
 struct RepCounterApp: App {
     @StateObject private var themeStore = ThemeStore()
+    @StateObject private var tipJar = TipJar()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(themeStore)
+                .environmentObject(tipJar)
                 .environment(\.theme, themeStore.current)
                 .preferredColorScheme(themeStore.current.colorScheme)
         }
@@ -26,6 +28,7 @@ struct RootView: View {
     @AppStorage(RootView.exerciseKey) private var exerciseID = Exercise.pushups.rawValue
     @AppStorage(Exercise.mineKey) private var mineValue = Exercise.defaultMineValue
     @EnvironmentObject private var themeStore: ThemeStore
+    @EnvironmentObject private var tipJar: TipJar
     /// L'écran du nouvel exercice démarre sa séance dès son affichage.
     @State private var startsSession = false
     @State private var showsSettings = false
@@ -64,6 +67,7 @@ struct RootView: View {
             .sheet(isPresented: $showsSettings, onDismiss: { exerciseUnderSettings = nil }) {
                 SettingsView()
                     .environmentObject(themeStore)
+                    .environmentObject(tipJar)
                     .environment(\.theme, themeStore.current)
                     .preferredColorScheme(themeStore.current.colorScheme)
             }
