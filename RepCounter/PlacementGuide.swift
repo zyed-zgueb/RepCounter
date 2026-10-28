@@ -74,6 +74,11 @@ struct PlacementGuide {
         (UserDefaults.standard.stringArray(forKey: Self.seenKey) ?? []).contains(id)
     }
 
+    /// Toutes les fiches redeviennent nouvelles (Revoir l'onboarding).
+    static func forgetAll() {
+        UserDefaults.standard.removeObject(forKey: seenKey)
+    }
+
     func markSeen() {
         var ids = UserDefaults.standard.stringArray(forKey: Self.seenKey) ?? []
         guard !ids.contains(id) else { return }
