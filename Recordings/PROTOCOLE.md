@@ -57,3 +57,25 @@ Une séance de 3 séries par cas, avec ~1 min de repos, en notant le nombre rée
 | Squats | mouvement | 1 | 1 | exact (20/20) |
 | Tractions | mouvement | 1 | 1 | exact (5/5) après correction (l'app en comptait 8 : sens de comptage hérité de la séance précédente) |
 | Tous les autres | — | 0 | 0 | non validé (simulation seulement) |
+
+## Séries à l'échec (répétitions en réserve, priorité 2)
+
+Pour valider l'estimation des répétitions en réserve et du max, il faut des séries menées
+**jusqu'à l'échec** : la dernière répétition tentée ne passe pas. Objectif : **au moins 10 séries
+à l'échec par exercice** (tractions d'abord, puis pompes), sur plusieurs jours, idéalement de
+plusieurs personnes. Critère d'acceptation de l'estimation : erreur médiane de ±2 répétitions
+au plus, 3 répétitions avant l'échec.
+
+1. Mode analyse, enregistrement ● lancé avant la série.
+2. Échauffement léger, puis **une seule série par enregistrement**, au maximum, à rythme
+   naturel et constant (aussi vite que possible à la montée, sans pause en haut ni en bas).
+3. Arrêter à l'échec : la répétition qui ne passe pas (tractions : menton sous la barre ;
+   pompes : poitrine qui ne remonte pas) ne compte pas.
+4. À la fin, indiquer le nombre réel de répétitions **réussies**, et dans le nom ou la note du
+   fichier : `echec`, l'exercice, le repos depuis la dernière série (au moins 3 min).
+5. Tractions : iPhone dans la poche avant du pantalon (ajusté), écran contre la cuisse,
+   toujours dans le même sens. Pompes : iPhone au sol, sous le visage (caméra).
+6. Si possible, filmer la série de profil à 120 ou 240 images/s (ralenti de l'iPhone d'un
+   proche) : la vidéo, analysée image par image, sert de référence de vitesse.
+
+Les séries corrigées à la main (compte faux) sont exclues de la validation.
