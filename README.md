@@ -127,11 +127,28 @@ point de départ, à caler sur des séances réelles.
 
 ## Thèmes
 Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis, lueur,
-clair/sombre, gratuit ou premium), choisis dans les Réglages. Aucun écran n'a de couleur en dur : tout passe par
+clair/sombre), choisis dans les Réglages. Aucun écran n'a de couleur en dur : tout passe par
 `@Environment(\.theme)` (`Theme.swift`). Ajouter un thème = ajouter une entrée au fichier.
-`ThemeStore` mémorise le choix et prévoit le déblocage des thèmes premium par achat intégré
-(StoreKit à brancher ; en attendant, tous les thèmes sont utilisables). Thèmes livrés :
-Moniteur (gratuit), Phosphore, Clinique (clair), Néon.
+`ThemeStore` mémorise le choix. Tous les thèmes sont gratuits. Thèmes livrés :
+Moniteur, Phosphore, Clinique (clair), Néon.
+
+## Soutien, note et signalement
+Reps est gratuit, sans pub, sans compte, et rien ne quitte l'iPhone. Rien n'est payant.
+- **Soutenir Reps** (Réglages › Reps) : cinq dons en achat intégré consommable, du petit
+  merci au mécénat, qui ne débloquent rien (`Support.swift`, `TipJar.tiers`). Identifiants à
+  créer dans App Store Connect : `reps.tip.thanks` (0,99 €), `reps.tip.coffee` (2,99 €),
+  `reps.tip.breakfast` (5,99 €), `reps.tip.meal` (12,99 €), `reps.tip.patron` (29,99 €). Pour
+  les tester dans Xcode : `Config/Dons.storekit` (les cinq consommables), à choisir dans le
+  schéma (Product › Scheme › Edit Scheme › Run › Options › StoreKit Configuration).
+- **Après un record**, une seule fois chacun : la demande de note App Store d'Apple dès la
+  5e séance, puis, à un record suivant, une ligne discrète proposant un don dès la 10e (`Ask`).
+  Jamais pendant une séance, jamais deux demandes à la fois.
+- **Code source privé tant que le dépôt l'est** : `SourceCode.isPublic` (`Support.swift`) masque
+  le lien « Code source », le signalement par ticket GitHub et la mention « open source » ; à
+  passer à true le jour où le dépôt devient public.
+- **Signaler un comptage faux** : dès qu'une série est corrigée en fin de séance, « Le compte
+  était faux ? Signale-le » ouvre un ticket GitHub pré-rempli (exercice, séries comptées et
+  réelles, version d'iOS). L'app n'envoie rien : l'utilisateur relit et envoie lui-même.
 
 ## Pictogrammes
 Dix pictogrammes dessinés (`ExerciseIcon.swift`), sur un squelette unique : tronc, cou, tête,
@@ -296,3 +313,7 @@ données réelles. Profondeur brute : le 10e centile des distances suit la parti
 plus proche (0,58 m en haut de pompe → 0,16 m en bas, puis non mesurable ~0,25 s). Utilisé
 comme mesure, il compte aussi 10/10 ; à confirmer sur d'autres séances avant d'en changer. Le code Swift n'a pas été
 compilé (préparé sans Xcode).
+
+## Licence
+Code sous licence [Apache 2.0](LICENSE). Le nom « Reps » et l'icône de l'app ne sont pas
+couverts : voir [NOTICE](NOTICE).

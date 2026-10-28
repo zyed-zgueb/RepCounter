@@ -1,0 +1,91 @@
+{
+  "identifier": "5A0C2E7B",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "0.99",
+      "familyShareable": false,
+      "internalID": "100000001",
+      "localizations": [
+        {
+          "description": "Un petit geste qui fait plaisir.",
+          "displayName": "Un merci",
+          "locale": "fr_FR"
+        }
+      ],
+      "productID": "reps.tip.thanks",
+      "referenceName": "Un merci",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "2.99",
+      "familyShareable": false,
+      "internalID": "100000002",
+      "localizations": [
+        {
+          "description": "Pour la prochaine version.",
+          "displayName": "Un café",
+          "locale": "fr_FR"
+        }
+      ],
+      "productID": "reps.tip.coffee",
+      "referenceName": "Un café",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "5.99",
+      "familyShareable": false,
+      "internalID": "100000003",
+      "localizations": [
+        {
+          "description": "De quoi tenir une soirée de code.",
+          "displayName": "Un petit-déjeuner",
+          "locale": "fr_FR"
+        }
+      ],
+      "productID": "reps.tip.breakfast",
+      "referenceName": "Un petit-déjeuner",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "12.99",
+      "familyShareable": false,
+      "internalID": "100000004",
+      "localizations": [
+        {
+          "description": "Une nouvelle fonction, financée.",
+          "displayName": "Un repas",
+          "locale": "fr_FR"
+        }
+      ],
+      "productID": "reps.tip.meal",
+      "referenceName": "Un repas",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "29.99",
+      "familyShareable": false,
+      "internalID": "100000005",
+      "localizations": [
+        {
+          "description": "Merci de faire vivre le projet.",
+          "displayName": "Mécène",
+          "locale": "fr_FR"
+        }
+      ],
+      "productID": "reps.tip.patron",
+      "referenceName": "Mécène",
+      "type": "Consumable"
+    }
+  ],
+  "settings": {
+    "_locale": "fr_FR",
+    "_storefront": "FRA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

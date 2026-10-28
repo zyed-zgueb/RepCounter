@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var themeStore: ThemeStore
+    @EnvironmentObject private var tipJar: TipJar
     @AppStorage(AudioMode.key) private var audioMode = AudioMode.defaultMode
     @AppStorage(SettingsView.analysisModeKey) private var analysisMode = false
     @AppStorage(Profile.sexKey) private var sexID = ""
@@ -21,6 +22,7 @@ struct SettingsView: View {
 
     @State private var showsYearWheel = false
     @State private var showsExercises = false
+    @State private var showsSupport = false
 
     /// Années proposées, des plus anciennes aux plus récentes (ordre de la roue des dates d'iOS).
     private static let birthYears: [Int] = {
@@ -158,10 +160,51 @@ struct SettingsView: View {
                         VStack(spacing: 8) {
                             ForEach(themeStore.themes) { option in
                                 ThemeRow(option: option,
-                                         selected: option.id == themeStore.current.id,
-                                         unlocked: themeStore.isUnlocked(option)) {
+                                         selected: option.id == themeStore.current.id) {
                                     themeStore.selectedID = option.id
                                 }
+                            }
+                        }
+                    }
+
+                    MonitorPanel("Reps") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button { showsSupport = true } label: {
+                                HStack {
+                                    Image(systemName: "cup.and.saucer.fill")
+                                        .foregroundStyle(theme.warn)
+                                    Text("SOUTENIR REPS")
+                                        .font(theme.font(14, .bold))
+                                        .foregroundStyle(theme.text)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(theme.dim)
+                                }
+                                .frame(height: 36)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            note(SourceCode.isPublic
+                                 ? "Gratuit, sans pub, open source. Un don ne débloque rien : c'est un merci."
+                                 : "Gratuit, sans pub. Un don ne débloque rien : c'est un merci.")
+                            if SourceCode.isPublic {
+                                Rectangle().fill(theme.line).frame(height: 1)
+                                    .padding(.vertical, 4)
+                                Link(destination: SourceCode.url) {
+                                    HStack {
+                                        Text("CODE SOURCE")
+                                            .font(theme.font(14, .bold))
+                                            .foregroundStyle(theme.text)
+                                        Spacer()
+                                        Image(systemName: "arrow.up.right")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundStyle(theme.dim)
+                                    }
+                                    .frame(height: 36)
+                                    .contentShape(Rectangle())
+                                }
+                                note("Tout le code est public : chacun peut vérifier que rien ne quitte l'iPhone.")
                             }
                         }
                     }
@@ -199,6 +242,12 @@ struct SettingsView: View {
         .presentationDetents([.large])
         .sheet(isPresented: $showsExercises) {
             MyExercisesView()
+                .environment(\.theme, theme)
+                .preferredColorScheme(theme.colorScheme)
+        }
+        .sheet(isPresented: $showsSupport) {
+            SupportView()
+                .environmentObject(tipJar)
                 .environment(\.theme, theme)
                 .preferredColorScheme(theme.colorScheme)
         }
@@ -369,12 +418,11 @@ private struct AccuracyList: View {
     }
 }
 
-/// Aperçu d'un thème : ses couleurs, son nom dans sa police, et son statut (inclus ou premium).
+/// Aperçu d'un thème : ses couleurs et son nom dans sa police.
 private struct ThemeRow: View {
     @Environment(\.theme) private var theme
     let option: AppTheme
     let selected: Bool
-    let unlocked: Bool
     let action: () -> Void
 
     var body: some View {
@@ -393,11 +441,6 @@ private struct ThemeRow: View {
                     .font(option.font(14, .bold))
                     .foregroundStyle(theme.text)
                 Spacer()
-                if option.premium {
-                    Label(unlocked ? "Premium" : "Verrouillé", systemImage: unlocked ? "star.fill" : "lock.fill")
-                        .font(theme.font(9, .bold))
-                        .foregroundStyle(theme.warn)
-                }
                 Image(systemName: selected ? "largecircle.fill.circle" : "circle")
                     .foregroundStyle(selected ? theme.primary : theme.dim)
             }
@@ -405,7 +448,6 @@ private struct ThemeRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(!unlocked)
     }
 }
 
