@@ -156,8 +156,7 @@ struct SettingsView: View {
                         VStack(spacing: 8) {
                             ForEach(themeStore.themes) { option in
                                 ThemeRow(option: option,
-                                         selected: option.id == themeStore.current.id,
-                                         unlocked: themeStore.isUnlocked(option)) {
+                                         selected: option.id == themeStore.current.id) {
                                     themeStore.selectedID = option.id
                                 }
                             }
@@ -351,12 +350,11 @@ private struct AccuracyList: View {
     }
 }
 
-/// Aperçu d'un thème : ses couleurs, son nom dans sa police, et son statut (inclus ou premium).
+/// Aperçu d'un thème : ses couleurs et son nom dans sa police.
 private struct ThemeRow: View {
     @Environment(\.theme) private var theme
     let option: AppTheme
     let selected: Bool
-    let unlocked: Bool
     let action: () -> Void
 
     var body: some View {
@@ -375,11 +373,6 @@ private struct ThemeRow: View {
                     .font(option.font(14, .bold))
                     .foregroundStyle(theme.text)
                 Spacer()
-                if option.premium {
-                    Label(unlocked ? "Premium" : "Verrouillé", systemImage: unlocked ? "star.fill" : "lock.fill")
-                        .font(theme.font(9, .bold))
-                        .foregroundStyle(theme.warn)
-                }
                 Image(systemName: selected ? "largecircle.fill.circle" : "circle")
                     .foregroundStyle(selected ? theme.primary : theme.dim)
             }
@@ -387,7 +380,6 @@ private struct ThemeRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(!unlocked)
     }
 }
 

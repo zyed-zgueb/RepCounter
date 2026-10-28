@@ -120,11 +120,10 @@ point de départ, à caler sur des séances réelles.
 
 ## Thèmes
 Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis, lueur,
-clair/sombre, gratuit ou premium), choisis dans les Réglages. Aucun écran n'a de couleur en dur : tout passe par
+clair/sombre), choisis dans les Réglages. Aucun écran n'a de couleur en dur : tout passe par
 `@Environment(\.theme)` (`Theme.swift`). Ajouter un thème = ajouter une entrée au fichier.
-`ThemeStore` mémorise le choix et prévoit le déblocage des thèmes premium par achat intégré
-(StoreKit à brancher ; en attendant, tous les thèmes sont utilisables). Thèmes livrés :
-Moniteur (gratuit), Phosphore, Clinique (clair), Néon.
+`ThemeStore` mémorise le choix. Tous les thèmes sont gratuits. Thèmes livrés :
+Moniteur, Phosphore, Clinique (clair), Néon.
 
 ## Pictogrammes
 Dix pictogrammes dessinés (`ExerciseIcon.swift`), sur un squelette unique : tronc, cou, tête,

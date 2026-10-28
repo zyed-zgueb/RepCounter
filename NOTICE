@@ -1,0 +1,10 @@
+Reps — compteur de répétitions
+Copyright 2026 Vincent Zgueb
+
+Ce logiciel est distribué sous la licence Apache 2.0 (fichier LICENSE).
+
+Marque et icône
+La licence couvre le code, pas l'identité de l'app. Le nom « Reps » et l'icône de l'app
+(RepCounter/Assets.xcassets/AppIcon.appiconset/ et Design/icone-source.png) ne sont pas
+couverts : on peut reprendre le code, pas publier une app sous ce nom ou avec cette icône
+(voir aussi la section 6 de la licence).
