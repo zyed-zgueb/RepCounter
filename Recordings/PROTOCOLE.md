@@ -62,7 +62,7 @@ Une séance de 3 séries par cas, avec ~1 min de repos, en notant le nombre rée
 
 Pour valider l'estimation des répétitions en réserve et du max, il faut des séries menées
 **jusqu'à l'échec** : la dernière répétition tentée ne passe pas. Objectif : **au moins 10 séries
-à l'échec par exercice** (tractions d'abord, puis pompes, puis squats avec barre), sur plusieurs jours, idéalement de
+à l'échec par exercice** (pompes d'abord, puis tractions), sur plusieurs jours, idéalement de
 plusieurs personnes. Critère d'acceptation de l'estimation : erreur médiane de ±2 répétitions
 au plus, 3 répétitions avant l'échec.
 
@@ -75,10 +75,8 @@ au plus, 3 répétitions avant l'échec.
    fichier : `echec`, l'exercice, le repos depuis la dernière série (au moins 3 min).
 5. Tractions : iPhone dans la poche avant du pantalon (ajusté), écran contre la cuisse,
    toujours dans le même sens. Pompes : iPhone au sol, sous le visage (caméra).
-   Squats **avec barre** (les équations publiées ne couvrent que le squat chargé) : iPhone dans
-   la poche, charge notée (barre + disques) ; à l'échec, la remontée qui ne passe pas ne compte
-   pas — avec un pareur ou des sécurités. Le squat sans charge n'a pas d'étude : pas de série à
-   l'échec à enregistrer.
+   Squats : pas de série à l'échec. Le squat sans charge n'a pas d'étude, et le squat chargé est
+   abandonné (pas de données de validation possibles).
 6. Si possible, filmer la série de profil à 120 ou 240 images/s (ralenti de l'iPhone d'un
    proche) : la vidéo, analysée image par image, sert de référence de vitesse.
 

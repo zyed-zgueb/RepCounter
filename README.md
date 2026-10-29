@@ -145,8 +145,7 @@ montée de chaque répétition à partir de l'accélération verticale (intégr�
 où la vitesse est nulle, dérive retirée), et la perte de vitesse de la série. Contrôle de
 vraisemblance sur les enregistrements : la hauteur montée est sous-estimée d'un facteur 2 à 3
 (tractions 14–20 cm au lieu d'~50), la cuisse basculant pendant le geste. **Pas utilisable en
-l'état** : rien n'est affiché. Les équations publiées (Sánchez-Moreno 2017 pour les tractions,
-Rodríguez-Rosell 2020 pour le squat chargé) ne seront appliquées qu'avec une vitesse validée
+l'état** : rien n'est affiché. Les équations publiées (Sánchez-Moreno 2017 pour les tractions) ne seront appliquées qu'avec une vitesse validée
 contre une référence (vidéo à 240 images/s, protocole des séries à l'échec dans
 `Recordings/PROTOCOLE.md`). Pompes : la caméra TrueDepth donne la distance du visage, sans
 intégration ; vitesse moyenne de montée entre 25 et 50 cm (le bas de la pompe, sous ~18 cm,
