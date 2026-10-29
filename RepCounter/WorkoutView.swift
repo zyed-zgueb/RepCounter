@@ -105,9 +105,9 @@ struct WorkoutView: View {
             pendingSelection?.cancel()
             model.stop()
         }
-        .onChange(of: load) { browsing.load = $0 }
-        .onChange(of: loadKind) { browsing.loadKind = $0 }
-        .onChange(of: model.phase) { phase in
+        .onChange(of: load) { _, new in browsing.load = new }
+        .onChange(of: loadKind) { _, new in browsing.loadKind = new }
+        .onChange(of: model.phase) { _, phase in
             // Le plan du jour est figé au départ de la séance
             switch phase {
             case .ready:
@@ -130,7 +130,7 @@ struct WorkoutView: View {
                 }
             }
         }
-        .onChange(of: browsing) { exercise in
+        .onChange(of: browsing) { _, exercise in
             load = exercise.load
             loadKind = exercise.loadKind
             pendingSelection?.cancel()
@@ -139,7 +139,7 @@ struct WorkoutView: View {
             pendingSelection = selection
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.selectionDelay, execute: selection)
         }
-        .onChange(of: model.repPulse) { _ in
+        .onChange(of: model.repPulse) {
             withAnimation(.spring(response: 0.12, dampingFraction: 0.5)) { bump = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { bump = false }
@@ -152,7 +152,7 @@ struct WorkoutView: View {
             RecordingSheet(finished: finished)
                 .environment(\.theme, theme)
         }
-        .onChange(of: model.phase) { phase in
+        .onChange(of: model.phase) { _, phase in
             // Séance terminée : enregistrée aussitôt ; nouvelle séance : on repart de rien
             if phase == .finished {
                 record = SessionRecord.save(model, load: model.exercise.load, loadKind: model.exercise.loadKind, in: modelContext)
@@ -163,8 +163,8 @@ struct WorkoutView: View {
         }
         // Réglages ouverts : capteurs en pause (rien à compter, caméra éteinte, interface fluide).
         // À leur fermeture, l'écran reprend, ou se recrée si le brassard a changé.
-        .onChange(of: model.state) { _ in advanceCoach() }
-        .onChange(of: model.phase) { _ in advanceCoach() }
+        .onChange(of: model.state) { advanceCoach() }
+        .onChange(of: model.phase) { advanceCoach() }
         .sheet(item: $guideExercise) { exercise in
             PlacementGuideView(guide: PlacementGuide(exercise: exercise, armband: hasArmband),
                                buttonTitle: guideStartsSession ? "C'est parti" : "J'ai compris") {
@@ -173,7 +173,7 @@ struct WorkoutView: View {
             .environment(\.theme, themeStore.current)
             .preferredColorScheme(themeStore.current.colorScheme)
         }
-        .onChange(of: settingsShown) { shown in
+        .onChange(of: settingsShown) { _, shown in
             if shown {
                 // Un enregistrement en cours (mode analyse) continue
                 guard !model.isRecording else { return }
@@ -928,7 +928,7 @@ private struct Ripple: View {
             .stroke(theme.primary, lineWidth: 2)
             .scaleEffect(expanded ? 1.0 : 0.55)
             .opacity(expanded ? 0 : 0.8)
-            .onChange(of: pulse) { _ in
+            .onChange(of: pulse) {
                 var reset = Transaction()
                 reset.disablesAnimations = true
                 withTransaction(reset) { expanded = false }

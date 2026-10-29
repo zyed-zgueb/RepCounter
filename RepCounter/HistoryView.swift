@@ -77,7 +77,7 @@ struct HistoryView: View {
         }
         .tint(theme.primary)
         .onAppear { showAllIfAbsent(practiced) }
-        .onChange(of: practiced) { showAllIfAbsent($0) }
+        .onChange(of: practiced) { _, new in showAllIfAbsent(new) }
     }
 
     /// Un exercice jamais pratiqué (ou dont on a supprimé les séances) n'est pas dans le filtre :
