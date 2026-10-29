@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// Indice de forme d'une séance, tiré de la vitesse des répétitions : on est en forme quand on
 /// va aussi vite que d'habitude et qu'on garde cette vitesse au fil de la série (principe de

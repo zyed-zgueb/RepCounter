@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// Où en est l'utilisateur dans son cycle d'entraînement, pour un exercice : construction,
 /// surcharge, décharge, rebond… La charge d'entraînement (toutes les séances) est confrontée à la

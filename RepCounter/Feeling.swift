@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 /// Le ressenti, en deux questions facultatives d'un toucher, croisé avec la mesure (Saw, Main et
