@@ -3,8 +3,9 @@ import SwiftUI
 /// Le ressenti, en deux questions facultatives d'un toucher, croisé avec la mesure (Saw, Main et
 /// Gastin 2016, Br J Sports Med 50(5):281–291 : le ressenti suit la charge d'entraînement mieux
 /// que les mesures objectives courantes, et les deux concordent mal).
-/// - Avant la séance : « Fatigue ? », 1 à 5, item fatigue du questionnaire de McLean et al. 2010
-///   (Int J Sports Physiol Perform 5(3):367–383) : de « très frais » à « toujours fatigué ».
+/// - Avant la séance : « Fatigue ? », item fatigue du questionnaire de McLean et al. 2010
+///   (Int J Sports Physiol Perform 5(3):367–383, figure 1, d'après Hooper et Mackinnon 1995) :
+///   5 très frais, 4 frais, 3 normal, 2 plus fatigué que d'habitude, 1 toujours fatigué.
 ///   Pas de question « Force ? » : aucun item validé trouvé.
 /// - En fin de séance : « Effort ? », 0 à 10, échelle CR-10 modifiée par Foster et al. 2001
 ///   (J Strength Cond Res 15(1):109–115) ; charge de séance = effort × durée (min).
@@ -13,8 +14,8 @@ import SwiftUI
 enum Feeling {
     static let enabledKey = "feeling.enabled"
     static let skippedKey = "feeling.skipped"
-    /// Réponse « Fatigue ? » du jour : valeur et date.
-    static let fatigueKey = "feeling.fatigue"
+    /// Réponse « Fatigue ? » du jour : valeur (échelle de McLean, 5 = très frais) et date.
+    static let fatigueKey = "feeling.fatigueMcLean"
     static let fatigueDateKey = "feeling.fatigueDate"
 
     /// Séances terminées avant la première question.
@@ -22,11 +23,19 @@ enum Feeling {
     /// Séances de suite sans réponse avant de ne plus demander.
     static let maxSkipped = 5
 
-    /// Fatigue à partir de laquelle on se dit fatigué (4 et 5 sur 5).
-    static let tiredFrom = 4
+    /// Fatigué : 2 « plus fatigué que d'habitude » ou 1 « toujours fatigué » (sous « normal »).
+    static let tiredUpTo = 2
 
-    /// Extrémités de l'échelle de fatigue (McLean 2010).
-    static let fatigueAnchors = (low: "Très frais", high: "Toujours fatigué")
+    /// Les libellés de l'item fatigue de McLean (2010), de 1 à 5.
+    static func fatigueLabel(_ value: Int) -> String {
+        switch value {
+        case 1: return "Toujours fatigué"
+        case 2: return "Plus fatigué que d'habitude"
+        case 3: return "Normal"
+        case 4: return "Frais"
+        default: return "Très frais"
+        }
+    }
 
     /// Échelle CR-10 modifiée de Foster (2001) : une étiquette pour 0, 1, 2, 3, 4, 5, 7 et 10.
     static func effortLabel(_ value: Int) -> String {
@@ -159,11 +168,6 @@ struct FatigueQuestion: View {
     }
 
     private var caption: String {
-        switch fatigue {
-        case 1: return Feeling.fatigueAnchors.low
-        case 5: return Feeling.fatigueAnchors.high
-        case .some(let value): return "\(value) / 5"
-        case nil: return "1 \(Feeling.fatigueAnchors.low.lowercased()) · 5 \(Feeling.fatigueAnchors.high.lowercased())"
-        }
+        fatigue.map(Feeling.fatigueLabel) ?? "1 toujours fatigué · 5 très frais"
     }
 }

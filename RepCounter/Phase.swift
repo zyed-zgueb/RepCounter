@@ -20,8 +20,11 @@ import Foundation
 /// - Saw, Main et Gastin 2016, Br J Sports Med 50(5):281–291 : le ressenti suit la charge mieux
 ///   que les mesures objectives courantes, et les deux concordent mal ; on les croise.
 ///
-/// Seuils provisoires (choix de l'app, à remplacer par la valeur d'une référence) : `forDays`,
-/// `reboundDays`, `minSessions`, `minDays`.
+/// Durées sourcées (texte intégral vérifié le 29/10) : 14 jours de surcharge fonctionnelle et
+/// de recherche du rebond (Meeusen 2013, manuscrit accepté p. 3-4 : « possible to recover from a
+/// state of OR within a 2-week period » ; au-delà, NFOR : « weeks or months to recover ») ;
+/// 7 jours de décharge (Rogerson 2024 : « 6.4 ± 1.7 days »). Seul seuil provisoire, choix de
+/// l'app pour la confiance : `minSessions`, `minDays`.
 /// Même calcul que `phase` dans Simulation/phases.py, validé sur des historiques synthétiques.
 struct TrainingPhase: Equatable {
     enum Kind: Equatable {
@@ -41,11 +44,12 @@ struct TrainingPhase: Equatable {
     var felt = false
 
     /// Durée d'une baisse au-delà de laquelle elle n'est plus une surcharge fonctionnelle
-    /// (Meeusen 2013 : « jours à semaines » ; provisoire).
+    /// (Meeusen 2013 : « possible to recover from a state of OR within a 2-week period »).
     static let forDays = 14
     /// Une décharge dure une semaine (Rogerson 2024 : 6,4 ± 1,7 jours).
     static let deloadDays = 7
-    /// Le rebond se cherche dans les 14 jours qui suivent la fin d'une surcharge ou d'une décharge (provisoire).
+    /// Le rebond se cherche dans les 14 jours qui suivent la fin d'une surcharge ou d'une décharge :
+    /// la récupération d'une surcharge fonctionnelle tient en 2 semaines (Meeusen 2013).
     static let reboundDays = 14
     /// Confiance : 8 séances mesurables sur 4 semaines au moins (provisoire).
     static let minSessions = 8
@@ -177,7 +181,7 @@ extension HistoryStats {
         }
 
         // Ressenti × mesure (Saw et al. 2016) : fatigué avant la séance, Forme pourtant normale
-        let felt = (last.session.feltFatigue ?? 0) >= Feeling.tiredFrom && last.zone != .tired
+        let felt = (last.session.fatigueScore ?? 3) <= Feeling.tiredUpTo && last.zone != .tired
         return TrainingPhase(kind: .building, felt: felt)
     }
 

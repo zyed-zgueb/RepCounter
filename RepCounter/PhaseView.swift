@@ -252,7 +252,7 @@ struct PhaseInfoView: View {
                             "Charge d'une séance = effort noté en fin de séance (0 à 10) × durée en minutes (méthode de Foster). Sans réponse, ton effort habituel. Toutes les séances comptent : la fatigue ne dépend pas d'un seul exercice.")
 
                     section("Les limites",
-                            "Pas de phase quand le comptage de l'exercice est juste à moins de 90 % (séries corrigées en fin de séance) : mieux vaut ne rien afficher qu'afficher faux. Une baisse se constate sur deux séances de suite : une seule peut être du bruit de mesure. Les durées (2 semaines pour une surcharge, 2 semaines pour chercher le rebond, 8 séances avant d'afficher une phase) sont provisoires : elles seront remplacées par celles des études quand elles auront été vérifiées. La Forme dépend du comptage de l'app. Reps ne pose aucun diagnostic : une fatigue qui dure malgré le repos relève d'un avis médical.")
+                            "Pas de phase quand le comptage de l'exercice est juste à moins de 90 % (séries corrigées en fin de séance) : mieux vaut ne rien afficher qu'afficher faux. Une baisse se constate sur deux séances de suite : une seule peut être du bruit de mesure. Les 2 semaines viennent du consensus de Meeusen : une surcharge fonctionnelle se récupère en 2 semaines au plus, au-delà il faut des semaines ou des mois. La semaine de décharge vient de Rogerson (6,4 ± 1,7 jours). Les 8 séances sur 4 semaines avant d'afficher une phase sont un choix de l'app. La Forme dépend du comptage de l'app. Reps ne pose aucun diagnostic : une fatigue qui dure malgré le repos relève d'un avis médical.")
 
                     VStack(alignment: .leading, spacing: 8) {
                         MonitorLabel("Références")

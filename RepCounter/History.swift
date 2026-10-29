@@ -21,9 +21,9 @@ final class SessionRecord {
     /// Sert à mesurer la précision du comptage de chaque exercice, dans chaque mode.
     var sensing: String?
     /// Ressenti (facultatif, voir `Feeling`) : effort de la séance (0–10, CR-10), et fatigue
-    /// notée avant la séance le même jour (1 très frais – 5 toujours fatigué).
+    /// notée avant la séance le même jour (échelle de McLean : 1 toujours fatigué – 5 très frais).
     var effort: Int?
-    var feltFatigue: Int?
+    var fatigueScore: Int?
     @Relationship(deleteRule: .cascade, inverse: \SetRecord.session)
     var sets: [SetRecord]? = []
 
@@ -122,7 +122,7 @@ extension SessionRecord {
         record.load = model.exercise.isWeighted ? load : nil
         record.loadKind = model.exercise.isWeighted ? loadKind?.rawValue : nil
         record.sensing = model.countsWithCamera ? "camera" : "motion"
-        record.feltFatigue = Feeling.todayFatigue(now: start)
+        record.fatigueScore = Feeling.todayFatigue(now: start)
         context.insert(record)
         record.sets = model.sets.enumerated().map { index, set in
             SetRecord(index: index, reps: set.reps, start: set.start, duration: set.duration,

@@ -974,7 +974,7 @@ private struct SessionSummary: View {
         .onDisappear {
             // Ressenti : sans aucune réponse plusieurs séances de suite, on ne demande plus
             if let record, asksFeeling(record) {
-                Feeling.sessionEnded(answered: record.effort != nil || record.feltFatigue != nil)
+                Feeling.sessionEnded(answered: record.effort != nil || record.fatigueScore != nil)
             }
         }
         .sheet(isPresented: $showsSupport, onDismiss: { showsTipPrompt = false }) {

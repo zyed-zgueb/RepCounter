@@ -23,7 +23,8 @@ poche à mi-cuisse. La mesure sous-estime le déplacement d'un facteur 2 à 3 : 
 pendant le geste, et l'accélération sans la gravité que calcule l'iPhone en rotation n'est pas
 assez juste à 30 Hz. En l'état, cette vitesse n'est PAS utilisable : ni affichage, ni
 répétitions en réserve. Pistes : iPhone au brassard ou à la ceinture (moins de rotation),
-validation contre une vidéo à 240 images/s.
+validation contre une vidéo à 240 images/s. Les équations des tractions (Sánchez-Moreno 2017,
+ci-dessous) sont prêtes ; elles supposent une vitesse moyenne propulsive mesurée au transducteur.
 
 Pompes : la profondeur TrueDepth donne la distance du visage, sans intégration. Sur
 pushups_2026-10-26_14-14-11 (10 pompes) : 0,86 à 0,96 m/s, puis 0,73 à la dernière (perte 24 %),
@@ -40,6 +41,37 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import replay as rp  # noqa: E402
 
 G = 9.81
+
+
+# --- Tractions : Sánchez-Moreno et al. 2017 (IJSPP 12(10):1378–1384), manuscrit accepté lu en
+# texte intégral (dépôt de l'université Pablo de Olavide) ---------------------------------------
+# 52 hommes (candidats pompiers, 2 à 4 ans de pratique), transducteur linéaire T-Force, vitesse
+# moyenne propulsive (MPV). 1RM = charge ajoutée + masse corporelle ; le poids du corps seul
+# valait 68,3 ± 7,0 % du 1RM. Répétition valide : de la suspension bras tendus au menton
+# au-dessus de la barre ; descente contrôlée, pause d'~1 s, montée aussi vite que possible.
+
+def pullup_percent_1rm(mpv):
+    """% du 1RM d'après la MPV (ms p. 6 : « Load = -53.472 MPV + 110.68 (r = -.96;
+    SEE = 3.15% of 1RM) », valable de 65 à 95 % du 1RM)."""
+    return -53.472 * mpv + 110.68
+
+
+def pullup_performed_share(velocity_loss):
+    """Part (%) des répétitions possibles déjà faites, d'après la perte de vitesse de la série en %
+    (figure 3A, 52 sujets : « y = -0.011x² + 2.003x + 10.651 ; R² = 0.881; SEE = 9.44% »).
+    Perte de vitesse = 100 × (MPV la plus rapide − MPV de la dernière) ÷ MPV la plus rapide."""
+    return -0.011 * velocity_loss ** 2 + 2.003 * velocity_loss + 10.651
+
+
+def pullup_reps_in_reserve(done, velocity_loss):
+    """Répétitions restantes estimées, et leur fourchette à ± 1 SEE (9,44 points de %).
+    Déduit de la part faite : total = faites ÷ part ; l'article ne donne pas d'équation directe
+    des répétitions restantes."""
+    share = pullup_performed_share(velocity_loss)
+    def left(p):
+        p = min(max(p, 1), 100)
+        return done * 100 / p - done
+    return left(share), (left(share + 9.44), left(share - 9.44))
 
 
 def rep_velocities(times, up, tops):

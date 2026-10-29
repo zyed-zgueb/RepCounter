@@ -124,9 +124,11 @@ jamais employé) ; Bell et al. 2023 (consensus Delphi : la décharge réduit le 
 Rogerson et al. 2024 (décharges de 6,4 ± 1,7 jours) ; Foster et al. 2001 (charge de séance =
 effort × minutes) ; Hopkins 2000 (une mesure isolée peut être du bruit : deux séances de suite).
 Le rapport charge aiguë / chronique (« Pic de charge ») est retiré : aucun effet causal démontré
-(Impellizzeri et al. 2020). Les durées (14 jours de baisse, 14 jours pour le rebond, 8 séances
-mesurables sur 4 semaines avant d'afficher) sont **provisoires** : choix de l'app, à remplacer
-par les valeurs des références une fois le texte intégral vérifié. En fin de séance, la phase ne
+(Impellizzeri et al. 2020). Durées vérifiées en texte intégral : 14 jours de baisse et 14 jours
+pour chercher le rebond (Meeusen 2013 : « possible to recover from a state of OR within a 2-week
+period » ; au-delà, « weeks or months to recover ») ; décharge de 7 jours (Rogerson 2024 :
+6,4 ± 1,7 jours). Seul seuil **provisoire**, choix de l'app pour la confiance : 8 séances
+mesurables sur 4 semaines avant d'afficher. En fin de séance, la phase ne
 s'affiche qu'au passage en Rebond ou en Décharge conseillée. Le détail montre la charge des
 12 dernières semaines (décharges marquées) ; le (i) explique le modèle et cite les références.
 
@@ -153,10 +155,10 @@ cohérent ; c'est la mesure la plus prometteuse, à valider sur des séries à l
 
 ## Ressenti
 Deux questions facultatives d'un toucher, à partir de la 4e séance (`Feeling.swift`) :
-**Fatigue ?** (1 à 5, item fatigue de McLean et al. 2010, de « très frais » à « toujours
-fatigué ») sur le cadran en veille avant la première séance du jour, et **Effort ?** (0 à 10,
+**Fatigue ?** (item fatigue de McLean et al. 2010, figure 1 : 5 très frais, 4 frais,
+3 normal, 2 plus fatigué que d'habitude, 1 toujours fatigué) sur le cadran en veille avant la première séance du jour, et **Effort ?** (0 à 10,
 échelle CR-10 modifiée de Foster et al. 2001) en fin de séance. L'effort donne la charge de
-séance ; la fatigue ressentie avec une Forme normale donne « Fatigue ressentie · surveille »
+séance ; une fatigue notée 1 ou 2 (sous « normal ») avec une Forme normale donne « Fatigue ressentie · surveille »
 (Saw et al. 2016 : le ressenti suit la charge mieux que les mesures objectives, et les deux
 concordent mal). Pas de question « Force ? » : aucun item validé trouvé. Après 5 séances de
 suite sans réponse, plus de question ; Réglages › Profil › Ressenti pour les réactiver.

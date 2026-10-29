@@ -18,8 +18,10 @@ Bases (voir README, section Phases) :
 - Hopkins 2000 (Sports Med 30(1):1–15) : une mesure isolée hors de la variation habituelle peut
   être du bruit ; d'où deux séances de suite sous la bande avant de parler de baisse.
 
-Seuils provisoires (valeurs de l'app, à remplacer par celles des références quand le texte
-intégral aura été vérifié) : `FOR_DAYS`, `REBOUND_DAYS`, `MIN_SESSIONS`, `MIN_DAYS`.
+Durées sourcées (texte intégral vérifié le 29/10) : FOR_DAYS et REBOUND_DAYS, 2 semaines
+(Meeusen 2013, manuscrit accepté p. 3-4 : « possible to recover from a state of OR within a
+2-week period ») ; DELOAD_DAYS, 7 jours (Rogerson 2024 : « 6.4 ± 1.7 days »). Seul seuil
+provisoire, choix de l'app pour la confiance : MIN_SESSIONS, MIN_DAYS.
 """
 
 import math
@@ -68,12 +70,13 @@ def form_result(measure, previous):
 # --- Phases ---------------------------------------------------------------------------------
 
 # Durée d'une baisse au-delà de laquelle elle n'est plus de la surcharge fonctionnelle
-# (Meeusen 2013 : « jours à semaines » ; provisoire : 2 semaines).
+# (Meeusen 2013 : « possible to recover from a state of OR within a 2-week period »).
 FOR_DAYS = 14
 # Décharge : une semaine (Rogerson 2024 : 6,4 ± 1,7 jours).
 DELOAD_DAYS = 7
 # Rebond : la surcompensation suit la récupération (Meeusen 2013) ; une séance en forme ou un
-# record dans les 14 jours qui suivent la fin d'une baisse ou d'une décharge (provisoire).
+# record dans les 14 jours qui suivent la fin d'une baisse ou d'une décharge (récupération
+# d'une surcharge fonctionnelle en 2 semaines, Meeusen 2013).
 REBOUND_DAYS = 14
 # Confiance : 8 séances mesurables sur 4 semaines au moins (provisoire, feuille de route).
 MIN_SESSIONS = 8
@@ -91,7 +94,7 @@ class Session:
     effort: int = None            # CR-10 (0–10), facultatif
     measure: tuple = None         # (pace, slowdown) si mesurable
     record: bool = False          # meilleure série jamais faite
-    fatigue: int = None           # avant la séance, 1–5 (5 = très fatigué), facultatif
+    fatigue: int = None           # avant la séance, échelle de McLean 1–5 (1 = toujours fatigué)
 
 
 @dataclass
@@ -217,7 +220,7 @@ def phase(all_sessions, exercise, today, deload_starts=()):
             return Phase("rebound", since=last.day)
 
     # Ressenti × mesure (Saw et al. 2016) : fatigué ressenti, Forme normale
-    felt = last.fatigue is not None and last.fatigue >= 4 and zone != "tired"
+    felt = last.fatigue is not None and last.fatigue <= 2 and zone != "tired"
     return Phase("building", felt=felt)
 
 
