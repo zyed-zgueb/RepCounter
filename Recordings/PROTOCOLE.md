@@ -53,7 +53,7 @@ Une séance de 3 séries par cas, avec ~1 min de repos, en notant le nombre rée
 | Exercice | Mode | Enregistrements | Personnes | Statut |
 |---|---|---|---|---|
 | Abdos | mouvement | 5 | 1 | exact (273/273), dont une série irrégulière et une séance piège |
-| Pompes | caméra | 2 | 1 | exact (20/20) |
+| Pompes | caméra | 3 | 1 | exact (52/52), dont une série à l'échec (32) |
 | Squats | mouvement | 1 | 1 | exact (20/20) |
 | Tractions | mouvement | 1 | 1 | exact (5/5) après correction (l'app en comptait 8 : sens de comptage hérité de la séance précédente) |
 | Tous les autres | — | 0 | 0 | non validé (simulation seulement) |
@@ -82,4 +82,10 @@ au plus, 3 répétitions avant l'échec.
 6. Si possible, filmer la série de profil à 120 ou 240 images/s (ralenti de l'iPhone d'un
    proche) : la vidéo, analysée image par image, sert de référence de vitesse.
 
-Les séries corrigées à la main (compte faux) sont exclues de la validation.
+Les séries corrigées à la main (compte faux) sont exclues de la validation. Chaque série à
+l'échec est déclarée dans `Recordings/echec.json` (exercice, répétitions réussies) ; puis :
+
+    python3 Simulation/failure.py
+
+ajuste la relation perte de vitesse → part des répétitions faites et la valide en laissant une
+série de côté. Séries à l'échec à ce jour : pompes 1 / 10.
