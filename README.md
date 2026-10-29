@@ -4,6 +4,9 @@ App iOS (SwiftUI, iOS 17+, iPhone). L'app s'ouvre sur le cadran, réglé sur ton
 exercice. Tu places le téléphone comme indiqué, tu touches Démarrer et tu fais tes répétitions :
 le compteur s'affiche à la 3e et continue seul, avec un retour sonore bref et feutré.
 
+Règles d'organisation des écrans (où va chaque donnée, cadran, couleurs, textes) :
+`.claude/skills/reps-ux/SKILL.md`, à lire avant de toucher à un écran.
+
 ## Écran
 Un seul écran : le cadran (60 graduations), éclairé par un halo de la couleur de l'état —
 bleu pendant l'effort, orange au repos, vert à la fin. Style « moniteur » : fond quasi noir,
