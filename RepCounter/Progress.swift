@@ -19,7 +19,7 @@ import Foundation
 /// Même calcul que Simulation/progress.py (validé : 0,2 % de « En progrès » à tort sur des
 /// historiques plats bruités).
 struct ProgressVerdict: Equatable {
-    enum Kind { case pending, up, stable, down }
+    enum Kind { case pending, unreliable, up, stable, down }
 
     let kind: Kind
     /// En cours : séances notées.
@@ -35,6 +35,7 @@ struct ProgressVerdict: Equatable {
     var title: String {
         switch kind {
         case .pending: return "Tendance \(progress) / \(Self.minPoints)"
+        case .unreliable: return "Comptage à fiabiliser"
         case .up: return "En progrès"
         case .stable: return "Stable"
         case .down: return "En recul"
@@ -95,6 +96,7 @@ extension HistoryStats {
     /// Verdict de progression du score d'endurance sur les 8 dernières semaines.
     /// Les séances d'une décharge déclarée sont écartées (volume réduit exprès).
     var progressVerdict: ProgressVerdict {
+        guard countingIsReliable else { return ProgressVerdict(kind: .unreliable) }
         let deloads = Deloads.starts.map { DateInterval(start: calendar.startOfDay(for: $0), duration: Double(TrainingPhase.deloadDays) * 86_400) }
         let origin = calendar.startOfDay(for: now.addingTimeInterval(-Double(ProgressVerdict.windowDays) * 86_400))
         let points = sessions.reversed()

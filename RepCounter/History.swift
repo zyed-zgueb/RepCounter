@@ -274,6 +274,25 @@ struct HistoryStats {
 
     // Régularité
 
+    // Fiabilité du comptage
+
+    /// Précision du comptage des séances de ces statistiques (1 − écart ÷ répétitions), nil tant
+    /// qu'il y a moins de `minRepsForAccuracy` répétitions pour en juger.
+    var countingAccuracy: Double? {
+        let sets = sessions.flatMap(\.orderedSets)
+        let reps = sets.reduce(0) { $0 + $1.reps }
+        guard reps >= Self.minRepsForAccuracy else { return nil }
+        let errors = sets.reduce(0) { $0 + abs($1.reps - $1.countedReps) }
+        return max(0, 1 - Double(errors) / Double(reps))
+    }
+
+    /// Pas d'analyse (Forme, phase, tendance) sur un comptage juste à moins de 90 % : mieux vaut
+    /// ne rien afficher qu'afficher faux.
+    var countingIsReliable: Bool { (countingAccuracy ?? 1) >= Self.minAccuracy }
+
+    static let minAccuracy = 0.9
+    static let minRepsForAccuracy = 50
+
     /// Répétitions par jour.
     func dailyVolume() -> [Date: Int] {
         sessions.reduce(into: [:]) { $0[calendar.startOfDay(for: $1.start), default: 0] += $1.totalReps }

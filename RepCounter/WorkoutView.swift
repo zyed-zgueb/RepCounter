@@ -1053,6 +1053,9 @@ private struct SessionSummary: View {
     /// se construit, où l'on en est.
     private func formStat(_ record: SessionRecord) -> some View {
         let stats = HistoryStats(sessions: history, exercise: record.exercise)
+        guard stats.countingIsReliable else {
+            return summaryStat("Forme", "comptage à fiabiliser", pending: true)
+        }
         if let form = stats.form(of: record) {
             return summaryStat("Forme", "\(Int(form.percent.rounded()))", unit: "%", color: formColor(form.zone, theme: theme))
         }

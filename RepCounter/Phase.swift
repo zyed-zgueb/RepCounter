@@ -27,6 +27,8 @@ struct TrainingPhase: Equatable {
     enum Kind: Equatable {
         /// Pas encore assez de séances mesurables (`progress` sur `minSessions`).
         case pending
+        /// Comptage juste à moins de 90 % : pas d'analyse (`progress` : précision en %).
+        case unreliable
         case building, overreaching, lowForm, comeback, deloadAdvised, deload, rest, rebound, persistentFatigue
     }
 
@@ -81,6 +83,9 @@ extension HistoryStats {
     /// La phase de l'exercice de ces statistiques. `all` : toutes les séances, tous exercices (la
     /// charge d'entraînement). `deloads` : débuts des décharges déclarées.
     func phase(all: [SessionRecord], deloads: [Date] = Deloads.starts) -> TrainingPhase {
+        guard countingIsReliable else {
+            return TrainingPhase(kind: .unreliable, progress: Int(((countingAccuracy ?? 0) * 100).rounded()))
+        }
         let origin = calendar.startOfDay(for: all.map(\.start).min() ?? now)
         let dayOf = { (date: Date) -> Int in
             calendar.dateComponents([.day], from: origin, to: calendar.startOfDay(for: date)).day ?? 0

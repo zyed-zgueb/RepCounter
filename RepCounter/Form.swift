@@ -15,8 +15,10 @@ struct FormMeasure {
 }
 
 extension SessionRecord {
+    /// Les séries corrigées à la main de plus de 2 répétitions sont écartées : leur découpage en
+    /// répétitions est douteux.
     var formMeasure: FormMeasure? {
-        let sets = orderedSets.filter { $0.repDurations.count >= FormMeasure.minimumReps - 1 }
+        let sets = orderedSets.filter { $0.repDurations.count >= FormMeasure.minimumReps - 1 && abs($0.reps - $0.countedReps) <= 2 }
         guard let first = sets.first, let pace = medianInterval(first.repTimes) else { return nil }
         let slowdowns = sets.compactMap { set -> Double? in
             let durations = set.repDurations

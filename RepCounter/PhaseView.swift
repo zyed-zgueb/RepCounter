@@ -5,6 +5,7 @@ extension TrainingPhase {
     var title: String {
         switch kind {
         case .pending: return "En cours"
+        case .unreliable: return "Analyse suspendue"
         case .building: return "Construction"
         case .overreaching: return "Surcharge"
         case .lowForm: return "Forme basse"
@@ -22,6 +23,7 @@ extension TrainingPhase {
         let days = since.map { calendar.dateComponents([.day], from: calendar.startOfDay(for: $0), to: calendar.startOfDay(for: now)).day ?? 0 } ?? 0
         switch kind {
         case .pending: return "\(progress) / \(Self.minSessions) séances mesurables"
+        case .unreliable: return "Comptage juste à \(progress) % · corrige tes séries"
         case .building: return felt ? "Fatigue ressentie · surveille" : "Continue"
         case .overreaching: return "N'augmente plus"
         case .lowForm: return "Séance légère"
@@ -38,7 +40,7 @@ extension TrainingPhase {
         switch kind {
         case .overreaching, .lowForm, .deloadAdvised, .persistentFatigue: return theme.warn
         case .rebound: return theme.ok
-        case .pending, .rest: return theme.dim
+        case .pending, .unreliable, .rest: return theme.dim
         case .building, .comeback, .deload: return theme.primary
         }
     }
@@ -68,7 +70,7 @@ struct PhaseCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(phase.title)
                         .font(theme.font(15, .bold))
-                        .foregroundStyle(phase.kind == .pending ? theme.dim : theme.text)
+                        .foregroundStyle(phase.kind == .pending || phase.kind == .unreliable ? theme.dim : theme.text)
                     Text(actionText)
                         .font(theme.font(12))
                         .foregroundStyle(theme.dim)
@@ -119,7 +121,7 @@ struct PhasePanel: View {
                 .padding(.vertical, -6)
                 Text(phase.title.uppercased())
                     .font(theme.font(22, .bold))
-                    .foregroundStyle(phase.kind == .pending ? theme.dim : phase.color(theme))
+                    .foregroundStyle(phase.kind == .pending || phase.kind == .unreliable ? theme.dim : phase.color(theme))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text(phase.action())
@@ -250,7 +252,7 @@ struct PhaseInfoView: View {
                             "Charge d'une séance = effort noté en fin de séance (0 à 10) × durée en minutes (méthode de Foster). Sans réponse, ton effort habituel. Toutes les séances comptent : la fatigue ne dépend pas d'un seul exercice.")
 
                     section("Les limites",
-                            "Une baisse se constate sur deux séances de suite : une seule peut être du bruit de mesure. Les durées (2 semaines pour une surcharge, 2 semaines pour chercher le rebond, 8 séances avant d'afficher une phase) sont provisoires : elles seront remplacées par celles des études quand elles auront été vérifiées. La Forme dépend du comptage de l'app. Reps ne pose aucun diagnostic : une fatigue qui dure malgré le repos relève d'un avis médical.")
+                            "Pas de phase quand le comptage de l'exercice est juste à moins de 90 % (séries corrigées en fin de séance) : mieux vaut ne rien afficher qu'afficher faux. Une baisse se constate sur deux séances de suite : une seule peut être du bruit de mesure. Les durées (2 semaines pour une surcharge, 2 semaines pour chercher le rebond, 8 séances avant d'afficher une phase) sont provisoires : elles seront remplacées par celles des études quand elles auront été vérifiées. La Forme dépend du comptage de l'app. Reps ne pose aucun diagnostic : une fatigue qui dure malgré le repos relève d'un avis médical.")
 
                     VStack(alignment: .leading, spacing: 8) {
                         MonitorLabel("Références")

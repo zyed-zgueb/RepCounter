@@ -44,7 +44,7 @@ struct FormPanel: View {
     let stats: HistoryStats
 
     var body: some View {
-        let results = stats.formResults
+        let results = stats.countingIsReliable ? stats.formResults : []
         VStack(alignment: .leading, spacing: 12) {
             MonitorLabel("Forme")
             if let last = results.last {
@@ -90,6 +90,9 @@ struct FormPanel: View {
     private func caption(hasResult: Bool) -> String {
         let rule = "Vitesse de tes répétitions et maintien de cette vitesse au fil des séries, comparés à tes séances habituelles."
         guard !hasResult else { return rule }
+        if let accuracy = stats.countingAccuracy, !stats.countingIsReliable {
+            return "Analyse suspendue : comptage juste à \(Int((accuracy * 100).rounded())) % (au moins 90 % requis). Corrige tes séries en fin de séance. " + rule
+        }
         let count = min(stats.measuredSessionCount, FormResult.baselineSessions)
         return "Référence en cours : \(count) séance\(count > 1 ? "s" : "") sur \(FormResult.baselineSessions) (une série d'au moins \(FormMeasure.minimumReps) répétitions). " + rule
     }
@@ -104,7 +107,16 @@ struct FormTile: View {
     var body: some View {
         let results = stats.formResults
         HistoryTile(title: "Forme") {
-            if let last = results.last {
+            if let accuracy = stats.countingAccuracy, !stats.countingIsReliable {
+                // Comptage peu fiable : pas de forme
+                Text("—")
+                    .font(theme.font(32, .bold))
+                    .foregroundStyle(theme.dim)
+                Text("comptage juste à \(Int((accuracy * 100).rounded())) %")
+                    .font(theme.font(11))
+                    .foregroundStyle(theme.dim)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if let last = results.last {
                 let color = formColor(last.result.zone, theme: theme)
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text("\(Int(last.result.percent.rounded()))")

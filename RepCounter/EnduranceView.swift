@@ -159,9 +159,9 @@ struct EndurancePanel: View {
                 HStack {
                     MonitorLabel("8 semaines")
                     Spacer()
-                    Text(verdict.kind == .pending ? verdict.title : "\(verdict.title) · \(Format.signedDecimal(verdict.weeklySlope)) / sem.")
+                    Text(verdict.kind == .pending || verdict.kind == .unreliable ? verdict.title : "\(verdict.title) · \(Format.signedDecimal(verdict.weeklySlope)) / sem.")
                         .font(theme.font(13, .bold))
-                        .foregroundStyle(verdict.kind == .pending ? theme.dim : verdictColor(verdict, theme: theme))
+                        .foregroundStyle(verdictColor(verdict, theme: theme))
                 }
             }
             Text(caption(score: score, assessment: assessment))
@@ -326,7 +326,7 @@ struct EnduranceTile: View {
                         .frame(height: 26)
                 }
                 let verdict = stats.progressVerdict
-                if verdict.kind != .pending {
+                if verdict.kind != .pending && verdict.kind != .unreliable {
                     Text(verdict.title)
                         .font(theme.font(11, .bold))
                         .foregroundStyle(verdictColor(verdict, theme: theme))
@@ -366,6 +366,6 @@ func verdictColor(_ verdict: ProgressVerdict, theme: AppTheme) -> Color {
     switch verdict.kind {
     case .up: return theme.ok
     case .down: return theme.warn
-    case .stable, .pending: return theme.dim
+    case .stable, .pending, .unreliable: return theme.dim
     }
 }

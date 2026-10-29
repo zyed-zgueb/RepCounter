@@ -94,7 +94,10 @@ au lieu de devenir la nouvelle norme) :
 **Forme = 100 × √((vitesse habituelle ÷ vitesse du jour) × (ralentissement habituel ÷ ralentissement du jour))**.
 100 % = comme d'habitude ; fatigué ou en forme au-delà de la variation normale (1,5 fois
 l'écart-type des formes des 10 dernières séances, au moins 3 %). Il faut 3 séances précédentes
-pour établir la référence. Principe : l'entraînement basé sur la vitesse (la vitesse et sa perte
+pour établir la référence. Garde-fous : les séries corrigées à la main de plus de 2 répétitions
+sont écartées (découpage douteux) ; un exercice dont le comptage est juste à moins de 90 % (dès
+50 répétitions) n'a ni Forme, ni phase, ni tendance (« Analyse suspendue ») : mieux vaut ne rien
+afficher qu'afficher faux. Principe : l'entraînement basé sur la vitesse (la vitesse et sa perte
 au fil d'une série reflètent la fatigue). Affichée en fin de séance, dans le détail d'une séance
 et dans le panneau Forme de l'historique (`Form.swift`).
 
