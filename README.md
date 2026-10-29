@@ -137,6 +137,18 @@ jour (±2) ; aucune décharge conseillée ni fatigue persistante sur les histori
 bruités. Limite connue : avec une mesure très bruitée (4 %), « Forme basse » apparaît parfois
 deux ou trois jours à tort.
 
+## Vitesse de montée (prototype, non affichée)
+Priorité 2 (répétitions en réserve, max estimé) : `Simulation/velocity.py` estime la vitesse de
+montée de chaque répétition à partir de l'accélération verticale (intégrée entre deux sommets,
+où la vitesse est nulle, dérive retirée), et la perte de vitesse de la série. Contrôle de
+vraisemblance sur les enregistrements : la hauteur montée est sous-estimée d'un facteur 2 à 3
+(tractions 14–20 cm au lieu d'~50), la cuisse basculant pendant le geste. **Pas utilisable en
+l'état** : rien n'est affiché. Les équations publiées (Sánchez-Moreno 2017 pour les tractions,
+Rodríguez-Rosell 2020 pour le squat chargé) ne seront appliquées qu'avec une vitesse validée
+contre une référence (vidéo à 240 images/s, protocole des séries à l'échec dans
+`Recordings/PROTOCOLE.md`). Pompes : la profondeur TrueDepth, déplacement direct, est la piste
+suivante.
+
 ## Ressenti
 Deux questions facultatives d'un toucher, à partir de la 4e séance (`Feeling.swift`) :
 **Fatigue ?** (1 à 5, item fatigue de McLean et al. 2010, de « très frais » à « toujours
