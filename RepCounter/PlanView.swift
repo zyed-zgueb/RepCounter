@@ -490,7 +490,6 @@ struct PathCard: View {
     }
 }
 
-extension TrainingPlan.Verdict: Equatable {}
 
 private struct PathChart: View {
     @Environment(\.theme) private var theme

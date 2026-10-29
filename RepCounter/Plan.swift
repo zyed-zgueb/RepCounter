@@ -321,7 +321,7 @@ extension TrainingPlan {
         return Double(goal.start) + Double(goal.target - goal.start) * share
     }
 
-    enum Verdict { case pending(Int), ahead, onTrack, behind }
+    enum Verdict: Equatable { case pending(Int), ahead, onTrack, behind }
 
     /// En avance ou en retard, seulement quand c'est établi : pente de Theil-Sen des tests et
     /// son intervalle à 99 % (Sen 1968, comme `ProgressVerdict`), comparés au rythme nécessaire.
