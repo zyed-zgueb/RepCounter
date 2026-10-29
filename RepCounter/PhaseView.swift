@@ -36,14 +36,20 @@ extension TrainingPhase {
         }
     }
 
+    /// Sur l'échelle d'intensité (skill reps-ux, § 5) ; les alertes n'ont pas de couleur propre
+    /// (elles portent « ! »).
     func color(_ theme: AppTheme) -> Color {
         switch kind {
-        case .overreaching, .lowForm, .deloadAdvised, .persistentFatigue: return theme.warn
-        case .rebound: return theme.ok
+        case .overreaching, .lowForm, .deloadAdvised, .persistentFatigue: return theme.text
+        case .rebound: return theme.max
         case .pending, .unreliable, .rest: return theme.dim
-        case .building, .comeback, .deload: return theme.primary
+        case .building, .comeback: return theme.work
+        case .deload: return theme.calm
         }
     }
+
+    /// Le titre, précédé de « ! » pour une alerte.
+    var marked: String { (isAlert ? "! " : "") + title }
 }
 
 /// Le détail de la phase : la phase, la décharge à commencer, la charge des 12 dernières
@@ -73,7 +79,7 @@ struct PhasePanel: View {
                     .accessibilityLabel("À propos des phases")
                 }
                 .padding(.vertical, -6)
-                Text(phase.title.uppercased())
+                Text(phase.marked.uppercased())
                     .font(theme.font(22, .bold))
                     .foregroundStyle(phase.kind == .pending || phase.kind == .unreliable ? theme.dim : phase.color(theme))
                     .lineLimit(1)

@@ -216,7 +216,7 @@ struct WorkoutView: View {
 
     /// Le plan d'un exercice (nil sans objectif).
     private func plan(_ exercise: Exercise) -> TrainingPlan? {
-        guard Goal.load(exercise) != nil else { return nil }
+        guard Goal.load(exercise) != nil || PlanAnchor.load(exercise) != nil else { return nil }
         return HistoryStats(sessions: sessions, exercise: exercise).plan(all: sessions)
     }
 
@@ -544,7 +544,7 @@ struct WorkoutView: View {
                     .foregroundStyle(theme.text)
                     .monospacedDigit()
                 if target < planDay.session.targets[index] {
-                    MonitorLabel("· cible réajustée", color: theme.warn)
+                    MonitorLabel("· ! cible réajustée", color: theme.text)
                 }
             }
         } else {
@@ -1147,7 +1147,7 @@ private struct SessionSummary: View {
     @ViewBuilder
     private func planResult(_ record: SessionRecord) -> some View {
         let before = history.filter { $0.start < record.start }
-        let plan = Goal.load(record.exercise) == nil ? nil
+        let plan = Goal.load(record.exercise) == nil && PlanAnchor.load(record.exercise) == nil ? nil
             : HistoryStats(sessions: before, exercise: record.exercise, now: record.start).plan(all: before)
         if let plan {
             let sets = record.orderedSets.map(\.reps)
@@ -1208,7 +1208,7 @@ private struct SessionSummary: View {
         if record.exercise != .auto, phase.kind == .rebound || phase.kind == .deloadAdvised {
             HStack(spacing: 8) {
                 Circle().fill(phase.color(theme)).frame(width: 8, height: 8)
-                Text(phase.title)
+                Text(phase.marked)
                     .font(theme.font(13, .bold))
                     .foregroundStyle(theme.text)
                 Text(phase.action())

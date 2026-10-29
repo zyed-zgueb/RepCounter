@@ -10,8 +10,9 @@ struct AppTheme: Decodable, Identifiable, Equatable {
         /// Tracé principal et action principale ; secondaire pour les dégradés.
         let primary, secondary: String
         let ok, warn, alarm: String
-        /// Semaine allégée, décharge (violet).
-        let rest: String
+        /// L'intensité, une seule échelle (skill reps-ux, § 5) : calme (semaine allégée, séance
+        /// légère), soutenu (progression), maximal (jour de test), en dégradé.
+        let calm, work, max: String
         /// Texte sur un bouton plein.
         let onPrimary: String
     }
@@ -38,7 +39,25 @@ struct AppTheme: Decodable, Identifiable, Equatable {
     var ok: Color { Color(hex: colors.ok) }
     var warn: Color { Color(hex: colors.warn) }
     var alarm: Color { Color(hex: colors.alarm) }
-    var rest: Color { Color(hex: colors.rest) }
+    var calm: Color { Color(hex: colors.calm) }
+    var work: Color { Color(hex: colors.work) }
+    var max: Color { Color(hex: colors.max) }
+
+    /// L'intensité sur l'échelle continue, de 0 (calme) à 1 (maximal) ; soutenu à 0,6.
+    func intensity(_ level: Double) -> Color {
+        let level = Swift.min(Swift.max(level, 0), 1)
+        return level <= Self.workLevel
+            ? calm.mixed(with: work, by: level / Self.workLevel)
+            : work.mixed(with: max, by: (level - Self.workLevel) / (1 - Self.workLevel))
+    }
+
+    /// Le dégradé de l'intensité, de calme à maximal.
+    var intensityGradient: Gradient {
+        Gradient(stops: [.init(color: calm, location: 0), .init(color: work, location: Self.workLevel),
+                         .init(color: max, location: 1)])
+    }
+
+    static let workLevel = 0.6
     var onPrimary: Color { Color(hex: colors.onPrimary) }
 
     var colorScheme: ColorScheme { scheme == "light" ? .light : .dark }
@@ -58,7 +77,8 @@ struct AppTheme: Decodable, Identifiable, Equatable {
         id: "monitor", name: "Moniteur", scheme: "dark", font: "monospaced", radius: 4, glow: 1,
         colors: Palette(background: "#05080A", panel: "#0D1217", line: "#212E38", grid: "#121C24",
                         text: "#DEEDF5", dim: "#738794", primary: "#3DC2FF", secondary: "#AB64FA",
-                        ok: "#2EE69E", warn: "#FFB021", alarm: "#FF4F4F", rest: "#AB64FA", onPrimary: "#000000"))
+                        ok: "#2EE69E", warn: "#FFB021", alarm: "#FF4F4F", calm: "#3DC2FF", work: "#FF8A3D", max: "#FF4F4F",
+                        onPrimary: "#000000"))
 }
 
 /// Thèmes disponibles et thème choisi (mémorisé).

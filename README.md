@@ -71,18 +71,28 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
    « en cours » la remplace (« 2 / 3 séries », « réf. 2 / 3 »). **Toucher une série
    permet de corriger son compte** (− / +, avec le compte d'origine). Puis « Nouvelle séance ».
 
-- **Coaching** (icône cible, en veille et à la fin ; `Coaching.swift`) : l'avenir et le plan
-  d'un exercice. **Objectif** (« 40 pompes d'affilée », date facultative) : la meilleure série
-  des 4 dernières semaines, le départ, ce qui reste. **État** : la phase (et son action), la
-  Forme mesurée et le ressenti de la dernière séance (fatigue, effort), en une seule carte ;
-  une touche ouvre la charge sur 12 semaines, la décharge à commencer, la courbe de Forme et
-  leurs (i). En veille, un **point d'état** sur la cible : bleu, progression ; orange, séance
-  légère ou Forme basse ; violet, semaine allégée ; vert, record possible. Une bulle l'explique
-  une seule fois, à son premier affichage. Avec un objectif, le **plan** (voir « Plan ») : le
-  bloc sur sa frise (« tu es ici », un point par séance, orange si manquée), le prévu face au
-  fait par semaine, et aux tests le mesuré face à l'attendu. En veille, une ligne
-  « aujourd'hui · 4 × 15 » sous le cadran ; en fin de séance, le prévu face au fait série par
-  série (« 16 · 16 · 15 · 15 ✓ »), ou le résultat du test.
+- **Coaching** (icône cible, en veille et à la fin ; `Coaching.swift`, `PlanView.swift`) :
+  l'avenir et le plan d'un exercice, en graphiques (skill reps-ux, § 9), du plus long terme au
+  plus court. **En-tête** : l'objectif en très grand, vert comme la ligne d'arrivée, « ⌖ pour le
+  12 fév. » au-dessus, « auj. 33 · reste 7 », ✎ et ⋯ (✎ objectif : recalé au prochain bloc ;
+  ◷ date : déplace la ligne attendue ; ✕ retirer, avec confirmation : « Le plan s'arrête. Ton
+  historique reste. » ; le plan continue alors en progression simple, ancré sur le max).
+  **Chemin** : un graphique du départ à la date de l'objectif, blocs en bandes colorées par
+  l'intensité (B1…Bn), tests ◆ (pleins et chiffrés, creux à venir), ligne attendue en
+  pointillés, objectif ⚑, aujourd'hui ▼ ; « ◆ prochain test » ; verdict ▲ = ▼ et projection
+  après 3 tests. **Bloc** : « B2 · P3 », l'intensité en mots et en jauge (demi-cercle, aiguille,
+  repères A, P, ◆), la frise, la semaine L M M J V S D (○ prévu, ● fait, ! manqué, aujourd'hui
+  souligné ; « ☝ touche un jour pour le déplacer » une fois), le prévu face au fait en barres
+  (contour prévu, plein fait, ✓, ←). **État** : la phase en pastille, la Forme en courbe sur ses
+  8 dernières séances avec sa bande, la fatigue sur 5 points, l'effort sur 10 graduations ; une
+  touche ouvre la charge, la décharge et la courbe de Forme. En veille, un **point d'état** sur
+  la cible, sur l'échelle d'intensité ; une bulle l'explique une seule fois (le dégradé, calme →
+  intense, et ses trois niveaux).
+- **Intensité** (skill reps-ux, § 5) : une seule échelle de couleur, bleu calme (semaine allégée,
+  séance légère) → ambre soutenu (progression) → rouge maximal (jour de test), en dégradé
+  (`calm`, `work`, `max` dans `Themes.json`, adaptés à chaque thème). Vert : objectif ou cible
+  atteints. Les alertes (séance manquée, semaine refaite, Forme basse) n'ont pas de couleur :
+  elles portent « ! ».
 - **Historique** (icône graphique, en veille et à la fin) : le passé seulement. Σ (tous les
   exercices) ou un exercice pratiqué, puis :
   1. **Score d'endurance** (valeur, tendance, mini-courbe ; ou son état « en cours ») — une

@@ -32,6 +32,13 @@ struct TrainingPlan {
         var plannedReps: Int { planned.total * plannedSessions }
     }
 
+    /// Un bloc : son début, le début de sa semaine allégée, son test (à partir de ce jour).
+    struct Block {
+        let start: Date
+        let deload: Date
+        let test: Date
+    }
+
     struct Test {
         let date: Date
         let value: Int
@@ -59,7 +66,12 @@ struct TrainingPlan {
         let isToday: Bool
     }
 
-    let goal: Goal
+    /// L'objectif (nil : retiré ; le plan continue en progression simple, ancré sur le max).
+    let goal: Goal?
+    /// Le début du plan (lundi de la semaine où il a commencé).
+    let anchor: Date
+    /// Les blocs, du premier au bloc en cours (bornes réelles), pour le graphique du chemin.
+    let blocks: [Block]
     let block: Int
     let weeks: [Week]
     /// Le test du bloc en cours : à partir de ce jour.
@@ -81,7 +93,7 @@ struct TrainingPlan {
 
     var currentWeek: Week? { weeks.first { $0.isCurrent } }
     /// La date de l'objectif, décalée des semaines refaites.
-    var shiftedGoalDate: Date? { goal.date.map { $0.addingTimeInterval(Double(shiftWeeks) * 7 * 86_400) } }
+    var shiftedGoalDate: Date? { goal?.date.map { $0.addingTimeInterval(Double(shiftWeeks) * 7 * 86_400) } }
 
     /// La séance prévue aujourd'hui (nil : jour de test).
     var todaySession: Prescription.Session? {
@@ -97,7 +109,7 @@ struct TrainingPlan {
     ///   - tired: les séances dont la Forme était dans la zone fatiguée.
     ///   - lowForm: Forme basse aujourd'hui (phase : surcharge, forme basse…) : séance légère.
     ///   - weekdays: jours de séance choisis (1 = lundi … 7 = dimanche) ; nil : placés par l'app.
-    static func make(goal: Goal, sessions: [SessionRecord], tired: Set<PersistentIdentifier>, lowForm: Bool,
+    static func make(goal: Goal?, anchor: Date, sessions: [SessionRecord], tired: Set<PersistentIdentifier>, lowForm: Bool,
                      weekdays: [Int]? = nil, now: Date = Date(), calendar: Calendar = .current) -> TrainingPlan? {
         let sorted = sessions.filter { $0.start <= now }.sorted { $0.start < $1.start }
         let week = 7 * 86_400.0
@@ -105,7 +117,8 @@ struct TrainingPlan {
         func inWeek(_ start: Date) -> [SessionRecord] { sorted.filter { $0.start >= start && $0.start < start.addingTimeInterval(week) } }
         func trainingDays(_ list: [SessionRecord]) -> Int { Set(list.map { calendar.startOfDay(for: $0.start) }).count }
 
-        var blockStart = weekStart(goal.created)
+        var blockStart = weekStart(anchor)
+        var blocks: [Block] = []
         var block = 1
         var tests: [Test] = []
         var shift = 0
@@ -162,6 +175,7 @@ struct TrainingPlan {
                               done: trainingDays(deloadDone), doneReps: deloadDone.reduce(0) { $0 + $1.totalReps },
                               isPast: deloadEnd <= now, isCurrent: start <= now && now < deloadEnd, redoReason: nil))
             let testDate = deloadEnd
+            blocks.append(Block(start: weeks.first?.start ?? start, deload: start, test: testDate))
             if let test = sorted.first(where: { $0.start >= testDate }) {
                 // Test fait : le bloc suivant repart la semaine d'après
                 tests.append(Test(date: test.start, value: test.bestSet, block: block))
@@ -171,7 +185,7 @@ struct TrainingPlan {
                 if blockStart <= now { continue }
                 // Le bloc suivant commence la semaine prochaine : jusque-là, repos
                 let next = Schedule.firstDay(days, inWeekOf: blockStart, calendar: calendar)
-                return TrainingPlan(goal: goal, block: block - 1, weeks: weeks, testDate: testDate, tests: tests,
+                return TrainingPlan(goal: goal, anchor: weekStart(anchor), blocks: blocks, block: block - 1, weeks: weeks, testDate: testDate, tests: tests,
                                     shiftWeeks: shift, today: .session(habit.session), status: .rest, next: next,
                                     days: [], ratios: habit.ratios, perWeek: perWeek)
             }
@@ -211,7 +225,7 @@ struct TrainingPlan {
                 let nextWeek = thisWeek.addingTimeInterval(week)
                 next = nextWeek >= testDate ? testDate : Schedule.firstDay(days, inWeekOf: nextWeek, calendar: calendar)
             }
-            return TrainingPlan(goal: goal, block: block, weeks: weeks, testDate: testDate, tests: tests,
+            return TrainingPlan(goal: goal, anchor: weekStart(anchor), blocks: blocks, block: block, weeks: weeks, testDate: testDate, tests: tests,
                                 shiftWeeks: shift, today: today, status: status, next: next, days: schedule.days,
                                 ratios: habit.ratios, perWeek: perWeek)
         }
@@ -302,7 +316,7 @@ extension TrainingPlan {
     /// L'attendu à une date : le rythme nécessaire pour aller du départ à l'objectif à la date
     /// choisie (décalée des semaines refaites). Ce n'est pas une prédiction. Nil sans date.
     func expected(at date: Date) -> Double? {
-        guard let end = shiftedGoalDate, end > goal.created else { return nil }
+        guard let goal, let end = shiftedGoalDate, end > goal.created else { return nil }
         let share = date.timeIntervalSince(goal.created) / end.timeIntervalSince(goal.created)
         return Double(goal.start) + Double(goal.target - goal.start) * share
     }
@@ -313,7 +327,7 @@ extension TrainingPlan {
     /// son intervalle à 99 % (Sen 1968, comme `ProgressVerdict`), comparés au rythme nécessaire.
     /// Il faut 3 tests ; sans date d'objectif, pas de rythme nécessaire.
     var verdict: Verdict? {
-        guard let end = shiftedGoalDate else { return nil }
+        guard let goal, let end = shiftedGoalDate else { return nil }
         guard tests.count >= Self.minTests else { return .pending(tests.count) }
         let x = tests.map { $0.date.timeIntervalSince(goal.created) / 86_400 }
         let y = tests.map { Double($0.value) }
@@ -326,7 +340,7 @@ extension TrainingPlan {
 
     /// Projection : la date où la tendance des tests (pente de Theil-Sen) atteint l'objectif.
     var projection: Date? {
-        guard tests.count >= Self.minTests, let last = tests.last else { return nil }
+        guard let goal, tests.count >= Self.minTests, let last = tests.last else { return nil }
         let x = tests.map { $0.date.timeIntervalSince(goal.created) / 86_400 }
         let y = tests.map { Double($0.value) }
         guard let fit = ProgressVerdict.theilSen(x, y), fit.slope > 0 else { return nil }
@@ -341,10 +355,26 @@ extension HistoryStats {
     /// Le plan de l'exercice de ces statistiques, s'il a un objectif. `all` : toutes les séances
     /// (pour la phase, qui dit si la Forme est basse aujourd'hui).
     func plan(all: [SessionRecord]) -> TrainingPlan? {
-        guard let exercise = sessions.first?.exercise, let goal = Goal.load(exercise) else { return nil }
+        guard let exercise = sessions.first?.exercise else { return nil }
+        let goal = Goal.load(exercise)
+        guard let anchor = goal?.created ?? PlanAnchor.load(exercise) else { return nil }
         let tired = Set(formResults.filter { $0.result.zone == .tired }.map { $0.session.persistentModelID })
         let lowForm = [.lowForm, .overreaching, .deloadAdvised, .persistentFatigue].contains(phase(all: all).kind)
-        return TrainingPlan.make(goal: goal, sessions: sessions, tired: tired, lowForm: lowForm,
+        return TrainingPlan.make(goal: goal, anchor: anchor, sessions: sessions, tired: tired, lowForm: lowForm,
                                  weekdays: Schedule.saved(exercise), now: now, calendar: calendar)
+    }
+}
+
+/// Le début du plan d'un exercice : fixé avec le premier objectif, gardé quand on le retire (le
+/// plan continue alors en progression simple, ancré sur le max).
+enum PlanAnchor {
+    private static func key(_ exercise: Exercise) -> String { "coaching.planStart.\(exercise.rawValue)" }
+
+    static func load(_ exercise: Exercise) -> Date? {
+        UserDefaults.standard.object(forKey: key(exercise)) as? Date
+    }
+
+    static func setIfNeeded(_ date: Date, for exercise: Exercise) {
+        if load(exercise) == nil { UserDefaults.standard.set(date, forKey: key(exercise)) }
     }
 }

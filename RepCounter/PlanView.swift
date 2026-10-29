@@ -1,47 +1,84 @@
 import SwiftUI
 
-// MARK: - Couleurs et mots du plan
+// MARK: - Intensité et mots du plan
+
+/// L'intensité (skill reps-ux, § 5) : calme (semaine allégée, séance légère) → soutenu
+/// (progression) → maximal (jour de test).
+enum Intensity {
+    static let calm = 0.0
+    static let work = AppTheme.workLevel
+    static let max = 1.0
+
+    static func word(_ level: Double) -> String {
+        level < 0.3 ? "calme" : (level < 0.85 ? "soutenue" : "maximale")
+    }
+}
 
 extension TrainingPlan.Today {
-    /// La couleur d'état (skill reps-ux, § 5) : bleu, séance prévue ; orange, séance légère ;
-    /// violet, semaine allégée ; vert, jour de test.
-    func color(_ theme: AppTheme) -> Color {
+    /// Le niveau d'intensité du jour.
+    var intensity: Double {
         switch self {
-        case .session: return theme.primary
-        case .light: return theme.warn
-        case .deload: return theme.rest
-        case .test: return theme.ok
+        case .session: return Intensity.work
+        case .light, .deload: return Intensity.calm
+        case .test: return Intensity.max
         }
     }
 
-    /// « 29 · 25 · 22 · repos 1:30 », « léger · 29 · 25 · repos 1:30 », « allégée · … »,
-    /// « test · série max ».
+    /// La couleur du jour, sur l'échelle d'intensité.
+    func color(_ theme: AppTheme) -> Color { theme.intensity(intensity) }
+
+    /// « 29 · 25 · 22 · repos 1:30 », « ! léger · 29 · 25 · repos 1:30 », « allégée · … »,
+    /// « test · série max ». La séance légère est une alerte : « ! ».
     var label: String {
         switch self {
-        case .session(let s): return "\(s.label) · repos \(Format.clock(Double(s.rest)))"
-        case .light(let s): return "léger · \(s.label) · repos \(Format.clock(Double(s.rest)))"
-        case .deload(let s): return "allégée · \(s.label) · repos \(Format.clock(Double(s.rest)))"
-        case .test: return "test · série max"
+        case .session(let s): return "\(s.label) · ◷ \(Format.clock(Double(s.rest)))"
+        case .light(let s): return "! léger · \(s.label) · ◷ \(Format.clock(Double(s.rest)))"
+        case .deload(let s): return "allégée · \(s.label) · ◷ \(Format.clock(Double(s.rest)))"
+        case .test: return "◆ test · série max"
         }
     }
 
-    /// Sans le repos : « 29 · 25 · 22 », « test · série max ».
+    /// Sans le repos : « 29 · 25 · 22 », « ◆ test · série max ».
     var short: String {
         switch self {
         case .session(let s): return s.label
-        case .light(let s): return "léger · \(s.label)"
+        case .light(let s): return "! léger · \(s.label)"
         case .deload(let s): return "allégée · \(s.label)"
-        case .test: return "test · série max"
+        case .test: return "◆ test · série max"
         }
     }
 }
 
 extension TrainingPlan.Week {
+    /// « P1 », « P2 bis », « A ».
+    var short: String {
+        switch kind {
+        case .progression(let index, let redo): return "P\(index + 1)\(redo ? " bis" : "")"
+        case .deload: return "A"
+        }
+    }
+
     var name: String {
         switch kind {
         case .progression(let index, let redo): return "Progr. \(index + 1)\(redo ? " bis" : "")"
         case .deload: return "Allégée"
         }
+    }
+
+    var intensity: Double { kind == .deload ? Intensity.calm : Intensity.work }
+
+    /// Semaine refaite après un décrochage (alerte : « ! »).
+    var isRedo: Bool {
+        if case .progression(_, let redo) = kind { return redo }
+        return false
+    }
+}
+
+extension TrainingPlan {
+    /// L'intensité de la semaine en cours (jour de test : maximale).
+    var weekIntensity: Double {
+        if today == .test { return Intensity.max }
+        return currentWeek?.intensity ?? Intensity.work
     }
 }
 
@@ -122,8 +159,9 @@ struct SetRow: View {
 
 // MARK: - Frise
 
-/// Le bloc sur sa frise (skill reps-ux, § 4 : jamais sur le cadran) : les semaines, un point par
-/// séance (plein : faite ; orange : manquée), le test, et « tu es ici ».
+/// Le bloc sur sa frise (skill reps-ux, § 4 : jamais sur le cadran) : les semaines colorées par
+/// l'intensité (progression ambre, allégée bleue, test rouge), un point par séance (● faite,
+/// ○ prévue, ! manquée), et « tu es ici ».
 struct BlockFrise: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
@@ -136,34 +174,36 @@ struct BlockFrise: View {
                     segment(week)
                 }
                 VStack(spacing: 4) {
-                    Text("TEST").font(theme.font(8.5, .bold)).foregroundStyle(theme.dim)
+                    Text("◆").font(theme.font(8.5, .bold)).foregroundStyle(theme.max)
                     Rectangle()
-                        .stroke(theme.ok, lineWidth: 1.5)
+                        .stroke(theme.max, lineWidth: 1.5)
                         .frame(width: 9, height: 9)
                         .rotationEffect(.degrees(45))
                         .padding(.vertical, 1)
                     Circle().stroke(theme.line, lineWidth: 1).frame(width: 6, height: 6)
                 }
-                .frame(width: 26)
+                .frame(width: 22)
             }
             if showsHere {
                 GeometryReader { geometry in
                     Text("▲ tu es ici")
                         .font(theme.font(9))
-                        .foregroundStyle(theme.primary)
+                        .foregroundStyle(theme.text)
                         .fixedSize()
                         .offset(x: min(max(herePosition * geometry.size.width - 6, 0), geometry.size.width - 60))
                 }
                 .frame(height: 12)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Bloc \(plan.block), \(plan.currentWeek?.name ?? "test"), test le \(Format.shortDate(plan.testDate))")
     }
 
     private func segment(_ week: TrainingPlan.Week) -> some View {
-        let color = week.kind == .deload ? theme.rest : theme.primary
+        let color = theme.intensity(week.intensity)
         let fill: Double = week.isPast ? 1 : (week.isCurrent ? dayShare(week) : 0)
         return VStack(spacing: 4) {
-            Text(week.name.uppercased())
+            Text((week.isRedo ? "! " : "") + week.short)
                 .font(theme.font(8.5, week.isCurrent ? .bold : .regular))
                 .foregroundStyle(week.isCurrent ? theme.text : theme.dim)
                 .lineLimit(1)
@@ -179,12 +219,14 @@ struct BlockFrise: View {
             .frame(height: 10)
             HStack(spacing: 3) {
                 ForEach(0..<max(week.plannedSessions, week.done), id: \.self) { index in
-                    let done = index < week.done
-                    let missed = !done && week.isPast
-                    Circle()
-                        .fill(done ? theme.primary : .clear)
-                        .overlay(Circle().stroke(done ? theme.primary : (missed ? theme.warn : theme.line), lineWidth: 1))
-                        .frame(width: 6, height: 6)
+                    if index >= week.done && week.isPast {
+                        Text("!").font(theme.font(8, .bold)).foregroundStyle(theme.text).frame(width: 6, height: 6)
+                    } else {
+                        Circle()
+                            .fill(index < week.done ? theme.text : .clear)
+                            .overlay(Circle().stroke(index < week.done ? theme.text : theme.line, lineWidth: 1))
+                            .frame(width: 6, height: 6)
+                    }
                 }
             }
         }
@@ -205,10 +247,45 @@ struct BlockFrise: View {
     }
 }
 
+// MARK: - Jauge d'intensité
+
+/// L'intensité de la semaine en demi-cercle : un arc en dégradé (calme → maximal), une aiguille,
+/// les repères A (allégée), P (progression), ◆ (test). Ce n'est pas le cadran de comptage.
+struct IntensityGauge: View {
+    @Environment(\.theme) private var theme
+    let level: Double
+
+    var body: some View {
+        Canvas { context, size in
+            let center = CGPoint(x: size.width / 2, y: size.height - 6)
+            let radius = min(size.width / 2, size.height) - 8
+            let angle = { (value: Double) -> Angle in .radians(.pi * (1 + value)) }
+            var arc = Path()
+            arc.addArc(center: center, radius: radius, startAngle: .radians(.pi), endAngle: .radians(2 * .pi), clockwise: false)
+            context.stroke(arc, with: .linearGradient(theme.intensityGradient,
+                                                       startPoint: CGPoint(x: center.x - radius, y: 0),
+                                                       endPoint: CGPoint(x: center.x + radius, y: 0)),
+                           style: StrokeStyle(lineWidth: 8, lineCap: .round))
+            for (value, mark) in [(0.1, "A"), (Intensity.work, "P"), (0.95, "◆")] {
+                let a = angle(value).radians
+                let point = CGPoint(x: center.x + CGFloat(cos(a)) * (radius - 15), y: center.y + CGFloat(sin(a)) * (radius - 15))
+                context.draw(Text(mark).font(theme.font(7)).foregroundStyle(theme.dim), at: point)
+            }
+            let a = angle(min(max(level, 0), 1)).radians
+            var needle = Path()
+            needle.move(to: center)
+            needle.addLine(to: CGPoint(x: center.x + CGFloat(cos(a)) * (radius - 4), y: center.y + CGFloat(sin(a)) * (radius - 4)))
+            context.stroke(needle, with: .color(theme.text), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+            context.fill(Path(ellipseIn: CGRect(x: center.x - 3.5, y: center.y - 3.5, width: 7, height: 7)), with: .color(theme.text))
+        }
+        .accessibilityLabel("Intensité de la semaine : \(Intensity.word(level))")
+    }
+}
+
 // MARK: - Cartes du Coaching
 
-/// Le bloc en cours : son numéro, la date du test, la frise, la semaine jour par jour ; une
-/// semaine refaite le dit.
+/// Le bloc en cours : « B2 · P3 », l'intensité en mots et en jauge, la date du test, la frise,
+/// la semaine jour par jour, et le prévu face au fait en barres.
 struct BlockCard: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
@@ -217,41 +294,40 @@ struct BlockCard: View {
     let onDaysChanged: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if let redo = plan.weeks.last(where: { $0.redoReason != nil }), plan.currentWeek?.kind != .deload {
-                HStack {
-                    Circle().fill(theme.warn).frame(width: 8, height: 8)
-                    Text("\(redo.name.uppercased()) REFAITE")
-                        .font(theme.font(12, .bold))
-                        .foregroundStyle(theme.warn)
-                    Spacer()
-                    Text(redo.redoReason ?? "")
-                        .font(theme.font(11))
-                        .foregroundStyle(theme.dim)
+        let level = plan.weekIntensity
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("B\(plan.block) · \(plan.today == .test ? "◆" : (plan.currentWeek?.short ?? "◆"))")
+                        .font(theme.font(15, .bold))
+                        .foregroundStyle(theme.text)
+                    MonitorLabel("intensité \(Intensity.word(level))", color: theme.intensity(level))
+                    MonitorLabel(plan.today == .test ? "◆ aujourd'hui" : "◆ \(Format.shortDate(plan.testDate))")
+                    if let redo = plan.weeks.last(where: { $0.redoReason != nil }), plan.currentWeek?.kind != .deload {
+                        MonitorLabel("! \(redo.short) refaite · \(redo.redoReason ?? "")", color: theme.text)
+                    }
                 }
-            }
-            HStack {
-                Text("BLOC \(plan.block)")
-                    .font(theme.font(13, .bold))
-                    .foregroundStyle(theme.text)
-                Spacer()
-                MonitorLabel(plan.today == .test ? "test aujourd'hui" : "test le \(Format.shortDate(plan.testDate))",
-                             color: plan.today == .test ? theme.ok : theme.dim)
+                Spacer(minLength: 8)
+                IntensityGauge(level: level)
+                    .frame(width: 112, height: 64)
             }
             BlockFrise(plan: plan)
             if !plan.days.isEmpty {
                 WeekDays(plan: plan, exercise: exercise, onChange: onDaysChanged)
             }
+            WeekBars(plan: plan)
+                .frame(height: 92)
         }
         .coachingCard(theme)
     }
 }
 
-/// La semaine en cours, L M M J V S D : jours prévus (cerclés), faits (pleins), manqués
-/// (orange), aujourd'hui (souligné). Toucher un jour l'ajoute ou le retire des jours de séance
-/// (2 au moins) : le placement est un choix de l'app, l'utilisateur le déplace.
+/// La semaine en cours, L M M J V S D : ○ prévu, ● fait, ! manqué, aujourd'hui souligné.
+/// Toucher un jour l'ajoute ou le retire des jours de séance (2 au moins) : le placement est un
+/// choix de l'app, l'utilisateur le déplace. L'astuce s'affiche une fois.
 struct WeekDays: View {
     @Environment(\.theme) private var theme
+    @AppStorage("coaching.daysHintSeen") private var hintSeen = false
     let plan: TrainingPlan
     let exercise: Exercise
     let onChange: () -> Void
@@ -264,8 +340,14 @@ struct WeekDays: View {
                 ForEach(Array(plan.days.enumerated()), id: \.offset) { index, day in
                     Button { toggle(index + 1) } label: { cell(index, day) }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("\(Self.letters[index]) \(day.planned ? "prévu" : "repos")\(day.sessions > 0 ? ", fait" : "")")
+                        .accessibilityLabel("\(Self.letters[index]) \(day.planned ? "prévu" : "repos")\(day.sessions > 0 ? ", fait" : "")\(day.missed ? ", manqué" : "")")
                 }
+            }
+            if !hintSeen {
+                Text("☝ touche un jour pour le déplacer")
+                    .font(theme.font(10))
+                    .foregroundStyle(theme.dim)
+                    .frame(maxWidth: .infinity)
             }
             if let day = spaced.last {
                 MonitorLabel("séries espacées · \(Format.weekdayOrDate(day.date))")
@@ -275,15 +357,20 @@ struct WeekDays: View {
 
     private func cell(_ index: Int, _ day: TrainingPlan.Day) -> some View {
         let done = day.sessions > 0
-        let stroke = day.missed ? theme.warn : (day.planned ? theme.primary : theme.line)
         return VStack(spacing: 3) {
             Text(Self.letters[index])
                 .font(theme.font(10, day.isToday ? .bold : .regular))
                 .foregroundStyle(day.isToday ? theme.text : theme.dim)
-            Circle()
-                .fill(done ? theme.primary : .clear)
-                .overlay(Circle().stroke(stroke, lineWidth: day.planned || day.missed ? 1.5 : 1))
-                .frame(width: 14, height: 14)
+            ZStack {
+                if day.missed {
+                    Text("!").font(theme.font(12, .bold)).foregroundStyle(theme.text)
+                } else {
+                    Circle()
+                        .fill(done ? theme.text : .clear)
+                        .overlay(Circle().stroke(day.planned || done ? theme.text : theme.line, lineWidth: day.planned ? 1.5 : 1))
+                }
+            }
+            .frame(width: 14, height: 14)
             Rectangle()
                 .fill(day.isToday ? theme.text : .clear)
                 .frame(width: 10, height: 2)
@@ -301,175 +388,213 @@ struct WeekDays: View {
             days.insert(weekday)
         }
         UISelectionFeedbackGenerator().selectionChanged()
+        hintSeen = true
         Schedule.save(Array(days), for: exercise)
         onChange()
     }
 }
 
-/// Prévu face au fait, par semaine, en répétitions.
-struct PlanWeekTable: View {
-    @Environment(\.theme) private var theme
-    let plan: TrainingPlan
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            MonitorLabel("Prévu / fait · répétitions")
-            Grid(alignment: .trailing, horizontalSpacing: 10, verticalSpacing: 6) {
-                GridRow {
-                    Text("").gridColumnAlignment(.leading)
-                    header("Prévu")
-                    header("Fait")
-                    header("Écart")
-                }
-                ForEach(Array(plan.weeks.enumerated()), id: \.offset) { _, week in
-                    if week.isPast || week.isCurrent {
-                        GridRow {
-                            Text(week.name).foregroundStyle(theme.text).gridColumnAlignment(.leading)
-                            Text("\(week.plannedReps)").foregroundStyle(theme.dim)
-                            Text(week.isCurrent ? "\(week.doneReps) / \(week.plannedReps)" : "\(week.doneReps)")
-                                .foregroundStyle(theme.text)
-                            gap(week)
-                        }
-                    }
-                }
-            }
-            .font(theme.font(11))
-            .monospacedDigit()
-        }
-        .coachingCard(theme)
-    }
-
-    private func header(_ text: String) -> some View {
-        Text(text.uppercased()).font(theme.font(9, .bold)).foregroundStyle(theme.dim)
-    }
-
-    @ViewBuilder
-    private func gap(_ week: TrainingPlan.Week) -> some View {
-        if week.isCurrent {
-            Text("en cours").foregroundStyle(theme.dim)
-        } else if week.plannedReps > 0 {
-            let percent = Int((Double(week.doneReps - week.plannedReps) / Double(week.plannedReps) * 100).rounded())
-            Text("\(Format.signed(percent)) %").foregroundStyle(percent >= 0 ? theme.ok : theme.dim)
-        }
-    }
-}
-
-/// Mesuré face à attendu : le max à chaque test, la ligne du rythme nécessaire (départ →
-/// objectif à la date choisie), et la projection après 3 tests.
-struct TrajectoryCard: View {
-    @Environment(\.theme) private var theme
-    let plan: TrainingPlan
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                MonitorLabel("Max aux tests")
-                Spacer()
-                if let verdict = plan.verdict {
-                    Text(verdictText(verdict))
-                        .font(theme.font(12, .bold))
-                        .foregroundStyle(verdictColor(verdict))
-                }
-            }
-            TrajectoryChart(plan: plan)
-                .frame(height: 150)
-            Text(plan.goal.date == nil
-                 ? "losanges : ton max à chaque test · fixe une date pour voir le rythme nécessaire"
-                 : "pointillés : le rythme nécessaire · losanges : ton max à chaque test")
-                .font(theme.font(10))
-                .foregroundStyle(theme.dim)
-                .fixedSize(horizontal: false, vertical: true)
-            if let projection = plan.projection {
-                HStack {
-                    MonitorLabel("À ce rythme")
-                    Spacer()
-                    Text("\(plan.goal.target) vers le \(Format.shortDate(projection))")
-                        .font(theme.font(12, .bold))
-                        .foregroundStyle(theme.text)
-                }
-            }
-            if plan.shiftWeeks > 0, let shifted = plan.shiftedGoalDate {
-                HStack {
-                    MonitorLabel("Objectif \(plan.goal.target)")
-                    Spacer()
-                    Text("le \(Format.shortDate(shifted)) · +\(plan.shiftWeeks) sem.")
-                        .font(theme.font(12, .bold))
-                        .foregroundStyle(theme.warn)
-                }
-            }
-        }
-        .coachingCard(theme)
-    }
-
-    private func verdictText(_ verdict: TrainingPlan.Verdict) -> String {
-        switch verdict {
-        case .pending(let count): return "\(count) / \(TrainingPlan.minTests) tests"
-        case .ahead: return "en avance"
-        case .onTrack: return "dans le rythme"
-        case .behind: return "en retard"
-        }
-    }
-
-    private func verdictColor(_ verdict: TrainingPlan.Verdict) -> Color {
-        switch verdict {
-        case .ahead: return theme.ok
-        case .behind: return theme.warn
-        case .onTrack, .pending: return theme.dim
-        }
-    }
-}
-
-private struct TrajectoryChart: View {
+/// Prévu face au fait, une barre par semaine du bloc : contour = prévu (couleur de
+/// l'intensité), plein = fait, ✓ si atteint, ← pour la semaine en cours.
+struct WeekBars: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
 
     var body: some View {
         Canvas { context, size in
-            let start = plan.goal.created
-            let end = max(plan.shiftedGoalDate ?? plan.testDate, plan.tests.last?.date ?? start, plan.testDate)
-                .addingTimeInterval(7 * 86_400)
-            let values = plan.tests.map { Double($0.value) } + [Double(plan.goal.start), Double(plan.goal.target)]
-            let low = (values.min() ?? 0) - 2, high = (values.max() ?? 1) + 2
-            let x = { (date: Date) -> CGFloat in
-                CGFloat(date.timeIntervalSince(start) / max(end.timeIntervalSince(start), 1)) * (size.width - 8) + 4
-            }
-            let y = { (value: Double) -> CGFloat in
-                size.height - 6 - CGFloat((value - low) / max(high - low, 1)) * (size.height - 12)
-            }
-            // Objectif
-            var goalLine = Path()
-            goalLine.move(to: CGPoint(x: 0, y: y(Double(plan.goal.target))))
-            goalLine.addLine(to: CGPoint(x: size.width, y: y(Double(plan.goal.target))))
-            context.stroke(goalLine, with: .color(theme.ok.opacity(0.5)), lineWidth: 0.8)
-            // Rythme nécessaire
-            if let goalDate = plan.shiftedGoalDate {
-                var line = Path()
-                line.move(to: CGPoint(x: x(start), y: y(Double(plan.goal.start))))
-                line.addLine(to: CGPoint(x: x(goalDate), y: y(Double(plan.goal.target))))
-                context.stroke(line, with: .color(theme.dim), style: StrokeStyle(lineWidth: 1.2, dash: [5, 4]))
-            }
-            // Projection (tendance des tests)
-            if let projection = plan.projection, let last = plan.tests.last {
-                var line = Path()
-                line.move(to: CGPoint(x: x(last.date), y: y(Double(last.value))))
-                line.addLine(to: CGPoint(x: x(min(projection, end)), y: y(Double(plan.goal.target))))
-                context.stroke(line, with: .color(theme.primary), style: StrokeStyle(lineWidth: 1.2, dash: [2, 3]))
-            }
-            // Tests mesurés
-            for test in plan.tests {
-                let point = CGPoint(x: x(test.date), y: y(Double(test.value)))
-                var diamond = Path()
-                diamond.move(to: CGPoint(x: point.x, y: point.y - 5))
-                diamond.addLine(to: CGPoint(x: point.x + 5, y: point.y))
-                diamond.addLine(to: CGPoint(x: point.x, y: point.y + 5))
-                diamond.addLine(to: CGPoint(x: point.x - 5, y: point.y))
-                diamond.closeSubpath()
-                context.fill(diamond, with: .color(theme.ok))
-                context.draw(Text("\(test.value)").font(theme.font(9)).foregroundStyle(theme.text),
-                             at: CGPoint(x: point.x + 12, y: point.y - 6))
+            let weeks = plan.weeks
+            guard !weeks.isEmpty else { return }
+            let top = CGFloat(weeks.map { max($0.plannedReps, $0.doneReps) }.max() ?? 1)
+            let slot = size.width / CGFloat(weeks.count)
+            let barWidth = min(slot * 0.62, 44)
+            let base = size.height - 16
+            let scale = (base - 18) / max(top, 1)
+            for (index, week) in weeks.enumerated() {
+                let x = CGFloat(index) * slot + (slot - barWidth) / 2
+                let color = theme.intensity(week.intensity)
+                let plannedHeight = CGFloat(week.plannedReps) * scale
+                let doneHeight = CGFloat(week.doneReps) * scale
+                let planned = CGRect(x: x, y: base - plannedHeight, width: barWidth, height: plannedHeight)
+                context.stroke(Path(roundedRect: planned, cornerRadius: 2), with: .color(color.opacity(0.75)),
+                               style: StrokeStyle(lineWidth: 1, dash: week.kind == .deload ? [3, 2] : []))
+                let reached = week.doneReps >= week.plannedReps && week.plannedReps > 0
+                if week.doneReps > 0 {
+                    let done = CGRect(x: x + 3, y: base - doneHeight, width: barWidth - 6, height: doneHeight)
+                    context.fill(Path(roundedRect: done, cornerRadius: 1.5),
+                                 with: .color((reached ? theme.ok : color).opacity(week.isCurrent ? 0.9 : 0.75)))
+                }
+                let mark = reached ? "✓" : (week.isCurrent ? "←" : (week.isPast ? "!" : "○"))
+                context.draw(Text(mark).font(theme.font(10, .bold)).foregroundStyle(reached ? theme.ok : theme.text),
+                             at: CGPoint(x: x + barWidth / 2, y: base - max(plannedHeight, doneHeight) - 8))
+                context.draw(Text(week.short).font(theme.font(9, week.isCurrent ? .bold : .regular))
+                                .foregroundStyle(week.isCurrent ? theme.text : theme.dim),
+                             at: CGPoint(x: x + barWidth / 2, y: size.height - 6))
             }
         }
-        .accessibilityLabel("Max mesuré aux tests face au rythme nécessaire")
+        .accessibilityLabel(accessibility)
+    }
+
+    private var accessibility: String {
+        guard let week = plan.currentWeek else { return "Prévu face au fait par semaine" }
+        return "Semaine en cours : \(week.doneReps) répétitions faites sur \(week.plannedReps) prévues"
+    }
+}
+
+// MARK: - Le chemin vers l'objectif
+
+/// Le chemin, de la date de départ à la date de l'objectif : les blocs en bandes de 4 semaines
+/// (colorées par l'intensité, B1…Bn), les tests en ◆ (pleins et chiffrés une fois faits, creux à
+/// venir), la ligne attendue en pointillés, l'objectif en ligne verte ⚑, aujourd'hui ▼.
+struct PathCard: View {
+    @Environment(\.theme) private var theme
+    let plan: TrainingPlan
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            PathChart(plan: plan)
+                .frame(height: 150)
+            HStack {
+                MonitorLabel(plan.today == .test ? "◆ test aujourd'hui" : "◆ prochain test")
+                Spacer()
+                MonitorLabel(Format.shortDate(plan.testDate))
+            }
+            if let verdict = settledVerdict {
+                HStack {
+                    Text(verdictSymbol(verdict))
+                        .font(theme.font(13, .bold))
+                        .foregroundStyle(verdict == .ahead ? theme.ok : theme.text)
+                    Spacer()
+                    if let projection = plan.projection, let goal = plan.goal {
+                        MonitorLabel("⌖ \(goal.target) vers le \(Format.shortDate(projection))")
+                    }
+                }
+            }
+        }
+        .coachingCard(theme)
+    }
+
+    /// Le verdict, seulement une fois établi (3 tests).
+    private var settledVerdict: TrainingPlan.Verdict? {
+        guard let verdict = plan.verdict else { return nil }
+        if case .pending = verdict { return nil }
+        return verdict
+    }
+
+    private func verdictSymbol(_ verdict: TrainingPlan.Verdict) -> String {
+        switch verdict {
+        case .ahead: return "▲ en avance"
+        case .onTrack: return "= dans le rythme"
+        case .behind: return "▼ en retard"
+        case .pending: return ""
+        }
+    }
+}
+
+extension TrainingPlan.Verdict: Equatable {}
+
+private struct PathChart: View {
+    @Environment(\.theme) private var theme
+    let plan: TrainingPlan
+
+    var body: some View {
+        Canvas { context, size in
+            let start = plan.anchor
+            let lastBlock = plan.blocks.last
+            // Jusqu'à la date de l'objectif, ou au test du bloc en cours, avec au moins 16 semaines
+            var end = max(plan.shiftedGoalDate ?? plan.testDate, plan.testDate)
+            end = max(end, start.addingTimeInterval(16 * 7 * 86_400))
+            let left: CGFloat = 22, right: CGFloat = 16, top: CGFloat = 14, bottom = size.height - 18
+            let span = max(end.timeIntervalSince(start), 1)
+            let x = { (date: Date) -> CGFloat in left + CGFloat(date.timeIntervalSince(start) / span) * (size.width - left - right) }
+            var values = plan.tests.map { Double($0.value) }
+            if let goal = plan.goal { values += [Double(goal.start), Double(goal.target)] }
+            let low = (values.min() ?? 0) - 2, high = (values.max() ?? 10) + 2
+            let y = { (value: Double) -> CGFloat in bottom - CGFloat((value - low) / max(high - low, 1)) * (bottom - top) }
+
+            // Les blocs : les réels, puis ceux à venir (4 semaines chacun, test compris)
+            var bands = plan.blocks.map { (start: $0.start, deload: $0.deload, test: $0.test) }
+            var next = (lastBlock?.test ?? start).addingTimeInterval(7 * 86_400)
+            while next < end {
+                let deload = next.addingTimeInterval(3 * 7 * 86_400)
+                bands.append((start: next, deload: deload, test: deload.addingTimeInterval(7 * 86_400)))
+                next = deload.addingTimeInterval(14 * 86_400)
+            }
+            for (index, band) in bands.enumerated() where band.start < end {
+                let current = index == plan.blocks.count - 1
+                let work = CGRect(x: x(band.start), y: top, width: x(band.deload) - x(band.start), height: bottom - top)
+                let calm = CGRect(x: x(band.deload), y: top, width: x(min(band.test, end)) - x(band.deload), height: bottom - top)
+                context.fill(Path(work), with: .color(theme.work.opacity(current ? 0.16 : 0.07)))
+                context.fill(Path(calm), with: .color(theme.calm.opacity(current ? 0.2 : 0.09)))
+                context.draw(Text("B\(index + 1)").font(theme.font(8, current ? .bold : .regular))
+                                .foregroundStyle(current ? theme.text : theme.dim),
+                             at: CGPoint(x: (x(band.start) + x(min(band.test, end))) / 2, y: bottom + 9))
+                // Test à venir : un ◆ creux sur la ligne attendue (ou au niveau du dernier test)
+                if index >= plan.tests.count, band.test <= end {
+                    let level = plan.expected(at: band.test) ?? plan.tests.last.map { Double($0.value) } ?? low + 2
+                    context.stroke(diamond(CGPoint(x: x(band.test), y: y(level)), 4), with: .color(theme.max), lineWidth: 1.2)
+                }
+            }
+            if let goal = plan.goal {
+                // L'objectif : la ligne d'arrivée
+                var finish = Path()
+                finish.move(to: CGPoint(x: left, y: y(Double(goal.target))))
+                finish.addLine(to: CGPoint(x: size.width - right, y: y(Double(goal.target))))
+                context.stroke(finish, with: .color(theme.ok), lineWidth: 1)
+                context.draw(Text("⚑").font(theme.font(10)).foregroundStyle(theme.ok),
+                             at: CGPoint(x: size.width - right + 8, y: y(Double(goal.target))))
+                context.draw(Text("\(goal.target)").font(theme.font(8)).foregroundStyle(theme.ok),
+                             at: CGPoint(x: left - 10, y: y(Double(goal.target))))
+                context.draw(Text("\(goal.start)").font(theme.font(8)).foregroundStyle(theme.dim),
+                             at: CGPoint(x: left - 10, y: y(Double(goal.start))))
+                // L'attendu : départ → objectif à la date choisie
+                if let goalDate = plan.shiftedGoalDate {
+                    var expected = Path()
+                    expected.move(to: CGPoint(x: x(goal.created), y: y(Double(goal.start))))
+                    expected.addLine(to: CGPoint(x: x(goalDate), y: y(Double(goal.target))))
+                    context.stroke(expected, with: .color(theme.dim), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                }
+            }
+            // Projection (après 3 tests)
+            if let projection = plan.projection, let last = plan.tests.last, let goal = plan.goal {
+                var line = Path()
+                line.move(to: CGPoint(x: x(last.date), y: y(Double(last.value))))
+                line.addLine(to: CGPoint(x: x(min(projection, end)), y: y(Double(goal.target))))
+                context.stroke(line, with: .color(theme.primary), style: StrokeStyle(lineWidth: 1.2, dash: [2, 3]))
+            }
+            // Tests faits : ◆ pleins, chiffrés
+            for test in plan.tests {
+                let point = CGPoint(x: x(test.date), y: y(Double(test.value)))
+                context.fill(diamond(point, 5), with: .color(theme.max))
+                context.draw(Text("\(test.value)").font(theme.font(9)).foregroundStyle(theme.text),
+                             at: CGPoint(x: point.x + 11, y: point.y - 6))
+            }
+            // Aujourd'hui
+            let now = x(Date())
+            var today = Path()
+            today.move(to: CGPoint(x: now, y: top))
+            today.addLine(to: CGPoint(x: now, y: bottom))
+            context.stroke(today, with: .color(theme.text), lineWidth: 1.2)
+            context.draw(Text("▼").font(theme.font(9)).foregroundStyle(theme.text), at: CGPoint(x: now, y: top - 6))
+        }
+        .accessibilityLabel(accessibility)
+    }
+
+    private func diamond(_ center: CGPoint, _ radius: CGFloat) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: center.x, y: center.y - radius))
+        path.addLine(to: CGPoint(x: center.x + radius, y: center.y))
+        path.addLine(to: CGPoint(x: center.x, y: center.y + radius))
+        path.addLine(to: CGPoint(x: center.x - radius, y: center.y))
+        path.closeSubpath()
+        return path
+    }
+
+    private var accessibility: String {
+        var parts = ["Chemin : bloc \(plan.block)"]
+        if let last = plan.tests.last { parts.append("dernier test \(last.value)") }
+        if let goal = plan.goal { parts.append("objectif \(goal.target)") }
+        parts.append("prochain test le \(Format.shortDate(plan.testDate))")
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -484,16 +609,16 @@ struct BlockSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            MonitorLabel("Un bloc = 4 semaines", color: theme.primary)
+            MonitorLabel("Un bloc = 4 semaines", color: theme.text)
                 .padding(.top, 20)
             BlockFrise(plan: plan, showsHere: false)
             Text("Enchaîne les séries, avec le repos indiqué.")
                 .font(theme.font(12, .bold))
                 .foregroundStyle(theme.text)
             VStack(alignment: .leading, spacing: 12) {
-                row(theme.primary, "3 semaines de progression", "3 séries, 2 ou 3 en réserve")
-                row(theme.rest, "1 semaine allégée", "moins de volume : la fatigue retombe")
-                row(theme.ok, "Le test", "une série max : ton nouveau niveau")
+                row(theme.work, "3 semaines de progression", "3 séries, 2 ou 3 en réserve")
+                row(theme.calm, "1 semaine allégée", "moins de volume : la fatigue retombe")
+                row(theme.max, "◆ Le test", "une série max : ton nouveau niveau")
                 row(theme.line, "Puis le bloc suivant", "recalé sur ce nouveau niveau")
             }
             Spacer(minLength: 0)
