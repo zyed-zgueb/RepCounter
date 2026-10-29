@@ -146,8 +146,10 @@ vraisemblance sur les enregistrements : la hauteur montée est sous-estimée d'u
 l'état** : rien n'est affiché. Les équations publiées (Sánchez-Moreno 2017 pour les tractions,
 Rodríguez-Rosell 2020 pour le squat chargé) ne seront appliquées qu'avec une vitesse validée
 contre une référence (vidéo à 240 images/s, protocole des séries à l'échec dans
-`Recordings/PROTOCOLE.md`). Pompes : la profondeur TrueDepth, déplacement direct, est la piste
-suivante.
+`Recordings/PROTOCOLE.md`). Pompes : la caméra TrueDepth donne la distance du visage, sans
+intégration ; vitesse moyenne de montée entre 25 et 50 cm (le bas de la pompe, sous ~18 cm,
+n'est pas mesurable). Sur 10 pompes : 0,86 à 0,96 m/s, 0,73 à la dernière (perte 24 %),
+cohérent ; c'est la mesure la plus prometteuse, à valider sur des séries à l'échec.
 
 ## Ressenti
 Deux questions facultatives d'un toucher, à partir de la 4e séance (`Feeling.swift`) :

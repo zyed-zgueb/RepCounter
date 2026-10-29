@@ -23,8 +23,12 @@ poche à mi-cuisse. La mesure sous-estime le déplacement d'un facteur 2 à 3 : 
 pendant le geste, et l'accélération sans la gravité que calcule l'iPhone en rotation n'est pas
 assez juste à 30 Hz. En l'état, cette vitesse n'est PAS utilisable : ni affichage, ni
 répétitions en réserve. Pistes : iPhone au brassard ou à la ceinture (moins de rotation),
-validation contre une vidéo à 240 images/s ; pour les pompes, la profondeur TrueDepth donne un
-déplacement direct, sans intégration.
+validation contre une vidéo à 240 images/s.
+
+Pompes : la profondeur TrueDepth donne la distance du visage, sans intégration. Sur
+pushups_2026-10-26_14-14-11 (10 pompes) : 0,86 à 0,96 m/s, puis 0,73 à la dernière (perte 24 %),
+cohérent. Le bas de la pompe (moins de ~18 cm) n'est pas mesurable : la vitesse porte sur la
+partie haute de la montée. À valider sur des séries à l'échec avant toute estimation.
 """
 
 import os
@@ -67,9 +71,48 @@ def rep_velocities(times, up, tops):
     return out
 
 
+# Pompes : distance du visage par la caméra TrueDepth (10e centile de la profondeur, moitié
+# centrale de l'image), mesurable au-delà d'environ 18 cm. Vitesse moyenne de montée entre 25 et
+# 50 cm : la partie visible de la montée, sans intégration.
+FACE_LOW, FACE_HIGH = 0.25, 0.50
+
+
+def pushup_velocities(frames, t0):
+    """(instant, vitesse moyenne de 25 à 50 cm) pour chaque montée."""
+    rows = [(f["t"] - t0, f["x"]["depthStats"]) for f in frames if "depthStats" in f.get("x", {})]
+    out, below, previous = [], None, None
+    for t, stats in rows:
+        d = stats[0] if stats[3] > 0.5 else None
+        if d is None:
+            continue
+        if d < FACE_LOW:
+            below = (t, d)
+        elif below is not None and previous is not None and previous[1] < FACE_HIGH <= d:
+            # Instants de passage à 25 et 50 cm, interpolés
+            t_low = below[0]
+            t_high = previous[0] + (t - previous[0]) * (FACE_HIGH - previous[1]) / (d - previous[1])
+            if t_high > t_low:
+                out.append((t_high, (FACE_HIGH - FACE_LOW) / (t_high - t_low)))
+            below = None
+        elif below is not None and below[1] < FACE_LOW <= d and previous is not None and previous[1] < FACE_LOW:
+            # Passage à 25 cm : instant interpolé
+            below = (previous[0] + (t - previous[0]) * (FACE_LOW - previous[1]) / (d - previous[1]), FACE_LOW)
+        previous = (t, d)
+    return out
+
+
 def main(path):
     meta, end, frames = rp.load(path)
     exercise = meta.get("exercise", "pullups")
+    if exercise == "pushups":
+        reps = pushup_velocities(frames, frames[0]["t"])
+        print(f"{os.path.basename(path)} : {len(reps)} montées mesurées (caméra TrueDepth, 25 → 50 cm)")
+        for i, (t, v) in enumerate(reps, 1):
+            print(f"  rép. {i} : {v:.2f} m/s")
+        if reps:
+            best = max(v for _, v in reps)
+            print(f"  perte de vitesse de la série : {100 * (best - reps[-1][1]) / best:.0f} %")
+        return
     counter, counts, _ = rp.replay(frames, exercise, meta.get("sources"))
     t0 = frames[0]["t"]
     times = np.array([f["t"] for f in frames]) - t0
