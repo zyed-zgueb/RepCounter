@@ -515,8 +515,11 @@ final class WorkoutModel: ObservableObject {
                 tentativePulse += 1
                 lightHaptic.impactOccurred()
                 // Chaque répétition sonne dès la première, même avant la validation de la
-                // série (à la 3e) : le rythme s'entend tout de suite
-                announcer.play(.rep)
+                // série (à la 3e) : le rythme s'entend tout de suite. Pendant la récupération,
+                // un mouvement isolé (respiration, se replacer) n'est pas une reprise : il ne
+                // sonne qu'à partir de la 2e répétition de suite (il se superposait aux bips
+                // de récupération)
+                if !isResting || tentative >= 2 { announcer.play(.rep) }
             }
             self.tentative = tentative
         }

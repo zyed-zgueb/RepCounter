@@ -337,8 +337,12 @@ les comptes (réel, app, compteur Python) et trace le signal de chaque capteur.
 ## Retour sonore
 Pensé pour qui ne regarde pas l'écran : un son par événement, bref (moins de 0,1 s) et
 feutré, en la majeur — une note par répétition, deux notes montantes tous les 5, trois tous
-les 10, en récupération un battement grave à 15 s, deux à 30, trois à 45 et un accord grave plus long à chaque minute (le cycle reprend chaque minute), deux notes descendantes en fin de série,
-un arpège en fin de séance. Chaque son s'accompagne d'une vibration.
+les 10, en récupération un bip bref à 15 s, deux bips montants à 30, trois à 45 (la, do#, mi,
+espacés de 0,13 s pour se compter à l'oreille) et un accord grave plus long à chaque minute (le
+cycle reprend chaque minute), deux notes descendantes en fin de série, un arpège en fin de
+séance. Chaque son s'accompagne d'une vibration. Pendant la récupération, une répétition
+provisoire isolée (respiration, se replacer) vibre sans sonner : elle ne sonne qu'à partir de la
+2e de suite, pour ne pas se mêler aux bips de récupération.
 
 Réglages : **Sons** (par défaut), **Sons + voix** (la voix dit les paliers 5, 10, 15…, le
 premier nombre d'une série, la fin de série et la durée de récupération, avec la meilleure
