@@ -1,23 +1,28 @@
 import Foundation
 
-/// Tous les paramètres de prescription du plan, en un seul endroit : le jour où la prise de
-/// position ACSM 2026 (Currier et al., Med Sci Sports Exerc 2026;58(4):851–872) aura été lue en
-/// texte intégral, c'est ici seulement qu'on les remplacera.
+/// Tous les paramètres de prescription du plan, en un seul endroit, chacun avec sa référence.
 ///
-/// En attendant, rien n'est inventé :
-/// - la séance prévue est la séance habituelle de la personne pour l'exercice (séries,
-///   répétitions par série, repos et séances par semaine : médianes des 4 semaines qui
-///   précèdent le bloc) ;
-/// - pas d'augmentation d'une semaine à l'autre, faute de référence qui la fixe ;
-/// - la semaine allégée réduit le volume, et dure 7 jours (Bell et al. 2023, consensus Delphi :
-///   « reduce volume by lowering sets », 100 % ; Rogerson et al. 2024 : 6,4 ± 1,7 jours). La part
-///   de séries retirée n'est fixée par aucune des deux : la moitié, choix provisoire de l'app ;
-/// - le rythme 3 semaines + 1 allégée + un test, la séance légère quand la Forme est basse, et la
-///   règle « séance faite » (total prévu atteint) sont des choix de l'app.
+/// Prise de position de l'ACSM : Currier et al., Med Sci Sports Exerc 2026;58(4):851–872 (accès
+/// ouvert, lu en texte intégral) :
+/// - fréquence : « at least twice weekly » (p. 863) → au moins 2 séances par semaine ;
+/// - séries : « at least two sets per exercise » (p. 864), « 2–3 sets/session » pour la force
+///   (tableau 6), gains décroissants au-delà de « ~2–3 sets/exercise » → 3 séries ;
+/// - effort : pas besoin d'aller à l'échec ; « “near-failure” or a target of 2–3 repetitions in
+///   reserve (RIR) » (p. 864), mais « insufficient evidence to quantify exact RIR » → au poids du
+///   corps, la cible d'une série est le max mesuré moins 3 (la formule « max − 3 » est un choix
+///   de l'app, fondé sur cette cible) ;
+/// - repos : pas d'effet d'un repos court (< 1 min) ou long (> 1 min) sur la force (p. 856) →
+///   le repos habituel de la personne ;
+/// - progression : par des tests réguliers (« regular strength testing », p. 863) → le test de
+///   fin de bloc recale la cible ; aucune hausse hebdomadaire chiffrée dans l'article, donc aucune ;
+/// - endurance musculaire : améliorée par l'entraînement, mais « insufficient data » pour dire
+///   quel dosage (p. 859, tableau 6 : « ND ») : le plan applique les recommandations générales
+///   et vérifie le résultat par les tests.
+/// Semaine allégée : volume réduit, 7 jours (Bell et al. 2023 ; Rogerson et al. 2024 : 6,4 ±
+/// 1,7 jours) ; l'ACSM ne traite pas des décharges et ne trouve pas la périodisation supérieure.
+/// Choix de l'app : le rythme 3 + 1 et le test, la moitié des séries en semaine allégée et en
+/// séance légère, la semaine refaite, la règle « séance faite ».
 enum Prescription {
-    /// Les valeurs ci-dessous sont provisoires (affiché dans le (i)).
-    static let isProvisional = true
-
     /// Une séance prévue : séries × répétitions, repos entre les séries (s).
     struct Session: Equatable {
         var sets: Int
@@ -27,38 +32,44 @@ enum Prescription {
         var total: Int { sets * reps }
     }
 
+    /// Au moins 2 séances par semaine (ACSM 2026).
+    static let minSessionsPerWeek = 2
+    /// 3 séries par séance (ACSM 2026 : au moins 2, « 2–3 sets/session »).
+    static let sets = 3
+    /// Répétitions en réserve : cible d'une série = max − 3 (ACSM 2026 : 2–3 en réserve ; la
+    /// formule est un choix de l'app).
+    static let repsInReserve = 3
     /// Semaines de progression puis semaine allégée, avant le test (choix de l'app).
     static let progressionWeeks = 3
     static let deloadWeeks = 1
-    /// Augmentation de la séance d'une semaine de progression à la suivante : aucune tant
-    /// qu'aucune référence ne la fixe.
-    static let weeklyIncrease = 0
     /// Une semaine de progression refaite au plus deux fois par bloc (choix de l'app).
     static let maxRepeats = 2
-    /// Fenêtre de la séance habituelle.
+    /// Fenêtre de la séance habituelle (repos, séances par semaine, meilleure série).
     static let habitDays = 28
 
-    /// Semaine allégée et séance légère : moitié des séries, au moins une (choix provisoire).
+    /// La cible d'une série d'après le max (au moins 1).
+    static func target(max: Int) -> Int { Swift.max(1, max - repsInReserve) }
+
+    /// Semaine allégée et séance légère : la moitié des séries, arrondie au-dessus (choix de l'app).
     static func lighter(_ session: Session) -> Session {
-        Session(sets: max(1, session.sets / 2), reps: session.reps, rest: session.rest)
+        Session(sets: Swift.max(1, (session.sets + 1) / 2), reps: session.reps, rest: session.rest)
     }
 
-    /// La séance de la semaine `week` (0, 1, 2) d'un bloc, à partir de la séance habituelle.
-    static func progression(_ base: Session, week: Int) -> Session {
-        Session(sets: base.sets, reps: base.reps + weeklyIncrease * week, rest: base.rest)
-    }
+    /// La séance d'une semaine de progression : la même tout le bloc (pas de hausse hebdomadaire).
+    static func progression(_ base: Session, week: Int) -> Session { base }
 
-    /// La séance habituelle et le nombre de séances par semaine, en médianes des séances de
-    /// l'exercice des `habitDays` jours avant `date` ; nil sans aucune séance.
-    static func habitual(_ sessions: [SessionRecord], before date: Date, calendar: Calendar)
+    /// La séance prévue et le nombre de séances par semaine, d'après les séances de l'exercice
+    /// des `habitDays` jours avant `date` : max = le dernier test (`testMax`), sinon la meilleure
+    /// série de ces 4 semaines ; repos habituel (médiane) ; séances par semaine habituelles, au
+    /// moins 2. Nil sans aucune séance.
+    static func habitual(_ sessions: [SessionRecord], before date: Date, testMax: Int? = nil, calendar: Calendar)
         -> (session: Session, perWeek: Int)? {
         let since = date.addingTimeInterval(-Double(habitDays) * 86_400)
         let recent = sessions.filter { $0.start >= since && $0.start < date && !$0.orderedSets.isEmpty }
         guard !recent.isEmpty else { return nil }
-        let sets = median(recent.map { Double($0.orderedSets.count) })
-        let reps = median(recent.flatMap { $0.orderedSets.map { Double($0.reps) } })
+        let best = recent.map(\.bestSet).max() ?? 1
         let rests = recent.flatMap { session in
-            (1..<max(session.orderedSets.count, 1)).compactMap { session.rest(before: $0) }
+            (1..<Swift.max(session.orderedSets.count, 1)).compactMap { session.rest(before: $0) }
         }
         let rest = rests.count >= 3 ? median(rests) : 60
         var weeks: [Date: Int] = [:]
@@ -66,11 +77,10 @@ enum Prescription {
             let week = calendar.dateInterval(of: .weekOfYear, for: session.start)?.start ?? session.start
             weeks[week, default: 0] += 1
         }
-        let perWeek = median(weeks.values.map(Double.init))
+        let perWeek = Int(median(weeks.values.map(Double.init)).rounded())
         let roundedRest = Int((rest / 15).rounded()) * 15
-        return (Session(sets: max(1, Int(sets.rounded())), reps: max(1, Int(reps.rounded())),
-                        rest: min(max(roundedRest, 30), 300)),
-                max(1, Int(perWeek.rounded())))
+        return (Session(sets: sets, reps: target(max: testMax ?? best), rest: Swift.min(Swift.max(roundedRest, 30), 300)),
+                Swift.max(minSessionsPerWeek, perWeek))
     }
 
     private static func median(_ values: [Double]) -> Double {

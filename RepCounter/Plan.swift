@@ -89,8 +89,11 @@ struct TrainingPlan {
         while true {
             let reference = sorted.filter { !excluded.contains($0.persistentModelID) }
             // La séance habituelle avant le bloc ; au tout début, celle des séances déjà faites
-            guard let habit = Prescription.habitual(reference, before: blockStart, calendar: calendar)
-                    ?? Prescription.habitual(reference, before: now.addingTimeInterval(1), calendar: calendar) else { return nil }
+            // Le max : le dernier test ; au premier bloc, la meilleure série récente
+            let testMax = tests.last?.value
+            guard let habit = Prescription.habitual(reference, before: blockStart, testMax: testMax, calendar: calendar)
+                    ?? Prescription.habitual(reference, before: now.addingTimeInterval(1), testMax: testMax, calendar: calendar)
+            else { return nil }
             var weeks: [Week] = []
             var start = blockStart
             var progression = 0

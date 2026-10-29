@@ -132,14 +132,19 @@ d'après. Une semaine de progression finie avec des séances manquées, ou deux 
 basse, est **refaite** (deux fois au plus par bloc) : le test et la date de l'objectif reculent
 d'autant, et le Coaching l'affiche. Forme basse aujourd'hui : séance légère.
 
-**Prescription** (`Prescription.swift`, un seul module) : **provisoire**, en attente de la prise
-de position ACSM 2026 (Currier et al., Med Sci Sports Exerc 2026;58(4):851–872), dont le texte
-intégral n'a pas encore pu être lu. En attendant, rien n'est inventé : la séance prévue est la
-séance habituelle (séries, répétitions par série, repos, séances par semaine : médianes des
-4 semaines avant le bloc, hors semaines allégées et tests), sans augmentation d'une semaine à
-l'autre ; semaine allégée et séance légère : la moitié des séries (part provisoire). Choix de
-l'app, présentés comme tels dans le (i) : le rythme 3 + 1, le test toutes les 4 semaines, la
-semaine refaite, la séance légère, la règle « séance faite » (total prévu atteint).
+**Prescription** (`Prescription.swift`, un seul module), d'après la prise de position de l'ACSM
+(Currier et al., Med Sci Sports Exerc 2026;58(4):851–872, accès ouvert, lue en texte intégral) :
+au moins **2 séances par semaine** (« at least twice weekly », p. 863) ; **3 séries** (« at least
+two sets per exercise », « 2–3 sets/session ») ; chaque série vise le **max − 3** : arrêter près de
+l'échec, à 2–3 répétitions en réserve, suffit (p. 864), la formule exacte étant un choix de l'app
+(« insufficient evidence to quantify exact RIR ») ; le max est le dernier test (au premier bloc,
+la meilleure série des 4 semaines) ; **repos** habituel (pas d'effet du repos court ou long sur
+la force, p. 856) ; **progression** par le test, sans hausse hebdomadaire (aucune chiffrée).
+L'ACSM ne fixe aucun dosage pour l'endurance musculaire (« insufficient data », p. 859) : le plan
+applique les recommandations générales et vérifie par les tests ; le (i) le dit. Choix de l'app,
+présentés comme tels : le rythme 3 + 1 et le test (l'ACSM ne trouve pas la périodisation
+supérieure), la moitié des séries (arrondie au-dessus) en semaine allégée et en séance légère,
+la semaine refaite, la règle « séance faite » (total prévu atteint).
 
 **Mesuré face à attendu** : l'attendu est la ligne départ → objectif à la date choisie (le
 rythme nécessaire, pas une prédiction). « En avance » ou « en retard » seulement après 3 tests,
@@ -149,8 +154,8 @@ cadran est le nombre de répétitions prévu, et le repos prévu celui du plan ;
 d'objectif (série max).
 
 Validation : `python3 Simulation/plan.py` (miroir Python : bloc régulier, semaine allégée, jour
-de test, bloc suivant, séances manquées, Forme basse × 2, plafond des semaines refaites, séance
-légère).
+de test, bloc suivant recalé sur le test, séances manquées, Forme basse × 2, plafond des semaines
+refaites, séance légère, 2 séances par semaine au moins).
 
 ## Phases
 Dans la carte État du Coaching, la phase d'entraînement : une étiquette, une action, une

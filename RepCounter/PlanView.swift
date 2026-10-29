@@ -355,7 +355,7 @@ struct BlockSheet: View {
                 .padding(.top, 20)
             BlockFrise(plan: plan, showsHere: false)
             VStack(alignment: .leading, spacing: 12) {
-                row(theme.primary, "3 semaines de progression", "ta séance habituelle, chaque semaine")
+                row(theme.primary, "3 semaines de progression", "3 séries, 2 ou 3 en réserve")
                 row(theme.rest, "1 semaine allégée", "moins de volume : la fatigue retombe")
                 row(theme.ok, "Le test", "une série max : ton nouveau niveau")
                 row(theme.line, "Puis le bloc suivant", "recalé sur ce nouveau niveau")
@@ -416,15 +416,21 @@ struct PlanInfoView: View {
             VerticalScroll {
                 VStack(alignment: .leading, spacing: 22) {
                     section("Le bloc",
-                            "3 semaines de progression, 1 semaine allégée, puis un test : une série max, ton nouveau niveau. Le bloc suivant repart de là. Le rythme 3 + 1 et le test toutes les 4 semaines sont des choix de l'app.")
+                            "3 semaines de progression, 1 semaine allégée, puis un test : une série max, ton nouveau niveau. Le bloc suivant repart de là. Le rythme 3 + 1 est un choix de l'app : l'ACSM ne trouve pas une programmation par blocs supérieure à une autre, pourvu que la charge progresse.")
                     section("La séance prévue",
-                            "Provisoire : ta séance habituelle pour l'exercice (séries, répétitions par série, repos, séances par semaine : médianes des 4 semaines avant le bloc), sans augmentation d'une semaine à l'autre. Les valeurs recommandées seront reprises de la prise de position de l'ACSM (2026) une fois lue en texte intégral.")
+                            "Au moins 2 séances par semaine et 3 séries par séance (ACSM 2026 : « at least twice weekly », « 2–3 sets/session »). Chaque série vise ton max moins 3 : s'arrêter près de l'échec, à 2 ou 3 répétitions en réserve, suffit ; aller jusqu'à l'échec n'apporte rien de plus (ACSM 2026). La formule « max − 3 » est un choix de l'app : l'ACSM précise que la cible exacte n'est pas établie. Le max est celui du dernier test ; au premier bloc, ta meilleure série des 4 dernières semaines. Repos : le tien, la durée du repos ne change pas les gains de force (ACSM 2026).")
+                    section("La progression",
+                            "Par le test : ton nouveau max recale la cible du bloc suivant (l'ACSM recommande des tests réguliers). Entre deux tests, la cible reste la même : en devenant plus fort, tu as plus de répétitions en réserve. Aucune hausse d'une semaine à l'autre : l'article n'en chiffre aucune.")
+                    section("Ce que la science ne dit pas",
+                            "L'entraînement améliore l'endurance musculaire, mais les études ne permettent pas de dire quel dosage l'améliore le mieux (ACSM 2026). Le plan applique donc les recommandations générales (fréquence, séries, effort près de l'échec) et vérifie le résultat, test après test.")
                     section("La semaine allégée",
-                            "7 jours à volume réduit : la moitié des séries (part provisoire, choix de l'app). Réduire le volume fait consensus (Bell et al. 2023) ; les athlètes de force allègent en moyenne 6,4 jours (Rogerson et al. 2024).")
+                            "7 jours à volume réduit : la moitié des séries, arrondie au-dessus (part choisie par l'app). Réduire le volume fait consensus (Bell et al. 2023) ; les athlètes de force allègent en moyenne 6,4 jours (Rogerson et al. 2024). L'ACSM ne traite pas des décharges.")
                     section("Quand ça décroche",
                             "Une semaine de progression avec des séances manquées, ou deux séances en Forme basse, est refaite (deux fois au plus par bloc). Le test recule d'autant, et la date de l'objectif aussi. Forme basse aujourd'hui : séance légère, la moitié des séries. Ces règles sont des choix de l'app ; deux mesures plutôt qu'une, pour ne pas confondre une baisse et le bruit (Hopkins 2000) ; au-delà de 2 semaines de baisse, une semaine allégée (Meeusen et al. 2013).")
                     section("Mesuré face à attendu",
                             "L'attendu est le rythme qu'il te faut pour aller de ton départ à ton objectif à la date choisie : ce n'est pas une prédiction, aucune courbe de progression au poids du corps n'est publiée. « En avance » ou « en retard » seulement après 3 tests, quand la pente de tes tests (Theil-Sen, intervalle à 99 %, Sen 1968) est sûrement au-dessus ou au-dessous du rythme nécessaire.")
+                    section("Références",
+                            "Currier et al. (2026). Resistance training prescription for muscle function, hypertrophy and physical performance in healthy adults: an overview of reviews. Med Sci Sports Exerc 58(4):851–872. Bell et al. (2023), Sports Med Open 9:87. Rogerson et al. (2024), Sports Med Open 10:26. Meeusen et al. (2013), Med Sci Sports Exerc 45(1):186–205. Hopkins (2000), Sports Med 30(1):1–15. Sen (1968), J Am Stat Assoc 63:1379–1389.")
                     section("Séance faite",
                             "Une séance compte comme faite dès que le total prévu est atteint, même si les séries diffèrent un peu (choix de l'app).")
                 }
