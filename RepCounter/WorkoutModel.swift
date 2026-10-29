@@ -122,6 +122,27 @@ final class WorkoutModel: ObservableObject {
     @Published private(set) var recordingDuration: TimeInterval = 0
     @Published var finishedRecording: FinishedRecording?
 
+    /// La séance du jour, s'il y a un plan : les cibles, la baisse habituelle, et les séries déjà
+    /// faites aujourd'hui dans des séances précédentes (séries espacées).
+    struct PlanDay {
+        let session: Prescription.Session
+        let ratios: [Double]?
+        let earlierToday: [Int]
+    }
+
+    /// Le plan du jour, fixé au départ de la séance (nil : pas de plan, ou jour de test).
+    @Published var planDay: PlanDay?
+
+    /// La cible de la série en cours (ou de la prochaine, pendant la récupération) : réajustée
+    /// d'après la série précédente (`Prescription.nextTarget`). Nil sans plan, ou toutes les séries
+    /// prévues faites.
+    var currentTarget: Int? {
+        guard let planDay else { return nil }
+        let done = sets.map(\.reps)
+        return Prescription.nextTarget(planDay.session, ratios: planDay.ratios,
+                                       dayDone: planDay.earlierToday + done, sessionDone: done)
+    }
+
     var totalReps: Int { sets.reduce(0) { $0 + $1.reps } + setReps }
     /// Numéro de la série en cours (ou de la prochaine, pendant la récupération).
     var setNumber: Int { sets.count + 1 }
@@ -543,9 +564,11 @@ final class WorkoutModel: ObservableObject {
             lastRepDate = Date()
             repPulse += 1
             haptic.impactOccurred()
-            // Une note par répétition, un motif aux paliers de 5 et 10. La voix (si choisie) dit
+            // Une note par répétition, un motif aux paliers de 5 et 10, un accord aigu quand la
+            // cible de la série est atteinte (on le sait sans regarder). La voix (si choisie) dit
             // les paliers et le premier nombre d'une série, qui signale que le comptage a démarré.
-            announcer.play(Cue.forRep(reps))
+            let reachedTarget = currentTarget.map { reps == $0 } ?? false
+            announcer.play(reachedTarget ? .target : Cue.forRep(reps))
             if started || reps % 5 == 0 { announcer.say("\(reps)") }
         }
         if state == .counting, output.state != .counting {

@@ -127,6 +127,15 @@ enum Format {
         signed(Int(value.rounded()))
     }
 
+    /// « demain », « vendredi » (dans la semaine qui vient), sinon « 12 nov. ».
+    static func weekdayOrDate(_ date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: date)).day ?? 0
+        if days == 0 { return "aujourd'hui" }
+        if days == 1 { return "demain" }
+        if days > 1, days < 7 { return date.formatted(.dateTime.weekday(.wide)) }
+        return shortDate(date)
+    }
+
     /// « +1,2 », « −0,4 », « 0,0 » : une décimale, signée.
     static func signedDecimal(_ value: Double) -> String {
         let text = decimal(abs(value))

@@ -134,17 +134,36 @@ d'autant, et le Coaching l'affiche. Forme basse aujourd'hui : séance légère.
 
 **Prescription** (`Prescription.swift`, un seul module), d'après la prise de position de l'ACSM
 (Currier et al., Med Sci Sports Exerc 2026;58(4):851–872, accès ouvert, lue en texte intégral) :
-au moins **2 séances par semaine** (« at least twice weekly », p. 863) ; **3 séries** (« at least
-two sets per exercise », « 2–3 sets/session ») ; chaque série vise le **max − 3** : arrêter près de
-l'échec, à 2–3 répétitions en réserve, suffit (p. 864), la formule exacte étant un choix de l'app
-(« insufficient evidence to quantify exact RIR ») ; le max est le dernier test (au premier bloc,
-la meilleure série des 4 semaines) ; **repos** habituel (pas d'effet du repos court ou long sur
-la force, p. 856) ; **progression** par le test, sans hausse hebdomadaire (aucune chiffrée).
+au moins **2 séances par semaine** (« at least twice weekly », p. 863) ; **3 séries enchaînées**
+avec le repos prévu (« at least two sets per exercise », « 2–3 sets/session ») ; la règle porte
+sur l'**effort** de chaque série, arrêtée près de l'échec à 2–3 répétitions en réserve (p. 864).
+D'où, choix de l'app fondés sur cette règle : **série 1 = max − 3** ; les séries 2 et 3 suivent la
+**baisse habituelle** de la personne (rapports médians série k / série 1, sur ses séances des
+4 dernières semaines à ± 30 s du repos prévu, au moins 3), sinon **80 %** de la précédente (valeur
+prudente, non sourcée) — par exemple 29 · 25 · 22. Une série nettement sous sa cible **réajuste**
+aussitôt la suivante (faite × rapport), sans rattrapage (« cible réajustée » pendant la
+récupération). Le max est le dernier test (au premier bloc, la meilleure série des 4 semaines).
+**Repos** habituel (pas d'effet du repos court ou long sur la force, p. 856), affiché avec la
+séance (« 29 · 25 · 22 · repos 1:30 ») ; des **séries espacées** dans la journée comptent dans le
+fait du jour, sans pénalité, et la suivante repart de la série 1 (l'ACSM ne les étudie pas : le
+plan ne les prévoit pas). **Progression** par le test, sans hausse hebdomadaire (aucune chiffrée).
 L'ACSM ne fixe aucun dosage pour l'endurance musculaire (« insufficient data », p. 859) : le plan
-applique les recommandations générales et vérifie par les tests ; le (i) le dit. Choix de l'app,
-présentés comme tels : le rythme 3 + 1 et le test (l'ACSM ne trouve pas la périodisation
-supérieure), la moitié des séries (arrondie au-dessus) en semaine allégée et en séance légère,
-la semaine refaite, la règle « séance faite » (total prévu atteint).
+applique les recommandations générales et vérifie par les tests ; le (i) le dit. Autres choix de
+l'app : le rythme 3 + 1 et le test (l'ACSM ne trouve pas la périodisation supérieure), la moitié
+des séries (arrondie au-dessus) en semaine allégée et en séance légère, la semaine refaite, la
+règle « séance faite » (total prévu atteint).
+
+**Les jours** : les séances sont espacées dans la semaine (2 : lundi, jeudi ; 3 : lundi, mercredi,
+vendredi), déplaçables d'une touche dans le Coaching (rangée L M M J V S D : prévus, faits,
+manqués, aujourd'hui) ; choix de l'app, l'ACSM ne fixant pas l'espacement. Une séance faite un
+jour non prévu compte et remplace la prochaine prévue. En veille : « aujourd'hui · 29 · 25 · 22 ·
+repos 1:30 », « fait ✓ · prochaine vendredi » ou « repos · prochaine vendredi » ; Démarrer reste
+toujours possible.
+
+**Pendant la séance** : sous le cadran, une case par série (« 29 ✓ · 25 ← · 22 ») ; en
+récupération, « Ensuite · série 2 · 25 » ou « Dernière série » ; un accord aigu quand la cible de
+la série est atteinte (le cadran passe au vert). En fin de séance, le prévu face au fait et
+« Prochaine · vendredi · 29 · 25 · 22 ».
 
 **Mesuré face à attendu** : l'attendu est la ligne départ → objectif à la date choisie (le
 rythme nécessaire, pas une prédiction). « En avance » ou « en retard » seulement après 3 tests,
@@ -155,7 +174,8 @@ d'objectif (série max).
 
 Validation : `python3 Simulation/plan.py` (miroir Python : bloc régulier, semaine allégée, jour
 de test, bloc suivant recalé sur le test, séances manquées, Forme basse × 2, plafond des semaines
-refaites, séance légère, 2 séances par semaine au moins).
+refaites, séance légère, 2 séances par semaine au moins, cibles selon la baisse habituelle ou par
+défaut, réajustement en séance, séries espacées, placement et déplacement des jours).
 
 ## Phases
 Dans la carte État du Coaching, la phase d'entraînement : une étiquette, une action, une

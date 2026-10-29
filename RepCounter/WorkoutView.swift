@@ -116,8 +116,17 @@ struct WorkoutView: View {
                 break
             default:
                 if !planComputed {
-                    cachedPlan = plan(model.exercise)
+                    let dayPlan = plan(model.exercise)
+                    cachedPlan = dayPlan
                     planComputed = true
+                    // Les cibles du jour, et les séries déjà faites aujourd'hui (séries espacées)
+                    let earlier = sessions
+                        .filter { $0.exercise == model.exercise && Calendar.current.isDateInToday($0.start) }
+                        .sorted { $0.start < $1.start }
+                        .flatMap { $0.orderedSets.map(\.reps) }
+                    model.planDay = dayPlan?.todaySession.map {
+                        WorkoutModel.PlanDay(session: $0, ratios: dayPlan?.ratios, earlierToday: earlier)
+                    }
                 }
             }
         }
@@ -316,8 +325,8 @@ struct WorkoutView: View {
                     ExerciseCarousel(selection: $browsing, exercises: exercises, side: side)
                 }
                 // La séance du jour, si un plan existe (skill reps-ux : une ligne, pas le plan)
-                if let today = plan(browsing)?.today {
-                    TodayLine(today: today)
+                if let browsingPlan = plan(browsing) {
+                    TodayLine(plan: browsingPlan)
                 }
                 placementText(browsing)
                 loadControl
@@ -368,7 +377,12 @@ struct WorkoutView: View {
                 }
                 // La reprise automatique s'explique une fois (première séance), pas à chaque repos
                 if let step = coachCard { CoachCard(step: step) }
-                setsLog
+                if let planDay = model.planDay {
+                    nextSetLine(planDay)
+                    SetRow(planDay: planDay, done: model.sets.map(\.reps), current: nil)
+                } else {
+                    setsLog
+                }
             case .active:
                 let counting = model.state == .counting
                 let done = counting ? model.setReps : model.tentative
@@ -381,7 +395,11 @@ struct WorkoutView: View {
                      pulse: counting ? nil : model.tentativePulse) { side in
                     dialCount(side: side, counting: counting)
                 }
-                if counting || model.totalReps > 0 { statsLine }
+                if let planDay = model.planDay {
+                    SetRow(planDay: planDay, done: model.sets.map(\.reps), current: counting ? model.setReps : nil)
+                } else if counting || model.totalReps > 0 {
+                    statsLine
+                }
                 if !counting, let step = coachCard { CoachCard(step: step) }
             case .finished:
                 EmptyView()
@@ -504,11 +522,34 @@ struct WorkoutView: View {
     /// Le plan de l'exercice de la séance, calculé une fois au départ (pas à chaque répétition).
     private var sessionPlan: TrainingPlan? { cachedPlan }
 
-    /// Objectif de la série : les répétitions prévues par le plan ; jour de test, aucun (série
-    /// max) ; sans plan, la meilleure série des 4 dernières semaines (nil sans historique).
+    /// Objectif de la série : la cible du plan pour cette série (réajustée d'après la précédente) ;
+    /// jour de test ou toutes les séries prévues faites, aucun ; sans plan, la meilleure série des
+    /// 4 dernières semaines (nil sans historique).
     private var seriesTarget: Int? {
-        if let plan = sessionPlan { return plan.todaySession?.reps }
+        if sessionPlan != nil { return model.currentTarget }
         return recentSessions.map(\.bestSet).max().flatMap { $0 > 0 ? $0 : nil }
+    }
+
+    /// Pendant la récupération : la série suivante et sa cible (« Ensuite · série 2 · 25 »), ou
+    /// « Dernière série » ; une cible abaissée par la série précédente le dit.
+    @ViewBuilder
+    private func nextSetLine(_ planDay: WorkoutModel.PlanDay) -> some View {
+        let index = planDay.earlierToday.count + model.sets.count
+        if let target = model.currentTarget, index < planDay.session.sets {
+            let last = index == planDay.session.sets - 1
+            HStack(spacing: 6) {
+                MonitorLabel(last ? "Dernière série" : "Ensuite · série \(index + 1)")
+                Text("\(target)")
+                    .font(theme.font(14, .bold))
+                    .foregroundStyle(theme.text)
+                    .monospacedDigit()
+                if target < planDay.session.targets[index] {
+                    MonitorLabel("· cible réajustée", color: theme.warn)
+                }
+            }
+        } else {
+            MonitorLabel("Séance faite ✓", color: theme.ok)
+        }
     }
 
     /// Repos prévu, sans plan : ton repos habituel pour l'exercice (médiane des récupérations
@@ -1118,17 +1159,32 @@ private struct SessionSummary: View {
                     }
                     planRow("Depuis le départ", Format.signed(record.bestSet - plan.goal.start), color: theme.text)
                 } else if let planned = plan.todaySession {
-                    let done = record.totalReps >= planned.total
-                    planRow("Prévu", "\(planned.sets) × \(planned.reps) = \(planned.total)", color: theme.text)
-                    planRow("Fait", sets.map(String.init).joined(separator: " · ") + (done ? " ✓" : ""),
+                    // Séries espacées dans la journée : elles comptent toutes dans le fait du jour
+                    let earlierToday = before.filter { $0.exercise == record.exercise && Calendar.current.isDate($0.start, inSameDayAs: record.start) }
+                    let dayReps = earlierToday.reduce(record.totalReps) { $0 + $1.totalReps }
+                    let done = dayReps >= planned.total
+                    planRow("Prévu", "\(planned.label) = \(planned.total)", color: theme.text)
+                    planRow(earlierToday.isEmpty ? "Fait" : "Fait · séries espacées",
+                            sets.map(String.init).joined(separator: " · ") + (done ? " ✓" : ""),
                             color: done ? theme.ok : theme.text)
                     if let week = plan.currentWeek {
-                        Text("séance \(week.done + 1) / \(week.plannedSessions) de la semaine")
+                        Text("séance \(week.done + (earlierToday.isEmpty ? 1 : 0)) / \(week.plannedSessions) de la semaine")
                             .font(theme.font(11))
                             .foregroundStyle(theme.dim)
                     }
                 }
+                nextSession(record)
             }
+        }
+    }
+
+    /// La prochaine séance prévue, après celle-ci : « Prochaine · vendredi · 29 · 25 · 22 ».
+    @ViewBuilder
+    private func nextSession(_ record: SessionRecord) -> some View {
+        let upTo = history.filter { $0.start <= record.start }
+        if let plan = HistoryStats(sessions: upTo, exercise: record.exercise, now: record.end.addingTimeInterval(1)).plan(all: upTo),
+           let next = plan.next {
+            planRow("Prochaine · \(Format.weekdayOrDate(next))", plan.today.short, color: theme.dim)
         }
     }
 

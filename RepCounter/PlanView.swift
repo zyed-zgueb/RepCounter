@@ -14,12 +14,23 @@ extension TrainingPlan.Today {
         }
     }
 
-    /// « 4 × 15 », « léger · 2 × 15 », « allégée · 2 × 15 », « test · série max ».
+    /// « 29 · 25 · 22 · repos 1:30 », « léger · 29 · 25 · repos 1:30 », « allégée · … »,
+    /// « test · série max ».
     var label: String {
         switch self {
-        case .session(let s): return "\(s.sets) × \(s.reps)"
-        case .light(let s): return "léger · \(s.sets) × \(s.reps)"
-        case .deload(let s): return "allégée · \(s.sets) × \(s.reps)"
+        case .session(let s): return "\(s.label) · repos \(Format.clock(Double(s.rest)))"
+        case .light(let s): return "léger · \(s.label) · repos \(Format.clock(Double(s.rest)))"
+        case .deload(let s): return "allégée · \(s.label) · repos \(Format.clock(Double(s.rest)))"
+        case .test: return "test · série max"
+        }
+    }
+
+    /// Sans le repos : « 29 · 25 · 22 », « test · série max ».
+    var short: String {
+        switch self {
+        case .session(let s): return s.label
+        case .light(let s): return "léger · \(s.label)"
+        case .deload(let s): return "allégée · \(s.label)"
         case .test: return "test · série max"
         }
     }
@@ -34,22 +45,78 @@ extension TrainingPlan.Week {
     }
 }
 
-/// La ligne du jour sous le cadran, en veille : « aujourd'hui · 4 × 15 ».
+/// La ligne du jour sous le cadran, en veille : « aujourd'hui · 29 · 25 · 22 · repos 1:30 »,
+/// « fait ✓ · prochaine vendredi », ou « repos · prochaine vendredi ». Démarrer reste possible.
 struct TodayLine: View {
     @Environment(\.theme) private var theme
-    let today: TrainingPlan.Today
+    let plan: TrainingPlan
 
     var body: some View {
         HStack(spacing: 4) {
-            Text("aujourd'hui ·")
-                .foregroundStyle(theme.dim)
-            Text(today.label)
-                .fontWeight(.bold)
-                .foregroundStyle(today.color(theme))
+            switch plan.status {
+            case .due:
+                Text("aujourd'hui ·").foregroundStyle(theme.dim)
+                Text(plan.today.label).fontWeight(.bold).foregroundStyle(plan.today.color(theme))
+            case .done:
+                Text("fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
+                nextText
+            case .rest:
+                Text("repos").fontWeight(.bold).foregroundStyle(theme.dim)
+                nextText
+            }
         }
         .font(theme.font(12))
         .lineLimit(1)
+        .minimumScaleFactor(0.75)
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var nextText: some View {
+        if let next = plan.next {
+            Text("· prochaine \(Format.weekdayOrDate(next))").foregroundStyle(theme.dim)
+        }
+    }
+}
+
+/// La séance en cours, sous le cadran : une case par série prévue (« 29 ✓ · 25 ← · 22 »).
+/// Faites : le nombre réel, en vert si la cible est atteinte ; en cours : marquée ; à venir : la cible.
+struct SetRow: View {
+    @Environment(\.theme) private var theme
+    let planDay: WorkoutModel.PlanDay
+    /// Séries faites dans cette séance.
+    let done: [Int]
+    /// Répétitions de la série en cours (nil pendant la récupération).
+    let current: Int?
+
+    var body: some View {
+        let all = planDay.earlierToday + done
+        let next = Prescription.nextTarget(planDay.session, ratios: planDay.ratios, dayDone: all, sessionDone: done)
+        HStack(spacing: 6) {
+            ForEach(0..<max(planDay.session.sets, all.count), id: \.self) { index in
+                if index > 0 { Text("·").foregroundStyle(theme.dim) }
+                cell(index, all: all, next: next)
+            }
+        }
+        .font(theme.font(14, .bold))
+        .monospacedDigit()
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func cell(_ index: Int, all: [Int], next: Int?) -> some View {
+        let planned = index < planDay.session.sets ? planDay.session.targets[index] : nil
+        if index < all.count {
+            let reached = planned.map { all[index] >= $0 } ?? true
+            Text("\(all[index])\(reached ? " ✓" : "")").foregroundStyle(reached ? theme.ok : theme.text)
+        } else if index == all.count {
+            // La série en cours (ou la prochaine) : sa cible, réajustée
+            Text("\(current.map { "\($0)/" } ?? "")\(next ?? planned ?? 0) ←").foregroundStyle(theme.primary)
+        } else {
+            Text("\(planned ?? 0)").foregroundStyle(theme.dim)
+        }
     }
 }
 
@@ -140,10 +207,14 @@ struct BlockFrise: View {
 
 // MARK: - Cartes du Coaching
 
-/// Le bloc en cours : son numéro, la date du test, la frise ; une semaine refaite le dit.
+/// Le bloc en cours : son numéro, la date du test, la frise, la semaine jour par jour ; une
+/// semaine refaite le dit.
 struct BlockCard: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
+    let exercise: Exercise
+    /// Un jour de séance a été déplacé.
+    let onDaysChanged: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -168,8 +239,70 @@ struct BlockCard: View {
                              color: plan.today == .test ? theme.ok : theme.dim)
             }
             BlockFrise(plan: plan)
+            if !plan.days.isEmpty {
+                WeekDays(plan: plan, exercise: exercise, onChange: onDaysChanged)
+            }
         }
         .coachingCard(theme)
+    }
+}
+
+/// La semaine en cours, L M M J V S D : jours prévus (cerclés), faits (pleins), manqués
+/// (orange), aujourd'hui (souligné). Toucher un jour l'ajoute ou le retire des jours de séance
+/// (2 au moins) : le placement est un choix de l'app, l'utilisateur le déplace.
+struct WeekDays: View {
+    @Environment(\.theme) private var theme
+    let plan: TrainingPlan
+    let exercise: Exercise
+    let onChange: () -> Void
+    private static let letters = ["L", "M", "M", "J", "V", "S", "D"]
+
+    var body: some View {
+        let spaced = plan.days.filter { $0.sessions >= 2 }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                ForEach(Array(plan.days.enumerated()), id: \.offset) { index, day in
+                    Button { toggle(index + 1) } label: { cell(index, day) }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(Self.letters[index]) \(day.planned ? "prévu" : "repos")\(day.sessions > 0 ? ", fait" : "")")
+                }
+            }
+            if let day = spaced.last {
+                MonitorLabel("séries espacées · \(Format.weekdayOrDate(day.date))")
+            }
+        }
+    }
+
+    private func cell(_ index: Int, _ day: TrainingPlan.Day) -> some View {
+        let done = day.sessions > 0
+        let stroke = day.missed ? theme.warn : (day.planned ? theme.primary : theme.line)
+        return VStack(spacing: 3) {
+            Text(Self.letters[index])
+                .font(theme.font(10, day.isToday ? .bold : .regular))
+                .foregroundStyle(day.isToday ? theme.text : theme.dim)
+            Circle()
+                .fill(done ? theme.primary : .clear)
+                .overlay(Circle().stroke(stroke, lineWidth: day.planned || day.missed ? 1.5 : 1))
+                .frame(width: 14, height: 14)
+            Rectangle()
+                .fill(day.isToday ? theme.text : .clear)
+                .frame(width: 10, height: 2)
+        }
+        .frame(maxWidth: .infinity)
+        .contentShape(Rectangle())
+    }
+
+    private func toggle(_ weekday: Int) {
+        var days = Set(plan.days.enumerated().filter { $0.element.planned }.map { $0.offset + 1 })
+        if days.contains(weekday) {
+            guard days.count > Prescription.minSessionsPerWeek else { return }
+            days.remove(weekday)
+        } else {
+            days.insert(weekday)
+        }
+        UISelectionFeedbackGenerator().selectionChanged()
+        Schedule.save(Array(days), for: exercise)
+        onChange()
     }
 }
 
@@ -354,6 +487,9 @@ struct BlockSheet: View {
             MonitorLabel("Un bloc = 4 semaines", color: theme.primary)
                 .padding(.top, 20)
             BlockFrise(plan: plan, showsHere: false)
+            Text("Enchaîne les séries, avec le repos indiqué.")
+                .font(theme.font(12, .bold))
+                .foregroundStyle(theme.text)
             VStack(alignment: .leading, spacing: 12) {
                 row(theme.primary, "3 semaines de progression", "3 séries, 2 ou 3 en réserve")
                 row(theme.rest, "1 semaine allégée", "moins de volume : la fatigue retombe")
@@ -418,7 +554,11 @@ struct PlanInfoView: View {
                     section("Le bloc",
                             "3 semaines de progression, 1 semaine allégée, puis un test : une série max, ton nouveau niveau. Le bloc suivant repart de là. Le rythme 3 + 1 est un choix de l'app : l'ACSM ne trouve pas une programmation par blocs supérieure à une autre, pourvu que la charge progresse.")
                     section("La séance prévue",
-                            "Au moins 2 séances par semaine et 3 séries par séance (ACSM 2026 : « at least twice weekly », « 2–3 sets/session »). Chaque série vise ton max moins 3 : s'arrêter près de l'échec, à 2 ou 3 répétitions en réserve, suffit ; aller jusqu'à l'échec n'apporte rien de plus (ACSM 2026). La formule « max − 3 » est un choix de l'app : l'ACSM précise que la cible exacte n'est pas établie. Le max est celui du dernier test ; au premier bloc, ta meilleure série des 4 dernières semaines. Repos : le tien, la durée du repos ne change pas les gains de force (ACSM 2026).")
+                            "Au moins 2 séances par semaine et 3 séries par séance, enchaînées avec le repos indiqué (ACSM 2026 : « at least twice weekly », « 2–3 sets/session »). La règle de l'ACSM porte sur l'effort : chaque série s'arrête près de l'échec, à 2 ou 3 répétitions en réserve ; aller jusqu'à l'échec n'apporte rien de plus. La série 1 vise ton max moins 3. Avec la fatigue, le nombre baisse d'une série à l'autre : les séries 2 et 3 suivent ta baisse habituelle (mesurée sur tes séances des 4 dernières semaines faites avec un repos proche) ; sans elle, chaque série vise 80 % de la précédente. Une série sous sa cible réajuste aussitôt les suivantes, sans rattrapage. Ces règles, la formule « max − 3 » et les 80 % (une valeur prudente) sont des choix de l'app : l'ACSM précise que la cible exacte n'est pas établie. Le max est celui du dernier test ; au premier bloc, ta meilleure série des 4 dernières semaines.")
+                    section("Le repos",
+                            "Le tien : ton repos habituel pour l'exercice, arrondi à 15 s. La durée du repos ne change pas les gains de force (ACSM 2026). Des séries faites séparément dans la journée comptent dans la séance du jour, sans pénalité (« séries espacées ») ; la suivante repart de la cible de la série 1. L'ACSM ne les étudie pas : le plan ne les prévoit pas.")
+                    section("Les jours",
+                            "Les séances sont espacées dans la semaine : 2 séances, lundi et jeudi ; 3, lundi, mercredi et vendredi. Touche un jour dans le Coaching pour le déplacer. Une séance faite un autre jour compte, et remplace la prochaine prévue. L'ACSM ne fixe pas l'espacement : ce placement est un choix de l'app.")
                     section("La progression",
                             "Par le test : ton nouveau max recale la cible du bloc suivant (l'ACSM recommande des tests réguliers). Entre deux tests, la cible reste la même : en devenant plus fort, tu as plus de répétitions en réserve. Aucune hausse d'une semaine à l'autre : l'article n'en chiffre aucune.")
                     section("Ce que la science ne dit pas",

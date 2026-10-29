@@ -10,6 +10,7 @@ Chaque son a un rôle unique, reconnaissable sans regarder l'écran :
   count    bip court (mi)           3, 2, 1
   go       accord lumineux          départ
   setEnd   deux notes descendantes  fin de série
+  target   accord aigu, cloche      cible de la série atteinte
   rest     un bip bref                récupération : 0:15 (puis 1:15, 2:15…)
   rest2    deux bips montants         récupération : 0:30
   rest3    trois bips montants        récupération : 0:45
@@ -94,6 +95,10 @@ def palette(note):
         "rest3": lambda: mix(*[(0.13 * k, note(f, decay=0.012, level=0.45)) for k, f in enumerate([A5, CS6, E6])]),
         "restMinute": lambda: mix((0, note(A3, decay=0.16, level=0.4)), (0.05, note(CS4, decay=0.16, level=0.3)),
                                   (0.1, note(E4, decay=0.18, level=0.3))),
+        # Cible de la série atteinte : un accord aigu (la, do#, mi une octave au-dessus), plus long,
+        # distinct des paliers de 5 et 10
+        "target": lambda: mix((0, note(A5, decay=0.12, level=0.35)), (0, note(CS6, decay=0.12, level=0.28)),
+                              (0, note(E6, decay=0.14, level=0.28))),
         "finish": lambda: mix(*[(0.07 * i, note(f, decay=0.06 if i < 3 else 0.12, level=0.45))
                                 for i, f in enumerate([A4, CS5, E5, A5])]),
     }

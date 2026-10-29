@@ -123,6 +123,8 @@ struct CoachingView: View {
     @State private var editsGoal = false
     @State private var showsInfo = false
     @State private var showsBlockSheet = false
+    /// Change quand un jour de séance est déplacé : le plan est recalculé.
+    @State private var scheduleVersion = 0
 
     init(exercise: Exercise) {
         self.exercise = exercise
@@ -132,6 +134,7 @@ struct CoachingView: View {
     var body: some View {
         let stats = HistoryStats(sessions: sessions, exercise: exercise)
         let plan = goal == nil ? nil : stats.plan(all: sessions)
+        let _ = scheduleVersion
         NavigationStack {
             VStack(spacing: 0) {
                 HStack {
@@ -152,7 +155,7 @@ struct CoachingView: View {
                         // Où je vais : l'objectif, le bloc, le prévu face au fait
                         GoalCard(exercise: exercise, goal: goal, current: stats.currentBest) { editsGoal = true }
                         if let plan {
-                            BlockCard(plan: plan)
+                            BlockCard(plan: plan, exercise: exercise) { scheduleVersion += 1 }
                             PlanWeekTable(plan: plan)
                         } else if goal != nil {
                             Text("plan · après ta première séance")
