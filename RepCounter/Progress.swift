@@ -56,11 +56,8 @@ struct ProgressVerdict: Equatable {
         guard count > 0 else { return nil }
         let middle = count / 2
         let slope = count % 2 == 1 ? slopes[middle] : (slopes[middle - 1] + slopes[middle]) / 2
-        let ties = { (values: [Double]) -> Double in
-            Dictionary(grouping: values) { $0 }.values.map(\.count).filter { $0 > 1 }
-                .reduce(0) { $0 + Double($1 * ($1 - 1) * (2 * $1 + 5)) }
-        }
-        let variance = (Double(n * (n - 1) * (2 * n + 5)) - ties(x) - ties(y)) / 18
+        let all = Double(n * (n - 1) * (2 * n + 5))
+        let variance = (all - tiesTerm(x) - tiesTerm(y)) / 18
         let c = z * max(variance, 0).squareRoot()
         let lowRank = Int(((Double(count) - c) / 2).rounded())       // rang 1 = première pente
         let highRank = Int(((Double(count) + c) / 2).rounded()) + 1
@@ -68,12 +65,24 @@ struct ProgressVerdict: Equatable {
         return (slope, slopes[clamp(lowRank)], slopes[clamp(highRank)])
     }
 
+    /// Correction des ex-æquo de Sen : Σ t(t−1)(2t+5) sur les groupes de valeurs égales.
+    private static func tiesTerm(_ values: [Double]) -> Double {
+        var counts: [Double: Int] = [:]
+        for value in values { counts[value, default: 0] += 1 }
+        var total = 0
+        for t in counts.values where t > 1 {
+            total += t * (t - 1) * (2 * t + 5)
+        }
+        return Double(total)
+    }
+
     /// Erreur typique : écart-type des différences entre valeurs consécutives ÷ √2.
     static func typicalError(_ y: [Double]) -> Double? {
         let differences = zip(y.dropFirst(), y).map { $0 - $1 }
         guard differences.count >= 2 else { return nil }
         let mean = differences.reduce(0, +) / Double(differences.count)
-        let variance = differences.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Double(differences.count - 1)
+        let squares: [Double] = differences.map { ($0 - mean) * ($0 - mean) }
+        let variance = squares.reduce(0, +) / Double(differences.count - 1)
         return variance.squareRoot() / 2.0.squareRoot()
     }
 
