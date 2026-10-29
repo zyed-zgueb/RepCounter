@@ -19,6 +19,8 @@ struct WorkoutView: View {
     @State private var bump = false
     @State private var showsHistory = false
     @State private var showsCoaching = false
+    @State private var cachedPlan: TrainingPlan?
+    @State private var planComputed = false
     /// La bulle qui explique le point d'état a été vue (une seule fois).
     @AppStorage(StateDotTip.key) private var stateDotExplained = false
     /// La séance terminée, enregistrée dans l'historique.
@@ -105,6 +107,20 @@ struct WorkoutView: View {
         }
         .onChange(of: load) { browsing.load = $0 }
         .onChange(of: loadKind) { browsing.loadKind = $0 }
+        .onChange(of: model.phase) { phase in
+            // Le plan du jour est figé au départ de la séance
+            switch phase {
+            case .ready:
+                planComputed = false
+            case .finished:
+                break
+            default:
+                if !planComputed {
+                    cachedPlan = plan(model.exercise)
+                    planComputed = true
+                }
+            }
+        }
         .onChange(of: browsing) { exercise in
             load = exercise.load
             loadKind = exercise.loadKind
@@ -181,10 +197,18 @@ struct WorkoutView: View {
         }
     }
 
-    /// Le point d'état de l'icône Coaching : la couleur de la phase de l'exercice (skill reps-ux, § 5).
+    /// Le point d'état de l'icône Coaching (skill reps-ux, § 5) : celui du plan du jour s'il y a
+    /// un objectif, sinon la couleur de la phase de l'exercice.
     private var stateDot: Color? {
-        guard model.exercise != .auto else { return nil }
-        return HistoryStats(sessions: sessions, exercise: model.exercise).phase(all: sessions).stateColor(theme)
+        guard browsing != .auto else { return nil }
+        if let today = plan(browsing)?.today { return today.color(theme) }
+        return HistoryStats(sessions: sessions, exercise: browsing).phase(all: sessions).stateColor(theme)
+    }
+
+    /// Le plan d'un exercice (nil sans objectif).
+    private func plan(_ exercise: Exercise) -> TrainingPlan? {
+        guard Goal.load(exercise) != nil else { return nil }
+        return HistoryStats(sessions: sessions, exercise: exercise).plan(all: sessions)
     }
 
     /// Brassard déclaré ou retiré pour un exercice de bras : l'écran est recréé avec les bons
@@ -290,6 +314,10 @@ struct WorkoutView: View {
             case .ready:
                 Dial(face: CounterDialFace(lit: 0, color: theme.primary, live: model.live, palePulse: true)) { side in
                     ExerciseCarousel(selection: $browsing, exercises: exercises, side: side)
+                }
+                // La séance du jour, si un plan existe (skill reps-ux : une ligne, pas le plan)
+                if let today = plan(browsing)?.today {
+                    TodayLine(today: today)
                 }
                 placementText(browsing)
                 loadControl
@@ -473,16 +501,21 @@ struct WorkoutView: View {
         return sessions.filter { $0.exercise == model.exercise && $0.start > since }
     }
 
-    /// Objectif de la série, sans plan : la meilleure série des 4 dernières semaines (nil sans
-    /// historique). Le plan d'entraînement le remplacera.
+    /// Le plan de l'exercice de la séance, calculé une fois au départ (pas à chaque répétition).
+    private var sessionPlan: TrainingPlan? { cachedPlan }
+
+    /// Objectif de la série : les répétitions prévues par le plan ; jour de test, aucun (série
+    /// max) ; sans plan, la meilleure série des 4 dernières semaines (nil sans historique).
     private var seriesTarget: Int? {
-        recentSessions.map(\.bestSet).max().flatMap { $0 > 0 ? $0 : nil }
+        if let plan = sessionPlan { return plan.todaySession?.reps }
+        return recentSessions.map(\.bestSet).max().flatMap { $0 > 0 ? $0 : nil }
     }
 
     /// Repos prévu, sans plan : ton repos habituel pour l'exercice (médiane des récupérations
     /// des 4 dernières semaines, arrondie à 15 s, entre 30 s et 5 min) ; 60 s sans historique
     /// (la référence du score d'endurance). Choix de l'app.
     private var plannedRest: Int {
+        if let rest = sessionPlan?.todaySession?.rest { return rest }
         let rests = recentSessions.flatMap { session in
             (1..<max(session.orderedSets.count, 1)).compactMap { session.rest(before: $0) }
         }
@@ -1012,6 +1045,7 @@ private struct SessionSummary: View {
                 }
                 .padding(.top, 12)
                 .overlay(alignment: .top) { Rectangle().fill(theme.line).frame(height: 1) }
+                planResult(record)
                 phaseLine(record)
             }
             Spacer(minLength: 0)
@@ -1065,6 +1099,49 @@ private struct SessionSummary: View {
     /// « Effort ? » : à partir de la 4e séance, tant que les questions de ressenti sont actives.
     private func asksFeeling(_ record: SessionRecord) -> Bool {
         Feeling.asks(after: history.filter { $0.start < record.start }.count)
+    }
+
+    /// Le plan, s'il y a un objectif : prévu face au fait série par série, et la place de la
+    /// séance dans la semaine ; jour de test, le résultat (mesuré, attendu, gain depuis le départ).
+    @ViewBuilder
+    private func planResult(_ record: SessionRecord) -> some View {
+        let before = history.filter { $0.start < record.start }
+        let plan = Goal.load(record.exercise) == nil ? nil
+            : HistoryStats(sessions: before, exercise: record.exercise, now: record.start).plan(all: before)
+        if let plan {
+            let sets = record.orderedSets.map(\.reps)
+            VStack(spacing: 6) {
+                if plan.today == .test {
+                    planRow("Test · bloc \(plan.block)", "\(record.bestSet) d'affilée", color: theme.ok)
+                    if let expected = plan.expected(at: record.start) {
+                        planRow("Attendu", "\(Int(expected.rounded()))", color: theme.text)
+                    }
+                    planRow("Depuis le départ", Format.signed(record.bestSet - plan.goal.start), color: theme.text)
+                } else if let planned = plan.todaySession {
+                    let done = record.totalReps >= planned.total
+                    planRow("Prévu", "\(planned.sets) × \(planned.reps) = \(planned.total)", color: theme.text)
+                    planRow("Fait", sets.map(String.init).joined(separator: " · ") + (done ? " ✓" : ""),
+                            color: done ? theme.ok : theme.text)
+                    if let week = plan.currentWeek {
+                        Text("séance \(week.done + 1) / \(week.plannedSessions) de la semaine")
+                            .font(theme.font(11))
+                            .foregroundStyle(theme.dim)
+                    }
+                }
+            }
+        }
+    }
+
+    private func planRow(_ label: String, _ value: String, color: Color) -> some View {
+        HStack {
+            MonitorLabel(label)
+            Spacer(minLength: 8)
+            Text(value)
+                .font(theme.font(13, .bold))
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
     }
 
     /// La phase, seulement quand elle appelle une action : rebond (prêt pour un record) ou

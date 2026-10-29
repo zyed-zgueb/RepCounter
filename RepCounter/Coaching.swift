@@ -111,9 +111,9 @@ struct StateDotTip: View {
 
 // MARK: - Vue Coaching
 
-/// Le Coaching (skill reps-ux) : l'avenir et le plan d'un exercice. De haut en bas, l'objectif et
-/// où l'on en est, puis la carte État (phase, Forme mesurée, ressenti). Le plan (bloc, frise,
-/// prévu face au fait, tests) viendra s'y ajouter.
+/// Le Coaching (skill reps-ux) : l'avenir et le plan d'un exercice. De haut en bas : l'objectif
+/// et où l'on en est, le bloc sur sa frise, le prévu face au fait, la carte État (phase, Forme,
+/// ressenti), puis le mesuré face à l'attendu aux tests.
 struct CoachingView: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
@@ -121,6 +121,8 @@ struct CoachingView: View {
     let exercise: Exercise
     @State private var goal: Goal?
     @State private var editsGoal = false
+    @State private var showsInfo = false
+    @State private var showsBlockSheet = false
 
     init(exercise: Exercise) {
         self.exercise = exercise
@@ -129,6 +131,7 @@ struct CoachingView: View {
 
     var body: some View {
         let stats = HistoryStats(sessions: sessions, exercise: exercise)
+        let plan = goal == nil ? nil : stats.plan(all: sessions)
         NavigationStack {
             VStack(spacing: 0) {
                 HStack {
@@ -138,6 +141,7 @@ struct CoachingView: View {
                         .foregroundStyle(theme.text)
                     Spacer()
                     MonitorLabel(exercise.shortTitle)
+                    IconButton(systemImage: "info.circle", color: theme.dim) { showsInfo = true }
                     IconButton(systemImage: "xmark") { dismiss() }
                 }
                 .padding(.horizontal, 20)
@@ -145,12 +149,27 @@ struct CoachingView: View {
 
                 VerticalScroll {
                     VStack(spacing: 14) {
+                        // Où je vais : l'objectif, le bloc, le prévu face au fait
                         GoalCard(exercise: exercise, goal: goal, current: stats.currentBest) { editsGoal = true }
+                        if let plan {
+                            BlockCard(plan: plan)
+                            PlanWeekTable(plan: plan)
+                        } else if goal != nil {
+                            Text("plan · après ta première séance")
+                                .font(theme.font(12))
+                                .foregroundStyle(theme.dim)
+                                .coachingCard(theme)
+                        }
+                        // Comment je suis
                         if exercise != .auto {
                             NavigationLink(value: CoachingPage.state) {
                                 StateCard(stats: stats, all: sessions)
                             }
                             .buttonStyle(.plain)
+                        }
+                        // Mesuré face à attendu
+                        if let plan, !plan.tests.isEmpty || plan.goal.date != nil {
+                            TrajectoryCard(plan: plan)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -170,6 +189,22 @@ struct CoachingView: View {
             }
         }
         .tint(theme.primary)
+        .onAppear {
+            // Le bloc s'explique une fois, à la première ouverture avec un plan
+            if plan != nil, !UserDefaults.standard.bool(forKey: BlockSheet.key) { showsBlockSheet = true }
+        }
+        .sheet(isPresented: $showsBlockSheet) {
+            if let plan {
+                BlockSheet(plan: plan)
+                    .environment(\.theme, theme)
+                    .preferredColorScheme(theme.colorScheme)
+            }
+        }
+        .sheet(isPresented: $showsInfo) {
+            PlanInfoView()
+                .environment(\.theme, theme)
+                .preferredColorScheme(theme.colorScheme)
+        }
         .sheet(isPresented: $editsGoal) {
             GoalEditor(exercise: exercise, goal: goal, current: stats.currentBest) { newGoal in
                 Goal.save(newGoal, for: exercise)

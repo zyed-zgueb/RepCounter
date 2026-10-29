@@ -78,8 +78,11 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   une touche ouvre la charge sur 12 semaines, la décharge à commencer, la courbe de Forme et
   leurs (i). En veille, un **point d'état** sur la cible : bleu, progression ; orange, séance
   légère ou Forme basse ; violet, semaine allégée ; vert, record possible. Une bulle l'explique
-  une seule fois, à son premier affichage. Le plan (bloc de 3 semaines + 1 allégée + un test,
-  prévu face au fait) viendra s'y ajouter.
+  une seule fois, à son premier affichage. Avec un objectif, le **plan** (voir « Plan ») : le
+  bloc sur sa frise (« tu es ici », un point par séance, orange si manquée), le prévu face au
+  fait par semaine, et aux tests le mesuré face à l'attendu. En veille, une ligne
+  « aujourd'hui · 4 × 15 » sous le cadran ; en fin de séance, le prévu face au fait série par
+  série (« 16 · 16 · 15 · 15 ✓ »), ou le résultat du test.
 - **Historique** (icône graphique, en veille et à la fin) : le passé seulement. Σ (tous les
   exercices) ou un exercice pratiqué, puis :
   1. **Score d'endurance** (valeur, tendance, mini-courbe ; ou son état « en cours ») — une
@@ -119,6 +122,35 @@ sont écartées (découpage douteux) ; un exercice dont le comptage est juste à
 afficher qu'afficher faux. Principe : l'entraînement basé sur la vitesse (la vitesse et sa perte
 au fil d'une série reflètent la fatigue). Affichée en fin de séance, dans le détail d'une séance
 et dans le panneau Forme de l'historique (`Form.swift`).
+
+## Plan
+Avec un objectif (Coaching), le plan d'un exercice se déduit de l'objectif et des séances faites
+(`Plan.swift`), rien d'autre n'est stocké. Un **bloc** : 3 semaines de progression, 1 semaine
+allégée (7 jours à volume réduit : Bell et al. 2023, Rogerson et al. 2024), puis un **test** (la
+première séance après la semaine allégée, une série max). Le bloc suivant repart la semaine
+d'après. Une semaine de progression finie avec des séances manquées, ou deux séances en Forme
+basse, est **refaite** (deux fois au plus par bloc) : le test et la date de l'objectif reculent
+d'autant, et le Coaching l'affiche. Forme basse aujourd'hui : séance légère.
+
+**Prescription** (`Prescription.swift`, un seul module) : **provisoire**, en attente de la prise
+de position ACSM 2026 (Currier et al., Med Sci Sports Exerc 2026;58(4):851–872), dont le texte
+intégral n'a pas encore pu être lu. En attendant, rien n'est inventé : la séance prévue est la
+séance habituelle (séries, répétitions par série, repos, séances par semaine : médianes des
+4 semaines avant le bloc, hors semaines allégées et tests), sans augmentation d'une semaine à
+l'autre ; semaine allégée et séance légère : la moitié des séries (part provisoire). Choix de
+l'app, présentés comme tels dans le (i) : le rythme 3 + 1, le test toutes les 4 semaines, la
+semaine refaite, la séance légère, la règle « séance faite » (total prévu atteint).
+
+**Mesuré face à attendu** : l'attendu est la ligne départ → objectif à la date choisie (le
+rythme nécessaire, pas une prédiction). « En avance » ou « en retard » seulement après 3 tests,
+quand la pente de Theil-Sen des tests (intervalle à 99 %) est sûrement au-dessus ou au-dessous
+du rythme nécessaire ; la projection prolonge cette pente. Pendant la série, l'objectif du
+cadran est le nombre de répétitions prévu, et le repos prévu celui du plan ; jour de test, pas
+d'objectif (série max).
+
+Validation : `python3 Simulation/plan.py` (miroir Python : bloc régulier, semaine allégée, jour
+de test, bloc suivant, séances manquées, Forme basse × 2, plafond des semaines refaites, séance
+légère).
 
 ## Phases
 Dans la carte État du Coaching, la phase d'entraînement : une étiquette, une action, une
