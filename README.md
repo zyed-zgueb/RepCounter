@@ -71,15 +71,23 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
    « en cours » la remplace (« 2 / 3 séries », « réf. 2 / 3 »). **Toucher une série
    permet de corriger son compte** (− / +, avec le compte d'origine). Puis « Nouvelle séance ».
 
-- **Historique** (icône graphique, en veille et à la fin) : Σ (tous les exercices) ou un
-  exercice pratiqué, puis quatre blocs, une place pour chaque chose :
-  1. **Phase** d'entraînement (« en cours 5 / 8 » au début) — une touche ouvre la charge et le (i) ;
-  2. **Score d'endurance** et **Forme**, deux tuiles côte à côte (valeur, mini-courbe ; ou leur
-     état « en cours ») — une touche ouvre le détail (jauge et (i), courbe de forme) ;
-  3. **Activité** : la semaine en cours (cadran, écart avec la semaine précédente, séances,
+- **Coaching** (icône cible, en veille et à la fin ; `Coaching.swift`) : l'avenir et le plan
+  d'un exercice. **Objectif** (« 40 pompes d'affilée », date facultative) : la meilleure série
+  des 4 dernières semaines, le départ, ce qui reste. **État** : la phase (et son action), la
+  Forme mesurée et le ressenti de la dernière séance (fatigue, effort), en une seule carte ;
+  une touche ouvre la charge sur 12 semaines, la décharge à commencer, la courbe de Forme et
+  leurs (i). En veille, un **point d'état** sur la cible : bleu, progression ; orange, séance
+  légère ou Forme basse ; violet, semaine allégée ; vert, record possible. Une bulle l'explique
+  une seule fois, à son premier affichage. Le plan (bloc de 3 semaines + 1 allégée + un test,
+  prévu face au fait) viendra s'y ajouter.
+- **Historique** (icône graphique, en veille et à la fin) : le passé seulement. Σ (tous les
+  exercices) ou un exercice pratiqué, puis :
+  1. **Score d'endurance** (valeur, tendance, mini-courbe ; ou son état « en cours ») — une
+     touche ouvre le détail (jauge et (i)) ;
+  2. **Activité** : la semaine en cours (cadran, écart avec la semaine précédente, séances,
      temps, semaines d'affilée) et la régularité sur 16 semaines — une touche ouvre le volume
      sur 12 semaines ;
-  4. **Records** (série, séance, semaine ; en orange quand ils datent de la semaine) et la
+  3. **Records** (série, séance, semaine ; en orange quand ils datent de la semaine) et la
      liste des **séances**, par jour (la date une fois, puis les séances à leurs heures ;
      aujourd'hui mis en avant). Une séance s'ouvre sur son détail : séries, cadence, récupérations
      et rythme rep par rep ; un appui long la supprime.
@@ -113,7 +121,7 @@ au fil d'une série reflètent la fatigue). Affichée en fin de séance, dans le
 et dans le panneau Forme de l'historique (`Form.swift`).
 
 ## Phases
-En tête de l'historique d'un exercice, la phase d'entraînement : une étiquette, une action, une
+Dans la carte État du Coaching, la phase d'entraînement : une étiquette, une action, une
 couleur (`Phase.swift`, `PhaseView.swift`). La charge d'entraînement (toutes les séances) est
 confrontée à la performance mesurée (la Forme de l'exercice).
 

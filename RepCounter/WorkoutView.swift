@@ -18,6 +18,9 @@ struct WorkoutView: View {
     @State private var guideStartsSession = false
     @State private var bump = false
     @State private var showsHistory = false
+    @State private var showsCoaching = false
+    /// La bulle qui explique le point d'état a été vue (une seule fois).
+    @AppStorage(StateDotTip.key) private var stateDotExplained = false
     /// La séance terminée, enregistrée dans l'historique.
     @State private var record: SessionRecord?
     /// Exercice affiché dans le cadran pendant qu'on glisse ; adopté une fois le geste posé.
@@ -161,6 +164,27 @@ struct WorkoutView: View {
                 .environment(\.theme, themeStore.current)
                 .preferredColorScheme(themeStore.current.colorScheme)
         }
+        .sheet(isPresented: $showsCoaching) {
+            CoachingView(exercise: model.exercise)
+                .environment(\.theme, themeStore.current)
+                .preferredColorScheme(themeStore.current.colorScheme)
+        }
+        .overlay(alignment: .topTrailing) {
+            // Le point d'état s'explique une fois, à son premier affichage, en veille seulement
+            if model.phase == .ready, stateDot != nil, !stateDotExplained {
+                StateDotTip { withAnimation { stateDotExplained = true } }
+                    .padding(.top, 56)
+                    .padding(.horizontal, 20)
+                    .frame(maxWidth: 340)
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    /// Le point d'état de l'icône Coaching : la couleur de la phase de l'exercice (skill reps-ux, § 5).
+    private var stateDot: Color? {
+        guard model.exercise != .auto else { return nil }
+        return HistoryStats(sessions: sessions, exercise: model.exercise).phase(all: sessions).stateColor(theme)
     }
 
     /// Brassard déclaré ou retiré pour un exercice de bras : l'écran est recréé avec les bons
@@ -225,6 +249,7 @@ struct WorkoutView: View {
                            highlighted: model.showsDiagnostics) { model.showsDiagnostics.toggle() }
             }
             if model.phase == .ready || model.phase == .finished {
+                CoachingButton(dot: model.phase == .ready ? stateDot : nil) { showsCoaching = true }
                 IconButton(systemImage: "gearshape", color: theme.dim) { onOpenSettings() }
             }
         }

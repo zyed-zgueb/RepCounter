@@ -1,10 +1,10 @@
 import SwiftData
 import SwiftUI
 
-/// Historique d'un exercice (ou de tous, Σ), en quatre blocs, une place pour chaque chose :
-/// la phase d'entraînement, le score d'endurance et la forme côte à côte, l'activité (la
-/// semaine et la régularité), puis les records et la liste des séances. Le détail de chaque bloc
-/// s'ouvre d'une touche.
+/// Historique d'un exercice (ou de tous, Σ) : le passé seulement (skill reps-ux). Une place pour
+/// chaque chose : le score d'endurance et sa tendance, l'activité (la semaine et la régularité),
+/// puis les records et la liste des séances. Le détail de chaque bloc s'ouvre d'une touche. La
+/// phase et la Forme sont dans la carte État du Coaching.
 struct HistoryView: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
@@ -46,20 +46,10 @@ struct HistoryView: View {
                         if stats.isEmpty {
                             emptyState
                         } else {
+                            // Le passé seulement : la phase et la Forme sont dans la carte État du Coaching
                             if let exercise {
-                                if exercise != .auto {
-                                    NavigationLink(value: HistoryPage.phase) {
-                                        PhaseCard(phase: stats.phase(all: sessions), advice: Advice.make(stats: stats))
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                HStack(spacing: 10) {
-                                    NavigationLink(value: HistoryPage.endurance) {
-                                        EnduranceTile(stats: stats, exercise: exercise)
-                                    }
-                                    if exercise != .auto {
-                                        NavigationLink(value: HistoryPage.form) { FormTile(stats: stats) }
-                                    }
+                                NavigationLink(value: HistoryPage.endurance) {
+                                    EnduranceTile(stats: stats, exercise: exercise)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -103,10 +93,7 @@ struct HistoryView: View {
             HistoryDetailView(title: "Score d'endurance") {
                 if let exercise { EndurancePanel(stats: stats, exercise: exercise) }
             }
-        case .form:
-            HistoryDetailView(title: "Forme") { FormPanel(stats: stats) }
-        case .phase:
-            HistoryDetailView(title: "Phase") { PhasePanel(stats: stats, all: sessions) }
+
         case .activity:
             HistoryDetailView(title: "Activité") { VolumePanel(stats: stats) }
         }
@@ -161,7 +148,7 @@ extension HistoryPanel where Accessory == EmptyView {
 
 /// Détails de l'historique, ouverts d'une touche sur leur bloc.
 enum HistoryPage: Hashable {
-    case phase, endurance, form, activity
+    case endurance, activity
 }
 
 /// Une tuile (moitié de largeur) : un titre, une valeur, une mini-courbe ; une touche ouvre son détail.
@@ -191,7 +178,7 @@ struct HistoryTile<Content: View>: View {
 }
 
 /// Écran de détail de l'historique : retour, titre, contenu.
-private struct HistoryDetailView<Content: View>: View {
+struct HistoryDetailView<Content: View>: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     let title: String

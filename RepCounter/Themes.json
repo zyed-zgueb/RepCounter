@@ -18,6 +18,7 @@
         "secondary": "#AB64FA",
         "ok": "#2EE69E",
         "warn": "#FFB021",
+        "rest": "#AB64FA",
         "alarm": "#FF4F4F",
         "onPrimary": "#000000"
       }
@@ -40,6 +41,7 @@
         "secondary": "#1FBF4A",
         "ok": "#39FF6A",
         "warn": "#E5FF3A",
+        "rest": "#A78BFA",
         "alarm": "#FF5A3A",
         "onPrimary": "#021004"
       }
@@ -62,6 +64,7 @@
         "secondary": "#6A4BD8",
         "ok": "#0E9E66",
         "warn": "#D17A00",
+        "rest": "#6A4BD8",
         "alarm": "#D63A3A",
         "onPrimary": "#FFFFFF"
       }
@@ -84,6 +87,7 @@
         "secondary": "#7B5CFF",
         "ok": "#3DFFD8",
         "warn": "#FFC23D",
+        "rest": "#7B5CFF",
         "alarm": "#FF3D6E",
         "onPrimary": "#12051C"
       }

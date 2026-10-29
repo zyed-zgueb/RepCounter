@@ -10,6 +10,8 @@ struct AppTheme: Decodable, Identifiable, Equatable {
         /// Tracé principal et action principale ; secondaire pour les dégradés.
         let primary, secondary: String
         let ok, warn, alarm: String
+        /// Semaine allégée, décharge (violet).
+        let rest: String
         /// Texte sur un bouton plein.
         let onPrimary: String
     }
@@ -36,6 +38,7 @@ struct AppTheme: Decodable, Identifiable, Equatable {
     var ok: Color { Color(hex: colors.ok) }
     var warn: Color { Color(hex: colors.warn) }
     var alarm: Color { Color(hex: colors.alarm) }
+    var rest: Color { Color(hex: colors.rest) }
     var onPrimary: Color { Color(hex: colors.onPrimary) }
 
     var colorScheme: ColorScheme { scheme == "light" ? .light : .dark }
@@ -55,7 +58,7 @@ struct AppTheme: Decodable, Identifiable, Equatable {
         id: "monitor", name: "Moniteur", scheme: "dark", font: "monospaced", radius: 4, glow: 1,
         colors: Palette(background: "#05080A", panel: "#0D1217", line: "#212E38", grid: "#121C24",
                         text: "#DEEDF5", dim: "#738794", primary: "#3DC2FF", secondary: "#AB64FA",
-                        ok: "#2EE69E", warn: "#FFB021", alarm: "#FF4F4F", onPrimary: "#000000"))
+                        ok: "#2EE69E", warn: "#FFB021", alarm: "#FF4F4F", rest: "#AB64FA", onPrimary: "#000000"))
 }
 
 /// Thèmes disponibles et thème choisi (mémorisé).

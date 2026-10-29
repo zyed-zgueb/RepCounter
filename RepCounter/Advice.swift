@@ -3,7 +3,7 @@ import SwiftUI
 // MARK: - Conseil
 
 /// Un conseil d'entraînement, tiré de l'historique d'un exercice, affiché comme action de la
-/// phase Construction (`PhaseCard`). Les signaux de fatigue et de pic de charge sont devenus des
+/// phase Construction (carte État du Coaching). Les signaux de fatigue et de pic de charge sont devenus des
 /// phases (`Phase.swift`) ; le pic de charge, fondé sur le rapport charge aiguë / chronique,
 /// est retiré (aucun effet causal démontré : Impellizzeri et al. 2020, IJSPP 15(6):907–913).
 struct Advice {
@@ -95,60 +95,6 @@ struct FormPanel: View {
         }
         let count = min(stats.measuredSessionCount, FormResult.baselineSessions)
         return "Référence en cours : \(count) séance\(count > 1 ? "s" : "") sur \(FormResult.baselineSessions) (une série d'au moins \(FormMeasure.minimumReps) répétitions). " + rule
-    }
-}
-
-/// La tuile Forme de l'historique : la forme de la dernière séance mesurable, sa zone et la
-/// courbe. Tant que la référence se construit, où l'on en est (« 2 / 3 séances »).
-struct FormTile: View {
-    @Environment(\.theme) private var theme
-    let stats: HistoryStats
-
-    var body: some View {
-        let results = stats.formResults
-        HistoryTile(title: "Forme") {
-            if let accuracy = stats.countingAccuracy, !stats.countingIsReliable {
-                // Comptage peu fiable : pas de forme
-                Text("—")
-                    .font(theme.font(32, .bold))
-                    .foregroundStyle(theme.dim)
-                Text("comptage juste à \(Int((accuracy * 100).rounded())) %")
-                    .font(theme.font(11))
-                    .foregroundStyle(theme.dim)
-                    .fixedSize(horizontal: false, vertical: true)
-            } else if let last = results.last {
-                let color = formColor(last.result.zone, theme: theme)
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(Int(last.result.percent.rounded()))")
-                        .font(theme.font(32, .bold))
-                        .monospacedDigit()
-                    Text("%")
-                        .font(theme.font(14, .bold))
-                }
-                .foregroundStyle(color)
-                Text(last.result.zone.title)
-                    .font(theme.font(11, .bold))
-                    .foregroundStyle(color)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Spacer(minLength: 0)
-                if results.count >= 2 {
-                    FormChart(results: results.suffix(12).map(\.result), dots: false)
-                        .frame(height: 26)
-                }
-            } else {
-                // En cours : la référence demande 3 séances mesurables ; la suivante a sa forme
-                let count = min(stats.measuredSessionCount, FormResult.baselineSessions)
-                Text("\(count) / \(FormResult.baselineSessions)")
-                    .font(theme.font(32, .bold))
-                    .foregroundStyle(theme.dim)
-                    .monospacedDigit()
-                Text(count < FormResult.baselineSessions ? "séances de référence" : "référence prête : forme à la prochaine séance")
-                    .font(theme.font(11))
-                    .foregroundStyle(theme.dim)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
     }
 }
 

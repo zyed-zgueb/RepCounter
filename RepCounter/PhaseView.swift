@@ -46,52 +46,6 @@ extension TrainingPhase {
     }
 }
 
-/// La carte Phase, en tête de l'historique d'un exercice : une étiquette, une action, une
-/// couleur. En construction, le conseil Plateau ou Record à portée sert d'action s'il y en a un.
-struct PhaseCard: View {
-    @Environment(\.theme) private var theme
-    let phase: TrainingPhase
-    let advice: Advice?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 4) {
-                MonitorLabel("Phase")
-                Spacer(minLength: 2)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(theme.dim)
-            }
-            HStack(alignment: .top, spacing: 12) {
-                Circle()
-                    .fill(phase.color(theme))
-                    .frame(width: 8, height: 8)
-                    .padding(.top, 6)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(phase.title)
-                        .font(theme.font(15, .bold))
-                        .foregroundStyle(phase.kind == .pending || phase.kind == .unreliable ? theme.dim : theme.text)
-                    Text(actionText)
-                        .font(theme.font(12))
-                        .foregroundStyle(theme.dim)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .combine)
-    }
-
-    private var actionText: String {
-        if phase.kind == .building, !phase.felt, let advice { return "\(advice.title) · \(advice.short)" }
-        return phase.action()
-    }
-}
-
 /// Le détail de la phase : la phase, la décharge à commencer, la charge des 12 dernières
 /// semaines. (i) explique le modèle et ses références.
 struct PhasePanel: View {
