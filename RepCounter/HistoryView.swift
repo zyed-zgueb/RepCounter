@@ -810,7 +810,7 @@ private struct SetBarsChart: View {
 
     private var accessibility: String {
         let sets = session.orderedSets
-        let reached = sets.filter { $0.target.map { t in $0.reps >= t } ?? false }.count
+        let reached = sets.filter { set in set.target.map { set.reps >= $0 } ?? false }.count
         let targets = sets.filter { $0.target != nil }.count
         return "Séries : " + sets.map { "\($0.reps)" }.joined(separator: ", ")
             + (targets > 0 ? ", \(reached) cibles atteintes sur \(targets)" : "")
