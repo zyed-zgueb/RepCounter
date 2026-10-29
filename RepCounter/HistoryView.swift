@@ -53,9 +53,9 @@ struct HistoryView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
-                            NavigationLink(value: HistoryPage.activity) { ActivityPanel(stats: stats) }
+                            NavigationLink(value: HistoryPage.activity) { RepsWeekCard(stats: stats, all: sessions, planned: exercise != nil) }
                                 .buttonStyle(.plain)
-                            if exercise != nil { RecordsPanel(stats: stats) }
+                            if exercise != nil { BestSetCard(stats: stats) }
                             SessionsPanel(stats: stats, showsExercise: exercise == nil) { session in
                                 withAnimation { modelContext.delete(session) }
                             }
@@ -95,16 +95,19 @@ struct HistoryView: View {
             }
 
         case .activity:
-            HistoryDetailView(title: "Activité") { VolumePanel(stats: stats) }
+            HistoryDetailView(title: "Activité") {
+                HistoryPanel(title: "Régularité") { RegularityCalendar(stats: stats) }
+            }
         }
     }
 
     private var emptyState: some View {
         VStack(spacing: 10) {
-            Dial(face: DialFace(lit: 0, palette: .pale)) { _ in
-                MonitorLabel("Aucune séance")
-            }
-            .frame(width: 180, height: 180)
+            // Le cadran est réservé au comptage (skill reps-ux)
+            Image(systemName: "chart.bar")
+                .font(.system(size: 40, weight: .light))
+                .foregroundStyle(theme.line)
+            MonitorLabel("Aucune séance")
             Text("Tes séances s'afficheront ici.")
                 .font(theme.font(12))
                 .foregroundStyle(theme.dim)
@@ -254,195 +257,165 @@ private struct ExerciseFilter: View {
     }
 }
 
-/// L'activité : la semaine en cours (cadran rempli selon la meilleure semaine, et les chiffres
-/// clés), puis la régularité sur 16 semaines. Une touche ouvre le volume sur 12 semaines.
-private struct ActivityPanel: View {
+/// Répétitions par semaine (skill reps-ux, § 9 : un graphique) : l'histogramme des 12 dernières
+/// semaines, la semaine en cours en couleur, la moyenne en pointillés ; en tête, la tendance ▲▼
+/// par rapport à la semaine dernière ; dessous, la semaine en symboles (● faite, ○ prévue
+/// restante) et le temps. Une touche ouvre la régularité.
+private struct RepsWeekCard: View {
     @Environment(\.theme) private var theme
     let stats: HistoryStats
-
-    var body: some View {
-        HistoryPanel(title: "Activité", accessory: {
-            Image(systemName: "chevron.right")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(theme.dim)
-        }) {
-            WeekSummary(stats: stats)
-            Rectangle().fill(theme.line).frame(height: 1)
-            RegularityCalendar(stats: stats)
-        }
-        .contentShape(Rectangle())
-    }
-}
-
-/// Cette semaine : un cadran (rempli selon la meilleure semaine) et les chiffres clés.
-private struct WeekSummary: View {
-    @Environment(\.theme) private var theme
-    let stats: HistoryStats
-
-    var body: some View {
-        let volume = stats.weekVolume, previous = stats.previousWeekVolume
-        let best = max(stats.bestWeek?.value ?? volume, 1)
-        HStack(spacing: 18) {
-            Dial(face: DialFace(lit: Int(Double(DialFace.tickCount) * min(Double(volume) / Double(best), 1)), palette: .gradient)) { side in
-                VStack(spacing: 2) {
-                    Text("\(volume)")
-                        .font(theme.font(side * 0.26, .bold))
-                        .foregroundStyle(theme.text)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                    MonitorLabel("reps")
-                }
-                .padding(side * 0.18)
-            }
-            .frame(width: 128, height: 128)
-
-            VStack(alignment: .leading, spacing: 10) {
-                MonitorLabel("Cette semaine", color: theme.text)
-                VStack(alignment: .leading, spacing: 2) {
-                    if previous > 0 {
-                        let change = (Double(volume) - Double(previous)) / Double(previous) * 100
-                        Text("\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) %")
-                            .font(theme.font(20, .bold))
-                            .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
-                        Text("vs semaine dernière (\(previous))")
-                            .font(theme.font(11))
-                            .foregroundStyle(theme.dim)
-                    } else {
-                        Text(volume > 0 ? "Bonne reprise" : "Pas encore de séance")
-                            .font(theme.font(14, .bold))
-                            .foregroundStyle(volume > 0 ? theme.ok : theme.dim)
-                    }
-                }
-                keyValue("Séances", "\(stats.weekSessions)")
-                keyValue("Temps", Format.minutes(stats.weekDuration))
-                keyValue("Régularité", stats.weekStreak > 1 ? "\(stats.weekStreak) sem. de suite" : "\(stats.weekStreak) sem.")
-            }
-        }
-    }
-
-    private func keyValue(_ key: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            MonitorLabel(key)
-            Spacer(minLength: 6)
-            Text(value)
-                .font(theme.font(14, .bold))
-                .foregroundStyle(theme.text)
-                .multilineTextAlignment(.trailing)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-        }
-    }
-}
-
-/// Meilleure série, meilleure séance, meilleure semaine. Battus cette semaine : en orange.
-private struct RecordsPanel: View {
-    @Environment(\.theme) private var theme
-    let stats: HistoryStats
-
-    var body: some View {
-        HistoryPanel(title: "Records") {
-            HStack(alignment: .top, spacing: 8) {
-                tile("Série", stats.bestSet, week: false)
-                tile("Séance", stats.bestSession, week: false)
-                tile("Semaine", stats.bestWeek, week: true)
-            }
-        }
-    }
-
-    private func tile(_ name: String, _ record: HistoryStats.Record?, week: Bool) -> some View {
-        let fresh = record.map { stats.weekStart($0.date) == stats.thisWeek } ?? false
-        return VStack(alignment: .leading, spacing: 6) {
-            MonitorLabel(name)
-            HStack(spacing: 4) {
-                Text(record.map { "\($0.value)" } ?? "—")
-                    .font(theme.font(24, .bold))
-                    .foregroundStyle(fresh ? theme.warn : theme.text)
-                    .monospacedDigit()
-                if fresh {
-                    Image(systemName: "star.fill")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(theme.warn)
-                }
-            }
-            Text(record.map { week ? (fresh ? "cette semaine" : "sem. du \(Format.shortDate($0.date))") : Format.shortDate($0.date) } ?? " ")
-                .font(theme.font(10))
-                .foregroundStyle(theme.dim)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(fresh ? theme.warn.opacity(0.06) : .clear,
-                    in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous)
-            .stroke(fresh ? theme.warn.opacity(0.6) : theme.line, lineWidth: 1))
-    }
-}
-
-/// Répétitions par semaine sur 12 semaines, la semaine en cours en dégradé, la moyenne en pointillés.
-private struct VolumePanel: View {
-    @Environment(\.theme) private var theme
-    let stats: HistoryStats
-    private let chartHeight: CGFloat = 78
+    let all: [SessionRecord]
+    /// Un exercice (son plan donne les séances prévues restantes) ; Σ : seulement les faites.
+    let planned: Bool
 
     var body: some View {
         let weeks = stats.lastWeeks(12)
         let volumes = weeks.map { stats.volume(inWeek: $0) }
-        let most = max(volumes.max() ?? 1, 1)
-        let mean = Double(volumes.reduce(0, +)) / Double(volumes.count)
-        HistoryPanel(title: "Volume · 12 semaines", accessory: { MonitorLabel("reps / semaine") }) {
-            ZStack(alignment: .bottomLeading) {
-                HStack(alignment: .bottom, spacing: 6) {
-                    ForEach(Array(volumes.enumerated()), id: \.offset) { index, volume in
-                        let current = index == volumes.count - 1
-                        VStack(spacing: 5) {
-                            if current {
-                                Text("\(volume)")
-                                    .font(theme.font(10, .bold))
-                                    .foregroundStyle(theme.text)
-                                    .fixedSize()
-                            }
-                            UnevenBar(radius: 2)
-                                .fill(current
-                                      ? AnyShapeStyle(LinearGradient(colors: [theme.primary, theme.secondary], startPoint: .top, endPoint: .bottom))
-                                      : AnyShapeStyle(theme.primary.opacity(volume > 0 ? 0.35 : 0.15)))
-                                .frame(maxWidth: 18)
-                                .frame(height: max(2, chartHeight * CGFloat(volume) / CGFloat(most)))
-                            Text(index % 3 == 2 ? "S\(stats.calendar.component(.weekOfYear, from: weeks[index]))" : " ")
-                                .font(theme.font(9))
-                                .foregroundStyle(theme.dim)
-                                .fixedSize()
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
+        let volume = stats.weekVolume, previous = stats.previousWeekVolume
+        HistoryPanel(title: "Répétitions / semaine", accessory: {
+            HStack(spacing: 6) {
+                if previous > 0 {
+                    let change = (Double(volume) - Double(previous)) / Double(previous) * 100
+                    Text("\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) %")
+                        .font(theme.font(13, .bold))
+                        .foregroundStyle(change >= 0 ? theme.ok : theme.text)
                 }
-                // Moyenne des 12 semaines
-                let y = 19 + chartHeight * CGFloat(mean) / CGFloat(most)
-                HorizontalLine()
-                    .stroke(theme.dim.opacity(0.6), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .frame(height: 1)
-                    .offset(y: -y)
-                Text("moy. \(Int(mean.rounded()))")
-                    .font(theme.font(9))
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(theme.dim)
-                    .padding(.trailing, 4)
-                    .background(theme.panel)
-                    .offset(y: -y - 4)
             }
-            .frame(height: chartHeight + 34, alignment: .bottom)
+        }) {
+            VolumeBars(volumes: volumes)
+                .frame(height: 96)
+                .accessibilityLabel("Répétitions par semaine : \(volume) cette semaine" + (previous > 0 ? ", \(previous) la semaine dernière" : ""))
+            HStack {
+                MonitorLabel("cette semaine")
+                Spacer()
+                Text(weekSymbols + " · " + Format.minutes(stats.weekDuration))
+                    .font(theme.font(13, .bold))
+                    .foregroundStyle(theme.text)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+
+    /// Un ● par séance faite cette semaine, un ○ par séance prévue restante (plan de l'exercice).
+    private var weekSymbols: String {
+        let done = stats.weekSessions
+        let plan = planned ? stats.plan(all: all) : nil
+        let remaining = plan.flatMap { plan in plan.currentWeek.map { max(plan.perWeek - $0.done, 0) } } ?? 0
+        return String(repeating: "●", count: done) + (remaining > 0 ? " " + String(repeating: "○", count: remaining) : "")
+            + (done == 0 && remaining == 0 ? "—" : "")
+    }
+}
+
+/// L'histogramme du volume : la semaine en cours en couleur, la moyenne en pointillés.
+private struct VolumeBars: View {
+    @Environment(\.theme) private var theme
+    let volumes: [Int]
+
+    var body: some View {
+        Canvas { context, size in
+            guard !volumes.isEmpty else { return }
+            let most = CGFloat(max(volumes.max() ?? 1, 1))
+            let base = size.height - 14
+            let slot = size.width / CGFloat(volumes.count)
+            let width = min(slot * 0.62, 18)
+            let height = { (value: Int) -> CGFloat in (base - 16) * CGFloat(value) / most }
+            let mean = Double(volumes.dropLast().reduce(0, +)) / Double(max(volumes.count - 1, 1))
+            var average = Path()
+            average.move(to: CGPoint(x: 0, y: base - height(Int(mean.rounded()))))
+            average.addLine(to: CGPoint(x: size.width, y: base - height(Int(mean.rounded()))))
+            context.stroke(average, with: .color(theme.dim.opacity(0.7)), style: StrokeStyle(lineWidth: 0.8, dash: [3, 3]))
+            for (index, value) in volumes.enumerated() {
+                let current = index == volumes.count - 1
+                let x = CGFloat(index) * slot + (slot - width) / 2
+                let h = max(height(value), value > 0 ? 2 : 1)
+                context.fill(Path(roundedRect: CGRect(x: x, y: base - h, width: width, height: h), cornerRadius: 1.5),
+                             with: .color(current ? theme.primary : theme.line))
+                if current {
+                    context.draw(Text("\(value)").font(theme.font(9, .bold)).foregroundStyle(theme.text),
+                                 at: CGPoint(x: x + width / 2, y: base - h - 7))
+                }
+            }
+            context.draw(Text("S−11").font(theme.font(8)).foregroundStyle(theme.dim), at: CGPoint(x: 2, y: size.height - 4), anchor: .leading)
+            context.draw(Text("cette sem.").font(theme.font(8)).foregroundStyle(theme.primary),
+                         at: CGPoint(x: size.width - 2, y: size.height - 4), anchor: .trailing)
         }
     }
 }
 
-private struct HorizontalLine: Shape {
-    func path(in rect: CGRect) -> Path {
-        Path { path in
-            path.move(to: CGPoint(x: rect.minX, y: rect.midY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+/// Meilleure série (un exercice) : la courbe des meilleures séries par semaine sur 12 semaines,
+/// les records en ★ sur la courbe. Remplace les tuiles de records.
+private struct BestSetCard: View {
+    @Environment(\.theme) private var theme
+    let stats: HistoryStats
+
+    var body: some View {
+        let weeks = stats.lastWeeks(12)
+        let points = bestByWeek(weeks)
+        HistoryPanel(title: "Meilleure série", accessory: {
+            if let record = stats.bestSet {
+                Text("★ \(record.value)")
+                    .font(theme.font(13, .bold))
+                    .foregroundStyle(theme.text)
+            }
+        }) {
+            BestCurve(points: points)
+                .frame(height: 86)
+                .accessibilityLabel("Meilleure série par semaine" + (stats.bestSet.map { ", record \($0.value)" } ?? ""))
+        }
+    }
+
+    /// Par semaine : la meilleure série (nil sans séance) et si c'est un record à ce moment-là.
+    private func bestByWeek(_ weeks: [Date]) -> [(value: Int?, record: Bool)] {
+        var best = stats.sessions.filter { $0.start < (weeks.first ?? stats.now) }.map(\.bestSet).max() ?? 0
+        return weeks.map { week in
+            let value = stats.sessions(inWeek: week).map(\.bestSet).max()
+            guard let value, value > 0 else { return (nil, false) }
+            let record = value > best
+            best = max(best, value)
+            return (value, record)
         }
     }
 }
+
+private struct BestCurve: View {
+    @Environment(\.theme) private var theme
+    let points: [(value: Int?, record: Bool)]
+
+    var body: some View {
+        Canvas { context, size in
+            let values = points.compactMap(\.value)
+            guard let low = values.min(), let high = values.max() else { return }
+            let span = Double(max(high - low, 4))
+            let x = { (index: Int) -> CGFloat in 10 + (size.width - 20) * CGFloat(index) / CGFloat(max(points.count - 1, 1)) }
+            let y = { (value: Int) -> CGFloat in size.height - 10 - (size.height - 24) * CGFloat(Double(value - low) / span) }
+            var line = Path()
+            var started = false
+            for (index, point) in points.enumerated() {
+                guard let value = point.value else { continue }
+                let p = CGPoint(x: x(index), y: y(value))
+                if started { line.addLine(to: p) } else { line.move(to: p); started = true }
+            }
+            context.stroke(line, with: .color(theme.primary), lineWidth: 1.5)
+            for (index, point) in points.enumerated() {
+                guard let value = point.value else { continue }
+                let p = CGPoint(x: x(index), y: y(value))
+                if point.record {
+                    context.draw(Text("★").font(theme.font(11)).foregroundStyle(theme.text), at: p)
+                } else {
+                    context.fill(Path(ellipseIn: CGRect(x: p.x - 2, y: p.y - 2, width: 4, height: 4)), with: .color(theme.primary))
+                }
+            }
+            if let last = points.lastIndex(where: { $0.value != nil }), let value = points[last].value {
+                context.draw(Text("\(value)").font(theme.font(9, .bold)).foregroundStyle(theme.text),
+                             at: CGPoint(x: x(last), y: y(value) - 11))
+            }
+        }
+    }
+}
+
 
 /// Courbe d'une valeur : x de 0 (à gauche) à `span` (à droite).
 struct LineChart: View {
@@ -617,42 +590,53 @@ private struct SessionsPanel: View {
         return Format.shortDay(day)
     }
 
+    /// Une séance : l'heure, la silhouette des séries (une barre par série, verte si sa cible est
+    /// atteinte), le total, ★ si record.
     private func row(_ session: SessionRecord, isRecord: Bool) -> some View {
         HStack(spacing: 12) {
-            ExerciseIcon(exercise: session.exercise, size: 22)
-                .foregroundStyle(theme.primary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(Format.time(session.start))
-                    .font(theme.font(15, .bold))
-                    .foregroundStyle(theme.text)
-                    .monospacedDigit()
-                Text("\(session.orderedSets.count) série\(session.orderedSets.count > 1 ? "s" : "")")
-                    .font(theme.font(11))
-                    .foregroundStyle(theme.dim)
+            if showsExercise {
+                ExerciseIcon(exercise: session.exercise, size: 20)
+                    .foregroundStyle(theme.primary)
             }
+            Text(Format.time(session.start))
+                .font(theme.font(13, .bold))
+                .foregroundStyle(theme.dim)
+                .monospacedDigit()
+                .frame(width: 48, alignment: .leading)
+            SetSilhouette(sets: session.orderedSets)
+                .frame(height: 22)
             Spacer(minLength: 6)
-            if isRecord {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(theme.warn)
-            }
-            if let previous = stats.previous(of: session) {
-                let delta = session.totalReps - previous.totalReps
-                Text(Format.signed(delta))
-                    .font(theme.font(11, .bold))
-                    .foregroundStyle(delta > 0 ? theme.ok : theme.dim)
-            }
-            Text("\(session.totalReps)")
-                .font(theme.font(22, .bold))
+            Text((isRecord ? "★ " : "") + "\(session.totalReps)")
+                .font(theme.font(20, .bold))
                 .foregroundStyle(theme.text)
                 .monospacedDigit()
-                .frame(minWidth: 36, alignment: .trailing)
             Image(systemName: "chevron.right")
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(theme.dim)
         }
         .padding(.vertical, 10)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(Format.time(session.start)), \(session.orderedSets.count) séries, \(session.totalReps) répétitions\(isRecord ? ", record" : "")")
+    }
+}
+
+/// La silhouette d'une séance : une barre par série, à l'échelle de la plus longue ; verte si la
+/// série a atteint sa cible.
+private struct SetSilhouette: View {
+    @Environment(\.theme) private var theme
+    let sets: [SetRecord]
+
+    var body: some View {
+        let top = max(sets.map(\.reps).max() ?? 1, 1)
+        HStack(alignment: .bottom, spacing: 2) {
+            ForEach(Array(sets.prefix(12).enumerated()), id: \.offset) { _, set in
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(set.target.map { set.reps >= $0 } == true ? theme.ok : theme.primary.opacity(0.85))
+                    .frame(width: 7, height: max(3, 22 * CGFloat(set.reps) / CGFloat(top)))
+            }
+        }
+        .frame(height: 22, alignment: .bottom)
     }
 }
 
@@ -687,7 +671,10 @@ struct SessionDetailView: View {
             VerticalScroll {
                 VStack(spacing: 14) {
                     overview
-                    HistoryPanel(title: "Séries") { setsTable(sets) }
+                    HistoryPanel(title: "Séries", accessory: { seriesAccessory(sets) }) {
+                        SetBarsChart(session: session)
+                            .frame(height: 120)
+                    }
                     if sets.contains(where: { $0.repDurations.count >= 2 }) {
                         HistoryPanel(title: "Rythme", accessory: { MonitorLabel("s / rep") }) {
                             RhythmChart(sets: sets)
@@ -698,6 +685,7 @@ struct SessionDetailView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
+                    footnotes
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
@@ -707,101 +695,126 @@ struct SessionDetailView: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 
-    private var overview: some View {
-        HStack(spacing: 18) {
-            Dial(face: DialFace(lit: DialFace.tickCount, palette: .gradient)) { side in
-                VStack(spacing: 2) {
-                    Text("\(session.totalReps)")
-                        .font(theme.font(side * 0.3, .bold))
-                        .foregroundStyle(theme.text)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                    MonitorLabel("reps")
-                }
-                .padding(side * 0.18)
-            }
-            .frame(width: 130, height: 130)
+    /// « 2 / 3 ✓ » : séries qui ont atteint leur cible.
+    @ViewBuilder
+    private func seriesAccessory(_ sets: [SetRecord]) -> some View {
+        let targeted = sets.filter { $0.target != nil }
+        if !targeted.isEmpty {
+            let reached = targeted.filter { $0.reps >= ($0.target ?? .max) }.count
+            Text("\(reached) / \(targeted.count) ✓")
+                .font(theme.font(12, .bold))
+                .foregroundStyle(reached == targeted.count ? theme.ok : theme.text)
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    ExerciseIcon(exercise: session.exercise, size: 20)
-                        .foregroundStyle(theme.primary)
-                    Text(session.exercise.shortTitle.uppercased())
-                        .font(theme.font(14, .bold))
-                        .tracking(1.5)
-                        .foregroundStyle(theme.text)
+    /// Le total en grand, l'exercice et la durée.
+    private var overview: some View {
+        VStack(spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text((stats.recordSessions.contains(session.persistentModelID) ? "★ " : "") + "\(session.totalReps)")
+                    .font(theme.font(46, .bold))
+                    .foregroundStyle(theme.text)
+                    .monospacedDigit()
+                MonitorLabel("\(session.exercise.shortTitle.lowercased()) · \(Format.clock(session.duration))")
+            }
+            if let load = session.loadDescription {
+                MonitorLabel(load)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Forme, effort, et comparaison avec la séance précédente : trois lignes courtes.
+    @ViewBuilder
+    private var footnotes: some View {
+        let form = stats.form(of: session)
+        let previous = stats.previous(of: session)
+        if form != nil || session.effort != nil || previous != nil || session.performanceIndex != nil {
+            HistoryPanel(title: "Séance") {
+                if let form {
+                    line("Forme", "\(Int(form.percent.rounded())) %", color: formColor(form.zone, theme: theme))
                 }
-                if let previous = stats.previous(of: session) {
-                    let delta = session.totalReps - previous.totalReps
-                    Text("\(delta >= 0 ? "▲" : "▼") \(Format.signed(delta)) vs \(Format.dayName(previous.start))")
-                        .font(theme.font(13, .bold))
-                        .foregroundStyle(delta >= 0 ? theme.ok : theme.dim)
-                }
-                if stats.recordSessions.contains(session.persistentModelID) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "star.fill").font(.system(size: 10, weight: .bold))
-                        Text("Record")
-                    }
-                    .font(theme.font(12, .bold))
-                    .foregroundStyle(theme.warn)
+                if let effort = session.effort {
+                    line("Effort", "\(effort) / 10", color: theme.text)
                 }
                 if let index = session.performanceIndex {
-                    Text("Score d'endurance \(Int(index.rounded()))" + (session.loadDescription.map { " · \($0)" } ?? ""))
-                        .font(theme.font(12, .bold))
-                        .foregroundStyle(theme.text)
+                    line("Score d'endurance", "\(Int(index.rounded()))", color: theme.text)
                 }
-                if let form = stats.form(of: session) {
-                    Text("Forme \(Int(form.percent.rounded())) % · \(form.zone.title.lowercased())")
-                        .font(theme.font(12, .bold))
-                        .foregroundStyle(formColor(form.zone, theme: theme))
+                if let previous {
+                    let delta = session.totalReps - previous.totalReps
+                    line("vs \(Format.dayName(previous.start))",
+                         delta == 0 ? "= \(previous.totalReps)" : "\(delta > 0 ? "▲" : "▼") \(Format.signed(delta))",
+                         color: delta > 0 ? theme.ok : theme.text)
                 }
-                Text("\(Format.clock(session.duration)) · \(session.orderedSets.count) série\(session.orderedSets.count > 1 ? "s" : "")")
-                    .font(theme.font(12))
-                    .foregroundStyle(theme.dim)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 0)
         }
     }
 
-    private func setsTable(_ sets: [SetRecord]) -> some View {
-        let best = sets.map(\.reps).max() ?? 0
-        return VStack(spacing: 0) {
-            HStack {
-                ForEach(Array(["Série", "Reps", "Durée", "Cadence", "Récup."].enumerated()), id: \.offset) { index, title in
-                    MonitorLabel(title)
-                        .frame(maxWidth: .infinity, alignment: index == 0 ? .leading : .trailing)
-                }
-            }
-            .padding(.bottom, 6)
-            ForEach(Array(sets.enumerated()), id: \.offset) { index, set in
-                if index > 0 { Rectangle().fill(theme.line).frame(height: 1) }
-                HStack {
-                    Text(String(format: "S%02d", index + 1))
-                        .foregroundStyle(theme.dim)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Text("\(set.reps)")
-                        .foregroundStyle(set.reps == best && sets.count > 1 ? theme.warn : theme.text)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                    Text(Format.clock(set.duration))
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                    Text(set.pace.map { "\(Format.decimal($0)) s" } ?? "—")
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                    Text(session.rest(before: index).map(Format.clock) ?? "—")
-                        .foregroundStyle(theme.dim)
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                }
-                .font(theme.font(14, .semibold))
-                .foregroundStyle(theme.text)
+    private func line(_ label: String, _ value: String, color: Color) -> some View {
+        HStack {
+            MonitorLabel(label)
+            Spacer()
+            Text(value)
+                .font(theme.font(13, .bold))
+                .foregroundStyle(color)
                 .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .padding(.vertical, 8)
-            }
         }
     }
+}
 
+/// Les séries en barres : contour pointillé = cible (s'il y en avait une), plein = fait, ✓ si
+/// atteinte ; entre les barres, ◷ et le repos réel.
+private struct SetBarsChart: View {
+    @Environment(\.theme) private var theme
+    let session: SessionRecord
+
+    var body: some View {
+        let sets = session.orderedSets
+        Canvas { context, size in
+            guard !sets.isEmpty else { return }
+            let top = CGFloat(sets.map { max($0.reps, $0.target ?? 0) }.max() ?? 1)
+            let base = size.height - 16
+            let count = CGFloat(sets.count)
+            let gap: CGFloat = sets.count > 1 ? min(42, size.width * 0.15) : 0
+            let width = min((size.width - gap * (count - 1)) / count, 56)
+            let total = width * count + gap * (count - 1)
+            var x = (size.width - total) / 2
+            let height = { (value: Int) -> CGFloat in (base - 18) * CGFloat(value) / max(top, 1) }
+            for (index, set) in sets.enumerated() {
+                let reached = set.target.map { set.reps >= $0 } ?? false
+                if let target = set.target {
+                    let h = height(target)
+                    context.stroke(Path(roundedRect: CGRect(x: x, y: base - h, width: width, height: h), cornerRadius: 2),
+                                   with: .color(theme.dim), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+                }
+                let h = max(height(set.reps), 2)
+                context.fill(Path(roundedRect: CGRect(x: x + 4, y: base - h, width: width - 8, height: h), cornerRadius: 1.5),
+                             with: .color((reached ? theme.ok : theme.primary).opacity(0.85)))
+                let labelTop = base - max(h, set.target.map(height) ?? 0) - 8
+                context.draw(Text("\(set.reps)\(reached ? " ✓" : "")").font(theme.font(10, .bold))
+                                .foregroundStyle(reached ? theme.ok : theme.text),
+                             at: CGPoint(x: x + width / 2, y: labelTop))
+                context.draw(Text("S\(index + 1)").font(theme.font(9)).foregroundStyle(theme.dim),
+                             at: CGPoint(x: x + width / 2, y: size.height - 5))
+                if index < sets.count - 1, let rest = session.rest(before: index + 1) {
+                    context.draw(Text("◷").font(theme.font(10)).foregroundStyle(theme.dim),
+                                 at: CGPoint(x: x + width + gap / 2, y: base - 8))
+                    context.draw(Text(Format.clock(rest)).font(theme.font(8)).foregroundStyle(theme.dim),
+                                 at: CGPoint(x: x + width + gap / 2, y: size.height - 5))
+                }
+                x += width + gap
+            }
+        }
+        .accessibilityLabel(accessibility)
+    }
+
+    private var accessibility: String {
+        let sets = session.orderedSets
+        let reached = sets.filter { $0.target.map { t in $0.reps >= t } ?? false }.count
+        let targets = sets.filter { $0.target != nil }.count
+        return "Séries : " + sets.map { "\($0.reps)" }.joined(separator: ", ")
+            + (targets > 0 ? ", \(reached) cibles atteintes sur \(targets)" : "")
+    }
 }
 
 /// Une courbe par série : la durée de chacune de ses répétitions, côte à côte.

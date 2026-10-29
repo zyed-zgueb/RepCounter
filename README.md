@@ -93,17 +93,19 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   (`calm`, `work`, `max` dans `Themes.json`, adaptés à chaque thème). Vert : objectif ou cible
   atteints. Les alertes (séance manquée, semaine refaite, Forme basse) n'ont pas de couleur :
   elles portent « ! ».
-- **Historique** (icône graphique, en veille et à la fin) : le passé seulement. Σ (tous les
-  exercices) ou un exercice pratiqué, puis :
+- **Historique** (icône graphique, en veille et à la fin) : le passé seulement, en graphiques.
+  Σ (tous les exercices) ou un exercice pratiqué, puis :
   1. **Score d'endurance** (valeur, tendance, mini-courbe ; ou son état « en cours ») — une
      touche ouvre le détail (jauge et (i)) ;
-  2. **Activité** : la semaine en cours (cadran, écart avec la semaine précédente, séances,
-     temps, semaines d'affilée) et la régularité sur 16 semaines — une touche ouvre le volume
-     sur 12 semaines ;
-  3. **Records** (série, séance, semaine ; en orange quand ils datent de la semaine) et la
-     liste des **séances**, par jour (la date une fois, puis les séances à leurs heures ;
-     aujourd'hui mis en avant). Une séance s'ouvre sur son détail : séries, cadence, récupérations
-     et rythme rep par rep ; un appui long la supprime.
+  2. **Répétitions / semaine** : histogramme des 12 dernières semaines, la semaine en cours en
+     couleur, la moyenne en pointillés, la tendance ▲▼ en % ; dessous, la semaine en symboles
+     (● séance faite, ○ prévue restante) et le temps — une touche ouvre la régularité ;
+  3. **Meilleure série** (un exercice) : la courbe des meilleures séries par semaine, records ★ ;
+  4. **Séances**, par jour : l'heure, la silhouette des séries (une barre par série, verte si
+     sa cible est atteinte), le total, ★ si record. Une séance s'ouvre sur son détail : le total,
+     les séries en barres (contour pointillé = cible, plein = fait, ✓ ; ◷ et le repos réel entre
+     elles), le rythme rep par rep, puis Forme, effort et écart avec la précédente ; un appui
+     long la supprime.
 - **Réglages** (roue dentée, en veille et à la fin) : mes exercices (− / + et poignée ≡ pour
   l'ordre ; il en reste toujours un) et « J'ai un brassard », profil, retour sonore, thème, mode analyse.
 - **Mode analyse** : ajoute à la séance l'enregistrement ●, le diagnostic des capteurs et

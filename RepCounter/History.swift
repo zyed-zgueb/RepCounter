@@ -93,6 +93,8 @@ final class SetRecord {
     var cadence: Double?
     /// Instant de chaque répétition, en secondes depuis la première.
     var repTimes: [Double] = []
+    /// La cible du plan pour cette série (nil sans plan, ou séance d'avant le plan).
+    var target: Int?
     var session: SessionRecord?
 
     init(index: Int, reps: Int, start: Date, duration: TimeInterval, cadence: Double?, repTimes: [Double]) {
@@ -125,8 +127,10 @@ extension SessionRecord {
         record.fatigueScore = Feeling.todayFatigue(now: start)
         context.insert(record)
         record.sets = model.sets.enumerated().map { index, set in
-            SetRecord(index: index, reps: set.reps, start: set.start, duration: set.duration,
-                      cadence: set.cadence, repTimes: set.repTimes)
+            let record = SetRecord(index: index, reps: set.reps, start: set.start, duration: set.duration,
+                                   cadence: set.cadence, repTimes: set.repTimes)
+            record.target = set.target
+            return record
         }
         try? context.save()
         return record

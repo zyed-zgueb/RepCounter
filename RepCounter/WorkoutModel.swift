@@ -60,6 +60,8 @@ struct WorkoutSet: Identifiable {
     let start: Date
     /// Instant de chaque répétition, en secondes depuis la première (rythme rep par rep).
     let repTimes: [TimeInterval]
+    /// La cible du plan pour cette série (nil sans plan).
+    var target: Int? = nil
 }
 
 /// Séance : prêt → mise en place (si elle se vérifie) → compte à rebours → séries et
@@ -374,8 +376,9 @@ final class WorkoutModel: ObservableObject {
         // Cadence de la série : intervalle médian entre ses répétitions (le rythme du compteur,
         // mesuré sur les derniers cycles, est faussé par la fin de série)
         let pace = medianInterval(Array(repTimes)) ?? cadence
+        let target = currentTarget
         sets.append(WorkoutSet(number: sets.count + 1, reps: reps, duration: duration, cadence: pace,
-                               start: start, repTimes: repTimes))
+                               start: start, repTimes: repTimes, target: target))
         setBase = counterTotal
         setReps = 0
         setRepDates = []
