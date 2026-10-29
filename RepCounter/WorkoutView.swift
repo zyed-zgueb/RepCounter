@@ -1157,7 +1157,10 @@ private struct SessionSummary: View {
                     if let expected = plan.expected(at: record.start) {
                         planRow("Attendu", "\(Int(expected.rounded()))", color: theme.text)
                     }
-                    planRow("Depuis le départ", Format.signed(record.bestSet - plan.goal.start), color: theme.text)
+                    // Sans objectif, pas de départ : le gain depuis le test précédent
+                    if let start = plan.goal?.start ?? plan.tests.last?.value {
+                        planRow(plan.goal != nil ? "Depuis le départ" : "Depuis le test", Format.signed(record.bestSet - start), color: theme.text)
+                    }
                 } else if let planned = plan.todaySession {
                     // Séries espacées dans la journée : elles comptent toutes dans le fait du jour
                     let earlierToday = before.filter { $0.exercise == record.exercise && Calendar.current.isDate($0.start, inSameDayAs: record.start) }
