@@ -59,16 +59,22 @@ enum Cue: String, CaseIterable {
 }
 
 /// Joue les sons sans latence : fichiers chargés une fois en mémoire, plusieurs lecteurs
-/// pour que deux sons rapprochés ne se coupent pas.
+/// pour que deux sons rapprochés ne se coupent pas. La session audio, le chargement et la lecture
+/// se font sur une file à part : activer la session sur le fil principal peut figer l'interface.
 final class SoundPlayer {
     static let shared = SoundPlayer()
 
+    private let queue = DispatchQueue(label: "reps.sound", qos: .userInteractive)
     private let engine = AVAudioEngine()
     private var players: [AVAudioPlayerNode] = []
     private var nextPlayer = 0
     private var buffers: [Cue: AVAudioPCMBuffer] = [:]
 
     private init() {
+        queue.async { self.setUp() }
+    }
+
+    private func setUp() {
         // Lecture même en mode silencieux, mélangée à la musique en cours
         try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.mixWithOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
@@ -91,7 +97,11 @@ final class SoundPlayer {
     }
 
     func play(_ cue: Cue) {
-        guard let buffer = buffers[cue] else { return }
+        queue.async { self.playNow(cue) }
+    }
+
+    private func playNow(_ cue: Cue) {
+        guard let buffer = buffers[cue], !players.isEmpty else { return }
         // Le moteur s'arrête lors d'une interruption audio (appel, changement d'écouteurs)
         if !engine.isRunning { try? engine.start() }
         let player = players[nextPlayer]
