@@ -33,7 +33,7 @@ Plus une donnée est vue souvent, plus elle est réduite et proche du compteur. 
 
 - **Où je vais** (Coaching) : objectif et où j'en suis, bloc sur sa frise, prévu face au fait, mesuré face à attendu. Le plan et sa vérification restent ensemble.
 - **Comment je suis** (carte État, dans le Coaching) : phase, Forme mesurée, ressenti (fatigue, effort). Une seule carte, jamais dispersée.
-- **D'où je viens** (Historique) : records, score d'endurance et tendance, activité, régularité, volume, séances.
+- **D'où je viens** (Historique) : deux cartes. « 12 semaines » : la meilleure série en courbe (★ records) et le volume en barres, sur le même axe. « Journal » : les jours sur une frise horaire. Le détail (régularité, volume détaillé, score d'endurance) s'ouvre en touchant une carte.
 
 ## 4. Le cadran
 
@@ -68,3 +68,16 @@ Des étiquettes, pas des phrases. Pendant l'effort, 5 ou 6 mots au plus. Chiffre
 Un graphique par question. Les chiffres ne sont que l'étiquette de la valeur clé d'un graphique. Pas de pile clé-valeur ni de tableau de chiffres là où une barre, une courbe ou une jauge suffit. Symboles, légende donnée une fois : ⌖ objectif · ◆ test · ✓ atteint · ← en cours · ● fait · ○ prévu · ! alerte · ★ record · ▲▼ tendance · ◷ repos · ✎ modifier · ⋯ menu. Le texte est réservé aux exceptions.
 
 Maquette de référence : https://claude.ai/artifact/LHFCQ3zEWvjMoKSJFaXVJJ
+
+## 10. Le temps se lit sur une frise, pas dans une liste
+
+Des événements datés (séances, séries, tests) se placent sur un axe de temps, jamais dans une liste de lignes de texte. Le motif de référence est le **journal** de l'historique :
+
+- **Deux axes** : une ligne par jour, aujourd'hui en haut, on fait défiler pour remonter ; en abscisse l'heure du jour, le matin à gauche, le soir à droite. La plage (début, fin) se règle dans les Réglages, 06:00 → 23:00 par défaut, 6 h au moins, graduée toutes les 3 h.
+- **Une séance = sa silhouette**, posée à son heure : une barre fine par série, hauteur proportionnelle aux répétitions, verte si la cible de la série est atteinte. Plusieurs séances dans la journée tiennent sur la même ligne : c'est le but.
+- **Symboles** : ★ record ; Σ total du jour à droite ; ligne pointillée = repos ; « ! prévue, manquée » = séance du plan non faite ; < > = séance hors de la plage, posée au bord, jamais masquée.
+- **Lisibilité des lignes** : deux nuances alternées (environ 5 % en thème sombre, 7 % en thème clair) ; aujourd'hui teinté de la couleur principale (environ 12 %) ; un filet plein sous chaque lundi pour séparer les semaines.
+- **Gestes** : toucher une silhouette ouvre la séance ; appui long pour supprimer.
+- **Accessibilité** : une étiquette par jour qui résume ses séances et son total.
+
+La même logique vaut ailleurs : une frise pour un bloc (semaines), une rangée L M M J V S D pour la semaine, une frise horaire pour la journée. Chaque échelle de temps a sa frise, et chacune apparaît là où l'on regarde à cette fréquence (voir section 1).
