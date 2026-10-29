@@ -442,17 +442,25 @@ struct WeekBars: View {
 
 // MARK: - Le chemin vers l'objectif
 
-/// Le chemin, de la date de départ à la date de l'objectif : les blocs en bandes de 4 semaines
-/// (colorées par l'intensité, B1…Bn), les tests en ◆ (pleins et chiffrés une fois faits, creux à
-/// venir), la ligne attendue en pointillés, l'objectif en ligne verte ⚑, aujourd'hui ▼.
+/// Le chemin, du départ à la date de l'objectif, pour ce qui est mesuré (« pompes d'affilée ») :
+/// le départ ●, la meilleure série de chaque séance •, les tests ◆ (pleins et chiffrés une fois
+/// faits, creux à venir), la ligne attendue en pointillés, l'objectif ⚑, aujourd'hui ▼. Les blocs
+/// sont de simples repères (un filet à chaque début, B1…Bn sous l'axe) : l'intensité est dans la
+/// carte du bloc. Une légende d'une ligne.
 struct PathCard: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
+    let exercise: Exercise
+    /// Les séances de l'exercice (la meilleure série de chacune est un point).
+    let sessions: [SessionRecord]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            PathChart(plan: plan)
-                .frame(height: 150)
+            PathChart(plan: plan, exercise: exercise, sessions: sessions)
+                .frame(height: 160)
+            Text("● départ · • séances · ◆ test · ┄ attendu")
+                .font(theme.font(10))
+                .foregroundStyle(theme.dim)
             HStack {
                 MonitorLabel(plan.today == .test ? "◆ test aujourd'hui" : "◆ prochain test")
                 Spacer()
@@ -490,51 +498,62 @@ struct PathCard: View {
     }
 }
 
-
 private struct PathChart: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
+    let exercise: Exercise
+    let sessions: [SessionRecord]
+
+    /// La meilleure série de chaque séance depuis le début du plan, hors séances de test.
+    private var points: [(date: Date, value: Int)] {
+        let start = plan.goal?.created ?? plan.anchor
+        let tests = Set(plan.tests.map(\.date))
+        return sessions
+            .filter { $0.start >= start && !tests.contains($0.start) && $0.bestSet > 0 }
+            .map { (date: $0.start, value: $0.bestSet) }
+    }
 
     var body: some View {
+        let points = self.points
         Canvas { context, size in
-            let start = plan.anchor
-            let lastBlock = plan.blocks.last
-            // Jusqu'à la date de l'objectif, ou au test du bloc en cours, avec au moins 16 semaines
+            let start = plan.goal?.created ?? plan.anchor
             var end = max(plan.shiftedGoalDate ?? plan.testDate, plan.testDate)
             end = max(end, start.addingTimeInterval(16 * 7 * 86_400))
-            let left: CGFloat = 22, right: CGFloat = 16, top: CGFloat = 14, bottom = size.height - 18
+            let left: CGFloat = 22, right: CGFloat = 16, top: CGFloat = 22, bottom = size.height - 16
             let span = max(end.timeIntervalSince(start), 1)
             let x = { (date: Date) -> CGFloat in left + CGFloat(date.timeIntervalSince(start) / span) * (size.width - left - right) }
-            var values = plan.tests.map { Double($0.value) }
+            // L'échelle englobe le départ, l'objectif, les tests et les séances
+            var values = plan.tests.map { Double($0.value) } + points.map { Double($0.value) }
             if let goal = plan.goal { values += [Double(goal.start), Double(goal.target)] }
             let low = (values.min() ?? 0) - 2, high = (values.max() ?? 10) + 2
             let y = { (value: Double) -> CGFloat in bottom - CGFloat((value - low) / max(high - low, 1)) * (bottom - top) }
 
-            // Les blocs : les réels, puis ceux à venir (4 semaines chacun, test compris)
-            var bands = plan.blocks.map { (start: $0.start, deload: $0.deload, test: $0.test) }
-            var next = (lastBlock?.test ?? start).addingTimeInterval(7 * 86_400)
+            // Ce qui est mesuré
+            context.draw(Text("\(exercise.shortTitle.lowercased()) d'affilée").font(theme.font(9, .bold)).foregroundStyle(theme.dim),
+                         at: CGPoint(x: 0, y: 6), anchor: .leading)
+
+            // Les blocs : un filet à chaque début, B1…Bn sous l'axe ; puis ceux à venir
+            var starts = plan.blocks.map(\.start)
+            var next = (plan.blocks.last?.test ?? start).addingTimeInterval(7 * 86_400)
             while next < end {
-                let deload = next.addingTimeInterval(3 * 7 * 86_400)
-                bands.append((start: next, deload: deload, test: deload.addingTimeInterval(7 * 86_400)))
-                next = deload.addingTimeInterval(14 * 86_400)
+                starts.append(next)
+                next = next.addingTimeInterval(5 * 7 * 86_400)
             }
-            for (index, band) in bands.enumerated() where band.start < end {
+            let tests = plan.blocks.map(\.test) + starts.dropFirst(plan.blocks.count).map { $0.addingTimeInterval(4 * 7 * 86_400) }
+            for (index, blockStart) in starts.enumerated() where blockStart < end {
+                var rule = Path()
+                rule.move(to: CGPoint(x: x(blockStart), y: top))
+                rule.addLine(to: CGPoint(x: x(blockStart), y: bottom))
+                context.stroke(rule, with: .color(theme.grid), lineWidth: 1)
+                let blockEnd = index + 1 < starts.count ? min(starts[index + 1], end) : end
                 let current = index == plan.blocks.count - 1
-                let work = CGRect(x: x(band.start), y: top, width: x(band.deload) - x(band.start), height: bottom - top)
-                let calm = CGRect(x: x(band.deload), y: top, width: x(min(band.test, end)) - x(band.deload), height: bottom - top)
-                context.fill(Path(work), with: .color(theme.work.opacity(current ? 0.16 : 0.07)))
-                context.fill(Path(calm), with: .color(theme.calm.opacity(current ? 0.2 : 0.09)))
                 context.draw(Text("B\(index + 1)").font(theme.font(8, current ? .bold : .regular))
                                 .foregroundStyle(current ? theme.text : theme.dim),
-                             at: CGPoint(x: (x(band.start) + x(min(band.test, end))) / 2, y: bottom + 9))
-                // Test à venir : un ◆ creux sur la ligne attendue (ou au niveau du dernier test)
-                if index >= plan.tests.count, band.test <= end {
-                    let level = plan.expected(at: band.test) ?? plan.tests.last.map { Double($0.value) } ?? low + 2
-                    context.stroke(diamond(CGPoint(x: x(band.test), y: y(level)), 4), with: .color(theme.max), lineWidth: 1.2)
-                }
+                             at: CGPoint(x: (x(blockStart) + x(blockEnd)) / 2, y: bottom + 9))
             }
+
             if let goal = plan.goal {
-                // L'objectif : la ligne d'arrivée
+                // L'objectif : la ligne d'arrivée ⚑
                 var finish = Path()
                 finish.move(to: CGPoint(x: left, y: y(Double(goal.target))))
                 finish.addLine(to: CGPoint(x: size.width - right, y: y(Double(goal.target))))
@@ -560,22 +579,39 @@ private struct PathChart: View {
                 line.addLine(to: CGPoint(x: x(min(projection, end)), y: y(Double(goal.target))))
                 context.stroke(line, with: .color(theme.primary), style: StrokeStyle(lineWidth: 1.2, dash: [2, 3]))
             }
-            // Tests faits : ◆ pleins, chiffrés
+            // Les séances : la meilleure série de chacune
+            for point in points {
+                let p = CGPoint(x: x(point.date), y: y(Double(point.value)))
+                context.fill(Path(ellipseIn: CGRect(x: p.x - 1.8, y: p.y - 1.8, width: 3.6, height: 3.6)),
+                             with: .color(theme.primary.opacity(0.8)))
+            }
+            // Les tests à venir : ◆ creux, sur la ligne attendue ou au niveau du dernier max
+            let lastMax = plan.tests.last?.value ?? points.last?.value ?? plan.goal?.start
+            for test in tests.dropFirst(plan.tests.count) where test <= end {
+                let level = plan.expected(at: test) ?? lastMax.map(Double.init) ?? low + 2
+                context.stroke(diamond(CGPoint(x: x(test), y: y(level)), 4), with: .color(theme.dim), lineWidth: 1.2)
+            }
+            // Les tests faits : ◆ pleins, chiffrés
             for test in plan.tests {
                 let point = CGPoint(x: x(test.date), y: y(Double(test.value)))
-                context.fill(diamond(point, 5), with: .color(theme.max))
-                context.draw(Text("\(test.value)").font(theme.font(9)).foregroundStyle(theme.text),
-                             at: CGPoint(x: point.x + 11, y: point.y - 6))
+                context.fill(diamond(point, 5), with: .color(theme.text))
+                context.draw(Text("\(test.value)").font(theme.font(9, .bold)).foregroundStyle(theme.text),
+                             at: CGPoint(x: point.x + 11, y: point.y - 7))
+            }
+            // Le départ
+            if let goal = plan.goal {
+                let p = CGPoint(x: x(goal.created), y: y(Double(goal.start)))
+                context.fill(Path(ellipseIn: CGRect(x: p.x - 4, y: p.y - 4, width: 8, height: 8)), with: .color(theme.text))
             }
             // Aujourd'hui
             let now = x(Date())
             var today = Path()
             today.move(to: CGPoint(x: now, y: top))
             today.addLine(to: CGPoint(x: now, y: bottom))
-            context.stroke(today, with: .color(theme.text), lineWidth: 1.2)
-            context.draw(Text("▼").font(theme.font(9)).foregroundStyle(theme.text), at: CGPoint(x: now, y: top - 6))
+            context.stroke(today, with: .color(theme.primary), lineWidth: 1.2)
+            context.draw(Text("▼").font(theme.font(9)).foregroundStyle(theme.primary), at: CGPoint(x: now, y: top - 6))
         }
-        .accessibilityLabel(accessibility)
+        .accessibilityLabel(accessibility(points))
     }
 
     private func diamond(_ center: CGPoint, _ radius: CGFloat) -> Path {
@@ -588,12 +624,16 @@ private struct PathChart: View {
         return path
     }
 
-    private var accessibility: String {
-        var parts = ["Chemin : bloc \(plan.block)"]
+    /// « Pompes d'affilée : départ 30, meilleure séance récente 32, dernier test 33, objectif 40 le 12 févr. »
+    private func accessibility(_ points: [(date: Date, value: Int)]) -> String {
+        var parts: [String] = []
+        if let goal = plan.goal { parts.append("départ \(goal.start)") }
+        if let recent = points.suffix(4).map(\.value).max() { parts.append("meilleure séance récente \(recent)") }
         if let last = plan.tests.last { parts.append("dernier test \(last.value)") }
-        if let goal = plan.goal { parts.append("objectif \(goal.target)") }
-        parts.append("prochain test le \(Format.shortDate(plan.testDate))")
-        return parts.joined(separator: ", ")
+        if let goal = plan.goal {
+            parts.append("objectif \(goal.target)" + (plan.shiftedGoalDate.map { " le \(Format.shortDate($0))" } ?? ""))
+        }
+        return "\(exercise.shortTitle) d'affilée : " + parts.joined(separator: ", ")
     }
 }
 

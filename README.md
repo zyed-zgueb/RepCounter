@@ -77,10 +77,11 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   12 fév. » au-dessus, « auj. 33 · reste 7 », ✎ et ⋯ (✎ objectif : recalé au prochain bloc ;
   ◷ date : déplace la ligne attendue ; ✕ retirer, avec confirmation : « Le plan s'arrête. Ton
   historique reste. » ; le plan continue alors en progression simple, ancré sur le max).
-  **Chemin** : un graphique du départ à la date de l'objectif, blocs en bandes colorées par
-  l'intensité (B1…Bn), tests ◆ (pleins et chiffrés, creux à venir), ligne attendue en
-  pointillés, objectif ⚑, aujourd'hui ▼ ; « ◆ prochain test » ; verdict ▲ = ▼ et projection
-  après 3 tests. **Bloc** : « B2 · P3 », l'intensité en mots et en jauge (demi-cercle, aiguille,
+  **Chemin** : « pompes d'affilée » du départ à la date de l'objectif : le départ ●, la
+  meilleure série de chaque séance •, les tests ◆ (pleins et chiffrés, creux à venir), la ligne
+  attendue en pointillés, l'objectif ⚑, aujourd'hui ▼ ; les blocs en simples repères (un filet,
+  B1…Bn) ; légende « ● départ · • séances · ◆ test · ┄ attendu » ; « ◆ prochain test » ;
+  verdict ▲ = ▼ et projection après 3 tests. **Bloc** : « B2 · P3 », l'intensité en mots et en jauge (demi-cercle, aiguille,
   repères A, P, ◆), la frise, la semaine L M M J V S D (○ prévu, ● fait, ! manqué, aujourd'hui
   souligné ; « ☝ touche un jour pour le déplacer » une fois), le prévu face au fait en barres
   (contour prévu, plein fait, ✓, ←). **État** : la phase en pastille, la Forme en courbe sur ses

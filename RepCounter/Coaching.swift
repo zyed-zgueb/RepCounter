@@ -173,7 +173,7 @@ struct CoachingView: View {
                                    onEdit: { editor = goal == nil ? .new : .target },
                                    onMenu: { showsMenu = true })
                         if let plan {
-                            PathCard(plan: plan)
+                            PathCard(plan: plan, exercise: exercise, sessions: stats.sessions)
                             BlockCard(plan: plan, exercise: exercise) { version += 1 }
                         } else if goal != nil {
                             Text("plan · après ta première séance")
