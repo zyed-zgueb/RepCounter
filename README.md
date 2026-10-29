@@ -93,13 +93,12 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   (`calm`, `work`, `max` dans `Themes.json`, adaptés à chaque thème). Vert : objectif ou cible
   atteints. Les alertes (séance manquée, semaine refaite, Forme basse) n'ont pas de couleur :
   elles portent « ! ».
-- **Historique** (icône graphique, en veille et à la fin) : le passé seulement, en deux cartes
-  (et le score d'endurance d'un exercice au-dessus). Σ (tous les exercices) ou un exercice :
+- **Historique** (icône graphique, en veille et à la fin) : le passé seulement, en deux cartes. Σ (tous les exercices) ou un exercice :
   1. **12 semaines** : un seul graphique, axe des semaines commun ; en haut la meilleure série
      par semaine (★ les semaines de record, « ★ 32 »), en bas le volume en barres (la semaine en
      cours en couleur avec sa valeur, « · » sans séance), séparés par un filet ; en tête la
      tendance ▲▼ et la semaine en symboles (● faite, ○ prévue restante). Une touche ouvre
-     l'activité (volume détaillé et calendrier de régularité).
+     l'activité : score d'endurance et sa tendance (un exercice), volume détaillé, régularité.
   2. **Journal** (`Journal.swift`) : une ligne par jour, aujourd'hui en haut (28 jours, « + 28
      jours » pour remonter) ; l'heure en abscisse, de la plage réglée (Réglages › Journal de
      l'historique : début et fin par pas de 30 min, 06:00 → 23:00 par défaut, 6 h au moins),

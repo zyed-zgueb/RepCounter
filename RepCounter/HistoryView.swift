@@ -46,13 +46,8 @@ struct HistoryView: View {
                         if stats.isEmpty {
                             emptyState
                         } else {
-                            // Le passé seulement : la phase et la Forme sont dans la carte État du Coaching
-                            if let exercise {
-                                NavigationLink(value: HistoryPage.endurance) {
-                                    EnduranceTile(stats: stats, exercise: exercise)
-                                }
-                                .buttonStyle(.plain)
-                            }
+                            // Le passé seulement : la phase et la Forme sont dans la carte État du Coaching ;
+                            // le score d'endurance, dans le détail de la carte 12 semaines (skill reps-ux)
                             // Deux cartes : 12 semaines, puis le journal
                             NavigationLink(value: HistoryPage.activity) {
                                 WeeksCard(stats: stats, all: sessions, planned: exercise != nil)
@@ -109,13 +104,9 @@ struct HistoryView: View {
     @ViewBuilder
     private func detail(_ page: HistoryPage, stats: HistoryStats) -> some View {
         switch page {
-        case .endurance:
-            HistoryDetailView(title: "Score d'endurance") {
-                if let exercise { EndurancePanel(stats: stats, exercise: exercise) }
-            }
-
         case .activity:
             HistoryDetailView(title: "Activité") {
+                if let exercise { EndurancePanel(stats: stats, exercise: exercise) }
                 HistoryPanel(title: "Répétitions / semaine") {
                     VolumeBars(volumes: stats.lastWeeks(12).map { stats.volume(inWeek: $0) })
                         .frame(height: 110)
@@ -175,33 +166,7 @@ extension HistoryPanel where Accessory == EmptyView {
 
 /// Détails de l'historique, ouverts d'une touche sur leur bloc.
 enum HistoryPage: Hashable {
-    case endurance, activity
-}
-
-/// Une tuile (moitié de largeur) : un titre, une valeur, une mini-courbe ; une touche ouvre son détail.
-struct HistoryTile<Content: View>: View {
-    @Environment(\.theme) private var theme
-    let title: String
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 4) {
-                MonitorLabel(title)
-                    .minimumScaleFactor(0.7)
-                Spacer(minLength: 2)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(theme.dim)
-            }
-            content()
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 136, alignment: .topLeading)
-        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
-        .contentShape(Rectangle())
-    }
+    case activity
 }
 
 /// Écran de détail de l'historique : retour, titre, contenu.
