@@ -93,19 +93,23 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   (`calm`, `work`, `max` dans `Themes.json`, adaptés à chaque thème). Vert : objectif ou cible
   atteints. Les alertes (séance manquée, semaine refaite, Forme basse) n'ont pas de couleur :
   elles portent « ! ».
-- **Historique** (icône graphique, en veille et à la fin) : le passé seulement, en graphiques.
-  Σ (tous les exercices) ou un exercice pratiqué, puis :
-  1. **Score d'endurance** (valeur, tendance, mini-courbe ; ou son état « en cours ») — une
-     touche ouvre le détail (jauge et (i)) ;
-  2. **Répétitions / semaine** : histogramme des 12 dernières semaines, la semaine en cours en
-     couleur, la moyenne en pointillés, la tendance ▲▼ en % ; dessous, la semaine en symboles
-     (● séance faite, ○ prévue restante) et le temps — une touche ouvre la régularité ;
-  3. **Meilleure série** (un exercice) : la courbe des meilleures séries par semaine, records ★ ;
-  4. **Séances**, par jour : l'heure, la silhouette des séries (une barre par série, verte si
-     sa cible est atteinte), le total, ★ si record. Une séance s'ouvre sur son détail : le total,
-     les séries en barres (contour pointillé = cible, plein = fait, ✓ ; ◷ et le repos réel entre
-     elles), le rythme rep par rep, puis Forme, effort et écart avec la précédente ; un appui
-     long la supprime.
+- **Historique** (icône graphique, en veille et à la fin) : le passé seulement, en deux cartes
+  (et le score d'endurance d'un exercice au-dessus). Σ (tous les exercices) ou un exercice :
+  1. **12 semaines** : un seul graphique, axe des semaines commun ; en haut la meilleure série
+     par semaine (★ les semaines de record, « ★ 32 »), en bas le volume en barres (la semaine en
+     cours en couleur avec sa valeur, « · » sans séance), séparés par un filet ; en tête la
+     tendance ▲▼ et la semaine en symboles (● faite, ○ prévue restante). Une touche ouvre
+     l'activité (volume détaillé et calendrier de régularité).
+  2. **Journal** (`Journal.swift`) : une ligne par jour, aujourd'hui en haut (28 jours, « + 28
+     jours » pour remonter) ; l'heure en abscisse, de la plage réglée (Réglages › Journal de
+     l'historique : début et fin par pas de 30 min, 06:00 → 23:00 par défaut, 6 h au moins),
+     graduée toutes les 3 h. Chaque séance est posée à son heure en silhouette (une barre fine par
+     série, verte si sa cible est atteinte), ★ si record, ‹ ou › hors de la plage ; total du jour
+     à droite (Σ) ; repos en pointillés ; « ! prévue, manquée » pour une séance du plan manquée.
+     Lignes alternées, aujourd'hui teinté, un filet sous chaque lundi. Toucher une silhouette
+     ouvre la séance (appui long : la supprimer) : son total, les séries en barres (cible en
+     pointillés, fait plein, ✓, ◷ et le repos réel), le rythme rep par rep, puis Forme, effort et
+     écart avec la précédente.
 - **Réglages** (roue dentée, en veille et à la fin) : mes exercices (− / + et poignée ≡ pour
   l'ordre ; il en reste toujours un) et « J'ai un brassard », profil, retour sonore, thème, mode analyse.
 - **Mode analyse** : ajoute à la séance l'enregistrement ●, le diagnostic des capteurs et

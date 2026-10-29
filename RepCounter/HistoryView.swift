@@ -53,10 +53,12 @@ struct HistoryView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
-                            NavigationLink(value: HistoryPage.activity) { RepsWeekCard(stats: stats, all: sessions, planned: exercise != nil) }
-                                .buttonStyle(.plain)
-                            if exercise != nil { BestSetCard(stats: stats) }
-                            SessionsPanel(stats: stats, showsExercise: exercise == nil) { session in
+                            // Deux cartes : 12 semaines, puis le journal
+                            NavigationLink(value: HistoryPage.activity) {
+                                WeeksCard(stats: stats, all: sessions, planned: exercise != nil)
+                            }
+                            .buttonStyle(.plain)
+                            JournalCard(stats: stats, missed: missedDays(stats)) { session in
                                 withAnimation { modelContext.delete(session) }
                             }
                         }
@@ -80,6 +82,24 @@ struct HistoryView: View {
         .onChange(of: practiced) { _, new in showAllIfAbsent(new) }
     }
 
+    /// Les jours où une séance prévue par le plan a été manquée (un exercice avec un plan), sur
+    /// les 20 dernières semaines.
+    private func missedDays(_ stats: HistoryStats) -> Set<Date> {
+        guard exercise != nil, let plan = stats.plan(all: sessions) else { return [] }
+        let weekdays = Schedule.days(Schedule.saved(exercise ?? .auto) ?? Schedule.defaultWeekdays(plan.perWeek))
+        var missed = Set<Date>()
+        var week = Schedule.weekStart(stats.now, calendar: stats.calendar)
+        for _ in 0..<20 where week >= plan.anchor {
+            let end = week.addingTimeInterval(7 * 86_400)
+            let inWeek = stats.sessions.filter { $0.start >= week && $0.start < end }
+            for day in Schedule.week(weekdays, start: week, sessions: inWeek, now: stats.now, calendar: stats.calendar).days where day.missed {
+                missed.insert(day.date)
+            }
+            week = week.addingTimeInterval(-7 * 86_400)
+        }
+        return missed
+    }
+
     /// Un exercice jamais pratiqué (ou dont on a supprimé les séances) n'est pas dans le filtre :
     /// on montre tous les exercices.
     private func showAllIfAbsent(_ practiced: [Exercise]) {
@@ -96,6 +116,10 @@ struct HistoryView: View {
 
         case .activity:
             HistoryDetailView(title: "Activité") {
+                HistoryPanel(title: "Répétitions / semaine") {
+                    VolumeBars(volumes: stats.lastWeeks(12).map { stats.volume(inWeek: $0) })
+                        .frame(height: 110)
+                }
                 HistoryPanel(title: "Régularité") { RegularityCalendar(stats: stats) }
             }
         }
@@ -257,11 +281,11 @@ private struct ExerciseFilter: View {
     }
 }
 
-/// Répétitions par semaine (skill reps-ux, § 9 : un graphique) : l'histogramme des 12 dernières
-/// semaines, la semaine en cours en couleur, la moyenne en pointillés ; en tête, la tendance ▲▼
-/// par rapport à la semaine dernière ; dessous, la semaine en symboles (● faite, ○ prévue
-/// restante) et le temps. Une touche ouvre la régularité.
-private struct RepsWeekCard: View {
+/// 12 semaines en un graphique, un axe des semaines commun : en haut la meilleure série par
+/// semaine (★ les semaines de record, « ★ 32 » le record actuel), en bas le volume en barres (la
+/// semaine en cours en couleur avec sa valeur, « · » sans séance). En tête, la tendance ▲▼ et la
+/// semaine en symboles (● faite, ○ prévue restante). Une touche ouvre l'activité.
+private struct WeeksCard: View {
     @Environment(\.theme) private var theme
     let stats: HistoryStats
     let all: [SessionRecord]
@@ -272,29 +296,25 @@ private struct RepsWeekCard: View {
         let weeks = stats.lastWeeks(12)
         let volumes = weeks.map { stats.volume(inWeek: $0) }
         let volume = stats.weekVolume, previous = stats.previousWeekVolume
-        HistoryPanel(title: "Répétitions / semaine", accessory: {
+        HistoryPanel(title: "12 semaines", accessory: {
             HStack(spacing: 6) {
                 if previous > 0 {
                     let change = (Double(volume) - Double(previous)) / Double(previous) * 100
                     Text("\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) %")
-                        .font(theme.font(13, .bold))
+                        .font(theme.font(12, .bold))
                         .foregroundStyle(change >= 0 ? theme.ok : theme.text)
                 }
+                Text(weekSymbols)
+                    .font(theme.font(12, .bold))
+                    .foregroundStyle(theme.text)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(theme.dim)
             }
         }) {
-            VolumeBars(volumes: volumes)
-                .frame(height: 96)
-                .accessibilityLabel("Répétitions par semaine : \(volume) cette semaine" + (previous > 0 ? ", \(previous) la semaine dernière" : ""))
-            HStack {
-                MonitorLabel("cette semaine")
-                Spacer()
-                Text(weekSymbols + " · " + Format.minutes(stats.weekDuration))
-                    .font(theme.font(13, .bold))
-                    .foregroundStyle(theme.text)
-            }
+            WeeksChart(volumes: volumes, best: bestByWeek(weeks), record: planned ? stats.bestSet?.value : nil)
+                .frame(height: 130)
+                .accessibilityLabel(accessibility(volume: volume))
         }
         .contentShape(Rectangle())
     }
@@ -304,8 +324,101 @@ private struct RepsWeekCard: View {
         let done = stats.weekSessions
         let plan = planned ? stats.plan(all: all) : nil
         let remaining = plan.flatMap { plan in plan.currentWeek.map { max(plan.perWeek - $0.done, 0) } } ?? 0
-        return String(repeating: "●", count: done) + (remaining > 0 ? " " + String(repeating: "○", count: remaining) : "")
-            + (done == 0 && remaining == 0 ? "—" : "")
+        let text = String(repeating: "●", count: done) + (remaining > 0 ? " " + String(repeating: "○", count: remaining) : "")
+        return text.isEmpty ? "—" : text
+    }
+
+    /// Par semaine : la meilleure série (nil sans séance) et si c'est un record à ce moment-là.
+    private func bestByWeek(_ weeks: [Date]) -> [(value: Int?, record: Bool)] {
+        var best = stats.sessions.filter { $0.start < (weeks.first ?? stats.now) }.map(\.bestSet).max() ?? 0
+        return weeks.map { week in
+            let value = stats.sessions(inWeek: week).map(\.bestSet).max()
+            guard let value, value > 0 else { return (nil, false) }
+            let record = value > best
+            best = max(best, value)
+            return (value, record)
+        }
+    }
+
+    private func accessibility(volume: Int) -> String {
+        var parts = ["12 semaines"]
+        if planned, let record = stats.bestSet { parts.append("meilleure série \(record.value)") }
+        parts.append("\(volume) répétitions cette semaine")
+        return parts.joined(separator: " : ")
+    }
+}
+
+/// Le graphique des 12 semaines : la courbe de la meilleure série au-dessus d'un filet, le volume
+/// en barres dessous, sur le même axe.
+private struct WeeksChart: View {
+    @Environment(\.theme) private var theme
+    let volumes: [Int]
+    let best: [(value: Int?, record: Bool)]
+    /// Le record actuel (un exercice), étiqueté « ★ 32 ».
+    let record: Int?
+
+    var body: some View {
+        Canvas { context, size in
+            let count = volumes.count
+            guard count > 0 else { return }
+            let slot = size.width / CGFloat(count)
+            let width = min(slot * 0.6, 16)
+            let center = { (index: Int) -> CGFloat in CGFloat(index) * slot + slot / 2 }
+            let split = size.height * 0.48
+            // Filet et étiquettes des deux parties
+            var rule = Path()
+            rule.move(to: CGPoint(x: 0, y: split))
+            rule.addLine(to: CGPoint(x: size.width, y: split))
+            context.stroke(rule, with: .color(theme.grid), lineWidth: 1)
+            context.draw(Text("série max").font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: 5), anchor: .leading)
+            context.draw(Text("reps / sem.").font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: split + 7), anchor: .leading)
+            // En haut : la meilleure série
+            let values = best.compactMap(\.value)
+            if let low = values.min(), let high = values.max() {
+                let span = Double(max(high - low, 4))
+                let y = { (value: Int) -> CGFloat in split - 8 - (split - 24) * CGFloat(Double(value - low) / span) }
+                var line = Path()
+                var started = false
+                for (index, point) in best.enumerated() {
+                    guard let value = point.value else { continue }
+                    let p = CGPoint(x: center(index), y: y(value))
+                    if started { line.addLine(to: p) } else { line.move(to: p); started = true }
+                }
+                context.stroke(line, with: .color(theme.primary), lineWidth: 1.4)
+                for (index, point) in best.enumerated() {
+                    guard let value = point.value else { continue }
+                    let p = CGPoint(x: center(index), y: y(value))
+                    if point.record {
+                        context.draw(Text("★").font(theme.font(10)).foregroundStyle(theme.text), at: p)
+                    } else {
+                        context.fill(Path(ellipseIn: CGRect(x: p.x - 1.8, y: p.y - 1.8, width: 3.6, height: 3.6)), with: .color(theme.primary))
+                    }
+                }
+                if let record, let index = best.lastIndex(where: { $0.value == record }) {
+                    context.draw(Text("★ \(record)").font(theme.font(8, .bold)).foregroundStyle(theme.text),
+                                 at: CGPoint(x: min(center(index), size.width - 18), y: y(record) - 10))
+                }
+            }
+            // En bas : le volume
+            let base = size.height - 2
+            let most = CGFloat(max(volumes.max() ?? 1, 1))
+            let barArea = base - split - 18
+            for (index, value) in volumes.enumerated() {
+                let current = index == count - 1
+                let x = center(index) - width / 2
+                if value == 0 {
+                    context.draw(Text("·").font(theme.font(10)).foregroundStyle(theme.dim), at: CGPoint(x: center(index), y: base - 4))
+                    continue
+                }
+                let h = max(barArea * CGFloat(value) / most, 2)
+                context.fill(Path(roundedRect: CGRect(x: x, y: base - h, width: width, height: h), cornerRadius: 1.5),
+                             with: .color(current ? theme.primary : theme.line))
+                if current {
+                    context.draw(Text("\(value)").font(theme.font(8, .bold)).foregroundStyle(theme.text),
+                                 at: CGPoint(x: min(center(index), size.width - 10), y: base - h - 6))
+                }
+            }
+        }
     }
 }
 
@@ -344,78 +457,6 @@ private struct VolumeBars: View {
         }
     }
 }
-
-/// Meilleure série (un exercice) : la courbe des meilleures séries par semaine sur 12 semaines,
-/// les records en ★ sur la courbe. Remplace les tuiles de records.
-private struct BestSetCard: View {
-    @Environment(\.theme) private var theme
-    let stats: HistoryStats
-
-    var body: some View {
-        let weeks = stats.lastWeeks(12)
-        let points = bestByWeek(weeks)
-        HistoryPanel(title: "Meilleure série", accessory: {
-            if let record = stats.bestSet {
-                Text("★ \(record.value)")
-                    .font(theme.font(13, .bold))
-                    .foregroundStyle(theme.text)
-            }
-        }) {
-            BestCurve(points: points)
-                .frame(height: 86)
-                .accessibilityLabel("Meilleure série par semaine" + (stats.bestSet.map { ", record \($0.value)" } ?? ""))
-        }
-    }
-
-    /// Par semaine : la meilleure série (nil sans séance) et si c'est un record à ce moment-là.
-    private func bestByWeek(_ weeks: [Date]) -> [(value: Int?, record: Bool)] {
-        var best = stats.sessions.filter { $0.start < (weeks.first ?? stats.now) }.map(\.bestSet).max() ?? 0
-        return weeks.map { week in
-            let value = stats.sessions(inWeek: week).map(\.bestSet).max()
-            guard let value, value > 0 else { return (nil, false) }
-            let record = value > best
-            best = max(best, value)
-            return (value, record)
-        }
-    }
-}
-
-private struct BestCurve: View {
-    @Environment(\.theme) private var theme
-    let points: [(value: Int?, record: Bool)]
-
-    var body: some View {
-        Canvas { context, size in
-            let values = points.compactMap(\.value)
-            guard let low = values.min(), let high = values.max() else { return }
-            let span = Double(max(high - low, 4))
-            let x = { (index: Int) -> CGFloat in 10 + (size.width - 20) * CGFloat(index) / CGFloat(max(points.count - 1, 1)) }
-            let y = { (value: Int) -> CGFloat in size.height - 10 - (size.height - 24) * CGFloat(Double(value - low) / span) }
-            var line = Path()
-            var started = false
-            for (index, point) in points.enumerated() {
-                guard let value = point.value else { continue }
-                let p = CGPoint(x: x(index), y: y(value))
-                if started { line.addLine(to: p) } else { line.move(to: p); started = true }
-            }
-            context.stroke(line, with: .color(theme.primary), lineWidth: 1.5)
-            for (index, point) in points.enumerated() {
-                guard let value = point.value else { continue }
-                let p = CGPoint(x: x(index), y: y(value))
-                if point.record {
-                    context.draw(Text("★").font(theme.font(11)).foregroundStyle(theme.text), at: p)
-                } else {
-                    context.fill(Path(ellipseIn: CGRect(x: p.x - 2, y: p.y - 2, width: 4, height: 4)), with: .color(theme.primary))
-                }
-            }
-            if let last = points.lastIndex(where: { $0.value != nil }), let value = points[last].value {
-                context.draw(Text("\(value)").font(theme.font(9, .bold)).foregroundStyle(theme.text),
-                             at: CGPoint(x: x(last), y: y(value) - 11))
-            }
-        }
-    }
-}
-
 
 /// Courbe d'une valeur : x de 0 (à gauche) à `span` (à droite).
 struct LineChart: View {
@@ -505,138 +546,6 @@ private struct RegularityCalendar: View {
     private func dayLetter(_ day: Int, from week: Date) -> String {
         let date = stats.calendar.date(byAdding: .day, value: day, to: week) ?? week
         return String(date.formatted(.dateTime.weekday(.narrow)).prefix(1)).uppercased()
-    }
-}
-
-/// Liste des séances par jour, le plus récent d'abord : la date une seule fois, puis les séances
-/// du jour à leurs heures. Aujourd'hui est mis en avant. Une touche ouvre le détail d'une séance,
-/// un appui long propose de la supprimer.
-private struct SessionsPanel: View {
-    @Environment(\.theme) private var theme
-    let stats: HistoryStats
-    let showsExercise: Bool
-    let onDelete: (SessionRecord) -> Void
-
-    /// Séances regroupées par jour (les séances arrivent déjà de la plus récente à la plus ancienne).
-    private var days: [(day: Date, sessions: [SessionRecord])] {
-        var groups: [(day: Date, sessions: [SessionRecord])] = []
-        for session in stats.sessions {
-            let day = stats.calendar.startOfDay(for: session.start)
-            if groups.last?.day == day {
-                groups[groups.count - 1].sessions.append(session)
-            } else {
-                groups.append((day, [session]))
-            }
-        }
-        return groups
-    }
-
-    var body: some View {
-        let records = stats.recordSessions
-        HistoryPanel(title: "Séances", accessory: { MonitorLabel("\(stats.sessions.count) au total") }) {
-            VStack(spacing: 14) {
-                ForEach(days, id: \.day) { group in
-                    let today = stats.calendar.isDateInToday(group.day)
-                    VStack(spacing: 0) {
-                        header(group.day, sessions: group.sessions, today: today)
-                        ForEach(Array(group.sessions.enumerated()), id: \.element.persistentModelID) { index, session in
-                            if index > 0 { Rectangle().fill(theme.line).frame(height: 1) }
-                            NavigationLink(value: session) {
-                                row(session, isRecord: records.contains(session.persistentModelID))
-                            }
-                            .buttonStyle(.plain)
-                            .contextMenu {
-                                Button(role: .destructive) { onDelete(session) } label: {
-                                    Label("Supprimer la séance", systemImage: "trash")
-                                }
-                            }
-                        }
-                    }
-                    // Aujourd'hui : un fond léger, la journée qui compte le plus
-                    .padding(.horizontal, today ? 10 : 0)
-                    .padding(.top, today ? 10 : 0)
-                    .background(today ? theme.primary.opacity(0.07) : .clear,
-                                in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous)
-                        .stroke(today ? theme.primary.opacity(0.35) : .clear, lineWidth: 1))
-                    .padding(.horizontal, today ? -10 : 0)
-                }
-            }
-        }
-    }
-
-    /// La date du jour, et ce qu'on y a fait : le total (un exercice) ou le nombre de séances (Σ).
-    private func header(_ day: Date, sessions: [SessionRecord], today: Bool) -> some View {
-        let count = sessions.count
-        let summary = showsExercise
-            ? "\(count) séance\(count > 1 ? "s" : "")"
-            : "\(sessions.reduce(0) { $0 + $1.totalReps }) reps" + (count > 1 ? " · \(count) séances" : "")
-        return HStack(alignment: .firstTextBaseline) {
-            Text(dayTitle(day).uppercased())
-                .font(theme.font(12, .bold))
-                .tracking(1.5)
-                .foregroundStyle(today ? theme.primary : theme.text)
-            Spacer(minLength: 8)
-            MonitorLabel(summary)
-        }
-        .padding(.bottom, 2)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-    }
-
-    private func dayTitle(_ day: Date) -> String {
-        if stats.calendar.isDateInToday(day) { return "Aujourd'hui" }
-        if stats.calendar.isDateInYesterday(day) { return "Hier" }
-        return Format.shortDay(day)
-    }
-
-    /// Une séance : l'heure, la silhouette des séries (une barre par série, verte si sa cible est
-    /// atteinte), le total, ★ si record.
-    private func row(_ session: SessionRecord, isRecord: Bool) -> some View {
-        HStack(spacing: 12) {
-            if showsExercise {
-                ExerciseIcon(exercise: session.exercise, size: 20)
-                    .foregroundStyle(theme.primary)
-            }
-            Text(Format.time(session.start))
-                .font(theme.font(13, .bold))
-                .foregroundStyle(theme.dim)
-                .monospacedDigit()
-                .frame(width: 48, alignment: .leading)
-            SetSilhouette(sets: session.orderedSets)
-                .frame(height: 22)
-            Spacer(minLength: 6)
-            Text((isRecord ? "★ " : "") + "\(session.totalReps)")
-                .font(theme.font(20, .bold))
-                .foregroundStyle(theme.text)
-                .monospacedDigit()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(theme.dim)
-        }
-        .padding(.vertical, 10)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(Format.time(session.start)), \(session.orderedSets.count) séries, \(session.totalReps) répétitions\(isRecord ? ", record" : "")")
-    }
-}
-
-/// La silhouette d'une séance : une barre par série, à l'échelle de la plus longue ; verte si la
-/// série a atteint sa cible.
-private struct SetSilhouette: View {
-    @Environment(\.theme) private var theme
-    let sets: [SetRecord]
-
-    var body: some View {
-        let top = max(sets.map(\.reps).max() ?? 1, 1)
-        HStack(alignment: .bottom, spacing: 2) {
-            ForEach(Array(sets.prefix(12).enumerated()), id: \.offset) { _, set in
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(set.target.map { set.reps >= $0 } == true ? theme.ok : theme.primary.opacity(0.85))
-                    .frame(width: 7, height: max(3, 22 * CGFloat(set.reps) / CGFloat(top)))
-            }
-        }
-        .frame(height: 22, alignment: .bottom)
     }
 }
 

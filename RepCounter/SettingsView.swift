@@ -175,6 +175,10 @@ struct SettingsView: View {
                         }
                     }
 
+                    MonitorPanel("Journal de l'historique") {
+                        JournalHoursSettings()
+                    }
+
                     MonitorPanel("Reps") {
                         VStack(alignment: .leading, spacing: 8) {
                             Button { showsSupport = true } label: {
