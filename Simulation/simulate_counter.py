@@ -30,6 +30,8 @@ AXIS_REFRESH = 10       # recalcul de l'axe toutes les 10 images
 MIN_PERIOD = 0.4
 MAX_PERIOD = 6.0
 HIGH, LOW = 0.75, 0.25
+# Compter à l'autre extrême : on compte quand le signal en repart (d'un dixième de son ampleur)
+TURN = 0.05
 MIN_REGULARITY = 0.6
 MAX_ROUGHNESS = 0.12   # au-delà, signal trop saccadé : du bruit, pas un geste
 
@@ -52,12 +54,12 @@ PROFILES = {
     # rapide des épaules ~7 fois plus fort qu'une respiration de même angle
     "crunches": dict(sources=["rotation"], max_period=3.0, template=True),
     "squats": dict(sources=["vertical", "motion"]),
-    "curls": dict(sources=["motion", "rotation"]),
-    "press": dict(sources=["vertical", "motion"]),
+    "curls": dict(sources=["motion", "rotation"], count_at_far=True),
+    "press": dict(sources=["vertical", "motion"], count_at_far=True),
     "lunges": dict(sources=["vertical", "motion"]),
-    "pullups": dict(sources=["vertical", "motion"]),
+    "pullups": dict(sources=["vertical", "motion"], count_at_far=True),
     "dips": dict(sources=["vertical", "motion"]),
-    "row": dict(sources=["motion", "rotation"]),
+    "row": dict(sources=["motion", "rotation"], count_at_far=True),
 }
 
 
@@ -127,8 +129,12 @@ def principal_axis(samples, seed):
 class SignalTracker:
     """Une source : ACP glissante → signal 1D → cycles par hystérésis adaptative."""
 
-    def __init__(self, source, min_amplitude, max_period):
+    def __init__(self, source, min_amplitude, max_period, count_at_far=False):
         self.source = source
+        # Moment du comptage : au retour à la position de départ (pompes, squats : on part en
+        # haut, on compte en haut), ou à l'autre extrême (tractions, développé, biceps, rowing :
+        # on part bras tendus, on compte au bout de la poussée ou de la traction)
+        self.count_at_far = count_at_far
         self.min_amplitude = min_amplitude
         self.max_period = max_period
         self.times, self.rows, self.cycles = [], [], []
@@ -144,6 +150,7 @@ class SignalTracker:
         self.rest_in_middle = False
         self.armed = False
         self.armed_since = -math.inf
+        self.in_count_zone = False   # compter à l'autre extrême : on y est, on compte en le quittant
         self.last_rep_peak = -math.inf   # extrême du geste de la dernière répétition comptée
         self.skip_next = False
         self.ignore_before = -math.inf
@@ -159,6 +166,7 @@ class SignalTracker:
         self.rest_high = False
         self.rest_in_middle = False
         self.armed = False
+        self.in_count_zone = False
         self.skip_next = False
 
     def process(self, value, t):
@@ -207,8 +215,17 @@ class SignalTracker:
             self.cycles = (self.cycles + [t])[-30:]
             self.cycle_swings = (self.cycle_swings + [swing])[-30:]
             return True
-        elif self.armed and at_rest:
+        elif self.armed and at_rest and self.count_at_far and not self.rest_in_middle and not self.in_count_zone:
+            # Compter à l'autre extrême : on y est arrivé (fin de la montée) ; on compte en le
+            # quittant, au sommet du geste (tractions : les jambes restent levées jusqu'en haut)
+            self.in_count_zone = True
+            self.zone_extreme = n
+        elif self.armed and self.in_count_zone and (n > self.zone_extreme if self.rest_high else n < self.zone_extreme):
+            self.zone_extreme = n   # l'extrême se creuse encore
+        elif self.armed and (at_rest if not self.in_count_zone else
+                             abs(n - self.zone_extreme) >= TURN):
             self.armed = False
+            self.in_count_zone = False
             if self.skip_next:
                 # Fin de la répétition déjà comptée au démarrage du comptage : elle se
                 # termine maintenant, au retour au repos
@@ -287,12 +304,17 @@ class SignalTracker:
             self.rest_in_middle = True
             return None
         rest_high = level > 0.7
-        if rest_high != self.rest_high:
-            self.rest_high = rest_high
-            # On vient de compter la répétition en cours (à son extrême) : on y est, et son
-            # retour au repos ne doit pas compter une seconde fois
+        # Compter à l'autre extrême : c'est lui qui joue le rôle du « repos » du comptage
+        count_high = rest_high != self.count_at_far
+        if count_high != self.rest_high:
+            self.rest_high = count_high
+            # On est à l'extrême où l'on vient de compter, qui devient celui où l'on arme.
+            # Compter au retour au départ : la répétition en cours a été comptée à mi-chemin,
+            # son retour ne doit pas compter une seconde fois. Compter à l'autre extrême : la
+            # répétition est finie, le prochain passage à l'autre extrême est la suivante.
             self.armed = True
-            self.skip_next = True
+            self.in_count_zone = False
+            self.skip_next = not self.count_at_far
         return None
 
     def lobe_reps(self, series_start):
@@ -522,8 +544,11 @@ class AutoCounter:
             if source not in sources:
                 continue
             if source not in self.trackers:
+                # Accélération verticale : elle compte toujours à son creux, au sommet du geste
+                # (le ralentissement de la montée), quel que soit l'exercice
                 self.trackers[source] = SignalTracker(
-                    source, MIN_AMPLITUDE[source], self.profile.get("max_period", MAX_PERIOD))
+                    source, MIN_AMPLITUDE[source], self.profile.get("max_period", MAX_PERIOD),
+                    self.profile.get("count_at_far", False) and source != "vertical")
             if self.trackers[source].process(value, time):
                 completed.add(source)
 

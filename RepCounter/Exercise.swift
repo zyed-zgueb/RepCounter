@@ -121,6 +121,13 @@ enum Exercise: String, CaseIterable, Identifiable {
     /// Téléphone posé pendant l'exercice : le manipuler remet l'analyse à zéro.
     var phoneAtRest: Bool { self == .pushups }
 
+    /// Moment où une répétition compte : à la fin de l'effort. On part en haut et on compte en
+    /// haut, au retour (pompes, squats, fentes, dips) ; ou on part bras tendus et on compte au
+    /// bout de la traction ou de la poussée, à l'autre extrême (tractions, développé, biceps,
+    /// rowing). Les abdos comptent au sommet par le gyroscope (début de la redescente), et
+    /// l'accélération verticale toujours à son creux, au sommet du geste.
+    var countsAtFarEnd: Bool { [.pullups, .press, .curls, .row].contains(self) }
+
     /// La caméra n'est allumée que si l'exercice en a besoin.
     var usesCamera: Bool {
         !Set(sources).isDisjoint(with: [.depth, .pixels, .face, .pose])

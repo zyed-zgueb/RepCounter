@@ -57,6 +57,8 @@ private enum Tuning {
     static let minPeriod = 0.4
     static let highThreshold: Float = 0.75
     static let lowThreshold: Float = 0.25
+    /// Compter à l'autre extrême : on compte quand le signal en repart (5 % de son ampleur).
+    static let turn: Float = 0.05
     static let minRegularity: Float = 0.6
     static let maxRoughness: Float = 0.12   // au-delà, signal trop saccadé : du bruit, pas un geste
     static let keptCycles = 30
@@ -111,15 +113,22 @@ final class SignalTracker {
     private var restInMiddle = false
     private var armed = false
     private var armedSince = -Double.infinity
+    /// Moment du comptage : au retour à la position de départ, ou à l'autre extrême
+    /// (`Exercise.countsAtFarEnd`). À l'autre extrême, on compte quand le signal en repart :
+    /// au sommet du geste (tractions : les jambes restent levées jusqu'en haut).
+    private let countAtFar: Bool
+    private var inCountZone = false
+    private var zoneExtreme: Float = 0
     /// Instant où le geste de la dernière répétition comptée a atteint son extrême : l'instant
     /// réel du mouvement, même quand la répétition est comptée plus tard (retour non vu).
     private(set) var lastRepPeak = -Double.infinity
     private var skipNext = false
     private var ignoreBefore = -Double.infinity
 
-    init(source: SignalSource, maxPeriod: Double) {
+    init(source: SignalSource, maxPeriod: Double, countAtFar: Bool = false) {
         self.source = source
         self.maxPeriod = maxPeriod
+        self.countAtFar = countAtFar
     }
 
     /// Oublie les cycles passés (remise à zéro du compteur).
@@ -133,6 +142,7 @@ final class SignalTracker {
         restHigh = false
         restInMiddle = false
         armed = false
+        inCountZone = false
         skipNext = false
     }
 
@@ -201,8 +211,15 @@ final class SignalTracker {
             lastRepPeak = armedSince
             recordCycle(at: t)
             return true
-        } else if armed, atRest {
+        } else if armed, atRest, countAtFar, !restInMiddle, !inCountZone {
+            // Arrivé à l'autre extrême : on comptera en le quittant
+            inCountZone = true
+            zoneExtreme = n
+        } else if armed, inCountZone, restHigh ? n > zoneExtreme : n < zoneExtreme {
+            zoneExtreme = n   // l'extrême se creuse encore
+        } else if armed, inCountZone ? abs(n - zoneExtreme) >= Tuning.turn : atRest {
             armed = false
+            inCountZone = false
             if skipNext, !cycles.isEmpty {
                 // Fin de la répétition déjà comptée : elle se termine maintenant, au retour au repos
                 skipNext = false
@@ -293,13 +310,17 @@ final class SignalTracker {
             restInMiddle = true
             return nil
         }
-        let newRestHigh = level > 0.7
+        // Compter à l'autre extrême : c'est lui qui joue le rôle du « repos » du comptage
+        let newRestHigh = (level > 0.7) != countAtFar
         if newRestHigh != restHigh {
             restHigh = newRestHigh
-            // On vient de compter la répétition en cours (à son extrême) : on y est, et son
-            // retour au repos ne doit pas compter une seconde fois
+            // On est à l'extrême où l'on vient de compter, qui devient celui où l'on arme.
+            // Compter au retour au départ : la répétition en cours a été comptée à mi-chemin,
+            // son retour ne doit pas compter une seconde fois. Compter à l'autre extrême : la
+            // répétition est finie, le prochain passage à l'autre extrême est la suivante.
             armed = true
-            skipNext = true
+            inCountZone = false
+            skipNext = !countAtFar
         }
         return nil
     }
@@ -552,7 +573,9 @@ final class AutoCounter {
         }
         var completed = Set<SignalSource>()
         for (source, value) in frame.values where sources.contains(source) {
-            let tracker = trackers[source] ?? SignalTracker(source: source, maxPeriod: exercise.maxPeriod)
+            // L'accélération verticale compte toujours à son creux : au sommet du geste
+            let tracker = trackers[source] ?? SignalTracker(source: source, maxPeriod: exercise.maxPeriod,
+                                                            countAtFar: exercise.countsAtFarEnd && source != .vertical)
             trackers[source] = tracker
             if tracker.process(value, at: t) { completed.insert(source) }
         }

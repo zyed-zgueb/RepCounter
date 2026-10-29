@@ -350,11 +350,23 @@ dans l'app.
   pause ou des secousses.
 - Pompes (téléphone posé) : si le gyroscope détecte que le téléphone est manipulé,
   l'analyse repart de zéro une fois qu'il est reposé.
-- Une répétition est comptée au retour à la position de repos (en haut de la pompe,
-  allongé pour l'abdo…) : au démarrage du comptage, la position tenue juste avant la série
-  fixe le sens du signal. Sans cela, le signe arbitraire de l'ACP pouvait faire compter à
-  mi-chemin. Pour les capteurs de vitesse (gyroscope, accélération), le repos est au milieu
-  du signal : le sens n'est pas modifié.
+- Une répétition compte **à la fin de l'effort**, et le point de départ dépend de l'exercice
+  (`Exercise.countsAtFarEnd`) :
+
+  | Exercice | Départ | Compte |
+  |---|---|---|
+  | Pompes, squats, fentes, dips | en haut | en haut, au retour au départ |
+  | Tractions, développé, biceps, rowing | bras tendus | au bout de la traction ou de la poussée, à l'autre extrême |
+  | Abdos | allongé | au sommet (gyroscope : début de la redescente) |
+
+  Au démarrage du comptage, la position tenue juste avant la série fixe le départ (sans cela,
+  le signe arbitraire de l'ACP pouvait faire compter à mi-chemin) ; on compte au retour à
+  cette position, ou à l'extrême opposé. À l'extrême opposé, on compte quand le signal en
+  repart (5 % de son ampleur) : au sommet, pas à l'approche. L'accélération verticale compte
+  toujours à son creux, qui est le sommet du geste (le ralentissement de la montée), quel que
+  soit l'exercice. Tractions rejouées : comptées à 0,25 s du sommet au plus, au lieu de tantôt
+  à la montée, tantôt en bas. Pour le gyroscope, le repos est au milieu du signal : le sens
+  n'est pas modifié.
 - Capteurs de vitesse : un retour lent au repos ne se voit pas (le gyroscope mesure une
   vitesse). Si le geste a eu lieu et que son retour n'arrive pas dans 1,5 période, la
   répétition est comptée ; son retour, s'il se voit plus tard, ne compte pas une seconde fois.
