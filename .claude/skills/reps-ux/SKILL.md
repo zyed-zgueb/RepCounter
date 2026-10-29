@@ -41,11 +41,11 @@ Plus une donnée est vue souvent, plus elle est réduite et proche du compteur. 
 - **Objectif de la série** : une pastille par dizaine sous le nombre ; quand l'objectif ne tombe pas sur une dizaine, sa case est cerclée d'un filet de la couleur des segments allumés, intérieur éteint. Objectif atteint : le cadran passe au vert.
 - **Intérieur : la jauge du mouvement capté en direct**, pâle avant la validation (3 répétitions).
 - **Récupération** : un segment par tranche de 15 s (avec le bip), jusqu'au repos prévu, puis vert. Jamais une trotteuse de 60 s : le cadran n'est pas une horloge.
-- Un bloc ou des jours ne se représentent jamais sur le cadran : c'est une **frise** (3 semaines de progression, 1 semaine allégée, le test).
+- Un bloc ou des jours ne se représentent jamais sur le cadran : c'est une **frise** (3 semaines de progression, 1 semaine allégée, le test). Une jauge d'intensité en demi-cercle est permise (Coaching) ; elle ne doit pas ressembler au cadran de comptage.
 
-## 5. Couleurs d'état (les mêmes partout)
+## 5. L'intensité, une seule échelle de couleur
 
-Bleu : progression, la séance prévue. Orange : séance légère, Forme basse. Violet : semaine allégée. Vert : jour de test, objectif atteint, gain réel.
+Bleu (calme) → ambre (soutenu) → rouge (maximal), en dégradé. Calme : semaine allégée, séance légère. Soutenu : progression. Maximal : jour de test. Vert : objectif ou cible atteints (✓, ⚑). Les alertes (séance manquée, semaine refaite, Forme basse) ne prennent pas de couleur : elles portent le symbole « ! ». L'orange n'est plus une couleur d'alerte.
 
 ## 6. Expliquer une fois, au moment utile
 
@@ -62,5 +62,9 @@ Des étiquettes, pas des phrases. Pendant l'effort, 5 ou 6 mots au plus. Chiffre
 - L'« attendu » est le rythme nécessaire pour atteindre l'objectif à la date choisie, pas une prédiction.
 - Sans confiance suffisante, un état « en cours » (« 5 / 8 séances ») plutôt qu'un chiffre.
 - « Gain réel », « en avance », « en retard » seulement au-delà de la variation habituelle (Hopkins). Un cycle sans gain le dit.
+
+## 9. Graphiques et symboles plutôt que texte
+
+Un graphique par question. Les chiffres ne sont que l'étiquette de la valeur clé d'un graphique. Pas de pile clé-valeur ni de tableau de chiffres là où une barre, une courbe ou une jauge suffit. Symboles, légende donnée une fois : ⌖ objectif · ◆ test · ✓ atteint · ← en cours · ● fait · ○ prévu · ! alerte · ★ record · ▲▼ tendance · ◷ repos · ✎ modifier · ⋯ menu. Le texte est réservé aux exceptions.
 
 Maquette de référence : https://claude.ai/artifact/LHFCQ3zEWvjMoKSJFaXVJJ
