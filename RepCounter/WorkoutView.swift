@@ -263,7 +263,7 @@ struct WorkoutView: View {
         VStack(spacing: 14) {
             switch model.phase {
             case .ready:
-                Dial(face: LiveDialFace(live: model.live, palette: .idle)) { side in
+                Dial(face: CounterDialFace(lit: 0, color: theme.primary, live: model.live, palePulse: true)) { side in
                     ExerciseCarousel(selection: $browsing, exercises: exercises, side: side)
                 }
                 placementText(browsing)
@@ -296,26 +296,35 @@ struct WorkoutView: View {
                     placementText(model.exercise)
                 }
             case .active where model.isResting:
-                let seconds = Int(model.restDuration)
-                Dial(face: DialFace(lit: seconds % 60 == 0 && seconds > 0 ? 60 : seconds % 60, palette: .solid(theme.warn))) { side in
+                // Un segment par tranche de 15 s (avec le bip), jusqu'au repos prévu, puis vert
+                let planned = plannedRest
+                let slices = max(1, planned / Self.restSlice)
+                let done = model.restDuration >= Double(planned)
+                let color = done ? theme.ok : theme.warn
+                Dial(face: CounterDialFace(lit: min(Int(model.restDuration) / Self.restSlice, slices), segments: slices, color: color)) { side in
                     VStack(spacing: side * 0.03) {
                         Text(Format.clock(model.restDuration))
-                            .font(theme.font(side * 0.3, .bold))
-                            .foregroundStyle(theme.warn)
+                            .font(theme.font(side * 0.24, .bold))
+                            .foregroundStyle(color)
                             .monospacedDigit()
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)
-                        MonitorLabel("Série \(String(format: "%02d", model.sets.count)) · \(model.sets.last?.reps ?? 0) reps",
-                                     color: theme.text)
+                        MonitorLabel("sur \(Format.clock(Double(planned)))")
                     }
-                    .padding(side * 0.14)
+                    .padding(side * 0.2)
                 }
                 // La reprise automatique s'explique une fois (première séance), pas à chaque repos
                 if let step = coachCard { CoachCard(step: step) }
                 setsLog
             case .active:
                 let counting = model.state == .counting
-                Dial(face: LiveDialFace(live: model.live, palette: counting ? .gradient : .pale),
+                let done = counting ? model.setReps : model.tentative
+                let target = counting ? seriesTarget : nil
+                let reached = target.map { done >= $0 } ?? false
+                Dial(face: CounterDialFace(lit: CounterDial.lit(done),
+                                           color: reached ? theme.ok : (counting ? theme.primary : theme.primary.opacity(0.42)),
+                                           goalSegment: CounterDial.goalSegment(done: done, target: target),
+                                           live: model.live, palePulse: !counting),
                      pulse: counting ? nil : model.tentativePulse) { side in
                     dialCount(side: side, counting: counting)
                 }
@@ -395,10 +404,11 @@ struct WorkoutView: View {
     }
 
     /// Nombre de la série ; avant la validation, répétitions détectées en pâle et témoins 1/3, 2/3…
+    /// Pendant la série : « sur N » (objectif de la série) et une pastille par dizaine.
     private func dialCount(side: CGFloat, counting: Bool) -> some View {
         VStack(spacing: 4) {
             Text(counting ? "\(model.setReps)" : (model.tentative > 0 ? "\(model.tentative)" : "–"))
-                .font(theme.font(side * 0.48, .bold))
+                .font(theme.font(side * 0.36, .bold))
                 .tracking(-side * 0.01)
                 .foregroundStyle(counting ? theme.text : (model.tentative > 0 ? theme.primary.opacity(0.5) : theme.dim))
                 .monospacedDigit()
@@ -406,7 +416,11 @@ struct WorkoutView: View {
                 .minimumScaleFactor(0.4)
                 .contentTransition(.numericText())
                 .scaleEffect(bump ? 1.08 : 1)
-            if counting {
+            if counting, let target = seriesTarget {
+                MonitorLabel("sur \(target)", color: model.setReps >= target ? theme.ok : theme.dim)
+                LapDots(target: target, done: model.setReps)
+                    .padding(.top, 2)
+            } else if counting {
                 MonitorLabel("reps")
             } else {
                 HStack(spacing: 6) {
@@ -420,7 +434,38 @@ struct WorkoutView: View {
                 MonitorLabel(model.tentative > 0 ? "à valider" : "en attente du mouvement")
             }
         }
-        .padding(side * 0.12)
+        .padding(side * 0.2)
+    }
+
+    // MARK: - Objectif de série, repos prévu
+
+    /// Tranche de récupération : un segment, un bip.
+    private static let restSlice = 15
+
+    /// Séances récentes de l'exercice (4 dernières semaines), hors séance en cours.
+    private var recentSessions: [SessionRecord] {
+        let since = Date().addingTimeInterval(-28 * 86_400)
+        return sessions.filter { $0.exercise == model.exercise && $0.start > since }
+    }
+
+    /// Objectif de la série, sans plan : la meilleure série des 4 dernières semaines (nil sans
+    /// historique). Le plan d'entraînement le remplacera.
+    private var seriesTarget: Int? {
+        recentSessions.map(\.bestSet).max().flatMap { $0 > 0 ? $0 : nil }
+    }
+
+    /// Repos prévu, sans plan : ton repos habituel pour l'exercice (médiane des récupérations
+    /// des 4 dernières semaines, arrondie à 15 s, entre 30 s et 5 min) ; 60 s sans historique
+    /// (la référence du score d'endurance). Choix de l'app.
+    private var plannedRest: Int {
+        let rests = recentSessions.flatMap { session in
+            (1..<max(session.orderedSets.count, 1)).compactMap { session.rest(before: $0) }
+        }
+        guard rests.count >= 3 else { return 60 }
+        let sorted = rests.sorted()
+        let median = sorted[sorted.count / 2]
+        let rounded = Int((median / Double(Self.restSlice)).rounded()) * Self.restSlice
+        return min(max(rounded, 30), 300)
     }
 
     /// Consigne de placement, terminée par « Plus de détails » (la fiche, d'une touche). Sa
@@ -696,8 +741,6 @@ struct WorkoutView: View {
 
 /// Couleurs des graduations du cadran.
 enum DialPalette {
-    /// Veille : le cadran est allumé en pâle, le mouvement capté l'éclaire davantage.
-    case idle
     /// Mouvement suivi, pas encore validé.
     case pale
     /// Comptage : dégradé de la couleur secondaire à la principale.
@@ -736,7 +779,6 @@ struct DialFace: View {
         (0..<Self.tickCount).map { i in
             let on = i < lit
             switch palette {
-            case .idle: return theme.primary.opacity(on ? 0.6 : 0.2)
             case .pale: return on ? theme.primary.opacity(0.42) : theme.line
             case .gradient: return on ? theme.secondary.mixed(with: theme.primary, by: Double(i) / Double(Self.tickCount - 1)) : theme.line
             case .solid(let color): return on ? color : theme.line
@@ -746,20 +788,10 @@ struct DialFace: View {
 
     private var glowColor: Color {
         switch palette {
-        case .idle, .pale: return .clear
+        case .pale: return .clear
         case .gradient: return theme.primary
         case .solid(let color): return color
         }
-    }
-}
-
-/// Le cadran qui suit le mouvement en direct (30 fois par seconde) : seul lui est redessiné.
-struct LiveDialFace: View {
-    @ObservedObject var live: LiveSignal
-    let palette: DialPalette
-
-    var body: some View {
-        DialFace(lit: Int((Float(DialFace.tickCount) * live.phase).rounded()), palette: palette)
     }
 }
 

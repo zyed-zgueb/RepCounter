@@ -33,10 +33,11 @@
 		B00000000000000000000024 /* PhaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000024 /* PhaseView.swift */; };
 		B00000000000000000000025 /* Feeling.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000025 /* Feeling.swift */; };
 		B00000000000000000000026 /* Progress.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000026 /* Progress.swift */; };
-		B00000000000000000000027 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000027 /* SensorHub.swift */; };
-		B00000000000000000000028 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000028 /* PoseFeatures.swift */; };
-		B00000000000000000000029 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000029 /* SignalMath.swift */; };
-		B00000000000000000000030 /* Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000030 /* Support.swift */; };
+		B00000000000000000000027 /* CounterDial.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000027 /* CounterDial.swift */; };
+		B00000000000000000000028 /* SensorHub.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000028 /* SensorHub.swift */; };
+		B00000000000000000000029 /* PoseFeatures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000029 /* PoseFeatures.swift */; };
+		B00000000000000000000030 /* SignalMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000030 /* SignalMath.swift */; };
+		B00000000000000000000031 /* Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000031 /* Support.swift */; };
 		B00000000000000000000098 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000098 /* Assets.xcassets */; };
 		B00000000000000000000097 /* Themes.json in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000097 /* Themes.json */; };
 		B00000000000000000000096 /* Sounds in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000096 /* Sounds */; };
@@ -69,10 +70,11 @@
 		F00000000000000000000024 /* PhaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseView.swift; sourceTree = "<group>"; };
 		F00000000000000000000025 /* Feeling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Feeling.swift; sourceTree = "<group>"; };
 		F00000000000000000000026 /* Progress.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Progress.swift; sourceTree = "<group>"; };
-		F00000000000000000000027 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
-		F00000000000000000000028 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
-		F00000000000000000000029 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
-		F00000000000000000000030 /* Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support.swift; sourceTree = "<group>"; };
+		F00000000000000000000027 /* CounterDial.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CounterDial.swift; sourceTree = "<group>"; };
+		F00000000000000000000028 /* SensorHub.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorHub.swift; sourceTree = "<group>"; };
+		F00000000000000000000029 /* PoseFeatures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoseFeatures.swift; sourceTree = "<group>"; };
+		F00000000000000000000030 /* SignalMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalMath.swift; sourceTree = "<group>"; };
+		F00000000000000000000031 /* Support.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Support.swift; sourceTree = "<group>"; };
 		F00000000000000000000098 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F00000000000000000000097 /* Themes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Themes.json; sourceTree = "<group>"; };
 		F00000000000000000000096 /* Sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Sounds; sourceTree = "<group>"; };
@@ -137,10 +139,11 @@
 				F00000000000000000000024 /* PhaseView.swift */,
 				F00000000000000000000025 /* Feeling.swift */,
 				F00000000000000000000026 /* Progress.swift */,
-				F00000000000000000000027 /* SensorHub.swift */,
-				F00000000000000000000028 /* PoseFeatures.swift */,
-				F00000000000000000000029 /* SignalMath.swift */,
-				F00000000000000000000030 /* Support.swift */,
+				F00000000000000000000027 /* CounterDial.swift */,
+				F00000000000000000000028 /* SensorHub.swift */,
+				F00000000000000000000029 /* PoseFeatures.swift */,
+				F00000000000000000000030 /* SignalMath.swift */,
+				F00000000000000000000031 /* Support.swift */,
 				F00000000000000000000098 /* Assets.xcassets */,
 				F00000000000000000000097 /* Themes.json */,
 				F00000000000000000000096 /* Sounds */,
@@ -270,10 +273,11 @@
 				B00000000000000000000024 /* PhaseView.swift in Sources */,
 				B00000000000000000000025 /* Feeling.swift in Sources */,
 				B00000000000000000000026 /* Progress.swift in Sources */,
-				B00000000000000000000027 /* SensorHub.swift in Sources */,
-				B00000000000000000000028 /* PoseFeatures.swift in Sources */,
-				B00000000000000000000029 /* SignalMath.swift in Sources */,
-				B00000000000000000000030 /* Support.swift in Sources */,
+				B00000000000000000000027 /* CounterDial.swift in Sources */,
+				B00000000000000000000028 /* SensorHub.swift in Sources */,
+				B00000000000000000000029 /* PoseFeatures.swift in Sources */,
+				B00000000000000000000030 /* SignalMath.swift in Sources */,
+				B00000000000000000000031 /* Support.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

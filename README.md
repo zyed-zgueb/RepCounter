@@ -8,7 +8,7 @@ Règles d'organisation des écrans (où va chaque donnée, cadran, couleurs, tex
 `.claude/skills/reps-ux/SKILL.md`, à lire avant de toucher à un écran.
 
 ## Écran
-Un seul écran : le cadran (60 graduations), éclairé par un halo de la couleur de l'état —
+Un seul écran : le cadran, éclairé par un halo de la couleur de l'état —
 bleu pendant l'effort, orange au repos, vert à la fin. Style « moniteur » : fond quasi noir,
 chiffres à chasse fixe, voyants d'état, tracé du signal façon électrocardiogramme apaisé (lissé, lent, plat quand rien ne bouge).
 
@@ -48,13 +48,21 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
    Seuils réglés sur les enregistrements : `python3 Simulation/placement.py <enregistrement>`.
 3. **Départ** : 5 s pour se mettre en position, le cadran se remplit ; une note à 3, 2 et 1,
    un accord au départ. Tout ce qui précède est ignoré.
-4. **Série** : il ne reste que le nombre, en très grand, et une ligne discrète (total de la
-   séance). Avant la validation (3 répétitions), le cadran montre les répétitions
-   détectées en pâle « à valider », trois témoins, une onde et une vibration légère à chacune ;
-   puis tout passe en plein (les premières sont rattrapées).
-5. **Récupération** : quand tu t'arrêtes ~4 s, la série est close et le cadran devient un
-   chronomètre orange, avec les dernières séries sur une ligne fixe (« +N » pour les plus
-   anciennes). La série suivante démarre dès que tu reprends, sans toucher l'écran.
+4. **Série** : le cadran a deux anneaux (`CounterDial.swift`). **L'extérieur compte** :
+   10 segments, un par répétition, le tour repart à chaque dizaine (avec les trois notes des
+   paliers de 10). **L'intérieur** est la jauge du mouvement capté en direct. Au centre, le
+   nombre en très grand, « sur N » (objectif de la série) et une pastille par dizaine ; quand
+   l'objectif ne tombe pas sur une dizaine, sa case est cerclée ; atteint, l'anneau passe au
+   vert. Sans plan, l'objectif est la meilleure série des 4 dernières semaines (choix de
+   l'app). Avant la validation (3 répétitions), les répétitions détectées sont pâles « à
+   valider », avec trois témoins, une onde et une vibration légère à chacune ; puis tout passe
+   en plein (les premières sont rattrapées). Dessous, une ligne discrète (total de la séance).
+5. **Récupération** : quand tu t'arrêtes ~4 s, la série est close. L'anneau compte les
+   tranches de 15 s (une par bip) jusqu'au repos prévu, puis passe au vert : ce n'est pas une
+   trotteuse. Au centre, le temps écoulé « sur 1:30 ». Repos prévu, sans plan : ton repos
+   habituel pour l'exercice (médiane des 4 dernières semaines, arrondie à 15 s) ; 60 s sans
+   historique (choix de l'app). Dessous, les dernières séries sur une ligne fixe (« +N » pour
+   les plus anciennes). La série suivante démarre dès que tu reprends, sans toucher l'écran.
 6. **Annuler série** annule la série en cours (ou la dernière, pendant la récupération).
    **Terminer se maintient** 0,8 s (une jauge se remplit) : pas de fin de séance par erreur.
 7. **Fin** : le total dans le cadran, l'écart avec la séance précédente (« ▲ +6 vs jeudi 22 »)
