@@ -103,6 +103,8 @@ struct CoachingView: View {
     let exercises: [Exercise]
     /// Démarrer : la séance de cet exercice, au cadran.
     let onStart: (Exercise) -> Void
+    /// « ◆ Lancer le test » : le test de cet exercice, au cadran.
+    var onStartTest: (Exercise) -> Void = { _ in }
     @State private var goal: Goal?
     @State private var editor: GoalEditor.Mode?
     @State private var showsMenu = false
@@ -110,10 +112,12 @@ struct CoachingView: View {
     /// Change quand un jour de séance est déplacé ou l'objectif retiré : le plan est recalculé.
     @State private var version = 0
 
-    init(exercise: Exercise, exercises: [Exercise], onStart: @escaping (Exercise) -> Void) {
+    init(exercise: Exercise, exercises: [Exercise], onStart: @escaping (Exercise) -> Void,
+         onStartTest: @escaping (Exercise) -> Void = { _ in }) {
         _exercise = State(initialValue: exercise)
         self.exercises = exercises.contains(exercise) ? exercises : [exercise] + exercises
         self.onStart = onStart
+        self.onStartTest = onStartTest
         _goal = State(initialValue: Goal.load(exercise))
     }
 
@@ -135,7 +139,7 @@ struct CoachingView: View {
                             // Rien à caler : la première séance d'abord
                             FirstSessionCard(exercise: exercise) { onStart(exercise) }
                             if goal != nil {
-                                GoalHeader(goal: goal, shiftedDate: plan?.shiftedGoalDate, exercise: exercise, current: stats.currentBest,
+                                GoalHeader(goal: goal, shiftedDate: plan?.shiftedGoalDate, shiftWeeks: plan?.shiftWeeks ?? 0, exercise: exercise, current: stats.currentBest,
                                            levelDate: stats.levelDate, now: stats.now,
                                            onEdit: { editor = .target },
                                            onMenu: { showsMenu = true },
@@ -145,11 +149,12 @@ struct CoachingView: View {
                             }
                         } else {
                             if let plan {
-                                TodayCard(plan: plan, todaySets: todaySets(stats)) { onStart(exercise) }
+                                TodayCard(plan: plan, todaySets: todaySets(stats), onStart: { onStart(exercise) },
+                                          onStartTest: { onStartTest(exercise) })
                             }
                             // Où je vais : l'objectif, le chemin, le bloc
                             if goal != nil {
-                                GoalHeader(goal: goal, shiftedDate: plan?.shiftedGoalDate, exercise: exercise, current: stats.currentBest,
+                                GoalHeader(goal: goal, shiftedDate: plan?.shiftedGoalDate, shiftWeeks: plan?.shiftWeeks ?? 0, exercise: exercise, current: stats.currentBest,
                                            levelDate: stats.levelDate, now: stats.now,
                                            onEdit: { editor = .target },
                                            onMenu: { showsMenu = true },
@@ -300,6 +305,7 @@ private struct TodayCard: View {
     /// Les séries faites aujourd'hui.
     let todaySets: [Int]
     let onStart: () -> Void
+    var onStartTest: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -307,6 +313,21 @@ private struct TodayCard: View {
                 if plan.status == .due { intensity(plan.today) }
             }
             switch plan.status {
+            case .due where plan.today == .test:
+                // Jour de test (ou test « à faire ») : la personne le lance ; la séance allégée reste possible
+                MonitorLabel(testMark, color: plan.testOverdue ? theme.text : theme.max)
+                Text(symbols: "◆ série max" + (plan.tests.last.map { " · dernier test \($0.value)" } ?? ""))
+                    .font(theme.font(15, .bold))
+                    .foregroundStyle(theme.text)
+                if plan.testOverdue, let fallback = plan.fallback {
+                    Text("En attendant : séance allégée · \(fallback.sets) série\(fallback.sets > 1 ? "s" : "")")
+                        .font(theme.font(12))
+                        .foregroundStyle(theme.dim)
+                }
+                Button(action: onStartTest) { Text(symbols: "◆ Lancer le test") }
+                    .buttonStyle(MonitorButtonStyle(color: theme.max, height: 48, fontSize: 13))
+                Button(plan.testOverdue ? "Séance allégée" : "Séance allégée à la place", action: onStart)
+                    .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 44, fontSize: 12))
             case .due:
                 if let mark = mark(plan.today) {
                     MonitorLabel(mark, color: theme.text)
@@ -334,6 +355,19 @@ private struct TodayCard: View {
             }
         }
         .coachingCard(theme)
+        .overlay {
+            // Test à faire : la carte est bordée de la couleur maximale
+            if plan.testOverdue {
+                RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.max, lineWidth: 1.5)
+            }
+        }
+    }
+
+    /// « ! ◆ test à faire », « ◆ test 1 / 2 » (bloc 1) ou « ◆ jour de test ».
+    private var testMark: String {
+        if plan.testOverdue { return "! ◆ test à faire" }
+        if let step = plan.testStep { return "◆ test \(step.number) / \(step.of)" }
+        return "◆ jour de test"
     }
 
     /// « Aujourd'hui · ! léger » à gauche, l'intensité (pastille et mot) à droite.
@@ -554,6 +588,8 @@ private struct GoalHeader: View {
     let goal: Goal?
     /// La date de l'objectif décalée des semaines refaites (celle du chemin), si le plan existe.
     var shiftedDate: Date? = nil
+    /// Les semaines de décalage (semaines refaites, attente du test).
+    var shiftWeeks = 0
     let exercise: Exercise
     let current: Int
     /// Le niveau date de plus de 28 jours : son ancienneté s'affiche.
@@ -570,7 +606,10 @@ private struct GoalHeader: View {
         if let goal {
             VStack(alignment: .leading, spacing: 4) {
                 CardHeader(symbol: "scope", title: "Objectif") {
-                    if let date = shiftedDate ?? goal.date { MonitorLabel("pour le \(Format.shortDate(date))") }
+                    if let date = shiftedDate ?? goal.date {
+                        // Décalée des semaines refaites et de l'attente du test : « +n sem. »
+                        MonitorLabel("pour le \(Format.shortDate(date))" + (shiftWeeks > 0 ? " · +\(shiftWeeks) sem." : ""))
+                    }
                 }
                 HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 0) {

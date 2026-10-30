@@ -256,7 +256,7 @@ struct JournalCard: View {
                 + stats.calendar.component(.minute, from: session.start)
             let edge = minutes < start ? "‹" : (minutes > end ? "›" : nil)
             let marks = JournalSilhouette.marks(sets: session.orderedSets.count, record: records.contains(session.persistentModelID),
-                                                edge: edge, tick: tick)
+                                                edge: edge, tick: tick, test: session.isTest)
             let footprint = max(JournalSilhouette.width(sets: session.orderedSets.count, tick: tick), CGFloat(marks) * markWidth)
             let x = max(labelWidth + Self.edgeInset + usable * share(minutes), nextFree)
             items.append((session, x, footprint, edge))
@@ -389,8 +389,8 @@ private struct JournalSilhouette: View {
     static let gap: CGFloat = 1
 
     /// Le nombre de marques posées au-dessus (« +n » compte double).
-    static func marks(sets: Int, record: Bool, edge: String?, tick: Bool) -> Int {
-        (edge != nil ? 1 : 0) + (record ? 1 : 0) + (!tick && sets > maxBars ? 2 : 0)
+    static func marks(sets: Int, record: Bool, edge: String?, tick: Bool, test: Bool = false) -> Int {
+        (edge != nil ? 1 : 0) + (record ? 1 : 0) + (test ? 1 : 0) + (!tick && sets > maxBars ? 2 : 0)
     }
 
     /// La largeur des barres (sans les marques, posées au-dessus).
@@ -411,8 +411,9 @@ private struct JournalSilhouette: View {
             } else {
                 ForEach(Array(sets.prefix(Self.maxBars).enumerated()), id: \.offset) { _, set in
                     RoundedRectangle(cornerRadius: 0.8)
-                        // Verte si la cible est atteinte ; sans cible, neutre
-                        .fill(set.target.map { set.reps >= $0 ? theme.ok : theme.primary } ?? theme.dim)
+                        // Verte si la cible est atteinte ; sans cible, neutre ; l'échauffement en gris pâle
+                        .fill(set.isWarmup ? theme.dim.opacity(0.4)
+                              : (set.target.map { set.reps >= $0 ? theme.ok : theme.primary } ?? theme.dim))
                         .frame(width: Self.barWidth, height: max(3, height * min(CGFloat(set.reps) / scale, 1)))
                 }
             }
@@ -422,6 +423,8 @@ private struct JournalSilhouette: View {
             // Les marques au-dessus des barres : la largeur ne dépend que des séries
             HStack(spacing: 2) {
                 if edge == "‹" { marker("‹") }
+                // Une séance de test se reconnaît : ◆
+                if session.isTest { marker("◆") }
                 if !tick, sets.count > Self.maxBars { marker("+\(sets.count - Self.maxBars)") }
                 if record { marker("★") }
                 if edge == "›" { marker("›") }

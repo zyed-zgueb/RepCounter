@@ -304,15 +304,17 @@ private struct WeeksCard: View {
         return (Double(current) - mean) / mean * 100
     }
 
-    /// Par semaine : la meilleure série (nil sans séance) et si c'est un record à ce moment-là.
-    private func bestByWeek(_ weeks: [Date]) -> [(value: Int?, record: Bool)] {
+    /// Par semaine : la meilleure série (nil sans séance), si c'est un record à ce moment-là, et
+    /// si la semaine a un test (◆ sur la courbe).
+    private func bestByWeek(_ weeks: [Date]) -> [(value: Int?, record: Bool, test: Bool)] {
         var best = stats.sessions.filter { $0.start < (weeks.first ?? stats.now) }.map(\.bestSet).max() ?? 0
         return weeks.map { week in
-            let value = stats.sessions(inWeek: week).map(\.bestSet).max()
-            guard let value, value > 0 else { return (nil, false) }
+            let sessions = stats.sessions(inWeek: week)
+            let value = sessions.map(\.bestSet).max()
+            guard let value, value > 0 else { return (nil, false, false) }
             let record = value > best
             best = max(best, value)
-            return (value, record)
+            return (value, record, sessions.contains { $0.isTest })
         }
     }
 
@@ -335,7 +337,7 @@ private struct WeeksChart: View {
     @ScaledMetric(relativeTo: .body) private var lineHeight: CGFloat = 72
     @ScaledMetric(relativeTo: .body) private var barHeight: CGFloat = 64
     let volumes: [Int]
-    let best: [(value: Int?, record: Bool)]
+    let best: [(value: Int?, record: Bool, test: Bool)]
     /// Le record actuel (un exercice), étiqueté « ★ 32 ».
     let record: Int?
     /// Le volume de la semaine face à la moyenne des précédentes, en % (nil : pas assez d'historique).
@@ -345,11 +347,12 @@ private struct WeeksChart: View {
         let id: Int
         let value: Int
         let record: Bool
+        let test: Bool
     }
 
     private var points: [Point] {
         best.enumerated().compactMap { index, item in
-            item.value.map { Point(id: index, value: $0, record: item.record) }
+            item.value.map { Point(id: index, value: $0, record: item.record, test: item.test) }
         }
     }
 
@@ -374,12 +377,17 @@ private struct WeeksChart: View {
                             .foregroundStyle(theme.primary)
                         PointMark(x: .value("Semaine", Double(point.id)), y: .value("Série max", Double(point.value)))
                             .foregroundStyle(theme.primary)
-                            .symbolSize(point.record ? 0 : 24)
+                            .symbolSize(point.record || point.test ? 0 : 24)
                             .annotation(position: .overlay) {
+                                // ★ record ; ◆ semaine de test
                                 if point.record {
                                     Image(systemName: "star.fill")
                                         .font(theme.font(11))
                                         .foregroundStyle(theme.text)
+                                } else if point.test {
+                                    Image(systemName: "diamond.fill")
+                                        .font(theme.font(10))
+                                        .foregroundStyle(theme.max)
                                 }
                             }
                     }
@@ -668,6 +676,12 @@ struct SessionDetailView: View {
     /// Le total en grand, l'exercice et la durée.
     private var overview: some View {
         VStack(spacing: 4) {
+            if let best = session.testBest {
+                // Une séance de test se reconnaît en tête : « ◆ test » et son résultat
+                Text(symbols: "◆ test · \(best) d'affilée")
+                    .font(theme.font(15, .bold))
+                    .foregroundStyle(theme.max)
+            }
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(symbols: (stats.recordSessions.contains(session.persistentModelID) ? "★ " : "") + "\(session.totalReps)")
                     .font(theme.font(46, .bold))
@@ -735,13 +749,15 @@ private struct SetBarsChart: View {
         let reps: Int
         let target: Int?
         let rest: TimeInterval?
+        var role: SetRole?
         var reached: Bool { target.map { reps >= $0 } ?? false }
     }
 
     var body: some View {
         let bars = session.orderedSets.enumerated().map { index, set in
-            Bar(id: index, name: "S\(index + 1)", reps: set.reps, target: set.target,
-                rest: index > 0 ? session.rest(before: index) : nil)
+            Bar(id: index, name: set.isWarmup ? "échauf." : (set.isTest ? "◆ S\(index + 1)" : "S\(index + 1)"),
+                reps: set.reps, target: set.target, rest: index > 0 ? session.rest(before: index) : nil,
+                role: set.role.flatMap(SetRole.init))
         }
         Chart {
             ForEach(bars) { bar in
@@ -753,8 +769,10 @@ private struct SetBarsChart: View {
                 }
                 BarMark(x: .value("Série", bar.name), yStart: .value("Répétitions", 0.0), yEnd: .value("Répétitions", Double(bar.reps)),
                         width: .ratio(0.5))
-                    // Sans cible : couleur neutre, ni ✓ ni vert
-                    .foregroundStyle(bar.reached ? theme.ok : (bar.target == nil ? theme.dim : theme.primary))
+                    // Sans cible : couleur neutre, ni ✓ ni vert ; échauffement en gris pâle, test en rouge
+                    .foregroundStyle(bar.role == .warmup ? theme.dim.opacity(0.4)
+                                     : (bar.role == .test ? theme.max
+                                        : (bar.reached ? theme.ok : (bar.target == nil ? theme.dim : theme.primary))))
                     .cornerRadius(2)
                     .annotation(position: .top) {
                         Text(symbols: "\(bar.reps)\(bar.reached ? " ✓" : "")")
@@ -768,7 +786,7 @@ private struct SetBarsChart: View {
                 AxisValueLabel {
                     if let name = value.as(String.self), let bar = bars.first(where: { $0.name == name }) {
                         VStack(spacing: 1) {
-                            Text(name)
+                            Text(symbols: name)
                             if let rest = bar.rest {
                                 Text(symbols: "◷ \(Format.clock(rest))")
                             }

@@ -41,3 +41,12 @@ struct DaysTip: Tip {
     var message: Text? { Text("Touche un jour pour l'ajouter ou le retirer.") }
     var image: Image? { Image(systemName: "hand.tap") }
 }
+
+/// Le premier jour de test : le principe, une seule fois.
+struct TestTip: Tip {
+    var title: Text { Text("Le jour de test") }
+    var message: Text? {
+        Text("Une série max, sans cible : va au bout. Un échauffement facile est conseillé avant ; une 2e tentative est possible après 3 minutes.")
+    }
+    var image: Image? { Image(systemName: "diamond.fill") }
+}

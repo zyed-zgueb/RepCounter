@@ -168,16 +168,29 @@ et dans le panneau Forme de l'historique (`Form.swift`).
 ## Plan
 Avec un objectif (Coaching), le plan d'un exercice se déduit de l'objectif et des séances faites
 (`Plan.swift`), rien d'autre n'est stocké. Un **bloc** : 3 semaines de progression, 1 semaine
-allégée (7 jours à volume réduit : Bell et al. 2023, Rogerson et al. 2024), puis un **test** : la
-première série de la première séance faite à partir du jour du test (on est frais : une série
-isolée suffit). Plus de 7 jours sans séance avant le test : une **semaine de reprise** d'abord
-(« ! reprise », séance allégée, intensité calme), puis le test (choix de l'app ; Bell 2023 : une
-pause réduit le stress d'entraînement). Le bloc suivant repart la semaine d'après. **Longue
+allégée (7 jours à volume réduit : Bell et al. 2023, Rogerson et al. 2024), puis un **test
+annoncé** (méthode : `Science/METHODE-TEST.md`, branche de la session Science du sport). Sourcé :
+le test recale le niveau (ACSM 2026, p. 863). Choix de l'app : le **jour de test** est le premier
+jour de séance après la semaine allégée ; la personne le **lance** (« ◆ Lancer le test ») et
+seules les séries faites **en mode test** comptent (rôle `SetRecord.role` : échauffement, test).
+**Échauffement** conseillé, jamais compté (~⅓ du dernier max, puis 2:00) ; **résultat** = la
+meilleure série en mode test, **2e tentative** possible après 3:00 ; fin de série détectée par le
+compteur. **Bloc 1** (et nouveau bloc 1 après plus de 28 jours) : 2 tests sur 2 jours de la
+première semaine, le meilleur sert de départ. Test lancé en **semaine allégée** : il clôt le bloc ;
+en **progression** : il relève seulement le max s'il le dépasse ; plusieurs tests : le meilleur
+jusqu'au bloc suivant ; abandonné sans série : il reste à faire. **Pas lancé** : « ! ◆ test à
+faire » à chaque jour de séance suivant, séance allégée en attendant (comptée comme séance, ni test
+ni séance habituelle) ; **7 jours** après le jour prévu, le bloc suivant repart du dernier max sans
+recalage (◆ creux « ! » sur le chemin, objectif décalé « +n sem. »). Plus de 7 jours sans séance
+avant le test : une **semaine de reprise** d'abord. Un écart de moins de ~10 % entre deux tests se
+lit « dans la variation » (provisoire). **Max relevé** en cours de bloc : une série ≥ 3 au-dessus de
+sa cible (max + dépassement) ou un test en progression au-dessus du max ; les cibles suivent dès la
+séance suivante (« ▲ max relevé à N » en fin de séance). Pas de mode test pour « Autre ». **Longue
 absence** : plus de 28 jours sans séance, la carte Aujourd'hui propose une séance de reprise libre
 (le chemin et l'objectif restent visibles) ; elle ouvre un nouveau bloc 1, ancré sur elle. Le
 plan n'est jamais vide pour un exercice qui a un historique, sauf « Autre exercice » (pas de
-coaching : ni plan ni objectif). Nouvel utilisateur ou bloc de reprise : la **semaine 1 calibre**
-(les cibles suivent chaque séance), puis les cibles sont figées jusqu'au test (choix de l'app). Une semaine de progression finie avec des séances manquées, ou deux séances en Forme
+coaching : ni plan ni objectif). Sans tests de calibrage, la **semaine 1 calibre** (les cibles
+suivent chaque séance), puis les cibles sont figées jusqu'au test, sauf max relevé. Une semaine de progression finie avec des séances manquées, ou deux séances en Forme
 basse, est **refaite** (deux fois au plus par bloc) : le test et la date de l'objectif reculent
 d'autant, et le Coaching l'affiche. Forme basse aujourd'hui : séance légère.
 
@@ -226,7 +239,9 @@ de test, bloc suivant recalé sur le test, séances manquées, Forme basse × 2,
 refaites, séance légère, 2 séances par semaine au moins, cibles selon la baisse habituelle ou par
 défaut, réajustement en séance, séries espacées, placement et déplacement des jours, test sur la
 première série, semaine de reprise avant le test, longue absence et nouveau bloc 1, calibrage de
-la semaine 1).
+la semaine 1 ; test annoncé : échauffement exclu, 2e tentative, tests sur plusieurs jours, test
+anticipé en semaine allégée et en progression, abandon, test non lancé et attente de 7 jours,
+bloc 1 avec 2 tests, max relevé en cours de bloc).
 
 ## Phases
 Dans la carte État du Coaching, la phase d'entraînement : une étiquette, une action, une

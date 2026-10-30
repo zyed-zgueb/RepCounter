@@ -46,6 +46,7 @@
 		B00000000000000000000037 /* Symbols.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000037 /* Symbols.swift */; };
 		B00000000000000000000038 /* ChartKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000038 /* ChartKit.swift */; };
 		B00000000000000000000039 /* Tips.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000039 /* Tips.swift */; };
+		B00000000000000000000040 /* TestViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000040 /* TestViews.swift */; };
 		B00000000000000000000098 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000098 /* Assets.xcassets */; };
 		B00000000000000000000097 /* Themes.json in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000097 /* Themes.json */; };
 		B00000000000000000000096 /* Sounds in Resources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000096 /* Sounds */; };
@@ -91,6 +92,7 @@
 		F00000000000000000000037 /* Symbols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Symbols.swift; sourceTree = "<group>"; };
 		F00000000000000000000038 /* ChartKit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartKit.swift; sourceTree = "<group>"; };
 		F00000000000000000000039 /* Tips.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tips.swift; sourceTree = "<group>"; };
+		F00000000000000000000040 /* TestViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestViews.swift; sourceTree = "<group>"; };
 		F00000000000000000000098 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		F00000000000000000000097 /* Themes.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Themes.json; sourceTree = "<group>"; };
 		F00000000000000000000096 /* Sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Sounds; sourceTree = "<group>"; };
@@ -168,6 +170,7 @@
 				F00000000000000000000037 /* Symbols.swift */,
 				F00000000000000000000038 /* ChartKit.swift */,
 				F00000000000000000000039 /* Tips.swift */,
+				F00000000000000000000040 /* TestViews.swift */,
 				F00000000000000000000098 /* Assets.xcassets */,
 				F00000000000000000000097 /* Themes.json */,
 				F00000000000000000000096 /* Sounds */,
@@ -310,6 +313,7 @@
 				B00000000000000000000037 /* Symbols.swift in Sources */,
 				B00000000000000000000038 /* ChartKit.swift in Sources */,
 				B00000000000000000000039 /* Tips.swift in Sources */,
+				B00000000000000000000040 /* TestViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

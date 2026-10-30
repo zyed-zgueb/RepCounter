@@ -139,6 +139,27 @@ struct TodayLine: View {
     }
 }
 
+/// La ligne sous le cadran un jour de test : « ◆ série max · dernier test 33 », « ◆ test 1 / 2 »
+/// au bloc 1, « ! ◆ test à faire » en retard (skill reps-ux § 5 : l'alerte porte « ! »).
+struct TestDayLine: View {
+    @Environment(\.theme) private var theme
+    let plan: TrainingPlan
+
+    var body: some View {
+        Text(symbols: text)
+            .font(theme.font(12, .bold))
+            .foregroundStyle(plan.testOverdue ? theme.text : theme.max)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var text: String {
+        if let step = plan.testStep { return "◆ test \(step.number) / \(step.of) · série max" }
+        let last = plan.tests.last.map { " · dernier test \($0.value)" } ?? ""
+        return plan.testOverdue ? "! ◆ test à faire" + last : "◆ série max" + last
+    }
+}
+
 /// La séance en cours, sous le cadran : une case par série prévue (« 29 ✓ · 25 ← · 22 »).
 /// Faites : le nombre réel, en vert si la cible est atteinte ; en cours : marquée ; à venir : la cible.
 struct SetRow: View {
@@ -354,7 +375,12 @@ struct BlockCard: View {
                         .font(theme.font(15, .bold))
                         .foregroundStyle(theme.text)
                     MonitorLabel("intensité \(Intensity.word(level))", color: theme.intensity(level))
-                    MonitorLabel(plan.today == .test ? "◆ aujourd'hui" : "◆ \(Format.shortDate(plan.testDate))")
+                    if plan.testOverdue {
+                        // Le test est à faire : le bloc suivant attend
+                        MonitorLabel("! ◆ test à faire · bloc \(plan.block + 1) en attente", color: theme.text)
+                    } else {
+                        MonitorLabel(plan.today == .test ? "◆ aujourd'hui" : "◆ \(Format.shortDate(plan.testDate))")
+                    }
                     if let redo = plan.weeks.last(where: { $0.redoReason != nil }), plan.currentWeek?.kind != .deload {
                         MonitorLabel("! \(redo.short) refaite · \(redo.redoReason ?? "")", color: theme.text)
                     }
@@ -551,7 +577,7 @@ struct PathCard: View {
                 .accessibilityLabel("Légende : " + legend.map(\.spoken).joined(separator: " ; "))
             if plan.hasTest {
                 HStack {
-                    MonitorLabel(plan.today == .test ? "◆ test aujourd'hui" : "◆ prochain test")
+                    MonitorLabel(plan.testOverdue ? "! ◆ test à faire" : (plan.today == .test ? "◆ test aujourd'hui" : "◆ prochain test"))
                     Spacer()
                     MonitorLabel(Format.shortDate(plan.testDate))
                 }
@@ -578,7 +604,7 @@ struct PathCard: View {
         // Les points dessinés : les séances depuis le début, hors séances de test
         let start = plan.goal?.created ?? plan.anchor
         let tests = Set(plan.tests.map(\.date))
-        if sessions.contains(where: { $0.start >= start && !tests.contains($0.start) && $0.bestSet > 0 }) {
+        if sessions.contains(where: { $0.start >= start && !tests.contains($0.start) && !$0.isTest && $0.bestSet > 0 }) {
             items.append(("• séances", "petits points : séances"))
         }
         if plan.tests.contains(where: { $0.date >= start }) || plan.hasTest { items.append(("◆ test", "losange : test")) }
@@ -635,7 +661,7 @@ private struct PathChart: View {
         let start = plan.goal?.created ?? plan.anchor
         let tests = Set(plan.tests.map(\.date))
         return sessions
-            .filter { $0.start >= start && !tests.contains($0.start) && $0.bestSet > 0 }
+            .filter { $0.start >= start && !tests.contains($0.start) && !$0.isTest && $0.bestSet > 0 }
             .enumerated()
             .map { Point(id: $0.offset, date: $0.element.start, value: $0.element.bestSet) }
     }
@@ -657,12 +683,17 @@ private struct PathChart: View {
         }
         // Rien avant le début de l'axe (blocs ou tests antérieurs au départ)
         let blockStarts = starts.filter { $0 >= start && $0 < end }
-        let upcoming = (plan.blocks.map(\.test) + starts.dropFirst(plan.blocks.count).map { $0.addingTimeInterval(4 * 7 * 86_400) })
-            .dropFirst(plan.tests.count)
+        // Tests pas encore faits : celui du bloc en cours (s'il n'est pas fait), puis ceux des
+        // blocs à venir ; les tests manqués restent à leur date, marqués « ! »
+        let currentTestDone = plan.tests.contains { $0.block == plan.block }
+        let currentTest = plan.hasTest && !currentTestDone ? [plan.testDate] : []
+        let upcoming = (currentTest + starts.dropFirst(plan.blocks.count).map { $0.addingTimeInterval(4 * 7 * 86_400) })
             .filter { $0 >= start && $0 <= end }
+        let alerts = Set(plan.missedTests + (plan.testOverdue ? [plan.testDate] : []))
+        let missed = plan.missedTests.filter { $0 >= start && $0 <= end }
         let lastMax = plan.tests.last?.value ?? points.last?.value ?? plan.goal?.start
         let fallback = Double(lastMax ?? 0)
-        let upcomingLevels = upcoming.map { plan.expected(at: $0) ?? fallback }
+        let upcomingLevels = (upcoming + missed).map { plan.expected(at: $0) ?? fallback }
         // L'échelle englobe le départ, l'objectif, les tests (faits et à venir) et les séances
         var values = plan.tests.map { Double($0.value) } + points.map { Double($0.value) } + upcomingLevels
         if let goal = plan.goal { values += [Double(goal.start), Double(goal.target)] }
@@ -674,7 +705,7 @@ private struct PathChart: View {
             Chart {
                 blockMarks(blockStarts)
                 goalMarks(end: end)
-                sessionMarks(points, upcoming: Array(upcoming), level: { plan.expected(at: $0) ?? fallback })
+                sessionMarks(points, upcoming: upcoming + missed, alerts: alerts, level: { plan.expected(at: $0) ?? fallback })
                 testMarks(from: start)
                 todayMarks(chosen)
             }
@@ -737,7 +768,8 @@ private struct PathChart: View {
 
     /// La meilleure série de chaque séance, et les tests à venir (◆ creux).
     @ChartContentBuilder
-    private func sessionMarks(_ points: [Point], upcoming: [Date], level: @escaping (Date) -> Double) -> some ChartContent {
+    private func sessionMarks(_ points: [Point], upcoming: [Date], alerts: Set<Date>,
+                              level: @escaping (Date) -> Double) -> some ChartContent {
         ForEach(points) { point in
             PointMark(x: .value("Date", point.date), y: .value("Répétitions", Double(point.value)))
                 .foregroundStyle(theme.primary.opacity(0.8))
@@ -749,6 +781,14 @@ private struct PathChart: View {
                     Image(systemName: "diamond")
                         .font(theme.font(11))
                         .foregroundStyle(theme.dim)
+                }
+                .annotation(position: .top, spacing: 0) {
+                    // Test pas fait (manqué, ou en retard) : « ! »
+                    if alerts.contains(test) {
+                        Text(symbols: "!")
+                            .font(theme.font(10, .bold))
+                            .foregroundStyle(theme.text)
+                    }
                 }
         }
     }
@@ -839,11 +879,11 @@ struct PlanInfoView: View {
                     section("Les jours",
                             "Les séances sont espacées dans la semaine : 2 séances, lundi et jeudi ; 3, lundi, mercredi et vendredi. Touche un jour dans le Coaching pour le déplacer. Une séance faite un autre jour compte, et remplace la prochaine prévue. L'ACSM ne fixe pas l'espacement : ce placement est un choix de l'app.")
                     section("Le test",
-                            "Le test est la première série de la première séance faite à partir du jour du test : on est frais, une série suffit. Si plus de 7 jours se sont écoulés sans séance avant le test, une semaine de reprise vient d'abord (séance allégée, intensité calme), puis le test : une pause réduit le stress d'entraînement (Bell et al. 2023), le test ne la suit pas directement. Le seuil de 7 jours et cette semaine de reprise sont des choix de l'app.")
+                            "Sourcé : le test recale ton niveau, et les cibles du bloc suivant en partent (ACSM 2026, p. 863 : « regular strength testing »). Le reste est un choix de l'app. Le jour de test est le premier jour de séance après la semaine allégée ; c'est toi qui le lances (« ◆ Lancer le test »), et seules les séries faites en mode test comptent. Un échauffement facile est conseillé, jamais compté : environ un tiers de ton dernier max, puis 2 minutes de repos. Le résultat est ta meilleure série en mode test ; une 2e tentative est possible après au moins 3 minutes, le meilleur des deux compte. La série s'arrête quand le compteur détecte la fin. Au bloc 1 (et à un nouveau bloc 1 après plus de 28 jours sans séance), 2 tests sur 2 jours de la première semaine, et le meilleur sert de départ. Un test lancé en semaine allégée compte et clôt le bloc ; lancé en semaine de progression, il ne clôt pas le bloc mais relève le max s'il le dépasse. Plusieurs tests : le meilleur, du premier test au début du bloc suivant. Lancé puis abandonné sans série : il reste à faire. Pas lancé : « à faire » à chaque jour de séance suivant, avec une séance allégée en attendant (elle compte comme séance, pas comme test) ; 7 jours après le jour prévu, le bloc suivant repart de ton dernier max, sans recalage. Plus de 7 jours sans séance : une semaine de reprise avant le test. Entre deux tests, un écart de moins d'environ 10 % se lit « dans la variation » (seuil provisoire ; principe : Hopkins). Entre deux tests, une série au moins 3 au-dessus de sa cible relève le max, et les cibles suivent dès la séance suivante. Pas de mode test pour « Autre exercice ».")
                     section("Après une longue absence",
-                            "Après plus de 28 jours sans séance, le plan ne propose qu'une séance de reprise, libre : elle ouvre un nouveau bloc 1, ancré sur elle. Pour un nouvel utilisateur comme pour ce bloc de reprise, la semaine 1 sert de calibrage : les cibles suivent chaque séance ; à partir de la semaine 2, elles restent fixes jusqu'au test. Le seuil de 28 jours et ce calibrage sont des choix de l'app.")
+                            "Après plus de 28 jours sans séance, le plan ne propose qu'une séance de reprise, libre : elle ouvre un nouveau bloc 1, ancré sur elle. Ce bloc commence, comme le tout premier, par 2 tests dans la première semaine ; sans ces tests, la semaine 1 calibre (les cibles suivent chaque séance), puis les cibles restent fixes jusqu'au test, sauf si une série relève le max. Le seuil de 28 jours et ce calibrage sont des choix de l'app.")
                     section("La progression",
-                            "Par le test : ton nouveau max recale la cible du bloc suivant (l'ACSM recommande des tests réguliers). Entre deux tests, la cible reste la même : en devenant plus fort, tu as plus de répétitions en réserve. Aucune hausse d'une semaine à l'autre : l'article n'en chiffre aucune.")
+                            "Par le test : ton nouveau max recale la cible du bloc suivant (l'ACSM recommande des tests réguliers). Entre deux tests, la cible ne monte pas d'elle-même : aucune hausse d'une semaine à l'autre, l'article n'en chiffre aucune. Mais une série faite au moins 3 au-dessus de sa cible relève le max (du dépassement), et les cibles suivent dès la séance suivante (choix de l'app).")
                     section("Ce que la science ne dit pas",
                             "L'entraînement améliore l'endurance musculaire, mais les études ne permettent pas de dire quel dosage l'améliore le mieux (ACSM 2026). Le plan applique donc les recommandations générales (fréquence, séries, effort près de l'échec) et vérifie le résultat, test après test.")
                     section("La semaine allégée",

@@ -62,6 +62,8 @@ struct WorkoutSet: Identifiable {
     let repTimes: [TimeInterval]
     /// La cible du plan pour cette série (nil sans plan).
     var target: Int? = nil
+    /// Échauffement ou test (nil : série normale).
+    var role: SetRole? = nil
 }
 
 /// Séance : prêt → mise en place (si elle se vérifie) → compte à rebours → séries et
@@ -139,10 +141,119 @@ final class WorkoutModel: ObservableObject {
     /// d'après la série précédente (`Prescription.nextTarget`). Nil sans plan, ou toutes les séries
     /// prévues faites.
     var currentTarget: Int? {
-        guard let planDay else { return nil }
+        // En mode test, aucune cible : on va au bout
+        guard testStage == nil, let planDay else { return nil }
         let done = sets.map(\.reps)
         return Prescription.nextTarget(planDay.session, ratios: planDay.ratios,
                                        dayDone: planDay.earlierToday + done, sessionDone: done)
+    }
+
+    // MARK: Test annoncé (Science/METHODE-TEST.md)
+
+    /// Les étapes d'une séance de test.
+    enum TestStage: Equatable {
+        /// Avant le départ : l'échauffement est proposé, on peut le passer.
+        case warmupOffer
+        /// La série d'échauffement (~⅓ du dernier max) : enregistrée, jamais comptée.
+        case warmup
+        /// Le repos de 2:00 après l'échauffement ; le test démarre au signal (ou dès la reprise).
+        case warmupRest
+        /// La série max, sans cible.
+        case test
+        /// Le résultat ; une 2e tentative est possible après 3:00 de repos.
+        case result
+    }
+
+    /// Séance de test (lancée par la personne) : son étape ; nil pour une séance normale.
+    @Published private(set) var testStage: TestStage?
+    /// Le dernier max connu : il dose l'échauffement.
+    private(set) var lastMax: Int?
+    /// Fin de la dernière série d'échauffement ou de test : le repos se compte depuis elle.
+    @Published private(set) var testRestStart: Date?
+    /// Le résultat est affiché : le compteur ne compte plus jusqu'à une 2e tentative.
+    private var countingPaused = false
+    private var warmupSignaled = false
+
+    /// Choix de l'app : 2:00 de repos après l'échauffement, 3:00 avant une 2e tentative (de Salles
+    /// 2009 : 3 à 5 min permettent de refaire plus de répétitions), 2 tentatives au plus.
+    static let warmupRest: TimeInterval = 120
+    static let secondAttemptRest: TimeInterval = 180
+    static let maxTestAttempts = 2
+
+    var testAttempts: Int { sets.filter { $0.role == .test }.count }
+    /// Le résultat : la meilleure série de test.
+    var testBest: Int? { sets.filter { $0.role == .test && $0.reps > 0 }.map(\.reps).max() }
+    /// L'échauffement conseillé : environ un tiers du dernier max (choix de l'app).
+    var warmupReps: Int? { lastMax.map { Swift.max(1, Int((Double($0) / 3).rounded())) } }
+    var testRestElapsed: TimeInterval { testRestStart.map { now.timeIntervalSince($0) } ?? 0 }
+    var secondAttemptReady: Bool {
+        testStage == .result && testAttempts < Self.maxTestAttempts && testRestElapsed >= Self.secondAttemptRest
+    }
+
+    /// « ◆ Lancer le test » : l'échauffement est proposé.
+    func prepareTest(lastMax: Int?) {
+        guard phase == .ready, exercise != .auto else { return }
+        self.lastMax = lastMax
+        planDay = nil
+        testStage = .warmupOffer
+    }
+
+    /// Retour à la veille sans rien lancer.
+    func cancelTest() {
+        guard phase == .ready, testStage != nil else { return }
+        testStage = nil
+    }
+
+    func startWarmup() {
+        guard testStage == .warmupOffer else { return }
+        testStage = .warmup
+        beginSession()
+    }
+
+    /// « Passer · test direct ».
+    func skipWarmup() {
+        guard testStage == .warmupOffer else { return }
+        testStage = .test
+        beginSession()
+    }
+
+    /// « Lancer la 2e tentative », après 3:00 de repos.
+    func startSecondAttempt() {
+        guard secondAttemptReady else { return }
+        resumeCounting()
+        testStage = .test
+        announcer.play(.go)
+        AccessibilityNotification.Announcement("Deuxième tentative").post()
+    }
+
+    /// « Quitter le test » : la séance est abandonnée, rien n'est enregistré (le test reste à
+    /// faire). La vue demande confirmation si une série de test serait perdue.
+    func quitTest() {
+        guard testStage != nil else { return }
+        countdownTimer?.invalidate()
+        if isRecording { stopRecording() }
+        sets = []
+        setReps = 0
+        setRepDates = []
+        sessionStart = nil
+        sessionEnd = nil
+        lastRepDate = nil
+        testRestStart = nil
+        countingPaused = false
+        testStage = nil
+        state = .searching
+        phase = .ready
+        sensors.queue.async { self.counter.reset() }
+        awaitingReset = true
+    }
+
+    private func resumeCounting() {
+        sensors.queue.async { self.counter.reset() }
+        awaitingReset = true
+        counterTotal = 0
+        setBase = 0
+        countingPaused = false
+        state = .searching
     }
 
     var totalReps: Int { sets.reduce(0) { $0 + $1.reps } + setReps }
@@ -294,6 +405,8 @@ final class WorkoutModel: ObservableObject {
     func cancelCountdown() {
         guard phase.isCountdown || phase == .positioning else { return }
         countdownTimer?.invalidate()
+        // Un test annulé avant le départ : rien n'est lancé, la veille revient
+        testStage = nil
         phase = .ready
     }
 
@@ -313,6 +426,7 @@ final class WorkoutModel: ObservableObject {
         phase = .active
         announcer.play(.go)
         haptic.impactOccurred()
+        if testStage == .test { AccessibilityNotification.Announcement("Test commencé").post() }
     }
 
     /// Annule la série en cours, ou la dernière terminée pendant la récupération.
@@ -358,6 +472,10 @@ final class WorkoutModel: ObservableObject {
     /// Depuis le résumé : nouvelle séance, même exercice.
     func newSession() {
         guard phase == .finished else { return }
+        testStage = nil
+        testRestStart = nil
+        countingPaused = false
+        warmupSignaled = false
         sets = []
         setReps = 0
         sessionStart = nil
@@ -377,20 +495,44 @@ final class WorkoutModel: ObservableObject {
         // mesuré sur les derniers cycles, est faussé par la fin de série)
         let pace = medianInterval(Array(repTimes)) ?? cadence
         let target = currentTarget
+        // En mode test : l'échauffement à part, toute autre série est une tentative de test
+        let role: SetRole? = testStage.map { $0 == .warmup ? .warmup : .test }
         sets.append(WorkoutSet(number: sets.count + 1, reps: reps, duration: duration, cadence: pace,
-                               start: start, repTimes: repTimes, target: target))
+                               start: start, repTimes: repTimes, target: target, role: role))
         setBase = counterTotal
         setReps = 0
         setRepDates = []
         restAnnouncements = 0
         if announce {
             announcer.play(.setEnd)
-            announcer.say("Série \(sets.count) : \(reps).")
+            announcer.say(role == .test ? "Test : \(reps)." : "Série \(sets.count) : \(reps).")
+        }
+        switch testStage {
+        case .warmup:
+            // Le repos de 2:00 se remplit, puis le signal du test
+            testRestStart = Date()
+            warmupSignaled = false
+            testStage = .warmupRest
+        case .test, .warmupRest:
+            // Le résultat : le compteur s'arrête jusqu'à une éventuelle 2e tentative
+            testRestStart = Date()
+            countingPaused = true
+            testStage = .result
+        default:
+            break
         }
     }
 
     private func tick() {
         now = Date()
+        if testStage == .warmupRest, !warmupSignaled, testRestElapsed >= Self.warmupRest {
+            // Fin du repos d'échauffement : le signal du test
+            warmupSignaled = true
+            testStage = .test
+            announcer.play(.go)
+            haptic.impactOccurred()
+            AccessibilityNotification.Announcement("Test commencé").post()
+        }
         // Récupération marquée toutes les 15 s : on sait où on en est dans la minute sans
         // regarder l'écran
         guard isResting else { return }
@@ -528,6 +670,13 @@ final class WorkoutModel: ObservableObject {
             guard output.didReset else { return }
             awaitingReset = false
         }
+        if countingPaused {
+            // Résultat du test affiché : les mouvements ne comptent pas
+            counterTotal = output.count
+            setBase = output.count
+            if tentative != 0 { tentative = 0 }
+            return
+        }
         counterTotal = output.count
         if let cadence = output.cadence, self.cadence != cadence { self.cadence = cadence }
         if output.regularity > 0, regularity != output.regularity { regularity = output.regularity }
@@ -551,6 +700,12 @@ final class WorkoutModel: ObservableObject {
         if output.didCount {
             let reps = max(0, output.count - setBase)
             let started = state != .counting
+            // Reprise pendant le repos d'échauffement : c'est le test qui commence
+            if started, testStage == .warmupRest {
+                testStage = .test
+                warmupSignaled = true
+                AccessibilityNotification.Announcement("Test commencé").post()
+            }
             if started {
                 // Nouvelle série : ses premières répétitions viennent d'être rattrapées ; leurs
                 // instants sont reconstitués à la cadence mesurée

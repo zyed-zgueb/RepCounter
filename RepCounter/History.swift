@@ -77,6 +77,21 @@ final class SessionRecord {
     }
 
     static let indexSets = 3
+
+    /// Une séance faite en mode test (au moins une série de test).
+    var isTest: Bool { orderedSets.contains { $0.isTest } }
+
+    /// Le résultat d'un test : la meilleure série faite en mode test (nil : pas de test, ou que
+    /// des séries à 0).
+    var testBest: Int? { orderedSets.filter { $0.isTest && $0.reps > 0 }.map(\.reps).max() }
+}
+
+/// Le rôle d'une série dans une séance de test (test annoncé, méthode Science/METHODE-TEST.md).
+enum SetRole: String {
+    /// Échauffement conseillé avant le test : enregistré, jamais compté (choix de l'app).
+    case warmup
+    /// Série faite en mode test : seule à compter comme test.
+    case test
 }
 
 /// Une série d'une séance enregistrée.
@@ -95,7 +110,13 @@ final class SetRecord {
     var repTimes: [Double] = []
     /// La cible du plan pour cette série (nil sans plan, ou séance d'avant le plan).
     var target: Int?
+    /// Rôle de la série (`SetRole`) : nil pour une série normale, « warmup » pour l'échauffement
+    /// d'un test (jamais compté), « test » pour une série faite en mode test.
+    var role: String?
     var session: SessionRecord?
+
+    var isTest: Bool { role == SetRole.test.rawValue }
+    var isWarmup: Bool { role == SetRole.warmup.rawValue }
 
     init(index: Int, reps: Int, start: Date, duration: TimeInterval, cadence: Double?, repTimes: [Double]) {
         self.index = index
@@ -130,6 +151,7 @@ extension SessionRecord {
             let record = SetRecord(index: index, reps: set.reps, start: set.start, duration: set.duration,
                                    cadence: set.cadence, repTimes: set.repTimes)
             record.target = set.target
+            record.role = set.role?.rawValue
             return record
         }
         try? context.save()
