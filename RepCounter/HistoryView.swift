@@ -50,7 +50,7 @@ struct HistoryView: View {
                             // le score d'endurance, dans le détail de la carte 12 semaines (skill reps-ux)
                             // Deux cartes : 12 semaines, puis le journal
                             NavigationLink(value: HistoryPage.activity) {
-                                WeeksCard(stats: stats, all: sessions, planned: exercise != nil)
+                                WeeksCard(stats: stats, planned: exercise != nil)
                             }
                             .buttonStyle(.plain)
                             JournalCard(stats: stats, missed: missedDays(stats)) { session in
@@ -248,30 +248,25 @@ private struct ExerciseFilter: View {
 
 /// 12 semaines en un graphique, un axe des semaines commun : en haut la meilleure série par
 /// semaine (★ les semaines de record, « ★ 32 » le record actuel), en bas le volume en barres (la
-/// semaine en cours en couleur avec sa valeur, « · » sans séance). En tête, la tendance ▲▼ et la
-/// semaine en symboles (● faite, ○ prévue restante). Une touche ouvre l'activité.
+/// semaine en cours en couleur avec sa valeur, « · » sans séance). En tête, une seule information :
+/// la tendance du volume face à la moyenne des semaines précédentes. La semaine en cours se lit
+/// dans le journal, le suivi du plan dans le Coaching. Une touche ouvre l'activité.
 private struct WeeksCard: View {
     @Environment(\.theme) private var theme
     let stats: HistoryStats
-    let all: [SessionRecord]
-    /// Un exercice (son plan donne les séances prévues restantes) ; Σ : seulement les faites.
+    /// Un exercice : le record actuel s'étiquette « ★ 32 » ; Σ : pas de record commun.
     let planned: Bool
 
     var body: some View {
         let weeks = stats.lastWeeks(12)
         let volumes = weeks.map { stats.volume(inWeek: $0) }
-        let volume = stats.weekVolume, previous = stats.previousWeekVolume
         HistoryPanel(title: "12 semaines", accessory: {
             HStack(spacing: 6) {
-                if previous > 0 {
-                    let change = (Double(volume) - Double(previous)) / Double(previous) * 100
-                    Text("\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) %")
+                if let change = Self.trend(volumes) {
+                    Text("\(change >= 0 ? "▲" : "▼") \(Int(abs(change).rounded())) % vs moy.")
                         .font(theme.font(12, .bold))
                         .foregroundStyle(change >= 0 ? theme.ok : theme.text)
                 }
-                Text(weekSymbols)
-                    .font(theme.font(12, .bold))
-                    .foregroundStyle(theme.text)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(theme.dim)
@@ -279,18 +274,22 @@ private struct WeeksCard: View {
         }) {
             WeeksChart(volumes: volumes, best: bestByWeek(weeks), record: planned ? stats.bestSet?.value : nil)
                 .frame(height: 130)
-                .accessibilityLabel(accessibility(volume: volume))
+                .accessibilityLabel(accessibility(volume: volumes.last ?? 0, trend: Self.trend(volumes)))
         }
         .contentShape(Rectangle())
     }
 
-    /// Un ● par séance faite cette semaine, un ○ par séance prévue restante (plan de l'exercice).
-    private var weekSymbols: String {
-        let done = stats.weekSessions
-        let plan = planned ? stats.plan(all: all) : nil
-        let remaining = plan.flatMap { plan in plan.currentWeek.map { max(plan.perWeek - $0.done, 0) } } ?? 0
-        let text = String(repeating: "●", count: done) + (remaining > 0 ? " " + String(repeating: "○", count: remaining) : "")
-        return text.isEmpty ? "—" : text
+    /// Semaines précédentes actives nécessaires pour une moyenne (choix de l'app).
+    static let trendWeeks = 2
+
+    /// Volume de la semaine en cours face à la moyenne des semaines précédentes affichées qui ont
+    /// au moins une séance, en %. Rien sans séance cette semaine ou avec moins de 2 semaines actives.
+    static func trend(_ volumes: [Int]) -> Double? {
+        guard let current = volumes.last, current > 0 else { return nil }
+        let previous = volumes.dropLast().filter { $0 > 0 }
+        guard previous.count >= trendWeeks else { return nil }
+        let mean = Double(previous.reduce(0, +)) / Double(previous.count)
+        return (Double(current) - mean) / mean * 100
     }
 
     /// Par semaine : la meilleure série (nil sans séance) et si c'est un record à ce moment-là.
@@ -305,10 +304,11 @@ private struct WeeksCard: View {
         }
     }
 
-    private func accessibility(volume: Int) -> String {
+    private func accessibility(volume: Int, trend: Double?) -> String {
         var parts = ["12 semaines"]
         if planned, let record = stats.bestSet { parts.append("meilleure série \(record.value)") }
         parts.append("\(volume) répétitions cette semaine")
+        if let trend { parts.append("\(trend >= 0 ? "plus" : "moins") \(Int(abs(trend).rounded())) % que la moyenne") }
         return parts.joined(separator: " : ")
     }
 }
@@ -339,9 +339,15 @@ private struct WeeksChart: View {
             context.draw(Text("reps / sem.").font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: split + 7), anchor: .leading)
             // En haut : la meilleure série
             let values = best.compactMap(\.value)
-            if let low = values.min(), let high = values.max() {
-                let span = Double(max(high - low, 4))
-                let y = { (value: Int) -> CGFloat in split - 8 - (split - 24) * CGFloat(Double(value - low) / span) }
+            if values.count < 2 {
+                // Une courbe demande deux semaines : en attendant, un état en cours
+                context.draw(Text("\(values.count) / 2 semaines").font(theme.font(9)).foregroundStyle(theme.dim),
+                             at: CGPoint(x: size.width / 2, y: split / 2 + 4))
+            } else if let high = values.max(), let lowest = values.min() {
+                // Écart de 4 au moins, centré : une série stable reste au milieu, pas sur le filet
+                let span = Double(max(high - lowest, 4))
+                let low = Double(lowest) - (span - Double(high - lowest)) / 2
+                let y = { (value: Int) -> CGFloat in split - 8 - (split - 24) * CGFloat((Double(value) - low) / span) }
                 var line = Path()
                 var started = false
                 for (index, point) in best.enumerated() {

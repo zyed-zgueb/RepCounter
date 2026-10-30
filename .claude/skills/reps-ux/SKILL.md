@@ -33,7 +33,7 @@ Plus une donnée est vue souvent, plus elle est réduite et proche du compteur. 
 
 - **Où je vais** (Coaching) : objectif et où j'en suis, bloc sur sa frise, prévu face au fait, mesuré face à attendu. Le plan et sa vérification restent ensemble.
 - **Comment je suis** (carte État, dans le Coaching) : phase, Forme mesurée, ressenti (fatigue, effort). Une seule carte, jamais dispersée.
-- **D'où je viens** (Historique) : deux cartes. « 12 semaines » : la meilleure série en courbe (★ records) et le volume en barres, sur le même axe. « Journal » : les jours sur une frise horaire. Le détail (régularité, volume détaillé, score d'endurance) s'ouvre en touchant une carte.
+- **D'où je viens** (Historique) : deux cartes. « 12 semaines » : la meilleure série en courbe (★ records) et le volume en barres, sur le même axe ; en tête la seule tendance du volume (« ▲ 4 % vs moy. »). La semaine en cours se lit dans le journal ; le suivi du plan (fait face au prévu) reste dans le Coaching. « Journal » : les jours sur une frise horaire. Le détail (régularité, volume détaillé, score d'endurance) s'ouvre en touchant une carte.
 
 ## 4. Le cadran
 
@@ -66,6 +66,8 @@ Des étiquettes, pas des phrases. Pendant l'effort, 5 ou 6 mots au plus. Chiffre
 ## 9. Graphiques et symboles plutôt que texte
 
 Un graphique par question. Les chiffres ne sont que l'étiquette de la valeur clé d'un graphique. Pas de pile clé-valeur ni de tableau de chiffres là où une barre, une courbe ou une jauge suffit. Symboles, légende donnée une fois : ⌖ objectif · ◆ test · ✓ atteint · ← en cours · ● fait · ○ prévu · ! alerte · ★ record · ▲▼ tendance · ◷ repos · ✎ modifier · ⋯ menu. Le texte est réservé aux exceptions.
+
+Un symbole répété ne sert de compteur que si son nombre reste petit et borné (5 au plus) ; au-delà, un nombre ou un graphique.
 
 Maquette de référence : https://claude.ai/artifact/LHFCQ3zEWvjMoKSJFaXVJJ
 

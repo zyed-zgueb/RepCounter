@@ -98,7 +98,9 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   1. **12 semaines** : un seul graphique, axe des semaines commun ; en haut la meilleure série
      par semaine (★ les semaines de record, « ★ 32 »), en bas le volume en barres (la semaine en
      cours en couleur avec sa valeur, « · » sans séance), séparés par un filet ; en tête la
-     tendance ▲▼ et la semaine en symboles (● faite, ○ prévue restante). Une touche ouvre
+     seule tendance du volume, « ▲ 4 % vs moy. » (semaine en cours face à la moyenne des
+     semaines précédentes actives, 2 au moins) ; sous 2 semaines, la courbe laisse place à
+     « 1 / 2 semaines ». La semaine en cours se lit dans le journal, le plan dans le Coaching. Une touche ouvre
      l'activité : score d'endurance et sa tendance (un exercice), volume détaillé, régularité.
   2. **Journal** (`Journal.swift`) : une ligne par jour, aujourd'hui en haut (28 jours, « + 28
      jours » pour remonter) ; l'heure en abscisse, de la plage réglée (Réglages › Journal de
