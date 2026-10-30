@@ -282,7 +282,7 @@ struct CoachingView: View {
             IconButton(systemImage: "info.circle", color: theme.dim) { showsInfo = true }
             IconButton(systemImage: "xmark") { dismiss() }
         }
-        .padding(.leading, exercises.count > 1 ? 8 : 20)
+        .padding(.leading, exercises.count > 1 ? 4 : 20)
         .padding(.trailing, 20)
         .padding(.vertical, 12)
     }
@@ -292,7 +292,7 @@ struct CoachingView: View {
             Image(systemName: systemImage)
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(theme.dim)
-                .frame(width: 26, height: 36)
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -609,7 +609,7 @@ private struct GoalHeader: View {
             Text(symbol)
                 .font(theme.font(17, .bold))
                 .foregroundStyle(theme.dim)
-                .frame(width: 36, height: 32)
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

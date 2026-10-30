@@ -83,3 +83,9 @@ Des événements datés (séances, séries, tests) se placent sur un axe de temp
 - **Accessibilité** : une étiquette par jour qui résume ses séances et son total.
 
 La même logique vaut ailleurs : une frise pour un bloc (semaines), une rangée L M M J V S D pour la semaine, une frise horaire pour la journée. Chaque échelle de temps a sa frise, et chacune apparaît là où l'on regarde à cette fréquence (voir section 1).
+
+## 11. Conformité Apple (HIG), pour tout code écrit ou modifié
+
+- Zone de toucher d'au moins 44 × 44 pt (`frame` ou `contentShape`), même si le dessin est plus petit.
+- Une nouvelle icône ou un nouveau bouton : un SF Symbol (`chevron.left`, `pencil`, `ellipsis`) plutôt qu'un caractère Unicode.
+- Pas de nouvelle taille de police fixe quand un style de texte convient (le passage à Dynamic Type viendra dans un lot dédié).

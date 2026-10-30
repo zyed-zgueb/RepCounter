@@ -477,6 +477,7 @@ struct WorkoutView: View {
                 .foregroundStyle(theme.text)
                 .frame(width: 36, height: 36)
                 .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonRepeatBehavior(.enabled)

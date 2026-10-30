@@ -385,6 +385,9 @@ struct IconButton: View {
                             in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous)
                     .stroke(highlighted ? tint : theme.line, lineWidth: 1))
+                // Zone de toucher de 44 × 44 pt (HIG), le dessin reste à 36
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
     }
 }

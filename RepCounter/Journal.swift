@@ -50,14 +50,14 @@ struct JournalHoursSettings: View {
                 .font(theme.font(13, .bold))
                 .foregroundStyle(theme.text)
             Spacer()
-            Button(action: minus) { Text("‹").font(theme.font(18, .bold)).frame(width: 36, height: 32) }
+            Button(action: minus) { Text("‹").font(theme.font(18, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
                 .accessibilityLabel("\(label) plus tôt")
             Text(JournalHours.label(value))
                 .font(theme.font(15, .bold))
                 .foregroundStyle(theme.text)
                 .monospacedDigit()
                 .frame(width: 64)
-            Button(action: plus) { Text("›").font(theme.font(18, .bold)).frame(width: 36, height: 32) }
+            Button(action: plus) { Text("›").font(theme.font(18, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
                 .accessibilityLabel("\(label) plus tard")
         }
         .buttonStyle(.plain)
