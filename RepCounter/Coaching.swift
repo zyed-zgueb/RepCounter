@@ -126,9 +126,8 @@ struct StateDotTip: View {
 
 // MARK: - Vue Coaching
 
-/// Le Coaching (skill reps-ux) : l'avenir et le plan d'un exercice, l'exercice en grand titre
-/// natif (un glissement, les chevrons de la barre ou le menu du titre passent à un autre de Mes
-/// exercices). Du plus proche au plus lointain : la
+/// Le Coaching (skill reps-ux) : l'avenir et le plan d'un exercice, l'exercice en titre natif
+/// (un glissement ou le menu du titre passent à un autre de Mes exercices). Du plus proche au plus lointain : la
 /// séance du jour, l'objectif (ou l'invitation à en fixer un), le chemin jusqu'à lui, le bloc
 /// en cours, puis l'état (phase, Forme, ressenti). Sans objectif, le plan tourne quand même sur
 /// la séance habituelle : seul le chemin attend un objectif.
@@ -203,23 +202,20 @@ struct CoachingView: View {
                 .simultaneousGesture(swipe)
             }
             .background(theme.background.ignoresSafeArea())
-            // Le titre est l'exercice courant ; ‹ › et le menu du titre passent à un autre
+            // Le titre est l'exercice courant, en ligne pour que son menu soit toujours accessible
+            // (comme Photos ou Notes) ; le menu ou un glissement passent à un autre exercice
             .navigationTitle(exercise.shortTitle)
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarTitleMenu {
-                ForEach(exercises) { item in
-                    Button { select(item) } label: {
-                        if item == exercise { Label(item.shortTitle, systemImage: "checkmark") } else { Text(item.shortTitle) }
+                if exercises.count > 1 {
+                    Picker("Exercice", selection: exerciseSelection) {
+                        ForEach(exercises) { item in
+                            Text(item.shortTitle).tag(item)
+                        }
                     }
                 }
             }
             .toolbar {
-                if exercises.count > 1 {
-                    ToolbarItemGroup(placement: .topBarLeading) {
-                        arrow("chevron.left", -1)
-                        arrow("chevron.right", 1)
-                    }
-                }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button { showsInfo = true } label: { Image(systemName: "info.circle") }
                         .accessibilityLabel("Le plan, explications")
@@ -283,15 +279,12 @@ struct CoachingView: View {
         }
     }
 
-    private func arrow(_ systemImage: String, _ step: Int) -> some View {
-        Button { move(by: step) } label: { Image(systemName: systemImage) }
-            .accessibilityLabel(step < 0 ? "Exercice précédent" : "Exercice suivant")
-    }
-
-    private func select(_ item: Exercise) {
-        guard item != exercise else { return }
-        UISelectionFeedbackGenerator().selectionChanged()
-        withAnimation(.easeInOut(duration: 0.2)) { exercise = item }
+    /// Le choix de l'exercice dans le menu du titre (le système dessine la coche).
+    private var exerciseSelection: Binding<Exercise> {
+        Binding(get: { exercise }, set: { item in
+            guard item != exercise else { return }
+            withAnimation(.easeInOut(duration: 0.2)) { exercise = item }
+        })
     }
 
     /// Glisser à gauche ou à droite : l'exercice suivant ou précédent (le défilement vertical reste).
@@ -340,9 +333,14 @@ private struct TodayCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            CardHeader(symbol: "calendar", title: "Aujourd'hui") {
+                if plan.status == .due { intensity(plan.today) }
+            }
             switch plan.status {
             case .due:
-                title("Aujourd'hui", plan.today)
+                if let mark = mark(plan.today) {
+                    MonitorLabel(mark, color: theme.text)
+                }
                 session(plan.today, done: todaySets.isEmpty ? nil : todaySets)
                 Button("Démarrer", action: onStart)
                     .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 48, fontSize: 13))
@@ -377,17 +375,24 @@ private struct TodayCard: View {
                 MonitorLabel(mark, color: theme.text)
             }
             Spacer(minLength: 4)
-            Circle().fill(day.color(theme)).frame(width: 8, height: 8)
-            MonitorLabel(Intensity.word(day.intensity), color: day.color(theme))
+            intensity(day)
         }
         .accessibilityElement(children: .combine)
     }
 
+    /// L'intensité du jour : une pastille et son mot, dans sa couleur.
+    private func intensity(_ day: TrainingPlan.Today) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(day.color(theme)).frame(width: 8, height: 8)
+            MonitorLabel(Intensity.word(day.intensity), color: day.color(theme))
+        }
+    }
+
     private func mark(_ day: TrainingPlan.Today) -> String? {
         switch day {
-        case .light: return "· ! léger"
-        case .deload: return "· allégée"
-        case .test: return "· ◆ test"
+        case .light: return "! léger"
+        case .deload: return "allégée"
+        case .test: return "◆ test"
         case .session: return nil
         }
     }
@@ -494,7 +499,7 @@ private struct FirstSessionCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            MonitorLabel("Aujourd'hui", color: theme.text)
+            CardHeader(symbol: "calendar", title: "Aujourd'hui")
             Text("Fais une première séance : le plan partira de ton niveau.")
                 .font(theme.font(13))
                 .foregroundStyle(theme.text)
@@ -523,7 +528,8 @@ private struct GoalInvitation: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            MonitorLabel("⌖ Fixe un objectif pour voir ton chemin", color: theme.text)
+            CardHeader(symbol: "scope", title: "Objectif")
+            MonitorLabel("Fixe un objectif pour voir ton chemin", color: theme.text)
             if let level, let proposal = Self.proposal(level) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("\(level)")
@@ -562,30 +568,35 @@ private struct GoalHeader: View {
 
     var body: some View {
         if let goal {
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 0) {
-                    MonitorLabel(goal.date.map { "⌖ pour le \(Format.shortDate($0))" } ?? "⌖ objectif")
-                    Text("\(goal.target)")
-                        .font(theme.font(64, .bold))
-                        .foregroundStyle(theme.ok)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                    MonitorLabel("\(exercise.shortTitle.lowercased()) d'affilée")
+            VStack(alignment: .leading, spacing: 4) {
+                CardHeader(symbol: "scope", title: "Objectif") {
+                    if let date = goal.date { MonitorLabel("pour le \(Format.shortDate(date))") }
                 }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 10) {
-                    HStack(spacing: 6) {
-                        symbolButton("pencil", label: "Modifier l'objectif", action: onEdit)
-                        symbolButton("ellipsis", label: "Menu de l'objectif", action: onMenu)
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("\(goal.target)")
+                            .font(theme.font(64, .bold))
+                            .foregroundStyle(theme.ok)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                        MonitorLabel("\(exercise.shortTitle.lowercased()) d'affilée")
                     }
-                    figure("niveau", current)
-                    figure("reste", max(goal.target - current, 0))
+                    Spacer(minLength: 8)
+                    VStack(alignment: .trailing, spacing: 10) {
+                        HStack(spacing: 6) {
+                            symbolButton("pencil", label: "Modifier l'objectif", action: onEdit)
+                            symbolButton("ellipsis", label: "Menu de l'objectif", action: onMenu)
+                        }
+                        figure("niveau", current)
+                        figure("reste", max(goal.target - current, 0))
+                    }
+                    .padding(.bottom, 6)
                 }
-                .padding(.bottom, 6)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Objectif \(goal.target) \(exercise.shortTitle.lowercased()) d'affilée, niveau \(current)")
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Objectif \(goal.target) \(exercise.shortTitle.lowercased()) d'affilée, niveau \(current)")
+            .coachingCard(theme)
         }
     }
 
@@ -602,7 +613,7 @@ private struct GoalHeader: View {
     private func symbolButton(_ systemImage: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 17, weight: .bold))
+                .font(theme.font(17, .bold))
                 .foregroundStyle(theme.dim)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
@@ -693,16 +704,11 @@ private struct StateCard: View {
         let forms = stats.countingIsReliable ? Array(stats.formResults.suffix(8).map(\.result)) : []
         let last = stats.sessions.first
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                MonitorLabel("État")
-                Spacer(minLength: 4)
+            CardHeader(symbol: "waveform.path.ecg", title: "État", opens: true) {
                 Circle().fill(phase.stateColor(theme) ?? theme.dim).frame(width: 8, height: 8)
                 Text(symbols: (phase.isAlert ? "! " : "") + phase.title)
                     .font(theme.font(13, .bold))
                     .foregroundStyle(theme.text)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(theme.dim)
             }
             HStack {
                 MonitorLabel("Forme")
@@ -895,7 +901,7 @@ private struct GoalEditor: View {
             withAnimation(.snappy(duration: 0.15)) { target = min(max(target + step, 1), 500) }
         } label: {
             Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .bold))
+                .font(theme.font(16, .bold))
                 .foregroundStyle(theme.text)
                 .frame(width: 48, height: 48)
                 .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))

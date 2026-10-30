@@ -102,8 +102,13 @@ struct JournalCard: View {
     let missed: Set<Date>
     let onDelete: (SessionRecord) -> Void
     @State private var shownDays = 28
+    /// La séance ouverte (poussée dans l'historique).
+    @State private var opened: SessionRecord?
 
-    private static let rowHeight: CGFloat = 26
+    /// Une ligne par jour, touchable en entier : 44 pt (HIG).
+    private static let rowHeight: CGFloat = 44
+    /// Hauteur des silhouettes dans la ligne.
+    private static let silhouetteHeight: CGFloat = 24
     private static let labelWidth: CGFloat = 40
     private static let totalWidth: CGFloat = 38
 
@@ -111,9 +116,8 @@ struct JournalCard: View {
         let days = self.days
         let records = stats.recordSessions
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                MonitorLabel("Journal · \(JournalHours.label(start)) → \(JournalHours.label(end))")
-                Spacer()
+            CardHeader(symbol: "calendar.day.timeline.left", title: "Journal") {
+                MonitorLabel("\(JournalHours.label(start)) → \(JournalHours.label(end))")
                 MonitorLabel("Σ")
                     .frame(width: Self.totalWidth, alignment: .trailing)
             }
@@ -136,7 +140,14 @@ struct JournalCard: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+        .overlay {
+            if !theme.isSystem {
+                RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1)
+            }
+        }
+        .navigationDestination(item: $opened) { session in
+            SessionDetailView(session: session, stats: HistoryStats(sessions: stats.sessions, exercise: session.exercise))
+        }
     }
 
     /// Les jours montrés, aujourd'hui d'abord.
@@ -163,8 +174,36 @@ struct JournalCard: View {
         }
     }
 
+    /// Le jour, touchable en entier : une séance, on l'ouvre ; plusieurs, un menu (heure et total)
+    /// les liste ; appui long, les supprimer une à une.
+    @ViewBuilder
     private func row(_ day: Date, index: Int, records: Set<PersistentIdentifier>) -> some View {
-        let sessions = stats.sessions.filter { stats.calendar.isDate($0.start, inSameDayAs: day) }.reversed()
+        let sessions = Array(stats.sessions.filter { stats.calendar.isDate($0.start, inSameDayAs: day) }.reversed())
+        let content = rowContent(day, index: index, sessions: sessions, records: records)
+        Group {
+            if sessions.count == 1, let session = sessions.first {
+                Button { opened = session } label: { content }
+                    .buttonStyle(.plain)
+            } else if sessions.count > 1 {
+                Menu {
+                    ForEach(sessions, id: \.persistentModelID) { session in
+                        Button("\(Format.time(session.start)) · \(session.totalReps) reps") { opened = session }
+                    }
+                } label: { content }
+            } else {
+                content
+            }
+        }
+        .contextMenu {
+            ForEach(sessions, id: \.persistentModelID) { session in
+                Button(role: .destructive) { onDelete(session) } label: {
+                    Label("Supprimer la séance de \(Format.time(session.start))", systemImage: "trash")
+                }
+            }
+        }
+    }
+
+    private func rowContent(_ day: Date, index: Int, sessions: [SessionRecord], records: Set<PersistentIdentifier>) -> some View {
         let isToday = stats.calendar.isDate(day, inSameDayAs: stats.now)
         let isMonday = Schedule.isoWeekday(day, calendar: stats.calendar) == 1
         let total = sessions.reduce(0) { $0 + $1.totalReps }
@@ -196,21 +235,13 @@ struct JournalCard: View {
                         .stroke(theme.line, style: StrokeStyle(lineWidth: 1, dash: [1, 4]))
                     }
                 }
-                ForEach(Array(sessions), id: \.persistentModelID) { session in
+                ForEach(sessions, id: \.persistentModelID) { session in
                     let minutes = stats.calendar.component(.hour, from: session.start) * 60
                         + stats.calendar.component(.minute, from: session.start)
-                    NavigationLink(value: session) {
-                        JournalSilhouette(session: session, record: records.contains(session.persistentModelID),
-                                          edge: minutes < start ? "‹" : (minutes > end ? "›" : nil),
-                                          height: Self.rowHeight - 6)
-                    }
-                    .buttonStyle(.plain)
-                    .position(x: Self.labelWidth + width * share(minutes), y: Self.rowHeight / 2)
-                    .contextMenu {
-                        Button(role: .destructive) { onDelete(session) } label: {
-                            Label("Supprimer la séance", systemImage: "trash")
-                        }
-                    }
+                    JournalSilhouette(session: session, record: records.contains(session.persistentModelID),
+                                      edge: minutes < start ? "‹" : (minutes > end ? "›" : nil),
+                                      height: Self.silhouetteHeight)
+                        .position(x: Self.labelWidth + width * share(minutes), y: Self.rowHeight / 2)
                 }
             }
             HStack {
@@ -234,8 +265,9 @@ struct JournalCard: View {
             // Un filet plein sous chaque lundi : les semaines se séparent
             if isMonday { Rectangle().fill(theme.dim.opacity(0.6)).frame(height: 1) }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(accessibility(day, sessions: Array(sessions), total: total))
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibility(day, sessions: sessions, total: total))
     }
 
     private func dayLabel(_ day: Date) -> String {

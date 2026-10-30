@@ -82,9 +82,7 @@ struct FormPanel: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+        .cardBackground(theme)
     }
 
     private func caption(hasResult: Bool) -> String {

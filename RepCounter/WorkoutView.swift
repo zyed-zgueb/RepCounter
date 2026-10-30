@@ -154,7 +154,7 @@ struct WorkoutView: View {
         .statusBarHidden(model.phase == .active && !model.isResting)
         .sheet(item: $model.finishedRecording) { finished in
             RecordingSheet(finished: finished)
-                .environment(\.theme, theme)
+                .systemSheet()
         }
         .onChange(of: model.phase) { _, phase in
             // Séance terminée : enregistrée aussitôt ; nouvelle séance : on repart de rien
@@ -174,8 +174,7 @@ struct WorkoutView: View {
                                buttonTitle: guideStartsSession ? "C'est parti" : "J'ai compris") {
                 if guideStartsSession { start(exercise) }
             }
-            .environment(\.theme, themeStore.current)
-            .preferredColorScheme(themeStore.current.colorScheme)
+            .systemSheet()
         }
         .onChange(of: settingsShown) { _, shown in
             if shown {
@@ -190,8 +189,7 @@ struct WorkoutView: View {
         }
         .sheet(isPresented: $showsHistory) {
             HistoryView(exercise: model.exercise)
-                .environment(\.theme, themeStore.current)
-                .preferredColorScheme(themeStore.current.colorScheme)
+                .systemSheet()
         }
         .sheet(isPresented: $showsCoaching, onDismiss: {
             // Démarrer touché dans le Coaching : la séance de cet exercice, au cadran
@@ -203,8 +201,7 @@ struct WorkoutView: View {
                 coachingStart = exercise
                 showsCoaching = false
             }
-                .environment(\.theme, themeStore.current)
-                .preferredColorScheme(themeStore.current.colorScheme)
+            .systemSheet()
         }
         .overlay(alignment: .topTrailing) {
             // Le point d'état s'explique une fois, à son premier affichage, en veille seulement
@@ -353,7 +350,7 @@ struct WorkoutView: View {
                 let elapsed = Double(total - remaining) / Double(total)
                 Dial(face: DialFace(lit: Int(elapsed * Double(DialFace.tickCount)), palette: .solid(theme.warn))) { side in
                     Text("\(remaining)")
-                        .font(theme.font(side * 0.5, .bold))
+                        .font(theme.dialFont(side * 0.5, .bold))
                         .foregroundStyle(theme.warn)
                         .contentTransition(.numericText())
                 }
@@ -377,7 +374,7 @@ struct WorkoutView: View {
                 Dial(face: CounterDialFace(lit: min(Int(model.restDuration) / Self.restSlice, slices), segments: slices, color: color)) { side in
                     VStack(spacing: side * 0.03) {
                         Text(Format.clock(model.restDuration))
-                            .font(theme.font(side * 0.24, .bold))
+                            .font(theme.dialFont(side * 0.24, .bold))
                             .foregroundStyle(color)
                             .monospacedDigit()
                             .lineLimit(1)
@@ -493,7 +490,7 @@ struct WorkoutView: View {
     private func dialCount(side: CGFloat, counting: Bool) -> some View {
         VStack(spacing: 4) {
             Text(counting ? "\(model.setReps)" : (model.tentative > 0 ? "\(model.tentative)" : "–"))
-                .font(theme.font(side * 0.36, .bold))
+                .font(theme.dialFont(side * 0.36, .bold))
                 .tracking(-side * 0.01)
                 .foregroundStyle(counting ? theme.text : (model.tentative > 0 ? theme.primary.opacity(0.5) : theme.dim))
                 .monospacedDigit()
@@ -1068,7 +1065,7 @@ private struct SessionSummary: View {
             Dial(face: DialFace(lit: DialFace.tickCount, palette: .gradient)) { side in
                 VStack(spacing: 6) {
                     Text("\(total)")
-                        .font(theme.font(side * 0.4, .bold))
+                        .font(theme.dialFont(side * 0.4, .bold))
                         .tracking(-side * 0.01)
                         .foregroundStyle(LinearGradient(colors: [theme.secondary, theme.primary],
                                                         startPoint: .leading, endPoint: .trailing))
@@ -1128,8 +1125,7 @@ private struct SessionSummary: View {
         .sheet(isPresented: $showsSupport, onDismiss: { showsTipPrompt = false }) {
             SupportView()
                 .environmentObject(tipJar)
-                .environment(\.theme, theme)
-                .preferredColorScheme(theme.colorScheme)
+                .systemSheet()
         }
     }
 

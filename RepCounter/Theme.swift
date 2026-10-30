@@ -28,20 +28,24 @@ struct AppTheme: Decodable, Identifiable, Equatable {
     let glow: Double
     let colors: Palette
 
-    var background: Color { Color(hex: colors.background) }
-    var panel: Color { Color(hex: colors.panel) }
-    var line: Color { Color(hex: colors.line) }
-    var grid: Color { Color(hex: colors.grid) }
-    var text: Color { Color(hex: colors.text) }
-    var dim: Color { Color(hex: colors.dim) }
-    var primary: Color { Color(hex: colors.primary) }
-    var secondary: Color { Color(hex: colors.secondary) }
-    var ok: Color { Color(hex: colors.ok) }
-    var warn: Color { Color(hex: colors.warn) }
-    var alarm: Color { Color(hex: colors.alarm) }
-    var calm: Color { Color(hex: colors.calm) }
-    var work: Color { Color(hex: colors.work) }
-    var max: Color { Color(hex: colors.max) }
+    /// Le thème « système » (skill reps-ux, § 11) : hors compteur, les écrans suivent le mode
+    /// clair ou sombre de l'iPhone, avec les couleurs sémantiques d'Apple, façon Santé.
+    var isSystem: Bool { id == Self.systemID }
+
+    var background: Color { isSystem ? Color(uiColor: .systemGroupedBackground) : Color(hex: colors.background) }
+    var panel: Color { isSystem ? Color(uiColor: .secondarySystemGroupedBackground) : Color(hex: colors.panel) }
+    var line: Color { isSystem ? Color(uiColor: .separator) : Color(hex: colors.line) }
+    var grid: Color { isSystem ? Color(uiColor: .quaternaryLabel) : Color(hex: colors.grid) }
+    var text: Color { isSystem ? Color(uiColor: .label) : Color(hex: colors.text) }
+    var dim: Color { isSystem ? Color(uiColor: .secondaryLabel) : Color(hex: colors.dim) }
+    var primary: Color { isSystem ? Color(uiColor: .systemBlue) : Color(hex: colors.primary) }
+    var secondary: Color { isSystem ? Color(uiColor: .systemPurple) : Color(hex: colors.secondary) }
+    var ok: Color { isSystem ? SystemPalette.ok : Color(hex: colors.ok) }
+    var warn: Color { isSystem ? Color(uiColor: .systemOrange) : Color(hex: colors.warn) }
+    var alarm: Color { isSystem ? SystemPalette.alarm : Color(hex: colors.alarm) }
+    var calm: Color { isSystem ? SystemPalette.calm : Color(hex: colors.calm) }
+    var work: Color { isSystem ? SystemPalette.work : Color(hex: colors.work) }
+    var max: Color { isSystem ? SystemPalette.max : Color(hex: colors.max) }
 
     /// L'intensité sur l'échelle continue, de 0 (calme) à 1 (maximal) ; soutenu à 0,6.
     func intensity(_ level: Double) -> Color {
@@ -58,19 +62,68 @@ struct AppTheme: Decodable, Identifiable, Equatable {
     }
 
     static let workLevel = 0.6
-    var onPrimary: Color { Color(hex: colors.onPrimary) }
+    var onPrimary: Color { isSystem ? .white : Color(hex: colors.onPrimary) }
 
-    var colorScheme: ColorScheme { scheme == "light" ? .light : .dark }
+    /// Le mode du thème ; le thème système suit celui de l'iPhone (l'écran, pas la fenêtre, que
+    /// le compteur habille de son thème).
+    var colorScheme: ColorScheme {
+        if isSystem { return SystemPalette.deviceScheme }
+        return scheme == "light" ? .light : .dark
+    }
 
+    /// Une taille de la maquette. Thème système : le style Dynamic Type le plus proche, en SF
+    /// Rounded (aucune taille fixe) ; au-delà du grand titre, la taille suit l'échelle du grand titre.
     func font(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        if isSystem {
+            if size > 34 {
+                return .system(size: UIFontMetrics(forTextStyle: .largeTitle).scaledValue(for: size), weight: weight, design: .rounded)
+            }
+            return .system(Self.textStyle(size), design: .rounded, weight: weight)
+        }
         let design: Font.Design
         switch font {
         case "rounded": design = .rounded
         case "default": design = .default
         default: design = .monospaced
         }
-        return .system(size: size, weight: weight, design: design)
+        // Compteur : les libellés suivent Dynamic Type dans la police du thème ; les grands chiffres
+        // (le nombre du cadran, calculé sur sa taille) gardent leur taille
+        if size > 34 { return .system(size: size, weight: weight, design: design) }
+        return .system(Self.textStyle(size), design: design, weight: weight)
     }
+
+    /// Une taille calculée sur celle du cadran (le nombre compté) : elle suit le cadran, pas
+    /// Dynamic Type.
+    func dialFont(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        let design: Font.Design = font == "rounded" ? .rounded : (font == "default" ? .default : .monospaced)
+        return .system(size: size, weight: weight, design: isSystem ? .rounded : design)
+    }
+
+    /// Le style Dynamic Type d'une taille de maquette.
+    static func textStyle(_ size: CGFloat) -> Font.TextStyle {
+        switch size {
+        case 30...: return .largeTitle
+        case 26..<30: return .title
+        case 21..<26: return .title2
+        case 19..<21: return .title3
+        case 17..<19: return .body
+        case 16..<17: return .callout
+        case 14..<16: return .subheadline
+        case 12.5..<14: return .footnote
+        case 11.5..<12.5: return .caption
+        default: return .caption2
+        }
+    }
+
+    static let systemID = "system"
+
+    /// Hors compteur : couleurs sémantiques, cartes à 12 pt d'arrondi, sans lueur.
+    static let system = AppTheme(
+        id: systemID, name: "Système", scheme: "light", font: "rounded", radius: 12, glow: 0,
+        colors: Palette(background: "#F2F2F7", panel: "#FFFFFF", line: "#C6C6C8", grid: "#E5E5EA",
+                        text: "#000000", dim: "#6C6C70", primary: "#007AFF", secondary: "#AF52DE",
+                        ok: "#248A3D", warn: "#C93400", alarm: "#D70015", calm: "#0062CC", work: "#B35500", max: "#D70015",
+                        onPrimary: "#FFFFFF"))
 
     /// Thème de secours si `Themes.json` est absent ou illisible.
     static let fallback = AppTheme(
@@ -98,6 +151,30 @@ final class ThemeStore: ObservableObject {
             .flatMap { try? JSONDecoder().decode(File.self, from: $0).themes } ?? []
         themes = loaded.isEmpty ? [.fallback] : loaded
         selectedID = UserDefaults.standard.string(forKey: Self.selectedKey) ?? themes[0].id
+    }
+}
+
+/// L'échelle d'intensité (§ 5), le vert « atteint » et l'alerte, en clair et en sombre, pour le
+/// thème système. Contraste mesuré sur le fond des cartes (secondarySystemGroupedBackground :
+/// #FFFFFF en clair, #1C1C1E en sombre) : 4,5:1 au moins pour tous, donc lisibles en texte.
+enum SystemPalette {
+    static let calm = adaptive(light: "#0062CC", dark: "#64B5FF")
+    static let work = adaptive(light: "#B35500", dark: "#FF9F0A")
+    static let max = adaptive(light: "#D70015", dark: "#FF6961")
+    static let ok = adaptive(light: "#1E7B34", dark: "#30D158")
+    static let alarm = adaptive(light: "#D70015", dark: "#FF6961")
+
+    private static func adaptive(light: String, dark: String) -> Color {
+        Color(uiColor: UIColor { trait in
+            UIColor(Color(hex: trait.userInterfaceStyle == .dark ? dark : light))
+        })
+    }
+
+    /// Le mode clair ou sombre de l'iPhone, lu sur l'écran : la fenêtre porte le mode du thème
+    /// du compteur, les feuilles hors compteur reprennent celui de l'iPhone.
+    static var deviceScheme: ColorScheme {
+        let screen = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.screen }.first
+        return screen?.traitCollection.userInterfaceStyle == .dark ? .dark : .light
     }
 }
 
@@ -223,11 +300,19 @@ struct MonitorLabel: View {
     }
 
     var body: some View {
-        Text(symbols: text.uppercased())
-            .font(theme.font(10, .semibold))
-            .tracking(1.5)
-            .foregroundStyle(color ?? theme.dim)
-            .lineLimit(1)
+        if theme.isSystem {
+            // Hors compteur : une étiquette en casse normale, comme Santé
+            Text(symbols: text)
+                .font(theme.font(13, .medium))
+                .foregroundStyle(color ?? theme.dim)
+                .lineLimit(1)
+        } else {
+            Text(symbols: text.uppercased())
+                .font(theme.font(10, .semibold))
+                .tracking(1.5)
+                .foregroundStyle(color ?? theme.dim)
+                .lineLimit(1)
+        }
     }
 }
 
@@ -269,9 +354,7 @@ struct MonitorPanel<Content: View, Accessory: View>: View {
             content
         }
         .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+        .cardBackground(theme)
     }
 }
 
@@ -307,9 +390,7 @@ struct MetricTile: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+        .cardBackground(theme)
     }
 }
 
@@ -350,11 +431,11 @@ struct MonitorButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let tint = color ?? theme.primary
         return configuration.label
-            .font(theme.font(fontSize, .bold))
-            .tracking(fontSize >= 14 ? 2 : 1)
+            .font(theme.isSystem ? theme.font(17, .semibold) : theme.font(fontSize, .bold))
+            .tracking(theme.isSystem ? 0 : (fontSize >= 14 ? 2 : 1))
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            .textCase(.uppercase)
+            .textCase(theme.isSystem ? nil : .uppercase)
             .foregroundStyle(filled ? theme.onPrimary : tint)
             .frame(maxWidth: .infinity)
             // 44 pt au moins (HIG), quelle que soit la hauteur demandée
@@ -362,7 +443,7 @@ struct MonitorButtonStyle: ButtonStyle {
             .background(filled ? tint : tint.opacity(0.08),
                         in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous)
-                .stroke(tint, lineWidth: filled ? 0 : 1))
+                .stroke(tint, lineWidth: filled || theme.isSystem ? 0 : 1))
             .opacity(configuration.isPressed ? 0.7 : (isEnabled ? 1 : 0.35))
     }
 }
@@ -432,5 +513,69 @@ extension View {
     /// Habille une feuille d'une barre de navigation native (titre et fermeture).
     func sheetNavigation(_ title: String, display: NavigationBarItem.TitleDisplayMode = .large) -> some View {
         SheetNavigation(title: title, display: display, content: self)
+    }
+}
+
+extension View {
+    /// Une feuille hors compteur : le thème système et le mode clair ou sombre de l'iPhone
+    /// (skill reps-ux, § 11).
+    func systemSheet() -> some View {
+        environment(\.theme, .system)
+            .preferredColorScheme(SystemPalette.deviceScheme)
+    }
+}
+
+// MARK: - Cartes
+
+extension View {
+    /// Le fond d'une carte : thème du compteur, un panneau à liseré ; thème système, une carte
+    /// façon Santé (secondarySystemGroupedBackground, 12 pt d'arrondi continu, sans liseré).
+    func cardBackground(_ theme: AppTheme) -> some View {
+        frame(maxWidth: .infinity, alignment: .leading)
+            .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
+            .overlay {
+                if !theme.isSystem {
+                    RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1)
+                }
+            }
+    }
+}
+
+/// L'en-tête d'une carte façon Santé : un SF Symbol et un libellé dans la couleur du domaine, un
+/// complément à droite (date, verdict), un chevron si la carte s'ouvre.
+struct CardHeader<Trailing: View>: View {
+    @Environment(\.theme) private var theme
+    let symbol: String
+    let title: String
+    var color: Color?
+    var opens = false
+    @ViewBuilder var trailing: () -> Trailing
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Label {
+                Text(title)
+            } icon: {
+                Image(systemName: symbol)
+            }
+            .font(theme.font(15, .semibold))
+            .foregroundStyle(color ?? theme.primary)
+            .lineLimit(1)
+            Spacer(minLength: 8)
+            trailing()
+            if opens {
+                Image(systemName: "chevron.right")
+                    .font(theme.font(13, .semibold))
+                    .foregroundStyle(Color(uiColor: .tertiaryLabel))
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+extension CardHeader where Trailing == EmptyView {
+    init(symbol: String, title: String, color: Color? = nil, opens: Bool = false) {
+        self.init(symbol: symbol, title: title, color: color, opens: opens, trailing: { EmptyView() })
     }
 }

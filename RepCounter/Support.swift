@@ -193,7 +193,7 @@ struct SupportView: View {
     private var thanks: some View {
         VStack(spacing: 10) {
             Image(systemName: "heart.fill")
-                .font(.system(size: 28))
+                .font(theme.font(28))
                 .foregroundStyle(theme.warn)
             Text("Merci !")
                 .font(theme.font(20, .bold))
@@ -252,7 +252,7 @@ struct TipPrompt: View {
                 .foregroundStyle(theme.primary)
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(theme.font(11, .bold))
                     .foregroundStyle(theme.dim)
             }
             .accessibilityLabel("Non merci")

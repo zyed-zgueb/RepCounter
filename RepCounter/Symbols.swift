@@ -9,8 +9,8 @@ enum Symbols {
         let name: String
         /// Ce que lit VoiceOver.
         let word: String
-        /// Échelle du symbole par rapport au texte (• : un petit point).
-        var scale: CGFloat = 1
+        /// Un symbole plus petit que le texte (• : un petit point), en style relatif.
+        var small = false
     }
 
     static let table: [Character: Entry] = [
@@ -18,7 +18,7 @@ enum Symbols {
         "◆": Entry(name: "diamond.fill", word: "test"),
         "✓": Entry(name: "checkmark", word: "atteint"),
         "●": Entry(name: "circle.fill", word: "fait"),
-        "•": Entry(name: "circle.fill", word: "séance", scale: 0.5),
+        "•": Entry(name: "circle.fill", word: "séance", small: true),
         "○": Entry(name: "circle", word: "prévu"),
         "!": Entry(name: "exclamationmark.circle", word: "alerte"),
         "★": Entry(name: "star.fill", word: "record"),
@@ -58,7 +58,8 @@ enum Symbols {
             if let entry = table[character], character != "!" || isAlertMark(characters, at: index) {
                 flush()
                 var image = Text(Image(systemName: entry.name))
-                if entry.scale != 1 { image = image.font(.system(size: 10 * entry.scale)) }
+                // Un demi-caption2, mis à l'échelle Dynamic Type (pas de taille fixe)
+                if entry.small { image = image.font(.system(size: UIFontMetrics(forTextStyle: .caption2).scaledValue(for: 5.5))) }
                 result = result + image
                 spoken += entry.word
             } else {

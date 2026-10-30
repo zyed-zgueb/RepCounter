@@ -49,7 +49,7 @@ struct SettingsView: View {
                                     }
                                     Spacer(minLength: 4)
                                     Image(systemName: "chevron.right")
-                                        .font(.system(size: 11, weight: .bold))
+                                        .font(theme.font(11, .bold))
                                         .foregroundStyle(theme.dim)
                                 }
                                 .frame(minHeight: 44)
@@ -95,7 +95,7 @@ struct SettingsView: View {
                                         .foregroundStyle(theme.primary)
                                         .monospacedDigit()
                                     Image(systemName: "chevron.down")
-                                        .font(.system(size: 11, weight: .bold))
+                                        .font(theme.font(11, .bold))
                                         .foregroundStyle(theme.dim)
                                         .rotationEffect(.degrees(showsYearWheel ? 180 : 0))
                                 }
@@ -180,7 +180,7 @@ struct SettingsView: View {
                                         .foregroundStyle(theme.text)
                                     Spacer()
                                     Image(systemName: "chevron.right")
-                                        .font(.system(size: 11, weight: .bold))
+                                        .font(theme.font(11, .bold))
                                         .foregroundStyle(theme.dim)
                                 }
                                 .frame(minHeight: 44)
@@ -198,7 +198,7 @@ struct SettingsView: View {
                                             .foregroundStyle(theme.text)
                                         Spacer()
                                         Image(systemName: "arrow.up.right")
-                                            .font(.system(size: 11, weight: .bold))
+                                            .font(theme.font(11, .bold))
                                             .foregroundStyle(theme.dim)
                                     }
                                     .frame(minHeight: 44)
@@ -347,7 +347,7 @@ private struct MyExercisesView: View {
                 }
             } label: {
                 Image(systemName: adding ? "plus.circle.fill" : "minus.circle.fill")
-                    .font(.system(size: 20))
+                    .font(theme.font(20))
                     .foregroundStyle(adding ? theme.ok : (locked ? theme.dim.opacity(0.4) : theme.warn))
             }
             .buttonStyle(.plain)

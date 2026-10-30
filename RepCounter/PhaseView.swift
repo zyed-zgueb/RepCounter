@@ -71,7 +71,7 @@ struct PhasePanel: View {
                     Spacer()
                     Button { showsInfo = true } label: {
                         Image(systemName: "info.circle")
-                            .font(.system(size: 17, weight: .regular))
+                            .font(theme.font(17, .regular))
                             .foregroundStyle(theme.dim)
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
@@ -105,9 +105,7 @@ struct PhasePanel: View {
                 }
             }
             .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+            .cardBackground(theme)
 
             VStack(alignment: .leading, spacing: 12) {
                 MonitorLabel("Charge · 12 semaines")
@@ -122,9 +120,7 @@ struct PhasePanel: View {
                 .foregroundStyle(theme.dim)
             }
             .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+            .cardBackground(theme)
         }
         .sheet(isPresented: $showsInfo) {
             PhaseInfoView()

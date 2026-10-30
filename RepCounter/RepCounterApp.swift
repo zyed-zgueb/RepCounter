@@ -74,8 +74,7 @@ struct RootView: View {
                 SettingsView()
                     .environmentObject(themeStore)
                     .environmentObject(tipJar)
-                    .environment(\.theme, themeStore.current)
-                    .preferredColorScheme(themeStore.current.colorScheme)
+                    .systemSheet()
             }
     }
 }

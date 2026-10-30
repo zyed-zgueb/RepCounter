@@ -79,7 +79,7 @@ Des événements datés (séances, séries, tests) se placent sur un axe de temp
 - **Une séance = sa silhouette**, posée à son heure : une barre fine par série, hauteur proportionnelle aux répétitions, verte si la cible de la série est atteinte. Plusieurs séances dans la journée tiennent sur la même ligne : c'est le but.
 - **Symboles** : ★ record ; Σ total du jour à droite ; ligne pointillée = repos ; « ! prévue, manquée » = séance du plan non faite ; < > = séance hors de la plage, posée au bord, jamais masquée.
 - **Lisibilité des lignes** : deux nuances alternées (environ 5 % en thème sombre, 7 % en thème clair) ; aujourd'hui teinté de la couleur principale (environ 12 %) ; un filet plein sous chaque lundi pour séparer les semaines.
-- **Gestes** : toucher une silhouette ouvre la séance ; appui long pour supprimer.
+- **Gestes** : la ligne du jour (44 pt) se touche en entière : une séance, on pousse son détail ; plusieurs, un menu les liste (heure et total) ; appui long, supprimer une séance.
 - **Accessibilité** : une étiquette par jour qui résume ses séances et son total.
 
 La même logique vaut ailleurs : une frise pour un bloc (semaines), une rangée L M M J V S D pour la semaine, une frise horaire pour la journée. Chaque échelle de temps a sa frise, et chacune apparaît là où l'on regarde à cette fréquence (voir section 1).

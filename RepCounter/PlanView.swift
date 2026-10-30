@@ -296,6 +296,7 @@ struct BlockCard: View {
     var body: some View {
         let level = plan.weekIntensity
         VStack(alignment: .leading, spacing: 12) {
+            CardHeader(symbol: "square.stack.3d.up.fill", title: "Bloc")
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(symbols: "B\(plan.block) · \(plan.today == .test ? "◆" : (plan.currentWeek?.short ?? "◆"))")
@@ -456,6 +457,7 @@ struct PathCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            CardHeader(symbol: "chart.line.uptrend.xyaxis", title: "Chemin")
             PathChart(plan: plan, exercise: exercise, sessions: sessions)
                 .frame(height: 160)
             Text(symbols: "● départ · • séances · ◆ test · ┄ attendu")
@@ -688,9 +690,7 @@ extension View {
     /// Le cadre commun des cartes du Coaching.
     func coachingCard(_ theme: AppTheme) -> some View {
         padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+            .cardBackground(theme)
     }
 }
 

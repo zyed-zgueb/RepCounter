@@ -17,7 +17,7 @@ struct WelcomeView: View {
             Dial(face: DialFace(lit: count * DialFace.tickCount / Self.target, palette: .gradient)) { side in
                 VStack(spacing: 6) {
                     Text("\(count)")
-                        .font(theme.font(side * 0.42, .bold))
+                        .font(theme.dialFont(side * 0.42, .bold))
                         .foregroundStyle(LinearGradient(colors: [theme.secondary, theme.primary],
                                                         startPoint: .leading, endPoint: .trailing))
                         .monospacedDigit()

@@ -24,7 +24,7 @@ struct EnduranceGauge: View {
                     .shadow(color: theme.primary.opacity(0.35 * min(theme.glow, 1)), radius: 8)
                 VStack(spacing: side * 0.02) {
                     Text("\(score)")
-                        .font(theme.font(side * 0.27, .bold))
+                        .font(theme.dialFont(side * 0.27, .bold))
                         .foregroundStyle(LinearGradient(colors: [theme.secondary, theme.primary],
                                                         startPoint: .leading, endPoint: .trailing))
                         .monospacedDigit()
@@ -32,7 +32,7 @@ struct EnduranceGauge: View {
                         .minimumScaleFactor(0.5)
                     if let level {
                         Text(level.title.uppercased())
-                            .font(theme.font(side * 0.075, .bold))
+                            .font(theme.dialFont(side * 0.075, .bold))
                             .tracking(1)
                             .foregroundStyle(theme.primary)
                             .lineLimit(1)
@@ -101,7 +101,7 @@ struct EndurancePanel: View {
                 Spacer()
                 Button { showsInfo = true } label: {
                     Image(systemName: "info.circle")
-                        .font(.system(size: 17, weight: .regular))
+                        .font(theme.font(17, .regular))
                         .foregroundStyle(theme.dim)
                         .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
@@ -170,9 +170,7 @@ struct EndurancePanel: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+        .cardBackground(theme)
         .sheet(isPresented: $showsInfo) {
             EnduranceInfoView(exercise: exercise)
                 .environment(\.theme, theme)

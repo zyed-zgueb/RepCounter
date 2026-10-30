@@ -125,8 +125,9 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
      graduée toutes les 3 h. Chaque séance est posée à son heure en silhouette (une barre fine par
      série, verte si sa cible est atteinte), ★ si record, ‹ ou › hors de la plage ; total du jour
      à droite (Σ) ; repos en pointillés ; « ! prévue, manquée » pour une séance du plan manquée.
-     Lignes alternées, aujourd'hui teinté, un filet sous chaque lundi. Toucher une silhouette
-     ouvre la séance (appui long : la supprimer) : son total, les séries en barres (cible en
+     Lignes alternées, aujourd'hui teinté, un filet sous chaque lundi. Chaque ligne fait 44 pt
+     et se touche en entier : une séance, elle s'ouvre ; plusieurs, un menu les liste (heure et
+     total) ; appui long, supprimer une séance du jour : son total, les séries en barres (cible en
      pointillés, fait plein, ✓, ◷ et le repos réel), le rythme rep par rep, puis Forme, effort et
      écart avec la précédente.
 - **Réglages** (roue dentée, en veille et à la fin) : mes exercices (− / + et poignée ≡ pour
@@ -326,8 +327,13 @@ remplace à l'affichage et VoiceOver lit un mot à leur place. Toute zone toucha
 Les thèmes habillent **le compteur seulement** (cadran, série, récupération, fin de séance) :
 c'est le monde immersif, comme l'app Exercice de la Watch. Coaching, Historique, Réglages,
 fiches et (i) suivent le mode clair ou sombre du système, avec les couleurs sémantiques
-d'Apple, façon Santé (skill reps-ux, § 11 ; passage en cours, lot 2 : ces écrans portent encore
-le thème). Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis,
+d'Apple, façon Santé (skill reps-ux, § 11) : `AppTheme.system` (`Theme.swift`), injecté par
+`.systemSheet()`. Fond `systemGroupedBackground`, cartes `secondarySystemGroupedBackground`
+(12 pt, sans liseré, en-tête symbole et libellé : `CardHeader`), textes `label` /
+`secondaryLabel`, polices Dynamic Type en SF Rounded. L'échelle d'intensité, le vert « atteint »
+et l'alerte y sont adaptatifs (`SystemPalette`, 4,5:1 au moins sur le fond des cartes, en clair
+comme en sombre). Au compteur, les libellés suivent aussi Dynamic Type (police du thème) ; le
+nombre du cadran garde sa taille calculée (`dialFont`). Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis,
 lueur, clair/sombre), choisis dans les Réglages, lus par `@Environment(\.theme)`
 (`Theme.swift`). Ajouter un thème = ajouter une entrée au fichier.
 `ThemeStore` mémorise le choix. Tous les thèmes sont gratuits. Thèmes livrés :

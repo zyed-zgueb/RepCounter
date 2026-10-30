@@ -100,11 +100,11 @@ struct HistoryView: View {
         case .activity:
             HistoryDetailView(title: "Progrès") {
                 if let exercise { EndurancePanel(stats: stats, exercise: exercise) }
-                HistoryPanel(title: "Répétitions / semaine") {
+                HistoryPanel(title: "Répétitions / semaine", symbol: "chart.bar") {
                     VolumeBars(volumes: stats.lastWeeks(12).map { stats.volume(inWeek: $0) })
                         .frame(height: 110)
                 }
-                HistoryPanel(title: "Régularité") { RegularityCalendar(stats: stats) }
+                HistoryPanel(title: "Régularité", symbol: "calendar") { RegularityCalendar(stats: stats) }
             }
         }
     }
@@ -113,7 +113,7 @@ struct HistoryView: View {
         VStack(spacing: 10) {
             // Le cadran est réservé au comptage (skill reps-ux)
             Image(systemName: "chart.bar")
-                .font(.system(size: 40, weight: .light))
+                .font(theme.font(40, .light))
                 .foregroundStyle(theme.line)
             MonitorLabel("Aucune séance")
             Text("Tes séances s'afficheront ici.")
@@ -132,28 +132,34 @@ struct HistoryView: View {
 private struct HistoryPanel<Accessory: View, Content: View>: View {
     @Environment(\.theme) private var theme
     let title: String
+    /// Le SF Symbol de l'en-tête, façon Santé (nil : une simple étiquette).
+    var symbol: String? = nil
+    /// La carte s'ouvre : un chevron.
+    var opens = false
     @ViewBuilder let accessory: () -> Accessory
     @ViewBuilder let content: () -> Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                MonitorLabel(title)
-                Spacer(minLength: 8)
-                accessory()
+            if let symbol {
+                CardHeader(symbol: symbol, title: title, opens: opens, trailing: accessory)
+            } else {
+                HStack {
+                    MonitorLabel(title)
+                    Spacer(minLength: 8)
+                    accessory()
+                }
             }
             content()
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+        .cardBackground(theme)
     }
 }
 
 extension HistoryPanel where Accessory == EmptyView {
-    init(title: String, @ViewBuilder content: @escaping () -> Content) {
-        self.init(title: title, accessory: { EmptyView() }, content: content)
+    init(title: String, symbol: String? = nil, @ViewBuilder content: @escaping () -> Content) {
+        self.init(title: title, symbol: symbol, accessory: { EmptyView() }, content: content)
     }
 }
 
@@ -194,7 +200,7 @@ private struct ExerciseFilter: View {
             // Σ et les exercices : une grille de 6 colonnes, sans défilement
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                 item(nil) {
-                    Text("Σ").font(.system(size: 18, weight: .bold))
+                    Text("Σ").font(theme.font(18, .bold))
                 }
                 ForEach(exercises) { exercise in
                     item(exercise) { ExerciseIcon(exercise: exercise, size: 22) }
@@ -242,16 +248,11 @@ private struct WeeksCard: View {
     var body: some View {
         let weeks = stats.lastWeeks(12)
         let volumes = weeks.map { stats.volume(inWeek: $0) }
-        HistoryPanel(title: "12 semaines", accessory: {
-            HStack(spacing: 6) {
-                if let verdict {
-                    Text(symbols: verdict.text)
-                        .font(theme.font(12, .bold))
-                        .foregroundStyle(verdict.up ? theme.ok : theme.text)
-                }
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(theme.dim)
+        HistoryPanel(title: "12 semaines", symbol: "chart.bar.fill", opens: true, accessory: {
+            if let verdict {
+                Text(symbols: verdict.text)
+                    .font(theme.font(13, .bold))
+                    .foregroundStyle(verdict.up ? theme.ok : theme.text)
             }
         }) {
             WeeksChart(volumes: volumes, best: bestByWeek(weeks), record: planned ? stats.bestSet?.value : nil,
@@ -534,12 +535,12 @@ struct SessionDetailView: View {
             VerticalScroll {
                 VStack(spacing: 14) {
                     overview
-                    HistoryPanel(title: "Séries", accessory: { seriesAccessory(sets) }) {
+                    HistoryPanel(title: "Séries", symbol: "chart.bar.xaxis", accessory: { seriesAccessory(sets) }) {
                         SetBarsChart(session: session)
                             .frame(height: 120)
                     }
                     if sets.contains(where: { $0.repDurations.count >= 2 }) {
-                        HistoryPanel(title: "Rythme", accessory: { MonitorLabel("s / rep") }) {
+                        HistoryPanel(title: "Rythme", symbol: "metronome", accessory: { MonitorLabel("s / rep") }) {
                             RhythmChart(sets: sets)
                                 .frame(height: 106)
                             Text("Durée de chaque répétition")
@@ -594,7 +595,7 @@ struct SessionDetailView: View {
         let form = stats.form(of: session)
         let previous = stats.previous(of: session)
         if form != nil || session.effort != nil || previous != nil || session.performanceIndex != nil {
-            HistoryPanel(title: "Séance") {
+            HistoryPanel(title: "Séance", symbol: "figure.strengthtraining.traditional") {
                 if let form {
                     line("Forme", "\(Int(form.percent.rounded())) %", color: formColor(form.zone, theme: theme))
                 }
