@@ -118,14 +118,20 @@ struct CoachingView: View {
                         if stats.isEmpty {
                             // Rien à caler : la première séance d'abord
                             FirstSessionCard(exercise: exercise) { onStart(exercise) }
-                            if goal == nil { GoalInvitation(level: nil) { editor = .new } }
+                            if goal != nil {
+                                GoalHeader(goal: goal, shiftedDate: plan?.shiftedGoalDate, exercise: exercise, current: stats.currentBest,
+                                           onEdit: { editor = .target },
+                                           onMenu: { showsMenu = true })
+                            } else {
+                                GoalInvitation(level: nil) { editor = .new }
+                            }
                         } else {
                             if let plan {
                                 TodayCard(plan: plan, todaySets: todaySets(stats)) { onStart(exercise) }
                             }
                             // Où je vais : l'objectif, le chemin, le bloc
                             if goal != nil {
-                                GoalHeader(goal: goal, exercise: exercise, current: stats.currentBest,
+                                GoalHeader(goal: goal, shiftedDate: plan?.shiftedGoalDate, exercise: exercise, current: stats.currentBest,
                                            onEdit: { editor = .target },
                                            onMenu: { showsMenu = true })
                             } else {
@@ -403,7 +409,7 @@ private struct TargetBars: View {
         }
         Chart(bars) { bar in
             if let target = bar.target {
-                BarMark(x: .value("Série", bar.name), yStart: .value("Cible", 0), yEnd: .value("Cible", target),
+                BarMark(x: .value("Série", bar.name), yStart: .value("Cible", 0.0), yEnd: .value("Cible", Double(target)),
                         width: .ratio(0.7))
                     .foregroundStyle(done == nil ? color.opacity(0.8) : theme.line.opacity(0.6))
                     .cornerRadius(3)
@@ -416,7 +422,7 @@ private struct TargetBars: View {
                     }
             }
             if let value = bar.done {
-                BarMark(x: .value("Série", bar.name), yStart: .value("Fait", 0), yEnd: .value("Fait", value),
+                BarMark(x: .value("Série", bar.name), yStart: .value("Fait", 0.0), yEnd: .value("Fait", Double(value)),
                         width: .ratio(0.45))
                     .foregroundStyle(bar.reached ? theme.ok : theme.primary)
                     .cornerRadius(2)
@@ -515,6 +521,8 @@ private struct GoalHeader: View {
     /// Lu pour que le grand chiffre (au-delà du grand titre) suive un changement de taille de texte.
     @Environment(\.dynamicTypeSize) private var typeSize
     let goal: Goal?
+    /// La date de l'objectif décalée des semaines refaites (celle du chemin), si le plan existe.
+    var shiftedDate: Date? = nil
     let exercise: Exercise
     let current: Int
     let onEdit: () -> Void
@@ -525,7 +533,7 @@ private struct GoalHeader: View {
         if let goal {
             VStack(alignment: .leading, spacing: 4) {
                 CardHeader(symbol: "scope", title: "Objectif") {
-                    if let date = goal.date { MonitorLabel("pour le \(Format.shortDate(date))") }
+                    if let date = shiftedDate ?? goal.date { MonitorLabel("pour le \(Format.shortDate(date))") }
                 }
                 HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 0) {
@@ -628,7 +636,8 @@ private struct GoalMenu: View {
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(theme.background.ignoresSafeArea())
-        .presentationDetents([.height(260)])
+        // Ajustée au texte (Dynamic Type), plus une hauteur fixe
+        .presentationDetents([.medium, .large])
     }
 
     private func row(_ symbol: String, _ title: String, _ consequence: String, action: @escaping () -> Void) -> some View {
@@ -732,13 +741,12 @@ private struct Scale: View {
     }
 }
 
-/// La Forme des dernières séances (Swift Charts), sur sa bande de variation normale ; un doigt
-/// posé donne la Forme d'une séance.
+/// La Forme des dernières séances (Swift Charts), sur sa bande de variation normale. Dans la carte
+/// État, qui s'ouvre d'une touche : pas de sélection au doigt.
 private struct FormSpark: View {
     @Environment(\.theme) private var theme
     @ScaledMetric(relativeTo: .body) private var height: CGFloat = 44
     let results: [FormResult]
-    @State private var selected: Int?
 
     var body: some View {
         let band = results.last?.band ?? 3
@@ -753,20 +761,11 @@ private struct FormSpark: View {
                     .foregroundStyle(theme.primary)
                     .symbolSize(index == results.count - 1 ? 50 : 14)
             }
-            if let selected, results.indices.contains(selected) {
-                RuleMark(x: .value("Séance", Double(selected)))
-                    .foregroundStyle(theme.dim.opacity(0.5))
-                    .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
-                        SelectionLabel(title: "\(Int(results[selected].percent.rounded())) %")
-                    }
-            }
         }
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
         .chartYScale(domain: 88...112)
         .chartXScale(domain: -0.3...(Double(max(results.count - 1, 1)) + 0.3))
-        .chartXSelection(value: Binding(get: { selected.map(Double.init) },
-                                        set: { selected = $0.map { Int($0.rounded()) } }))
         .frame(height: height)
     }
 }

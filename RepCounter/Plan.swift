@@ -183,11 +183,14 @@ struct TrainingPlan {
                 blockStart = weekStart(test.start).addingTimeInterval(week)
                 block += 1
                 if blockStart <= now { continue }
-                // Le bloc suivant commence la semaine prochaine : jusque-là, repos
+                // Le bloc suivant commence la semaine prochaine : jusque-là, repos. Ses cibles partent
+                // déjà du nouveau max (le test), pas de l'ancien
                 let next = Schedule.firstDay(days, inWeekOf: blockStart, calendar: calendar)
+                let reference = sorted.filter { !excluded.contains($0.persistentModelID) }
+                let fresh = Prescription.habitual(reference, before: now.addingTimeInterval(1), testMax: test.bestSet, calendar: calendar) ?? habit
                 return TrainingPlan(goal: goal, anchor: weekStart(anchor), blocks: blocks, block: block - 1, weeks: weeks, testDate: testDate, tests: tests,
-                                    shiftWeeks: shift, today: .session(habit.session), status: .rest, next: next,
-                                    days: [], ratios: habit.ratios, perWeek: perWeek)
+                                    shiftWeeks: shift, today: .session(fresh.session), status: .rest, next: next,
+                                    days: [], ratios: fresh.ratios, perWeek: perWeek)
             }
             let current = weeks.first { $0.isCurrent }
             let today: Today
@@ -378,7 +381,9 @@ extension HistoryStats {
             PlanAnchor.setIfNeeded(now, for: exercise)
         }
         guard let anchor = goal?.created ?? PlanAnchor.load(exercise) else { return nil }
-        let tired = Set(formResults.filter { $0.result.zone == .tired }.map { $0.session.persistentModelID })
+        // Forme basse : seulement sur un comptage fiable (sinon la carte État dit « comptage à fiabiliser »)
+        let tired = countingIsReliable
+            ? Set(formResults.filter { $0.result.zone == .tired }.map { $0.session.persistentModelID }) : []
         let lowForm = [.lowForm, .overreaching, .deloadAdvised, .persistentFatigue].contains(phase(all: all).kind)
         return TrainingPlan.make(goal: goal, anchor: anchor, sessions: sessions, tired: tired, lowForm: lowForm,
                                  weekdays: Schedule.saved(exercise), now: now, calendar: calendar)

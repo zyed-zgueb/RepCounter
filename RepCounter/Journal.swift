@@ -18,6 +18,11 @@ enum JournalHours {
 
     /// « 06:00 ».
     static func label(_ minutes: Int) -> String { String(format: "%02d:%02d", minutes / 60, minutes % 60) }
+
+    /// Pour VoiceOver : « 6 heures », « 6 heures 30 ».
+    static func spoken(_ minutes: Int) -> String {
+        "\(minutes / 60) heures" + (minutes % 60 == 0 ? "" : " \(minutes % 60)")
+    }
 }
 
 /// La carte des Réglages : début et fin réglables avec ‹ ›, et l'aperçu sur 24 h.
@@ -36,7 +41,7 @@ struct JournalHoursSettings: View {
                     plus: { end = min(24 * 60, end + JournalHours.step) })
             DayRangeBar(start: start, end: end)
                 .frame(height: 26)
-                .accessibilityLabel("Journée affichée de \(JournalHours.label(start)) à \(JournalHours.label(end))")
+                .accessibilityLabel("Journée affichée de \(JournalHours.spoken(start)) à \(JournalHours.spoken(end))")
             Text(symbols: "Hors de ces heures, une séance se place au bord, marquée ‹ ou ›.")
                 .font(theme.font(11))
                 .foregroundStyle(theme.dim)
@@ -105,12 +110,16 @@ struct JournalCard: View {
     /// La séance ouverte (poussée dans l'historique).
     @State private var opened: SessionRecord?
 
-    /// Une ligne par jour, touchable en entier : 44 pt (HIG).
-    private static let rowHeight: CGFloat = 44
+    /// Une ligne par jour, touchable en entier : 44 pt (HIG), plus avec un texte plus grand.
+    @ScaledMetric(relativeTo: .caption) private var rowHeight: CGFloat = 44
     /// Hauteur des silhouettes dans la ligne.
     private static let silhouetteHeight: CGFloat = 24
-    private static let labelWidth: CGFloat = 40
-    private static let totalWidth: CGFloat = 38
+    /// Colonnes du jour et du total : elles suivent la taille du texte.
+    @ScaledMetric(relativeTo: .caption) private var labelWidth: CGFloat = 40
+    @ScaledMetric(relativeTo: .caption) private var totalWidth: CGFloat = 38
+    /// Une séance posée au bord de la plage reste à l'intérieur : elle ne recouvre ni le jour ni
+    /// le total.
+    private static let edgeInset: CGFloat = 16
 
     var body: some View {
         let days = self.days
@@ -118,11 +127,14 @@ struct JournalCard: View {
         VStack(alignment: .leading, spacing: 6) {
             CardHeader(symbol: "calendar.day.timeline.left", title: "Journal") {
                 MonitorLabel("\(JournalHours.label(start)) → \(JournalHours.label(end))")
+                    .accessibilityLabel("de \(JournalHours.spoken(start)) à \(JournalHours.spoken(end))")
                 MonitorLabel("Σ")
-                    .frame(width: Self.totalWidth, alignment: .trailing)
+                    .accessibilityLabel("total du jour")
+                    .frame(width: totalWidth, alignment: .trailing)
             }
             hourAxis
                 .frame(height: 12)
+                .accessibilityHidden(true)
             VStack(spacing: 0) {
                 ForEach(Array(days.enumerated()), id: \.element) { index, day in
                     row(day, index: index, records: records)
@@ -145,6 +157,8 @@ struct JournalCard: View {
                 RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1)
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Journal")
         .accessibilityChartDescriptor(descriptor)
         .navigationDestination(item: $opened) { session in
             SessionDetailView(session: session, stats: HistoryStats(sessions: stats.sessions, exercise: session.exercise))
@@ -174,13 +188,13 @@ struct JournalCard: View {
 
     private var hourAxis: some View {
         GeometryReader { geometry in
-            let width = geometry.size.width - Self.labelWidth - Self.totalWidth
+            let width = geometry.size.width - labelWidth - totalWidth
             ForEach(Array(stride(from: (start + 179) / 180 * 180, through: end, by: 180)), id: \.self) { minutes in
                 Text("\(minutes / 60)h")
                     .font(theme.font(8))
                     .foregroundStyle(theme.dim)
                     .fixedSize()
-                    .position(x: Self.labelWidth + width * share(minutes), y: 6)
+                    .position(x: labelWidth + width * share(minutes), y: 6)
             }
         }
     }
@@ -224,24 +238,24 @@ struct JournalCard: View {
                 .fill(isToday ? theme.primary.opacity(0.12)
                       : (index % 2 == 1 ? theme.text.opacity(theme.colorScheme == .light ? 0.07 : 0.05) : .clear))
             GeometryReader { geometry in
-                let width = geometry.size.width - Self.labelWidth - Self.totalWidth
+                let width = geometry.size.width - labelWidth - totalWidth
                 // Graduations toutes les 3 h
                 ForEach(Array(stride(from: (start + 179) / 180 * 180, through: end, by: 180)), id: \.self) { minutes in
                     Rectangle()
                         .fill(theme.grid)
-                        .frame(width: 1, height: Self.rowHeight)
-                        .position(x: Self.labelWidth + width * share(minutes), y: Self.rowHeight / 2)
+                        .frame(width: 1, height: rowHeight)
+                        .position(x: labelWidth + width * share(minutes), y: rowHeight / 2)
                 }
                 if sessions.isEmpty {
                     if missed.contains(day) {
                         Text(symbols: "! prévue, manquée")
                             .font(theme.font(9))
                             .foregroundStyle(theme.text)
-                            .position(x: Self.labelWidth + width / 2, y: Self.rowHeight / 2)
+                            .position(x: labelWidth + width / 2, y: rowHeight / 2)
                     } else if day < stats.calendar.startOfDay(for: stats.now) {
                         Path { path in
-                            path.move(to: CGPoint(x: Self.labelWidth, y: Self.rowHeight / 2))
-                            path.addLine(to: CGPoint(x: Self.labelWidth + width, y: Self.rowHeight / 2))
+                            path.move(to: CGPoint(x: labelWidth, y: rowHeight / 2))
+                            path.addLine(to: CGPoint(x: labelWidth + width, y: rowHeight / 2))
                         }
                         .stroke(theme.line, style: StrokeStyle(lineWidth: 1, dash: [1, 4]))
                     }
@@ -252,25 +266,26 @@ struct JournalCard: View {
                     JournalSilhouette(session: session, record: records.contains(session.persistentModelID),
                                       edge: minutes < start ? "‹" : (minutes > end ? "›" : nil),
                                       height: Self.silhouetteHeight)
-                        .position(x: Self.labelWidth + width * share(minutes), y: Self.rowHeight / 2)
+                        .position(x: labelWidth + Self.edgeInset + max(width - 2 * Self.edgeInset, 0) * share(minutes),
+                                  y: rowHeight / 2)
                 }
             }
             HStack {
                 Text(dayLabel(day))
                     .font(theme.font(9, isToday ? .bold : .regular))
                     .foregroundStyle(isToday ? theme.text : theme.dim)
-                    .frame(width: Self.labelWidth, alignment: .leading)
+                    .frame(width: labelWidth, alignment: .leading)
                     .padding(.leading, 2)
                 Spacer()
                 Text(total > 0 ? "\(total)" : "")
                     .font(theme.font(10, isToday ? .bold : .regular))
                     .foregroundStyle(isToday ? theme.text : theme.dim)
                     .monospacedDigit()
-                    .frame(width: Self.totalWidth, alignment: .trailing)
+                    .frame(width: totalWidth, alignment: .trailing)
                     .padding(.trailing, 2)
             }
         }
-        .frame(height: Self.rowHeight)
+        .frame(height: rowHeight)
         .clipShape(RoundedRectangle(cornerRadius: 3))
         .overlay(alignment: .bottom) {
             // Un filet plein sous chaque lundi : les semaines se séparent
@@ -308,17 +323,21 @@ private struct JournalSilhouette: View {
     let record: Bool
     let edge: String?
     let height: CGFloat
+    /// Barres montrées au plus : la silhouette reste étroite sur sa ligne.
+    static let maxBars = 10
 
     var body: some View {
         let sets = session.orderedSets
         let top = CGFloat(max(sets.map(\.reps).max() ?? 1, 1))
         HStack(alignment: .bottom, spacing: 1) {
             if edge == "‹" { marker("‹") }
-            ForEach(Array(sets.prefix(10).enumerated()), id: \.offset) { _, set in
+            ForEach(Array(sets.prefix(Self.maxBars).enumerated()), id: \.offset) { _, set in
                 RoundedRectangle(cornerRadius: 0.8)
                     .fill(set.target.map { set.reps >= $0 } == true ? theme.ok : theme.primary)
                     .frame(width: 3, height: max(3, height * CGFloat(set.reps) / top))
             }
+            // Au-delà de 10 séries, la silhouette s'arrête et le dit
+            if sets.count > Self.maxBars { marker("+\(sets.count - Self.maxBars)") }
             if record { marker("★") }
             if edge == "›" { marker("›") }
         }

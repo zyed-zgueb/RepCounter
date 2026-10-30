@@ -340,7 +340,8 @@ remplace à l'affichage et VoiceOver lit un mot à leur place. Toute zone toucha
 44 × 44 pt au moins. La barre d'état n'est masquée que pendant une série.
 Les graphiques du Coaching et de l'historique sont en Swift Charts (`ChartKit.swift`) : hauteurs
 en `@ScaledMetric`, graduations réduites en tailles d'accessibilité, sélection au doigt (une règle
-et la valeur en haut, comme Santé). Ce qui reste dessiné à la main (cadran, frise du bloc, jauge
+et la valeur en haut, comme Santé), sauf sur une carte qui s'ouvre d'une touche (12 semaines,
+État) : le toucher l'ouvre. Ce qui reste dessiné à la main (cadran, frise du bloc, jauge
 d'intensité, journal) décrit ses données aux Audio Graphs (`SeriesChartDescriptor`). Les
 explications du premier affichage passent par TipKit (`Tips.swift`), les retours haptiques des
 vues par `.sensoryFeedback` (ceux du compteur restent dans `WorkoutModel`), et « Réduire les

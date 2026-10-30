@@ -120,7 +120,7 @@ struct EndurancePanel: View {
                         if let previous, previous > 0 {
                             // Assez d'historique : évolution sur 4 semaines
                             let change = (score - previous) / previous * 100
-                            Text(symbols: "\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) %")
+                            Text(symbols: Format.trend(change, unit: " %"))
                                 .font(theme.font(20, .bold))
                                 .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
                             Text("en 4 semaines")
@@ -130,7 +130,7 @@ struct EndurancePanel: View {
                         } else if let first, curve.points.count >= 2 {
                             // Au début : évolution depuis la première séance notée
                             let change = Int(score.rounded()) - Int(first.value.rounded())
-                            Text(symbols: "\(change >= 0 ? "▲" : "▼") \(Format.signed(change))")
+                            Text(symbols: Format.trend(Double(change)))
                                 .font(theme.font(20, .bold))
                                 .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
                             Text("depuis le \(Format.shortDate(first.date))")
@@ -289,7 +289,8 @@ struct EnduranceInfoView: View {
 func verdictColor(_ verdict: ProgressVerdict, theme: AppTheme) -> Color {
     switch verdict.kind {
     case .up: return theme.ok
-    case .down: return theme.warn
+    // Pas de couleur d'alerte (skill reps-ux, § 5) : ▼ porte le sens
+    case .down: return theme.text
     case .stable, .pending, .unreliable: return theme.dim
     }
 }

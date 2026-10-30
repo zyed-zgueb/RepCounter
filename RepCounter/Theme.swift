@@ -214,6 +214,14 @@ extension Color {
 }
 
 enum Format {
+    /// Une évolution en symbole et en valeur sans signe : « ▲ 4 % », « ▼ 5 % », « = » sous la
+    /// moitié de l'unité (le symbole porte le sens, pas de double signe).
+    static func trend(_ value: Double, unit: String = "") -> String {
+        let magnitude = Int(abs(value).rounded())
+        guard magnitude > 0 else { return "=" }
+        return "\(value > 0 ? "▲" : "▼") \(magnitude)\(unit)"
+    }
+
     /// « 1,6 » (une décimale, à la française).
     static func decimal(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(1)))

@@ -91,10 +91,11 @@ def habitual(sessions, before, test_max=None):
     rests = [r for s in recent for r in s.rests]
     rest = median(rests) if len(rests) >= 3 else 60
     rest = min(max(rnd(rest / 15) * 15, 30), 300)
+    # Des jours d'entraînement, pas des séances (séries espacées le même jour : une séance)
     weeks = {}
     for s in recent:
-        weeks[int(s.day // 7)] = weeks.get(int(s.day // 7), 0) + 1
-    per_week = max(MIN_PER_WEEK, rnd(median(weeks.values())))
+        weeks.setdefault(int(s.day // 7), set()).add(int(s.day))
+    per_week = max(MIN_PER_WEEK, rnd(median([len(d) for d in weeks.values()])))
     ratios = ratios_of(recent, rest)
     return (targets(max(1, (test_max or best) - RESERVE), ratios), rest), ratios, per_week
 
@@ -165,6 +166,11 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
             block += 1
             if block_start <= now:
                 continue
+            # Jusqu'au bloc suivant, repos ; ses cibles partent déjà du nouveau max
+            reference = [x for x in sessions if id(x) not in excluded]
+            fresh = habitual(reference, now + 1, test_max=test.best)
+            if fresh is not None:
+                habit = fresh[0]
             return dict(block=block - 1, weeks=weeks, test_day=test_day, tests=tests, shift=shift,
                         today=("session", habit), status="rest", next=block_start + days[0] - 1,
                         per_week=per_week, ratios=ratios)

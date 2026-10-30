@@ -91,23 +91,38 @@ struct TodayLine: View {
     let plan: TrainingPlan
 
     var body: some View {
-        HStack(spacing: 4) {
-            switch plan.status {
-            case .due:
-                Text("aujourd'hui ·").foregroundStyle(theme.dim)
-                Text(symbols: plan.today.label).fontWeight(.bold).foregroundStyle(plan.today.color(theme))
-            case .done:
-                Text(symbols: "fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
-                nextText
-            case .rest:
-                Text("repos").fontWeight(.bold).foregroundStyle(theme.dim)
-                nextText
-            }
+        // En grandes tailles de texte : la version courte (sans le repos), puis sur deux lignes,
+        // plutôt qu'un texte tronqué ou rétréci
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 4) { lead(plan.today.label); trail }
+            HStack(spacing: 4) { lead(plan.today.short); trail }
+            VStack(spacing: 2) { lead(plan.today.label); trail }
         }
         .font(theme.font(12))
-        .lineLimit(1)
-        .minimumScaleFactor(0.75)
+        .multilineTextAlignment(.center)
         .accessibilityElement(children: .combine)
+    }
+
+    /// « aujourd'hui · 29 · 25 · 22 », « fait ✓ » ou « repos ».
+    @ViewBuilder
+    private func lead(_ label: String) -> some View {
+        switch plan.status {
+        case .due:
+            HStack(spacing: 4) {
+                Text("aujourd'hui ·").foregroundStyle(theme.dim)
+                Text(symbols: label).fontWeight(.bold).foregroundStyle(plan.today.color(theme))
+            }
+        case .done:
+            Text(symbols: "fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
+        case .rest:
+            Text("repos").fontWeight(.bold).foregroundStyle(theme.dim)
+        }
+    }
+
+    /// « · prochaine vendredi », sauf un jour de séance.
+    @ViewBuilder
+    private var trail: some View {
+        if plan.status != .due { nextText }
     }
 
     @ViewBuilder
@@ -168,6 +183,9 @@ struct BlockFrise: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
     var showsHere = true
+    /// Largeur réelle de « ▲ tu es ici » (elle grandit avec le texte) : la marque reste dans la frise.
+    @State private var hereWidth: CGFloat = 60
+    @ScaledMetric(relativeTo: .caption2) private var hereHeight: CGFloat = 14
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -192,9 +210,13 @@ struct BlockFrise: View {
                         .font(theme.font(9))
                         .foregroundStyle(theme.text)
                         .fixedSize()
-                        .offset(x: min(max(herePosition * geometry.size.width - 6, 0), geometry.size.width - 60))
+                        .background(GeometryReader { label in
+                            Color.clear.preference(key: HereWidthKey.self, value: label.size.width)
+                        })
+                        .offset(x: min(max(herePosition * geometry.size.width - 6, 0), max(geometry.size.width - hereWidth, 0)))
                 }
-                .frame(height: 12)
+                .frame(height: hereHeight)
+                .onPreferenceChange(HereWidthKey.self) { hereWidth = $0 }
             }
         }
         .accessibilityElement(children: .ignore)
@@ -288,8 +310,14 @@ struct IntensityGauge: View {
         .accessibilityChartDescriptor(SeriesChartDescriptor(
             title: "Intensité de la semaine", summary: Intensity.word(level),
             xTitle: "Semaine", yTitle: "Intensité",
-            points: [(label: "cette semaine", value: level * 100)], unit: " %"))
+            points: [(label: "cette semaine", value: level * 100)], unit: " %", range: 0...100))
     }
+}
+
+/// La largeur mesurée de « ▲ tu es ici ».
+private struct HereWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 60
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 // MARK: - Cartes du Coaching
@@ -298,6 +326,7 @@ struct IntensityGauge: View {
 /// la semaine jour par jour, et le prévu face au fait en barres.
 struct BlockCard: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
     let plan: TrainingPlan
     let exercise: Exercise
     /// Un jour de séance a été déplacé.
@@ -308,7 +337,11 @@ struct BlockCard: View {
         VStack(alignment: .leading, spacing: 12) {
             CardHeader(symbol: "square.stack.3d.up.fill", title: "Bloc")
             TipView(BlockTip())
-            HStack(alignment: .center) {
+            // En tailles d'accessibilité, le texte et la jauge l'un sous l'autre
+            let layout = typeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                : AnyLayout(HStackLayout(alignment: .center))
+            layout {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(symbols: "B\(plan.block) · \(plan.today == .test ? "◆" : (plan.currentWeek?.short ?? "◆"))")
                         .font(theme.font(15, .bold))
@@ -319,7 +352,7 @@ struct BlockCard: View {
                         MonitorLabel("! \(redo.short) refaite · \(redo.redoReason ?? "")", color: theme.text)
                     }
                 }
-                Spacer(minLength: 8)
+                if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
                 IntensityGauge(level: level)
                     .frame(width: 112, height: 64)
             }
@@ -341,10 +374,15 @@ struct WeekDays: View {
     @Environment(\.theme) private var theme
     /// Un jour touché : retour haptique.
     @State private var toggles = 0
+    /// L'astuce du bloc est affichée : celle des jours attend (une astuce à la fois). Suivi par les
+    /// changements d'état de TipKit, donc réactif.
+    @State private var blockTipShown = true
     let plan: TrainingPlan
     let exercise: Exercise
     let onChange: () -> Void
     private static let letters = ["L", "M", "M", "J", "V", "S", "D"]
+    /// Pour VoiceOver : « M » se lirait pareil pour mardi et mercredi.
+    private static let names = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
     var body: some View {
         let spaced = plan.days.filter { $0.sessions >= 2 }
@@ -353,11 +391,11 @@ struct WeekDays: View {
                 ForEach(Array(plan.days.enumerated()), id: \.offset) { index, day in
                     Button { toggle(index + 1) } label: { cell(index, day) }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("\(Self.letters[index]) \(day.planned ? "prévu" : "repos")\(day.sessions > 0 ? ", fait" : "")\(day.missed ? ", manqué" : "")")
+                        .accessibilityLabel("\(Self.names[index]) \(day.planned ? "prévu" : "repos")\(day.sessions > 0 ? ", fait" : "")\(day.missed ? ", manqué" : "")")
                 }
             }
             // Une astuce à la fois : celle des jours attend que celle du bloc soit fermée
-            if !BlockTip().shouldDisplay {
+            if !blockTipShown {
                 TipView(DaysTip())
             }
             if let day = spaced.last {
@@ -365,6 +403,11 @@ struct WeekDays: View {
             }
         }
         .sensoryFeedback(.selection, trigger: toggles)
+        .task {
+            for await status in BlockTip().statusUpdates {
+                if case .available = status { blockTipShown = true } else { blockTipShown = false }
+            }
+        }
     }
 
     private func cell(_ index: Int, _ day: TrainingPlan.Day) -> some View {
@@ -427,7 +470,7 @@ struct WeekBars: View {
         let bars = plan.weeks.enumerated().map { Bar(id: $0.offset, week: $0.element) }
         Chart(bars) { bar in
             let color = theme.intensity(bar.week.intensity)
-            BarMark(x: .value("Semaine", bar.name), yStart: .value("Prévu", 0), yEnd: .value("Prévu", bar.week.plannedReps),
+            BarMark(x: .value("Semaine", bar.name), yStart: .value("Prévu", 0.0), yEnd: .value("Prévu", Double(bar.week.plannedReps)),
                     width: .ratio(0.7))
                 .foregroundStyle(color.opacity(bar.week.kind == .deload ? 0.18 : 0.28))
                 .cornerRadius(3)
@@ -439,7 +482,7 @@ struct WeekBars: View {
                     }
                 }
             if bar.week.doneReps > 0 {
-                BarMark(x: .value("Semaine", bar.name), yStart: .value("Fait", 0), yEnd: .value("Fait", bar.week.doneReps),
+                BarMark(x: .value("Semaine", bar.name), yStart: .value("Fait", 0.0), yEnd: .value("Fait", Double(bar.week.doneReps)),
                         width: .ratio(0.45))
                     .foregroundStyle((bar.reached ? theme.ok : color).opacity(bar.week.isCurrent ? 0.95 : 0.8))
                     .cornerRadius(2)
@@ -496,6 +539,7 @@ struct PathCard: View {
             Text(symbols: "● départ · • séances · ◆ test · ┄ attendu")
                 .font(theme.font(10))
                 .foregroundStyle(theme.dim)
+                .accessibilityLabel("Légende : rond plein, le départ ; petits points, les séances ; losange, un test ; pointillés, le rythme attendu")
             HStack {
                 MonitorLabel(plan.today == .test ? "◆ test aujourd'hui" : "◆ prochain test")
                 Spacer()
@@ -552,6 +596,14 @@ private struct PathChart: View {
         let value: Int
     }
 
+    /// Un sommet d'une ligne (attendu, projection) : identifiant propre, même si deux dates
+    /// coïncident.
+    private struct LinePoint: Identifiable {
+        let id: Int
+        let date: Date
+        let value: Int
+    }
+
     /// La meilleure série de chaque séance depuis le début du plan, hors séances de test.
     private var points: [Point] {
         let start = plan.goal?.created ?? plan.anchor
@@ -565,7 +617,10 @@ private struct PathChart: View {
     var body: some View {
         let points = self.points
         let start = plan.goal?.created ?? plan.anchor
-        let end = max(max(plan.shiftedGoalDate ?? plan.testDate, plan.testDate), start.addingTimeInterval(16 * 7 * 86_400))
+        // L'axe englobe aujourd'hui, les séances, les tests et la date de l'objectif (même dépassée)
+        let now = Date()
+        let latest = ([now, plan.testDate] + points.map(\.date) + plan.tests.map(\.date) + [plan.shiftedGoalDate].compactMap { $0 }).max() ?? now
+        let end = max(latest.addingTimeInterval(7 * 86_400), start.addingTimeInterval(16 * 7 * 86_400))
         // Les blocs : ceux faits ou en cours, puis ceux à venir jusqu'à la fin de l'axe
         var starts = plan.blocks.map(\.start)
         var next = (plan.blocks.last?.test ?? start).addingTimeInterval(7 * 86_400)
@@ -573,13 +628,16 @@ private struct PathChart: View {
             starts.append(next)
             next = next.addingTimeInterval(5 * 7 * 86_400)
         }
-        let blockStarts = starts.filter { $0 < end }
+        // Rien avant le début de l'axe (blocs ou tests antérieurs au départ)
+        let blockStarts = starts.filter { $0 >= start && $0 < end }
         let upcoming = (plan.blocks.map(\.test) + starts.dropFirst(plan.blocks.count).map { $0.addingTimeInterval(4 * 7 * 86_400) })
             .dropFirst(plan.tests.count)
-            .filter { $0 <= end }
+            .filter { $0 >= start && $0 <= end }
         let lastMax = plan.tests.last?.value ?? points.last?.value ?? plan.goal?.start
-        // L'échelle englobe le départ, l'objectif, les tests et les séances
-        var values = plan.tests.map { Double($0.value) } + points.map { Double($0.value) }
+        let fallback = Double(lastMax ?? 0)
+        let upcomingLevels = upcoming.map { plan.expected(at: $0) ?? fallback }
+        // L'échelle englobe le départ, l'objectif, les tests (faits et à venir) et les séances
+        var values = plan.tests.map { Double($0.value) } + points.map { Double($0.value) } + upcomingLevels
         if let goal = plan.goal { values += [Double(goal.start), Double(goal.target)] }
         let low = (values.min() ?? 0) - 2, high = (values.max() ?? 10) + 2
         let chosen = selected.flatMap { date in points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) } }
@@ -589,8 +647,8 @@ private struct PathChart: View {
             Chart {
                 blockMarks(blockStarts)
                 goalMarks(end: end)
-                sessionMarks(points, upcoming: Array(upcoming), level: { plan.expected(at: $0) ?? lastMax.map(Double.init) ?? low + 2 })
-                testMarks
+                sessionMarks(points, upcoming: Array(upcoming), level: { plan.expected(at: $0) ?? fallback })
+                testMarks(from: start)
                 todayMarks(chosen)
             }
             .chartXScale(domain: start...end)
@@ -632,15 +690,17 @@ private struct PathChart: View {
                         .foregroundStyle(theme.ok)
                 }
             if let goalDate = plan.shiftedGoalDate {
-                ForEach([(goal.created, goal.start), (goalDate, goal.target)], id: \.0) { date, value in
-                    LineMark(x: .value("Date", date), y: .value("Répétitions", Double(value)), series: .value("Ligne", "attendu"))
+                ForEach([LinePoint(id: 0, date: goal.created, value: goal.start),
+                         LinePoint(id: 1, date: goalDate, value: goal.target)]) { point in
+                    LineMark(x: .value("Date", point.date), y: .value("Répétitions", Double(point.value)), series: .value("Ligne", "attendu"))
                         .foregroundStyle(theme.dim)
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
                 }
             }
             if let projection = plan.projection, let last = plan.tests.last {
-                ForEach([(last.date, last.value), (min(projection, end), goal.target)], id: \.0) { date, value in
-                    LineMark(x: .value("Date", date), y: .value("Répétitions", Double(value)), series: .value("Ligne", "projection"))
+                ForEach([LinePoint(id: 0, date: last.date, value: last.value),
+                         LinePoint(id: 1, date: min(projection, end), value: goal.target)]) { point in
+                    LineMark(x: .value("Date", point.date), y: .value("Répétitions", Double(point.value)), series: .value("Ligne", "projection"))
                         .foregroundStyle(theme.primary)
                         .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [2, 3]))
                 }
@@ -666,10 +726,10 @@ private struct PathChart: View {
         }
     }
 
-    /// Les tests faits (◆ pleins, chiffrés) et le départ ●.
+    /// Les tests faits depuis le début de l'axe (◆ pleins, chiffrés) et le départ ●.
     @ChartContentBuilder
-    private var testMarks: some ChartContent {
-        ForEach(plan.tests, id: \.date) { test in
+    private func testMarks(from start: Date) -> some ChartContent {
+        ForEach(plan.tests.filter { $0.date >= start }, id: \.date) { test in
             PointMark(x: .value("Date", test.date), y: .value("Répétitions", Double(test.value)))
                 .symbol {
                     Image(systemName: "diamond.fill")

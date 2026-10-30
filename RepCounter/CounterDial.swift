@@ -19,16 +19,33 @@ struct CounterDialFace: View {
     var live: LiveSignal? = nil
     /// Anneau intérieur pâle (avant la validation, en veille).
     var palePulse = false
+    /// Récupération : un segment par tranche de 15 s (VoiceOver et Audio Graphs le disent).
+    var rest = false
 
     var body: some View {
         ZStack {
             SegmentRing(lit: lit, segments: segments, color: color, goalSegment: goalSegment)
             if let live { LiveRing(live: live, pale: palePulse) }
         }
-        .accessibilityChartDescriptor(SeriesChartDescriptor(
-            title: "Tour en cours", summary: "\(min(lit, segments)) segments allumés sur \(segments)" + (goalSegment.map { ", objectif au segment \($0)" } ?? ""),
-            xTitle: "Segment", yTitle: "Allumé",
-            points: (1...max(segments, 1)).map { (label: "\($0)", value: $0 <= lit ? 1 : 0) }))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(summary)
+        .accessibilityChartDescriptor(descriptor)
+    }
+
+    private var summary: String {
+        let done = min(lit, segments)
+        if rest { return "Repos : \(done) tranches de 15 secondes sur \(segments)" }
+        return "\(done) segments allumés sur \(segments)" + (goalSegment.map { ", objectif au segment \($0)" } ?? "")
+    }
+
+    /// Le cadran pour les Audio Graphs : un point par segment, 1 allumé, 0 éteint.
+    private var descriptor: SeriesChartDescriptor {
+        let count = max(segments, 1)
+        let points: [(label: String, value: Double)] = (1...count).map { index in
+            (label: "\(index)", value: index <= lit ? 1.0 : 0.0)
+        }
+        return SeriesChartDescriptor(title: rest ? "Repos, tranches de 15 s" : "Tour en cours", summary: summary,
+                                     xTitle: rest ? "Tranche" : "Segment", yTitle: "Allumé", points: points, range: 0...1)
     }
 }
 

@@ -76,12 +76,20 @@ struct HistoryView: View {
     private func missedDays(_ stats: HistoryStats) -> Set<Date> {
         guard exercise != nil, let plan = stats.plan(all: sessions) else { return [] }
         let weekdays = Schedule.days(Schedule.saved(exercise ?? .auto) ?? Schedule.defaultWeekdays(plan.perWeek))
+        // Du jour du test jusqu'au bloc suivant (le lundi après le test fait), pas de séance prévue :
+        // c'est la pause du test, comme dans le Coaching
+        let pauses = plan.blocks.enumerated().map { index, block -> Range<Date> in
+            let done = plan.tests.first { $0.block == index + 1 }
+            let end = done.map { Schedule.weekStart($0.date, calendar: stats.calendar).addingTimeInterval(7 * 86_400) } ?? .distantFuture
+            return block.test..<max(end, block.test)
+        }
         var missed = Set<Date>()
         var week = Schedule.weekStart(stats.now, calendar: stats.calendar)
         for _ in 0..<20 where week >= plan.anchor {
             let end = week.addingTimeInterval(7 * 86_400)
             let inWeek = stats.sessions.filter { $0.start >= week && $0.start < end }
-            for day in Schedule.week(weekdays, start: week, sessions: inWeek, now: stats.now, calendar: stats.calendar).days where day.missed {
+            for day in Schedule.week(weekdays, start: week, sessions: inWeek, now: stats.now, calendar: stats.calendar).days
+                where day.missed && !pauses.contains(where: { $0.contains(day.date) }) {
                 missed.insert(day.date)
             }
             week = week.addingTimeInterval(-7 * 86_400)
@@ -323,12 +331,6 @@ private struct WeeksChart: View {
     let record: Int?
     /// Le volume de la semaine face à la moyenne des précédentes, en % (nil : pas assez d'historique).
     let trend: Double?
-    @State private var selected: Int?
-
-    /// L'axe est continu (Double) : la sélection revient à la semaine la plus proche.
-    private var selection: Binding<Double?> {
-        Binding(get: { selected.map(Double.init) }, set: { selected = $0.map { Int($0.rounded()) } })
-    }
 
     private struct Point: Identifiable {
         let id: Int
@@ -359,9 +361,9 @@ private struct WeeksChart: View {
             } else {
                 Chart {
                     ForEach(points) { point in
-                        LineMark(x: .value("Semaine", Double(point.id)), y: .value("Série max", point.value))
+                        LineMark(x: .value("Semaine", Double(point.id)), y: .value("Série max", Double(point.value)))
                             .foregroundStyle(theme.primary)
-                        PointMark(x: .value("Semaine", Double(point.id)), y: .value("Série max", point.value))
+                        PointMark(x: .value("Semaine", Double(point.id)), y: .value("Série max", Double(point.value)))
                             .foregroundStyle(theme.primary)
                             .symbolSize(point.record ? 0 : 24)
                             .annotation(position: .overlay) {
@@ -372,20 +374,13 @@ private struct WeeksChart: View {
                                 }
                             }
                     }
-                    if let record, let last = points.last(where: { $0.value == record }), selected == nil {
-                        PointMark(x: .value("Semaine", Double(last.id)), y: .value("Série max", last.value))
+                    if let record, let last = points.last(where: { $0.value == record }) {
+                        PointMark(x: .value("Semaine", Double(last.id)), y: .value("Série max", Double(last.value)))
                             .symbolSize(0)
                             .annotation(position: .top, spacing: 6) {
                                 Text(symbols: "★ \(record)")
                                     .font(theme.font(11, .bold))
                                     .foregroundStyle(theme.text)
-                            }
-                    }
-                    if let selected {
-                        RuleMark(x: .value("Semaine", Double(selected)))
-                            .foregroundStyle(theme.dim.opacity(0.5))
-                            .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
-                                SelectionLabel(title: selectionTitle(selected), detail: weekName(selected))
                             }
                     }
                 }
@@ -395,26 +390,21 @@ private struct WeeksChart: View {
                 .chartYAxis {
                     AxisMarks(position: .trailing, values: .automatic(desiredCount: ChartKit.ticks(typeSize, regular: 3)))
                 }
-                .chartXSelection(value: selection)
                 .frame(height: lineHeight)
             }
-            MonitorLabel(trend.map { "reps / sem. · \($0 >= 0 ? "▲" : "▼") \(Int(abs($0).rounded())) %" } ?? "reps / sem.")
+            MonitorLabel(trend.map { "reps / sem. · " + Format.trend($0, unit: " %") } ?? "reps / sem.")
             Chart {
                 ForEach(Array(volumes.enumerated()), id: \.offset) { index, value in
-                    BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", value), width: .fixed(12))
+                    BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", Double(value)), width: .fixed(12))
                         .foregroundStyle(index == current ? theme.primary : theme.line)
                         .cornerRadius(2)
                         .annotation(position: .top) {
-                            if index == current, value > 0, selected == nil {
+                            if index == current, value > 0 {
                                 Text("\(value)")
                                     .font(theme.font(11, .bold))
                                     .foregroundStyle(theme.text)
                             }
                         }
-                }
-                if let selected {
-                    RuleMark(x: .value("Semaine", Double(selected)))
-                        .foregroundStyle(theme.dim.opacity(0.5))
                 }
             }
             .chartXScale(domain: domain)
@@ -431,20 +421,8 @@ private struct WeeksChart: View {
             .chartYAxis {
                 AxisMarks(position: .trailing, values: .automatic(desiredCount: ChartKit.ticks(typeSize, regular: 2)))
             }
-            .chartXSelection(value: selection)
             .frame(height: barHeight)
         }
-    }
-
-    /// « max 28 · 140 reps » pour la semaine choisie.
-    private func selectionTitle(_ index: Int) -> String {
-        guard volumes.indices.contains(index) else { return "" }
-        let max = best.indices.contains(index) ? best[index].value.map { "max \($0) · " } ?? "" : ""
-        return "\(max)\(volumes[index]) reps"
-    }
-
-    private func weekName(_ index: Int) -> String {
-        index == current ? "cette semaine" : "il y a \(current - index) sem."
     }
 }
 
@@ -464,21 +442,27 @@ private struct VolumeBars: View {
 
     var body: some View {
         let current = volumes.count - 1
-        let mean = Double(volumes.dropLast().reduce(0, +)) / Double(max(volumes.count - 1, 1))
+        // La moyenne des semaines précédentes qui ont une séance, comme la tendance de la carte ;
+        // aucune ligne sous 2 semaines actives
+        let previous = volumes.dropLast().filter { $0 > 0 }
+        let mean: Double? = previous.count >= WeeksCard.trendWeeks
+            ? Double(previous.reduce(0, +)) / Double(previous.count) : nil
         Chart {
             ForEach(Array(volumes.enumerated()), id: \.offset) { index, value in
-                BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", value), width: .fixed(14))
+                BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", Double(value)), width: .fixed(14))
                     .foregroundStyle(index == current ? theme.primary : theme.line)
                     .cornerRadius(2)
             }
-            RuleMark(y: .value("Moyenne", mean))
-                .foregroundStyle(theme.dim.opacity(0.7))
-                .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                .annotation(position: .top, alignment: .leading) {
-                    Text("moy. \(Int(mean.rounded()))")
-                        .font(theme.font(11))
-                        .foregroundStyle(theme.dim)
-                }
+            if let mean {
+                RuleMark(y: .value("Moyenne", mean))
+                    .foregroundStyle(theme.dim.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                    .annotation(position: .top, alignment: .leading) {
+                        Text("moy. \(Int(mean.rounded()))")
+                            .font(theme.font(11))
+                            .foregroundStyle(theme.dim)
+                    }
+            }
             if let selected, volumes.indices.contains(selected) {
                 RuleMark(x: .value("Semaine", Double(selected)))
                     .foregroundStyle(theme.dim.opacity(0.5))
@@ -531,10 +515,10 @@ struct LineChart: View {
         let chosen = selected.flatMap { x in points.min { abs($0.x - x) < abs($1.x - x) } }
         Chart {
             ForEach(points) { point in
-                LineMark(x: .value("Jour", point.x), y: .value("Score", point.value))
+                LineMark(x: .value("Jour", point.x), y: .value("Score", Double(point.value)))
                     .foregroundStyle(theme.primary)
                     .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                PointMark(x: .value("Jour", point.x), y: .value("Score", point.value))
+                PointMark(x: .value("Jour", point.x), y: .value("Score", Double(point.value)))
                     .foregroundStyle(theme.primary)
                     .symbolSize(point.id == points.count - 1 ? 50 : 16)
             }
@@ -562,6 +546,8 @@ struct LineChart: View {
 /// Calendrier des 16 dernières semaines : un carré par jour, plus intense quand on a fait plus.
 private struct RegularityCalendar: View {
     @Environment(\.theme) private var theme
+    /// La colonne des lettres du jour suit la taille du texte.
+    @ScaledMetric(relativeTo: .caption2) private var letterWidth: CGFloat = 12
     let stats: HistoryStats
     private static let weeks = 16
 
@@ -578,7 +564,7 @@ private struct RegularityCalendar: View {
                         Text(dayLetter(day, from: firstWeek))
                             .font(theme.font(9))
                             .foregroundStyle(theme.dim)
-                            .frame(width: 12, alignment: .leading)
+                            .frame(width: letterWidth, alignment: .leading)
                         ForEach(0..<Self.weeks, id: \.self) { week in
                             let date = stats.calendar.date(byAdding: .day, value: week * 7 + day, to: firstWeek) ?? firstWeek
                             Spacer(minLength: 2)
@@ -690,7 +676,8 @@ struct SessionDetailView: View {
     /// Forme, effort, et comparaison avec la séance précédente : trois lignes courtes.
     @ViewBuilder
     private var footnotes: some View {
-        let form = stats.form(of: session)
+        // Pas de Forme sur un comptage juste à moins de 90 % (comme la carte État)
+        let form = stats.countingIsReliable ? stats.form(of: session) : nil
         let previous = stats.previous(of: session)
         if form != nil || session.effort != nil || previous != nil || session.performanceIndex != nil {
             HistoryPanel(title: "Séance", symbol: "figure.strengthtraining.traditional") {
@@ -706,7 +693,7 @@ struct SessionDetailView: View {
                 if let previous {
                     let delta = session.totalReps - previous.totalReps
                     line("vs \(Format.dayName(previous.start))",
-                         delta == 0 ? "= \(previous.totalReps)" : "\(delta > 0 ? "▲" : "▼") \(Format.signed(delta))",
+                         delta == 0 ? "= \(previous.totalReps)" : Format.trend(Double(delta)),
                          color: delta > 0 ? theme.ok : theme.text)
                 }
             }
@@ -750,12 +737,12 @@ private struct SetBarsChart: View {
         Chart {
             ForEach(bars) { bar in
                 if let target = bar.target {
-                    BarMark(x: .value("Série", bar.name), yStart: .value("Cible", 0), yEnd: .value("Cible", target),
+                    BarMark(x: .value("Série", bar.name), yStart: .value("Cible", 0.0), yEnd: .value("Cible", Double(target)),
                             width: .ratio(0.8))
                         .foregroundStyle(theme.line.opacity(0.6))
                         .cornerRadius(3)
                 }
-                BarMark(x: .value("Série", bar.name), yStart: .value("Répétitions", 0), yEnd: .value("Répétitions", bar.reps),
+                BarMark(x: .value("Série", bar.name), yStart: .value("Répétitions", 0.0), yEnd: .value("Répétitions", Double(bar.reps)),
                         width: .ratio(0.5))
                     .foregroundStyle(bar.reached ? theme.ok : theme.primary)
                     .cornerRadius(2)

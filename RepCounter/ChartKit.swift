@@ -48,11 +48,13 @@ struct SeriesChartDescriptor: AXChartDescriptorRepresentable {
     /// Libellés uniques, dans l'ordre, et leur valeur.
     let points: [(label: String, value: Double)]
     var unit = ""
+    /// Plage fixe de l'axe des valeurs (nil : de 0 au maximum des valeurs).
+    var range: ClosedRange<Double>?
 
     func makeChartDescriptor() -> AXChartDescriptor {
         let values = points.map(\.value)
-        let low = Swift.min(values.min() ?? 0, 0)
-        let high = Swift.max(values.max() ?? 1, low + 1)
+        let low = range?.lowerBound ?? Swift.min(values.min() ?? 0, 0)
+        let high = range?.upperBound ?? Swift.max(values.max() ?? 1, low + 1)
         let unit = self.unit
         let x = AXCategoricalDataAxisDescriptor(title: xTitle, categoryOrder: points.map(\.label))
         let y = AXNumericDataAxisDescriptor(title: yTitle, range: low...high, gridlinePositions: []) { value in

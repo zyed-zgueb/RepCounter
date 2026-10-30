@@ -26,7 +26,9 @@ struct WorkoutView: View {
     @State private var coachingStart: Exercise?
     @State private var cachedPlan: TrainingPlan?
     @State private var planComputed = false
-    /// La bulle qui explique le point d'état a été vue (une seule fois).
+    /// Touches sur le type de charge et le poids : le retour haptique ne suit qu'elles (pas le
+    /// changement d'exercice, qui change aussi la charge).
+    @State private var loadTouches = 0
     /// La séance terminée, enregistrée dans l'historique.
     @State private var record: SessionRecord?
     /// Exercice affiché dans le cadran pendant qu'on glisse ; adopté une fois le geste posé.
@@ -368,7 +370,7 @@ struct WorkoutView: View {
                 let slices = max(1, planned / Self.restSlice)
                 let done = model.restDuration >= Double(planned)
                 let color = done ? theme.ok : theme.warn
-                Dial(face: CounterDialFace(lit: min(Int(model.restDuration) / Self.restSlice, slices), segments: slices, color: color)) { side in
+                Dial(face: CounterDialFace(lit: min(Int(model.restDuration) / Self.restSlice, slices), segments: slices, color: color, rest: true)) { side in
                     VStack(spacing: side * 0.03) {
                         Text(Format.clock(model.restDuration))
                             .font(theme.dialFont(side * 0.24, .bold))
@@ -427,6 +429,7 @@ struct WorkoutView: View {
     private var loadControl: some View {
         HStack(spacing: 10) {
             Button {
+                loadTouches += 1
                 withAnimation(.snappy(duration: 0.15)) { loadKind = loadKind.next }
             } label: {
                 HStack(spacing: 4) {
@@ -461,13 +464,13 @@ struct WorkoutView: View {
         .opacity(browsing.isWeighted ? 1 : 0)
         .allowsHitTesting(browsing.isWeighted)
         .accessibilityHidden(!browsing.isWeighted)
-        .sensoryFeedback(.selection, trigger: loadKind)
-        .sensoryFeedback(.selection, trigger: load)
+        .sensoryFeedback(.selection, trigger: loadTouches)
         .animation(.easeInOut(duration: 0.2), value: browsing.isWeighted)
     }
 
     private func loadButton(_ systemImage: String, step: Double) -> some View {
         Button {
+            loadTouches += 1
             withAnimation(.snappy(duration: 0.15)) { load = min(max(load + step, 0.5), 100) }
         } label: {
             Image(systemName: systemImage)
@@ -1001,7 +1004,10 @@ private struct HoldButton: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
-        .accessibilityAction { action() }
+        .accessibilityAction {
+            completions += 1
+            action()
+        }
         .sensoryFeedback(.success, trigger: completions)
     }
 }
@@ -1297,7 +1303,7 @@ private struct SessionSummary: View {
         HStack(spacing: 10) {
             if let previous = before.first {
                 let delta = record.totalReps - previous.totalReps
-                pill(delta >= 0 ? "▲ +\(delta) vs \(Format.dayName(previous.start))" : "▼ \(delta) vs \(Format.dayName(previous.start))",
+                pill("\(Format.trend(Double(delta))) vs \(Format.dayName(previous.start))",
                      color: delta >= 0 ? theme.ok : theme.dim)
             } else {
                 pill("Première séance", color: theme.primary)

@@ -128,12 +128,14 @@ enum Prescription {
         }
         let rest = rests.count >= 3 ? median(rests) : 60
         let plannedRest = Swift.min(Swift.max(Int((rest / 15).rounded()) * 15, 30), 300)
-        var weeks: [Date: Int] = [:]
+        // Des jours d'entraînement, pas des séances : des séries espacées le même jour font une
+        // séance, comme dans le plan (`Week.done`)
+        var weeks: [Date: Set<Date>] = [:]
         for session in recent {
             let week = calendar.dateInterval(of: .weekOfYear, for: session.start)?.start ?? session.start
-            weeks[week, default: 0] += 1
+            weeks[week, default: []].insert(calendar.startOfDay(for: session.start))
         }
-        let perWeek = Int(median(weeks.values.map(Double.init)).rounded())
+        let perWeek = Int(median(weeks.values.map { Double($0.count) }).rounded())
         let ratios = ratios(recent, rest: plannedRest)
         return (Session(targets: targets(first: target(max: testMax ?? best), ratios: ratios), rest: plannedRest),
                 ratios, Swift.max(minSessionsPerWeek, perWeek))
