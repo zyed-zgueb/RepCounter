@@ -338,8 +338,10 @@ Trois sessions de travail, validées par Vincent, qui décide :
 | Produit, coaching et expérience | étude | ce qu'on montre, où, pourquoi, sur quelle base scientifique ; maquettes |
 | Développement | dev | le code ; seule session qui modifie le skill reps-ux, après validation de Vincent |
 | Relecture conformité Apple et cas limites | « RepCounter iOS design » | audits aux étapes clés ; signale, ne conçoit pas |
+| Science du sport | « RepCounter · Science du sport » | méthodes de planification (dosage, progression, décharge, tests, réaction à la fatigue) et références ; propose, Vincent décide |
 
-Les demandes de fonctions et de design viennent de la session d'étude. La session de conformité
+Les demandes de fonctions et de design viennent de la session d'étude ; les décisions de méthode
+validées viennent de la session Science du sport (ou de l'étude si elles changent l'affichage). La session de conformité
 envoie directement à la session de dev les corrections techniques couvertes par une règle déjà
 validée du skill (44 pt, Dynamic Type, accessibilité…) ; le contenu et la structure passent par
 l'étude. Avant que Vincent teste un lot, la session de conformité en relit les cas limites (pas
@@ -356,7 +358,7 @@ remplace à l'affichage et VoiceOver lit un mot à leur place. Toute zone toucha
 Les graphiques du Coaching et de l'historique sont en Swift Charts (`ChartKit.swift`) : hauteurs
 en `@ScaledMetric`, graduations réduites en tailles d'accessibilité, sélection au doigt (une règle
 et la valeur en haut, comme Santé), sauf sur une carte qui s'ouvre d'une touche (12 semaines,
-État) : le toucher l'ouvre. Ce qui reste dessiné à la main (cadran, frise du bloc, jauge
+État) : le toucher l'ouvre, la sélection se fait dans le détail (skill reps-ux, § 11). Ce qui reste dessiné à la main (cadran, frise du bloc, jauge
 d'intensité, journal) décrit ses données aux Audio Graphs (`SeriesChartDescriptor`). Les
 explications du premier affichage passent par TipKit (`Tips.swift`), les retours haptiques des
 vues par `.sensoryFeedback` (ceux du compteur restent dans `WorkoutModel`), et « Réduire les

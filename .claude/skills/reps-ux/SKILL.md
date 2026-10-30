@@ -139,6 +139,7 @@ L'échelle d'intensité (§ 5) et le vert « atteint » existent en version clai
 **Graphiques.**
 - Swift Charts partout sauf sur le cadran (`CounterDial`, qui reste un dessin propre à l'app).
 - Sélection au doigt par une règle verticale, et Audio Graphs pour VoiceOver.
+- Pas de sélection au doigt sur un graphique posé dans une carte qui s'ouvre : toucher la carte ouvre son détail, la sélection se fait dans le détail. La sélection n'existe que sur un graphique qui n'ouvre rien (page de détail, Chemin).
 
 **Explications (§ 6).** Les bulles « Compris » utilisent TipKit.
 
