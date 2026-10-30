@@ -262,9 +262,10 @@ private struct WeeksCard: View {
         let volumes = weeks.map { stats.volume(inWeek: $0) }
         HistoryPanel(title: "12 semaines", symbol: "chart.bar.fill", opens: true, accessory: {
             if let verdict {
-                Text(symbols: verdict.text)
+                Text(symbols: verdict)
                     .font(theme.font(13, .bold))
-                    .foregroundStyle(verdict.up ? theme.ok : theme.text)
+                    // Une tendance n'est pas une atteinte (§ 5) : couleur de texte, ▲ = ▼ portent le sens
+                    .foregroundStyle(theme.text)
             }
         }) {
             WeeksChart(volumes: volumes, best: bestByWeek(weeks), record: planned ? stats.bestSet?.value : nil,
@@ -278,14 +279,14 @@ private struct WeeksCard: View {
     /// Le verdict de progression du score d'endurance (un exercice), seulement s'il est établi.
     /// Sans score (séances de moins de 3 séries enchaînées), le verdict sur la série max, dit
     /// comme tel.
-    private var verdict: (text: String, up: Bool)? {
+    private var verdict: String? {
         guard planned else { return nil }
         let onScore = stats.performanceIndex() != nil
         let suffix = onScore ? "" : " sur la série max"
         switch (onScore ? stats.progressVerdict : stats.bestSetVerdict).kind {
-        case .up: return ("▲ en progrès" + suffix, true)
-        case .stable: return ("= stable" + suffix, false)
-        case .down: return ("▼ en recul" + suffix, false)
+        case .up: return "▲ en progrès" + suffix
+        case .stable: return "= stable" + suffix
+        case .down: return "▼ en recul" + suffix
         case .pending, .unreliable: return nil
         }
     }
@@ -319,7 +320,7 @@ private struct WeeksCard: View {
         var parts = ["12 semaines"]
         if planned, let record = stats.bestSet { parts.append("meilleure série \(record.value)") }
         parts.append("\(volume) répétitions cette semaine")
-        if let verdict { parts.append(verdict.text.dropFirst(2).description) }
+        if let verdict { parts.append(verdict.dropFirst(2).description) }
         if let trend { parts.append("\(trend >= 0 ? "plus" : "moins") \(Int(abs(trend).rounded())) % que la moyenne") }
         return parts.joined(separator: " : ")
     }
@@ -702,7 +703,7 @@ struct SessionDetailView: View {
                     let delta = session.totalReps - previous.totalReps
                     line("vs \(Format.dayName(previous.start))",
                          delta == 0 ? "= \(previous.totalReps)" : Format.trend(Double(delta)),
-                         color: delta > 0 ? theme.ok : theme.text)
+                         color: theme.text)
                 }
             }
         }

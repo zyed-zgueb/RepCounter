@@ -122,7 +122,7 @@ struct EndurancePanel: View {
                             let change = (score - previous) / previous * 100
                             Text(symbols: Format.trend(change, unit: " %"))
                                 .font(theme.font(20, .bold))
-                                .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
+                                .foregroundStyle(theme.text)
                             Text("en 4 semaines")
                                 .font(theme.font(11))
                                 .foregroundStyle(theme.dim)
@@ -132,7 +132,7 @@ struct EndurancePanel: View {
                             let change = Int(score.rounded()) - Int(first.value.rounded())
                             Text(symbols: Format.trend(Double(change)))
                                 .font(theme.font(20, .bold))
-                                .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
+                                .foregroundStyle(theme.text)
                             Text("depuis le \(Format.shortDate(first.date))")
                                 .font(theme.font(11))
                                 .foregroundStyle(theme.dim)
@@ -291,7 +291,8 @@ struct EnduranceInfoView: View {
 /// Couleur d'un verdict de progression.
 func verdictColor(_ verdict: ProgressVerdict, theme: AppTheme) -> Color {
     switch verdict.kind {
-    case .up: return theme.ok
+    // Une tendance n'est pas une atteinte (skill reps-ux, § 5) : le symbole porte le sens
+    case .up: return theme.text
     // Pas de couleur d'alerte (skill reps-ux, § 5) : ▼ porte le sens
     case .down: return theme.text
     case .stable, .pending, .unreliable: return theme.dim

@@ -47,7 +47,7 @@ Plus une donnée est vue souvent, plus elle est réduite et proche du compteur. 
 
 ## 5. L'intensité, une seule échelle de couleur
 
-Bleu (calme) → ambre (soutenu) → rouge (maximal), en dégradé. Calme : semaine allégée, séance légère. Soutenu : progression. Maximal : jour de test. Vert : objectif ou cible atteints (✓, ⚑). Les alertes (séance manquée, semaine refaite, Forme basse) ne prennent pas de couleur : elles portent le symbole « ! ». L'orange n'est plus une couleur d'alerte.
+Bleu (calme) → ambre (soutenu) → rouge (maximal), en dégradé. Calme : semaine allégée, séance légère. Soutenu : progression. Maximal : jour de test. Vert : objectif ou cible atteints (✓, ⚑). Une tendance (▲ = ▼) n'est pas une atteinte : elle reste en couleur de texte. Les alertes (séance manquée, semaine refaite, Forme basse) ne prennent pas de couleur : elles portent le symbole « ! ». L'orange n'est plus une couleur d'alerte.
 
 ## 6. Expliquer une fois, au moment utile
 

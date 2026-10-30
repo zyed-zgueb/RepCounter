@@ -108,7 +108,7 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
 - **Intensité** (skill reps-ux, § 5) : une seule échelle de couleur, bleu calme (semaine allégée,
   séance légère) → ambre soutenu (progression) → rouge maximal (jour de test), en dégradé
   (`calm`, `work`, `max` dans `Themes.json`, adaptés à chaque thème). Vert : objectif ou cible
-  atteints. Les alertes (séance manquée, semaine refaite, Forme basse) n'ont pas de couleur :
+  atteints ; une tendance (▲ = ▼) n'est pas une atteinte : elle reste en couleur de texte. Les alertes (séance manquée, semaine refaite, Forme basse) n'ont pas de couleur :
   elles portent « ! ».
 - **Historique** (icône graphique, en veille et à la fin) : le passé seulement, en deux cartes. Σ (tous les exercices) ou un exercice :
   1. **12 semaines** : un seul graphique, axe des semaines commun ; en haut la meilleure série

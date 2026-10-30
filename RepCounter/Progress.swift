@@ -28,6 +28,15 @@ struct ProgressVerdict: Equatable {
     var weeklySlope: Double = 0
 
     static let minPoints = 8
+    /// Plus petit changement significatif : 0,3 × l'erreur typique (Hopkins 2004).
+    static let smallestChange = 0.3
+
+    /// Un gain réel : au-delà du plus petit changement significatif, calculé sur `history` (les
+    /// valeurs habituelles, dans l'ordre). Sans assez d'historique pour l'estimer, pas de gain réel.
+    static func isRealGain(_ gain: Double, history: [Double]) -> Bool {
+        guard let error = typicalError(history) else { return false }
+        return gain > smallestChange * error
+    }
     static let windowDays = 56
     /// Quantile de la loi normale pour un intervalle à 99 %.
     static let z = 2.5758293035489
@@ -95,7 +104,7 @@ struct ProgressVerdict: Equatable {
             return ProgressVerdict(kind: .pending, progress: points.count)
         }
         let gain = fit.slope * (last - first)
-        let smallest = 0.3 * error
+        let smallest = Self.smallestChange * error
         let kind: Kind = fit.low > 0 && gain >= smallest ? .up : (fit.high < 0 && -gain >= smallest ? .down : .stable)
         return ProgressVerdict(kind: kind, progress: points.count, weeklySlope: fit.slope * 7)
     }

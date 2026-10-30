@@ -560,7 +560,7 @@ struct PathCard: View {
                 HStack {
                     Text(symbols: verdictSymbol(verdict))
                         .font(theme.font(13, .bold))
-                        .foregroundStyle(verdict == .ahead ? theme.ok : theme.text)
+                        .foregroundStyle(theme.text)
                     Spacer()
                     if let projection = plan.projection, let goal = plan.goal {
                         MonitorLabel("⌖ \(goal.target) vers le \(Format.shortDate(projection))")

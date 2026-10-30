@@ -1182,7 +1182,12 @@ private struct SessionSummary: View {
                     // seulement si l'attendu est atteint ou s'il y a un gain (skill reps-ux, § 5)
                     let reference = plan.goal?.start ?? plan.tests.last?.value
                     let expectedValue = plan.expected(at: record.start)
-                    let good = expectedValue.map { Double(tested) >= $0 } ?? reference.map { tested > $0 } ?? false
+                    // Sans date d'objectif : un gain réel, au-delà de la variation habituelle (0,3 ×
+                    // l'erreur typique de la meilleure série, Hopkins, comme le verdict de progression)
+                    let history = before.filter { $0.exercise == record.exercise }.sorted { $0.start < $1.start }
+                        .suffix(16).map { Double($0.bestSet) }
+                    let good = expectedValue.map { Double(tested) >= $0 }
+                        ?? reference.map { ProgressVerdict.isRealGain(Double(tested - $0), history: Array(history)) } ?? false
                     planRow("Test · bloc \(plan.block)", "\(tested) d'affilée", color: good ? theme.ok : theme.text)
                     if let expected = expectedValue {
                         planRow("Attendu", "\(Int(expected.rounded()))", color: theme.text)
@@ -1309,7 +1314,7 @@ private struct SessionSummary: View {
             if let previous = before.first {
                 let delta = record.totalReps - previous.totalReps
                 pill("\(Format.trend(Double(delta))) vs \(Format.dayName(previous.start))",
-                     color: delta >= 0 ? theme.ok : theme.dim)
+                     color: theme.text)
             } else {
                 pill("Première séance", color: theme.primary)
             }
