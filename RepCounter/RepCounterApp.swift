@@ -63,7 +63,6 @@ struct RootView: View {
         }
             .id("\(exercise.rawValue).\(generation)")
             .transition(.identity)
-            .statusBarHidden()
             // Présentés ici, au-dessus de l'écran d'entraînement. Leurs changements (brassard,
             // exercice retiré de Mes exercices) s'appliquent à leur fermeture
             .fullScreenCover(isPresented: Binding(get: { !welcomed }, set: { welcomed = !$0 })) {

@@ -74,13 +74,6 @@ struct PlacementGuideView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                MonitorLabel("\(guide.exercise.shortTitle) · placer ton iPhone", color: theme.primary)
-                Spacer()
-                IconButton(systemImage: "xmark") { dismiss() }
-            }
-            .padding(16)
-
             VerticalScroll {
                 VStack(alignment: .leading, spacing: 22) {
                     PlacementIllustration(exercise: guide.exercise, armband: guide.armband, accent: theme.ok)
@@ -123,5 +116,6 @@ struct PlacementGuideView: View {
         }
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.large])
+        .sheetNavigation("\(guide.exercise.shortTitle) · placer ton iPhone", display: .inline)
     }
 }

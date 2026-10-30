@@ -27,17 +27,6 @@ struct HistoryView: View {
         let stats = HistoryStats(sessions: sessions, exercise: exercise)
         NavigationStack {
             VStack(spacing: 0) {
-                HStack {
-                    Text("HISTORIQUE")
-                        .font(theme.font(16, .bold))
-                        .tracking(3)
-                        .foregroundStyle(theme.text)
-                    Spacer()
-                    IconButton(systemImage: "xmark") { dismiss() }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-
                 VerticalScroll {
                     VStack(spacing: 14) {
                         if !practiced.isEmpty {
@@ -64,7 +53,11 @@ struct HistoryView: View {
                 }
             }
             .background(theme.background.ignoresSafeArea())
-            .toolbar(.hidden, for: .navigationBar)
+            .navigationTitle("Historique")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { CloseButton() }
+            }
             .navigationDestination(for: SessionRecord.self) { session in
                 SessionDetailView(session: session, stats: HistoryStats(sessions: sessions, exercise: session.exercise))
             }
@@ -169,7 +162,7 @@ enum HistoryPage: Hashable {
     case activity
 }
 
-/// Écran de détail de l'historique : retour, titre, contenu.
+/// Écran de détail de l'historique (poussé) : grand titre natif, retour par glissement, contenu.
 struct HistoryDetailView<Content: View>: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
@@ -178,20 +171,6 @@ struct HistoryDetailView<Content: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                IconButton(systemImage: "chevron.left") { dismiss() }
-                Spacer()
-                Text(title.uppercased())
-                    .font(theme.font(13, .bold))
-                    .tracking(2)
-                    .foregroundStyle(theme.text)
-                    .lineLimit(1)
-                Spacer()
-                Color.clear.frame(width: 36, height: 36)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-
             VerticalScroll {
                 VStack(spacing: 14) { content() }
                     .padding(.horizontal, 20)
@@ -199,7 +178,8 @@ struct HistoryDetailView<Content: View>: View {
             }
         }
         .background(theme.background.ignoresSafeArea())
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.large)
     }
 }
 
@@ -265,7 +245,7 @@ private struct WeeksCard: View {
         HistoryPanel(title: "12 semaines", accessory: {
             HStack(spacing: 6) {
                 if let verdict {
-                    Text(verdict.text)
+                    Text(symbols: verdict.text)
                         .font(theme.font(12, .bold))
                         .foregroundStyle(verdict.up ? theme.ok : theme.text)
                 }
@@ -354,7 +334,7 @@ private struct WeeksChart: View {
             context.stroke(rule, with: .color(theme.grid), lineWidth: 1)
             context.draw(Text("série max").font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: 5), anchor: .leading)
             let volumeLabel = trend.map { "reps / sem. · \($0 >= 0 ? "▲" : "▼") \(Int(abs($0).rounded())) %" } ?? "reps / sem."
-            context.draw(Text(volumeLabel).font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: split + 7), anchor: .leading)
+            context.draw(Text(symbols: volumeLabel).font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: split + 7), anchor: .leading)
             // En haut : la meilleure série
             let values = best.compactMap(\.value)
             if values.count < 2 {
@@ -378,13 +358,13 @@ private struct WeeksChart: View {
                     guard let value = point.value else { continue }
                     let p = CGPoint(x: center(index), y: y(value))
                     if point.record {
-                        context.draw(Text("★").font(theme.font(10)).foregroundStyle(theme.text), at: p)
+                        context.draw(Text(symbols: "★").font(theme.font(10)).foregroundStyle(theme.text), at: p)
                     } else {
                         context.fill(Path(ellipseIn: CGRect(x: p.x - 1.8, y: p.y - 1.8, width: 3.6, height: 3.6)), with: .color(theme.primary))
                     }
                 }
                 if let record, let index = best.lastIndex(where: { $0.value == record }) {
-                    context.draw(Text("★ \(record)").font(theme.font(8, .bold)).foregroundStyle(theme.text),
+                    context.draw(Text(symbols: "★ \(record)").font(theme.font(8, .bold)).foregroundStyle(theme.text),
                                  at: CGPoint(x: min(center(index), size.width - 18), y: y(record) - 10))
                 }
             }
@@ -551,21 +531,6 @@ struct SessionDetailView: View {
     var body: some View {
         let sets = session.orderedSets
         VStack(spacing: 0) {
-            HStack {
-                IconButton(systemImage: "chevron.left") { dismiss() }
-                Spacer()
-                Text("\(Format.shortDay(session.start)) · \(Format.time(session.start))".uppercased())
-                    .font(theme.font(13, .bold))
-                    .tracking(2)
-                    .foregroundStyle(theme.text)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Spacer()
-                Color.clear.frame(width: 36, height: 36)
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-
             VerticalScroll {
                 VStack(spacing: 14) {
                     overview
@@ -590,7 +555,8 @@ struct SessionDetailView: View {
             }
         }
         .background(theme.background.ignoresSafeArea())
-        .toolbar(.hidden, for: .navigationBar)
+        .navigationTitle("\(Format.shortDay(session.start)) · \(Format.time(session.start))")
+        .navigationBarTitleDisplayMode(.large)
     }
 
     /// « 2 / 3 ✓ » : séries qui ont atteint leur cible.
@@ -599,7 +565,7 @@ struct SessionDetailView: View {
         let targeted = sets.filter { $0.target != nil }
         if !targeted.isEmpty {
             let reached = targeted.filter { $0.reps >= ($0.target ?? .max) }.count
-            Text("\(reached) / \(targeted.count) ✓")
+            Text(symbols: "\(reached) / \(targeted.count) ✓")
                 .font(theme.font(12, .bold))
                 .foregroundStyle(reached == targeted.count ? theme.ok : theme.text)
         }
@@ -609,7 +575,7 @@ struct SessionDetailView: View {
     private var overview: some View {
         VStack(spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text((stats.recordSessions.contains(session.persistentModelID) ? "★ " : "") + "\(session.totalReps)")
+                Text(symbols: (stats.recordSessions.contains(session.persistentModelID) ? "★ " : "") + "\(session.totalReps)")
                     .font(theme.font(46, .bold))
                     .foregroundStyle(theme.text)
                     .monospacedDigit()
@@ -652,7 +618,7 @@ struct SessionDetailView: View {
         HStack {
             MonitorLabel(label)
             Spacer()
-            Text(value)
+            Text(symbols: value)
                 .font(theme.font(13, .bold))
                 .foregroundStyle(color)
                 .monospacedDigit()
@@ -689,13 +655,13 @@ private struct SetBarsChart: View {
                 context.fill(Path(roundedRect: CGRect(x: x + 4, y: base - h, width: width - 8, height: h), cornerRadius: 1.5),
                              with: .color((reached ? theme.ok : theme.primary).opacity(0.85)))
                 let labelTop = base - max(h, set.target.map(height) ?? 0) - 8
-                context.draw(Text("\(set.reps)\(reached ? " ✓" : "")").font(theme.font(10, .bold))
+                context.draw(Text(symbols: "\(set.reps)\(reached ? " ✓" : "")").font(theme.font(10, .bold))
                                 .foregroundStyle(reached ? theme.ok : theme.text),
                              at: CGPoint(x: x + width / 2, y: labelTop))
                 context.draw(Text("S\(index + 1)").font(theme.font(9)).foregroundStyle(theme.dim),
                              at: CGPoint(x: x + width / 2, y: size.height - 5))
                 if index < sets.count - 1, let rest = session.rest(before: index + 1) {
-                    context.draw(Text("◷").font(theme.font(10)).foregroundStyle(theme.dim),
+                    context.draw(Text(symbols: "◷").font(theme.font(10)).foregroundStyle(theme.dim),
                                  at: CGPoint(x: x + width + gap / 2, y: base - 8))
                     context.draw(Text(Format.clock(rest)).font(theme.font(8)).foregroundStyle(theme.dim),
                                  at: CGPoint(x: x + width + gap / 2, y: size.height - 5))

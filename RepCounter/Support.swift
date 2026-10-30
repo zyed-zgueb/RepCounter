@@ -114,16 +114,6 @@ struct SupportView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("SOUTENIR REPS")
-                    .font(theme.font(16, .bold))
-                    .tracking(3)
-                    .foregroundStyle(theme.text)
-                Spacer()
-                IconButton(systemImage: "xmark") { dismiss() }
-            }
-            .padding(16)
-
             VerticalScroll {
                 VStack(spacing: 14) {
                     MonitorPanel {
@@ -153,6 +143,7 @@ struct SupportView: View {
         .presentationDetents([.large])
         .task { await tipJar.load() }
         .onDisappear { tipJar.reset() }
+        .sheetNavigation("Soutenir Reps", display: .large)
     }
 
     @ViewBuilder

@@ -36,16 +36,6 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("RÉGLAGES")
-                    .font(theme.font(16, .bold))
-                    .tracking(3)
-                    .foregroundStyle(theme.text)
-                Spacer()
-                IconButton(systemImage: "xmark") { dismiss() }
-            }
-            .padding(16)
-
             // Liste de réglages : défile seulement si l'écran est trop petit
             VerticalScroll {
                 VStack(spacing: 14) {
@@ -62,7 +52,7 @@ struct SettingsView: View {
                                         .font(.system(size: 11, weight: .bold))
                                         .foregroundStyle(theme.dim)
                                 }
-                                .frame(height: 36)
+                                .frame(minHeight: 44)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -109,7 +99,7 @@ struct SettingsView: View {
                                         .foregroundStyle(theme.dim)
                                         .rotationEffect(.degrees(showsYearWheel ? 180 : 0))
                                 }
-                                .frame(height: 36)
+                                .frame(minHeight: 44)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -193,7 +183,7 @@ struct SettingsView: View {
                                         .font(.system(size: 11, weight: .bold))
                                         .foregroundStyle(theme.dim)
                                 }
-                                .frame(height: 36)
+                                .frame(minHeight: 44)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -211,7 +201,7 @@ struct SettingsView: View {
                                             .font(.system(size: 11, weight: .bold))
                                             .foregroundStyle(theme.dim)
                                     }
-                                    .frame(height: 36)
+                                    .frame(minHeight: 44)
                                     .contentShape(Rectangle())
                                 }
                                 note("Rien ne quitte l'iPhone : vérifiable.")
@@ -266,6 +256,7 @@ struct SettingsView: View {
                 .environment(\.theme, theme)
                 .preferredColorScheme(theme.colorScheme)
         }
+        .sheetNavigation("Réglages", display: .large)
     }
 
     /// Repart comme au premier lancement : les Réglages se ferment, puis la bienvenue s'affiche.
@@ -289,7 +280,7 @@ struct SettingsView: View {
     }
 
     private func note(_ text: String) -> some View {
-        Text(text)
+        Text(symbols: text)
             .font(theme.font(11))
             .foregroundStyle(theme.dim)
             .fixedSize(horizontal: false, vertical: true)
@@ -308,16 +299,6 @@ private struct MyExercisesView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("MES EXERCICES")
-                    .font(theme.font(16, .bold))
-                    .tracking(3)
-                    .foregroundStyle(theme.text)
-                Spacer()
-                IconButton(systemImage: "xmark") { dismiss() }
-            }
-            .padding(16)
-
             List {
                 Section {
                     // Identifiants propres à chaque section : un exercice ajouté devient une nouvelle
@@ -333,7 +314,7 @@ private struct MyExercisesView: View {
                 } header: {
                     MonitorLabel("Dans le cadran")
                 } footer: {
-                    Text("Glisse ≡ pour changer l'ordre.")
+                    Text(symbols: "Glisse ≡ pour changer l'ordre.")
                         .font(theme.font(11))
                         .foregroundStyle(theme.dim)
                 }
@@ -353,6 +334,7 @@ private struct MyExercisesView: View {
         }
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.large])
+        .sheetNavigation("Mes exercices", display: .inline)
     }
 
     private func row(_ exercise: Exercise, adding: Bool) -> some View {

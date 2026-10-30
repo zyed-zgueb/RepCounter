@@ -150,6 +150,8 @@ struct WorkoutView: View {
         .animation(.easeInOut(duration: 0.35), value: model.phase)
         .animation(.easeInOut(duration: 0.35), value: model.isResting)
         .animation(.easeInOut(duration: 0.35), value: model.state)
+        // Plein écran pendant une série seulement (skill reps-ux, § 11)
+        .statusBarHidden(model.phase == .active && !model.isResting)
         .sheet(item: $model.finishedRecording) { finished in
             RecordingSheet(finished: finished)
                 .environment(\.theme, theme)
@@ -446,6 +448,8 @@ struct WorkoutView: View {
                 .padding(.horizontal, 10)
                 .frame(height: 36)
                 .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.primary.opacity(0.5), lineWidth: 1))
+                .frame(height: 44)
+                .contentShape(Rectangle())
                 .contentShape(Rectangle())
             }
             .accessibilityLabel("Équipement : \(loadKind.title)")
@@ -460,7 +464,7 @@ struct WorkoutView: View {
                 .frame(minWidth: 84)
             loadButton("plus", step: 0.5)
         }
-        .frame(height: 40)
+        .frame(height: 44)
         .opacity(browsing.isWeighted ? 1 : 0)
         .allowsHitTesting(browsing.isWeighted)
         .accessibilityHidden(!browsing.isWeighted)
@@ -1207,7 +1211,7 @@ private struct SessionSummary: View {
         HStack {
             MonitorLabel(label)
             Spacer(minLength: 8)
-            Text(value)
+            Text(symbols: value)
                 .font(theme.font(13, .bold))
                 .foregroundStyle(color)
                 .lineLimit(1)
@@ -1223,7 +1227,7 @@ private struct SessionSummary: View {
         if record.exercise != .auto, phase.kind == .rebound || phase.kind == .deloadAdvised {
             HStack(spacing: 8) {
                 Circle().fill(phase.color(theme)).frame(width: 8, height: 8)
-                Text(phase.marked)
+                Text(symbols: phase.marked)
                     .font(theme.font(13, .bold))
                     .foregroundStyle(theme.text)
                 Text(phase.action())
@@ -1306,7 +1310,7 @@ private struct SessionSummary: View {
     private func pill(_ text: String, color: Color, star: Bool = false) -> some View {
         HStack(spacing: 5) {
             if star { Image(systemName: "star.fill").font(.system(size: 10, weight: .bold)) }
-            Text(text)
+            Text(symbols: text)
         }
         .font(theme.font(12, .bold))
         .foregroundStyle(color)
@@ -1370,6 +1374,8 @@ private struct SessionSummary: View {
                 .foregroundStyle(theme.text)
                 .frame(width: 36, height: 36)
                 .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
     }
 

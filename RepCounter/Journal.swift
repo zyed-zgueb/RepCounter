@@ -37,7 +37,7 @@ struct JournalHoursSettings: View {
             DayRangeBar(start: start, end: end)
                 .frame(height: 26)
                 .accessibilityLabel("Journée affichée de \(JournalHours.label(start)) à \(JournalHours.label(end))")
-            Text("Hors de ces heures, une séance se place au bord, marquée ‹ ou ›.")
+            Text(symbols: "Hors de ces heures, une séance se place au bord, marquée ‹ ou ›.")
                 .font(theme.font(11))
                 .foregroundStyle(theme.dim)
                 .fixedSize(horizontal: false, vertical: true)
@@ -50,14 +50,14 @@ struct JournalHoursSettings: View {
                 .font(theme.font(13, .bold))
                 .foregroundStyle(theme.text)
             Spacer()
-            Button(action: minus) { Text("‹").font(theme.font(18, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
+            Button(action: minus) { Text(symbols: "‹").font(theme.font(18, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
                 .accessibilityLabel("\(label) plus tôt")
             Text(JournalHours.label(value))
                 .font(theme.font(15, .bold))
                 .foregroundStyle(theme.text)
                 .monospacedDigit()
                 .frame(width: 64)
-            Button(action: plus) { Text("›").font(theme.font(18, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
+            Button(action: plus) { Text(symbols: "›").font(theme.font(18, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
                 .accessibilityLabel("\(label) plus tard")
         }
         .buttonStyle(.plain)
@@ -128,7 +128,8 @@ struct JournalCard: View {
                 Button("+ 28 jours") { withAnimation { shownDays += 28 } }
                     .font(theme.font(12, .bold))
                     .foregroundStyle(theme.primary)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
                     .padding(.top, 6)
             }
         }
@@ -183,7 +184,7 @@ struct JournalCard: View {
                 }
                 if sessions.isEmpty {
                     if missed.contains(day) {
-                        Text("! prévue, manquée")
+                        Text(symbols: "! prévue, manquée")
                             .font(theme.font(9))
                             .foregroundStyle(theme.text)
                             .position(x: Self.labelWidth + width / 2, y: Self.rowHeight / 2)
@@ -284,7 +285,7 @@ private struct JournalSilhouette: View {
     }
 
     private func marker(_ symbol: String) -> some View {
-        Text(symbol)
+        Text(symbols: symbol)
             .font(theme.font(9, .bold))
             .foregroundStyle(theme.text)
             .frame(height: height, alignment: .center)

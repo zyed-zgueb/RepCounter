@@ -52,7 +52,7 @@ struct PlacementView: View {
                     Image(systemName: "questionmark.circle")
                         .font(.system(size: 17))
                         .foregroundStyle(theme.primary)
-                        .frame(width: 44, height: 32)
+                        .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

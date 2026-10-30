@@ -72,8 +72,9 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
    permet de corriger son compte** (− / +, avec le compte d'origine). Puis « Nouvelle séance ».
 
 - **Coaching** (icône cible, en veille et à la fin ; `Coaching.swift`, `PlanView.swift`) :
-  l'avenir et le plan d'un exercice, en graphiques (skill reps-ux, § 9). **Titre** : « COACHING ·
-  POMPES » ; un glissement gauche/droite ou ‹ › passe d'un exercice à l'autre de Mes exercices.
+  l'avenir et le plan d'un exercice, en graphiques (skill reps-ux, § 9). **Titre** : l'exercice
+  courant, en grand titre natif ; un glissement gauche/droite, les chevrons de la barre ou le
+  menu du titre passent d'un exercice à l'autre de Mes exercices.
   **Aujourd'hui** (première carte) : un jour de séance, les cibles en barres (une par série,
   valeur au-dessus), « ◷ 1:30 », l'intensité (pastille et mot) et Démarrer, qui revient au
   cadran sur cet exercice ; séance faite : « ✓ fait », le fait face aux cibles, puis « prochaine ·
@@ -312,6 +313,14 @@ décharge, et celles dont une série a été corrigée de plus de 2 répétition
 +2 %/semaine détecté à 100 % avec 3 % de bruit, 36 % avec 8 %). La trajectoire attendue et la
 projection d'un objectif de la feuille de route ne sont pas faites : aucune référence ne fixe une
 courbe de progression attendue au poids du corps.
+
+## Conformité Apple (HIG)
+Skill reps-ux, § 11. Coaching, Historique, Réglages, fiches et (i) sont des feuilles natives :
+un `NavigationStack`, le grand titre (`sheetNavigation`, `Theme.swift`), la fermeture ✕ dans
+la barre, le détail poussé avec retour par glissement. Les symboles de l'app s'affichent en SF
+Symbols : les textes gardent leurs glyphes courts, `Text(symbols:)` (`Symbols.swift`) les
+remplace à l'affichage et VoiceOver lit un mot à leur place. Toute zone touchable mesure
+44 × 44 pt au moins. La barre d'état n'est masquée que pendant une série.
 
 ## Thèmes
 Les thèmes habillent **le compteur seulement** (cadran, série, récupération, fin de séance) :

@@ -103,7 +103,7 @@ struct EndurancePanel: View {
                     Image(systemName: "info.circle")
                         .font(.system(size: 17, weight: .regular))
                         .foregroundStyle(theme.dim)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("À propos du score d'endurance")
@@ -120,7 +120,7 @@ struct EndurancePanel: View {
                         if let previous, previous > 0 {
                             // Assez d'historique : évolution sur 4 semaines
                             let change = (score - previous) / previous * 100
-                            Text("\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) %")
+                            Text(symbols: "\(change >= 0 ? "▲" : "▼") \(Format.percent(change)) %")
                                 .font(theme.font(20, .bold))
                                 .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
                             Text("en 4 semaines")
@@ -130,7 +130,7 @@ struct EndurancePanel: View {
                         } else if let first, curve.points.count >= 2 {
                             // Au début : évolution depuis la première séance notée
                             let change = Int(score.rounded()) - Int(first.value.rounded())
-                            Text("\(change >= 0 ? "▲" : "▼") \(Format.signed(change))")
+                            Text(symbols: "\(change >= 0 ? "▲" : "▼") \(Format.signed(change))")
                                 .font(theme.font(20, .bold))
                                 .foregroundStyle(change >= 0 ? theme.ok : theme.dim)
                             Text("depuis le \(Format.shortDate(first.date))")
@@ -203,16 +203,6 @@ struct EnduranceInfoView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("SCORE D'ENDURANCE")
-                    .font(theme.font(16, .bold))
-                    .tracking(3)
-                    .foregroundStyle(theme.text)
-                Spacer()
-                IconButton(systemImage: "xmark") { dismiss() }
-            }
-            .padding(16)
-
             VerticalScroll {
                 VStack(alignment: .leading, spacing: 22) {
                     section("Ce qu'il mesure",
@@ -248,6 +238,7 @@ struct EnduranceInfoView: View {
         }
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.large])
+        .sheetNavigation("Score d'endurance", display: .large)
     }
 
     private var formula: some View {

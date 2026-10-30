@@ -118,7 +118,7 @@ struct StateDotTip: View {
             Circle().fill(color).frame(width: 10, height: 10).padding(.top, 3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(theme.font(12, .bold)).foregroundStyle(theme.text)
-                Text(detail).font(theme.font(11)).foregroundStyle(theme.dim)
+                Text(symbols: detail).font(theme.font(11)).foregroundStyle(theme.dim)
             }
         }
     }
@@ -126,8 +126,9 @@ struct StateDotTip: View {
 
 // MARK: - Vue Coaching
 
-/// Le Coaching (skill reps-ux) : l'avenir et le plan d'un exercice, l'exercice en titre (un
-/// glissement ou ‹ › passe à un autre de Mes exercices). Du plus proche au plus lointain : la
+/// Le Coaching (skill reps-ux) : l'avenir et le plan d'un exercice, l'exercice en grand titre
+/// natif (un glissement, les chevrons de la barre ou le menu du titre passent à un autre de Mes
+/// exercices). Du plus proche au plus lointain : la
 /// séance du jour, l'objectif (ou l'invitation à en fixer un), le chemin jusqu'à lui, le bloc
 /// en cours, puis l'état (phase, Forme, ressenti). Sans objectif, le plan tourne quand même sur
 /// la séance habituelle : seul le chemin attend un objectif.
@@ -161,7 +162,6 @@ struct CoachingView: View {
         let plan = stats.plan(all: sessions)
         NavigationStack {
             VStack(spacing: 0) {
-                header
                 VerticalScroll {
                     VStack(spacing: 14) {
                         if stats.isEmpty {
@@ -203,7 +203,29 @@ struct CoachingView: View {
                 .simultaneousGesture(swipe)
             }
             .background(theme.background.ignoresSafeArea())
-            .toolbar(.hidden, for: .navigationBar)
+            // Le titre est l'exercice courant ; ‹ › et le menu du titre passent à un autre
+            .navigationTitle(exercise.shortTitle)
+            .navigationBarTitleDisplayMode(.large)
+            .toolbarTitleMenu {
+                ForEach(exercises) { item in
+                    Button { select(item) } label: {
+                        if item == exercise { Label(item.shortTitle, systemImage: "checkmark") } else { Text(item.shortTitle) }
+                    }
+                }
+            }
+            .toolbar {
+                if exercises.count > 1 {
+                    ToolbarItemGroup(placement: .topBarLeading) {
+                        arrow("chevron.left", -1)
+                        arrow("chevron.right", 1)
+                    }
+                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button { showsInfo = true } label: { Image(systemName: "info.circle") }
+                        .accessibilityLabel("Le plan, explications")
+                    CloseButton()
+                }
+            }
             .navigationDestination(for: CoachingPage.self) { page in
                 switch page {
                 case .state:
@@ -261,42 +283,15 @@ struct CoachingView: View {
         }
     }
 
-    /// « COACHING · POMPES » en grand, ‹ › pour passer d'un exercice à l'autre.
-    private var header: some View {
-        HStack(spacing: 2) {
-            if exercises.count > 1 {
-                arrow("chevron.left", -1)
-            }
-            Text("COACHING · \(exercise.shortTitle.uppercased())")
-                .font(theme.font(18, .bold))
-                .tracking(2)
-                .foregroundStyle(theme.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-                .contentTransition(.opacity)
-                .accessibilityAddTraits(.isHeader)
-            if exercises.count > 1 {
-                arrow("chevron.right", 1)
-            }
-            Spacer(minLength: 4)
-            IconButton(systemImage: "info.circle", color: theme.dim) { showsInfo = true }
-            IconButton(systemImage: "xmark") { dismiss() }
-        }
-        .padding(.leading, exercises.count > 1 ? 4 : 20)
-        .padding(.trailing, 20)
-        .padding(.vertical, 12)
+    private func arrow(_ systemImage: String, _ step: Int) -> some View {
+        Button { move(by: step) } label: { Image(systemName: systemImage) }
+            .accessibilityLabel(step < 0 ? "Exercice précédent" : "Exercice suivant")
     }
 
-    private func arrow(_ systemImage: String, _ step: Int) -> some View {
-        Button { move(by: step) } label: {
-            Image(systemName: systemImage)
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(theme.dim)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(step < 0 ? "Exercice précédent" : "Exercice suivant")
+    private func select(_ item: Exercise) {
+        guard item != exercise else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+        withAnimation(.easeInOut(duration: 0.2)) { exercise = item }
     }
 
     /// Glisser à gauche ou à droite : l'exercice suivant ou précédent (le défilement vertical reste).
@@ -353,7 +348,7 @@ private struct TodayCard: View {
                     .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 48, fontSize: 13))
             case .done:
                 HStack {
-                    Text("✓ fait")
+                    Text(symbols: "✓ fait")
                         .font(theme.font(15, .bold))
                         .foregroundStyle(theme.ok)
                     Spacer()
@@ -401,14 +396,14 @@ private struct TodayCard: View {
     @ViewBuilder
     private func session(_ day: TrainingPlan.Today, done: [Int]?, compact: Bool = false) -> some View {
         if case .test = day {
-            Text("◆ série max")
+            Text(symbols: "◆ série max")
                 .font(theme.font(compact ? 14 : 22, .bold))
                 .foregroundStyle(day.color(theme))
         } else if let s = sessionOf(day) {
             HStack(alignment: .bottom, spacing: 12) {
                 TargetBars(targets: s.targets, done: done, color: day.color(theme))
                     .frame(height: compact ? 52 : 84)
-                Text("◷ \(Format.clock(Double(s.rest)))")
+                Text(symbols: "◷ \(Format.clock(Double(s.rest)))")
                     .font(theme.font(compact ? 11 : 13, .bold))
                     .foregroundStyle(theme.dim)
                     .padding(.bottom, 4)
@@ -468,7 +463,7 @@ private struct TargetBars: View {
                     let h = height(value)
                     context.fill(Path(roundedRect: CGRect(x: x + 3, y: base - h, width: width - 6, height: h), cornerRadius: 1.5),
                                  with: .color(reached ? theme.ok : theme.primary))
-                    context.draw(Text("\(value)\(reached ? " ✓" : "")").font(theme.font(10, .bold))
+                    context.draw(Text(symbols: "\(value)\(reached ? " ✓" : "")").font(theme.font(10, .bold))
                                     .foregroundStyle(reached ? theme.ok : theme.text),
                                  at: CGPoint(x: x + width / 2, y: base - max(h, target.map(height) ?? 0) - 7))
                 } else if let target {
@@ -547,7 +542,7 @@ private struct GoalInvitation: View {
                 .accessibilityLabel("Niveau \(level), objectif proposé \(proposal)")
                 MonitorLabel("niveau · proposé +20 %, choix de l'app")
             }
-            Button("⌖ Fixer un objectif", action: onSet)
+            Button(action: onSet) { Text(symbols: "⌖ Fixer un objectif") }
                 .buttonStyle(MonitorButtonStyle(color: theme.primary, filled: false, height: 44, fontSize: 12))
         }
         .coachingCard(theme)
@@ -581,8 +576,8 @@ private struct GoalHeader: View {
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 10) {
                     HStack(spacing: 6) {
-                        symbolButton("✎", label: "Modifier l'objectif", action: onEdit)
-                        symbolButton("⋯", label: "Menu de l'objectif", action: onMenu)
+                        symbolButton("pencil", label: "Modifier l'objectif", action: onEdit)
+                        symbolButton("ellipsis", label: "Menu de l'objectif", action: onMenu)
                     }
                     figure("niveau", current)
                     figure("reste", max(goal.target - current, 0))
@@ -604,10 +599,10 @@ private struct GoalHeader: View {
         }
     }
 
-    private func symbolButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+    private func symbolButton(_ systemImage: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(symbol)
-                .font(theme.font(17, .bold))
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .bold))
                 .foregroundStyle(theme.dim)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
@@ -633,7 +628,7 @@ private struct GoalMenu: View {
             MonitorLabel("⌖ \(goal.target)\(goal.date.map { " · \(Format.shortDate($0))" } ?? "")", color: theme.text)
                 .padding(.bottom, 8)
             if confirming {
-                Text("✕ Retirer ⌖ \(goal.target) ?")
+                Text(symbols: "✕ Retirer ⌖ \(goal.target) ?")
                     .font(theme.font(14, .bold))
                     .foregroundStyle(theme.text)
                 Text("Le plan s'arrête. Ton historique reste.")
@@ -673,7 +668,7 @@ private struct GoalMenu: View {
     private func row(_ symbol: String, _ title: String, _ consequence: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(symbol).font(theme.font(14, .bold)).foregroundStyle(theme.text).frame(width: 18)
+                Text(symbols: symbol).font(theme.font(14, .bold)).foregroundStyle(theme.text).frame(width: 18)
                 Text(title).font(theme.font(13, .bold)).foregroundStyle(theme.text)
                 Spacer()
                 Text(consequence).font(theme.font(11)).foregroundStyle(theme.dim)
@@ -702,7 +697,7 @@ private struct StateCard: View {
                 MonitorLabel("État")
                 Spacer(minLength: 4)
                 Circle().fill(phase.stateColor(theme) ?? theme.dim).frame(width: 8, height: 8)
-                Text((phase.isAlert ? "! " : "") + phase.title)
+                Text(symbols: (phase.isAlert ? "! " : "") + phase.title)
                     .font(theme.font(13, .bold))
                     .foregroundStyle(theme.text)
                 Image(systemName: "chevron.right")
@@ -839,14 +834,6 @@ private struct GoalEditor: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                MonitorLabel(mode == .date ? "◷ Date · \(exercise.shortTitle)" : "⌖ Objectif · \(exercise.shortTitle)",
-                             color: theme.text)
-                Spacer()
-                IconButton(systemImage: "xmark") { dismiss() }
-            }
-            .padding(16)
-
             VStack(alignment: .leading, spacing: 18) {
                 if mode != .date {
                     HStack(spacing: 12) {
@@ -870,7 +857,7 @@ private struct GoalEditor: View {
                 }
                 if mode != .target {
                     Toggle(isOn: $hasDate.animation()) {
-                        Text("◷ DATE")
+                        Text(symbols: "◷ DATE")
                             .font(theme.font(13, .bold))
                             .foregroundStyle(theme.text)
                     }
@@ -899,6 +886,7 @@ private struct GoalEditor: View {
         }
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.medium, .large])
+        .sheetNavigation(mode == .date ? "Date · \(exercise.shortTitle)" : "Objectif · \(exercise.shortTitle)", display: .inline)
     }
 
     private func stepButton(_ systemImage: String, _ step: Int) -> some View {

@@ -127,7 +127,7 @@ struct FeelingScale: View {
                             .monospacedDigit()
                             .foregroundStyle(chosen ? theme.background : theme.text)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 32)
+                            .frame(height: 44)
                             .background(chosen ? theme.primary : .clear, in: RoundedRectangle(cornerRadius: theme.radius / 2, style: .continuous))
                             .overlay(RoundedRectangle(cornerRadius: theme.radius / 2, style: .continuous)
                                 .stroke(chosen ? theme.primary : theme.line, lineWidth: 1))

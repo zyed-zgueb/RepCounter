@@ -93,9 +93,9 @@ struct TodayLine: View {
             switch plan.status {
             case .due:
                 Text("aujourd'hui ·").foregroundStyle(theme.dim)
-                Text(plan.today.label).fontWeight(.bold).foregroundStyle(plan.today.color(theme))
+                Text(symbols: plan.today.label).fontWeight(.bold).foregroundStyle(plan.today.color(theme))
             case .done:
-                Text("fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
+                Text(symbols: "fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
                 nextText
             case .rest:
                 Text("repos").fontWeight(.bold).foregroundStyle(theme.dim)
@@ -147,10 +147,10 @@ struct SetRow: View {
         let planned = index < planDay.session.sets ? planDay.session.targets[index] : nil
         if index < all.count {
             let reached = planned.map { all[index] >= $0 } ?? true
-            Text("\(all[index])\(reached ? " ✓" : "")").foregroundStyle(reached ? theme.ok : theme.text)
+            Text(symbols: "\(all[index])\(reached ? " ✓" : "")").foregroundStyle(reached ? theme.ok : theme.text)
         } else if index == all.count {
             // La série en cours (ou la prochaine) : sa cible, réajustée
-            Text("\(current.map { "\($0)/" } ?? "")\(next ?? planned ?? 0) ←").foregroundStyle(theme.primary)
+            Text(symbols: "\(current.map { "\($0)/" } ?? "")\(next ?? planned ?? 0) ←").foregroundStyle(theme.primary)
         } else {
             Text("\(planned ?? 0)").foregroundStyle(theme.dim)
         }
@@ -174,7 +174,7 @@ struct BlockFrise: View {
                     segment(week)
                 }
                 VStack(spacing: 4) {
-                    Text("◆").font(theme.font(8.5, .bold)).foregroundStyle(theme.max)
+                    Text(symbols: "◆").font(theme.font(8.5, .bold)).foregroundStyle(theme.max)
                     Rectangle()
                         .stroke(theme.max, lineWidth: 1.5)
                         .frame(width: 9, height: 9)
@@ -186,7 +186,7 @@ struct BlockFrise: View {
             }
             if showsHere {
                 GeometryReader { geometry in
-                    Text("▲ tu es ici")
+                    Text(symbols: "▲ tu es ici")
                         .font(theme.font(9))
                         .foregroundStyle(theme.text)
                         .fixedSize()
@@ -203,7 +203,7 @@ struct BlockFrise: View {
         let color = theme.intensity(week.intensity)
         let fill: Double = week.isPast ? 1 : (week.isCurrent ? dayShare(week) : 0)
         return VStack(spacing: 4) {
-            Text((week.isRedo ? "! " : "") + week.short)
+            Text(symbols: (week.isRedo ? "! " : "") + week.short)
                 .font(theme.font(8.5, week.isCurrent ? .bold : .regular))
                 .foregroundStyle(week.isCurrent ? theme.text : theme.dim)
                 .lineLimit(1)
@@ -220,7 +220,7 @@ struct BlockFrise: View {
             HStack(spacing: 3) {
                 ForEach(0..<max(week.plannedSessions, week.done), id: \.self) { index in
                     if index >= week.done && week.isPast {
-                        Text("!").font(theme.font(8, .bold)).foregroundStyle(theme.text).frame(width: 6, height: 6)
+                        Text(symbols: "!").font(theme.font(8, .bold)).foregroundStyle(theme.text).frame(width: 6, height: 6)
                     } else {
                         Circle()
                             .fill(index < week.done ? theme.text : .clear)
@@ -269,7 +269,7 @@ struct IntensityGauge: View {
             for (value, mark) in [(0.1, "A"), (Intensity.work, "P"), (0.95, "◆")] {
                 let a = angle(value).radians
                 let point = CGPoint(x: center.x + CGFloat(cos(a)) * (radius - 15), y: center.y + CGFloat(sin(a)) * (radius - 15))
-                context.draw(Text(mark).font(theme.font(7)).foregroundStyle(theme.dim), at: point)
+                context.draw(Text(symbols: mark).font(theme.font(7)).foregroundStyle(theme.dim), at: point)
             }
             let a = angle(min(max(level, 0), 1)).radians
             var needle = Path()
@@ -298,7 +298,7 @@ struct BlockCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("B\(plan.block) · \(plan.today == .test ? "◆" : (plan.currentWeek?.short ?? "◆"))")
+                    Text(symbols: "B\(plan.block) · \(plan.today == .test ? "◆" : (plan.currentWeek?.short ?? "◆"))")
                         .font(theme.font(15, .bold))
                         .foregroundStyle(theme.text)
                     MonitorLabel("intensité \(Intensity.word(level))", color: theme.intensity(level))
@@ -344,7 +344,7 @@ struct WeekDays: View {
                 }
             }
             if !hintSeen {
-                Text("☝ touche un jour pour le déplacer")
+                Text(symbols: "☝ touche un jour pour le déplacer")
                     .font(theme.font(10))
                     .foregroundStyle(theme.dim)
                     .frame(maxWidth: .infinity)
@@ -363,7 +363,7 @@ struct WeekDays: View {
                 .foregroundStyle(day.isToday ? theme.text : theme.dim)
             ZStack {
                 if day.missed {
-                    Text("!").font(theme.font(12, .bold)).foregroundStyle(theme.text)
+                    Text(symbols: "!").font(theme.font(12, .bold)).foregroundStyle(theme.text)
                 } else {
                     Circle()
                         .fill(done ? theme.text : .clear)
@@ -375,7 +375,7 @@ struct WeekDays: View {
                 .fill(day.isToday ? theme.text : .clear)
                 .frame(width: 10, height: 2)
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, minHeight: 44)
         .contentShape(Rectangle())
     }
 
@@ -424,7 +424,7 @@ struct WeekBars: View {
                                  with: .color((reached ? theme.ok : color).opacity(week.isCurrent ? 0.9 : 0.75)))
                 }
                 let mark = reached ? "✓" : (week.isCurrent ? "←" : (week.isPast ? "!" : "○"))
-                context.draw(Text(mark).font(theme.font(10, .bold)).foregroundStyle(reached ? theme.ok : theme.text),
+                context.draw(Text(symbols: mark).font(theme.font(10, .bold)).foregroundStyle(reached ? theme.ok : theme.text),
                              at: CGPoint(x: x + barWidth / 2, y: base - max(plannedHeight, doneHeight) - 8))
                 context.draw(Text(week.short).font(theme.font(9, week.isCurrent ? .bold : .regular))
                                 .foregroundStyle(week.isCurrent ? theme.text : theme.dim),
@@ -458,7 +458,7 @@ struct PathCard: View {
         VStack(alignment: .leading, spacing: 8) {
             PathChart(plan: plan, exercise: exercise, sessions: sessions)
                 .frame(height: 160)
-            Text("● départ · • séances · ◆ test · ┄ attendu")
+            Text(symbols: "● départ · • séances · ◆ test · ┄ attendu")
                 .font(theme.font(10))
                 .foregroundStyle(theme.dim)
             HStack {
@@ -468,7 +468,7 @@ struct PathCard: View {
             }
             if let verdict = settledVerdict {
                 HStack {
-                    Text(verdictSymbol(verdict))
+                    Text(symbols: verdictSymbol(verdict))
                         .font(theme.font(13, .bold))
                         .foregroundStyle(verdict == .ahead ? theme.ok : theme.text)
                     Spacer()
@@ -558,7 +558,7 @@ private struct PathChart: View {
                 finish.move(to: CGPoint(x: left, y: y(Double(goal.target))))
                 finish.addLine(to: CGPoint(x: size.width - right, y: y(Double(goal.target))))
                 context.stroke(finish, with: .color(theme.ok), lineWidth: 1)
-                context.draw(Text("⚑").font(theme.font(10)).foregroundStyle(theme.ok),
+                context.draw(Text(symbols: "⚑").font(theme.font(10)).foregroundStyle(theme.ok),
                              at: CGPoint(x: size.width - right + 8, y: y(Double(goal.target))))
                 context.draw(Text("\(goal.target)").font(theme.font(8)).foregroundStyle(theme.ok),
                              at: CGPoint(x: left - 10, y: y(Double(goal.target))))
@@ -609,7 +609,7 @@ private struct PathChart: View {
             today.move(to: CGPoint(x: now, y: top))
             today.addLine(to: CGPoint(x: now, y: bottom))
             context.stroke(today, with: .color(theme.primary), lineWidth: 1.2)
-            context.draw(Text("▼").font(theme.font(9)).foregroundStyle(theme.primary), at: CGPoint(x: now, y: top - 6))
+            context.draw(Text(symbols: "▼").font(theme.font(9)).foregroundStyle(theme.primary), at: CGPoint(x: now, y: top - 6))
         }
         .accessibilityLabel(accessibility(points))
     }
@@ -677,7 +677,7 @@ struct BlockSheet: View {
         HStack(alignment: .top, spacing: 10) {
             RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 12, height: 12).padding(.top, 2)
             VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(theme.font(13, .bold)).foregroundStyle(theme.text)
+                Text(symbols: title).font(theme.font(13, .bold)).foregroundStyle(theme.text)
                 Text(detail).font(theme.font(11)).foregroundStyle(theme.dim)
             }
         }
@@ -703,16 +703,6 @@ struct PlanInfoView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("LE PLAN")
-                    .font(theme.font(16, .bold))
-                    .tracking(3)
-                    .foregroundStyle(theme.text)
-                Spacer()
-                IconButton(systemImage: "xmark") { dismiss() }
-            }
-            .padding(16)
-
             VerticalScroll {
                 VStack(alignment: .leading, spacing: 22) {
                     section("Le bloc",
@@ -746,6 +736,7 @@ struct PlanInfoView: View {
         }
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.large])
+        .sheetNavigation("Le plan", display: .large)
     }
 
     private func section(_ title: String, _ text: String) -> some View {

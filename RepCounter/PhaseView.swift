@@ -73,13 +73,13 @@ struct PhasePanel: View {
                         Image(systemName: "info.circle")
                             .font(.system(size: 17, weight: .regular))
                             .foregroundStyle(theme.dim)
-                            .frame(width: 32, height: 32)
+                            .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
                     .accessibilityLabel("À propos des phases")
                 }
                 .padding(.vertical, -6)
-                Text(phase.marked.uppercased())
+                Text(symbols: phase.marked.uppercased())
                     .font(theme.font(22, .bold))
                     .foregroundStyle(phase.kind == .pending || phase.kind == .unreliable ? theme.dim : phase.color(theme))
                     .lineLimit(1)
@@ -177,16 +177,6 @@ struct PhaseInfoView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("PHASES")
-                    .font(theme.font(16, .bold))
-                    .tracking(3)
-                    .foregroundStyle(theme.text)
-                Spacer()
-                IconButton(systemImage: "xmark") { dismiss() }
-            }
-            .padding(16)
-
             VerticalScroll {
                 VStack(alignment: .leading, spacing: 22) {
                     section("Le principe",
@@ -231,6 +221,7 @@ struct PhaseInfoView: View {
         }
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.large])
+        .sheetNavigation("Phases", display: .large)
     }
 
     private static let phases: [(String, String)] = [

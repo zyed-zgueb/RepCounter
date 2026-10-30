@@ -223,7 +223,7 @@ struct MonitorLabel: View {
     }
 
     var body: some View {
-        Text(text.uppercased())
+        Text(symbols: text.uppercased())
             .font(theme.font(10, .semibold))
             .tracking(1.5)
             .foregroundStyle(color ?? theme.dim)
@@ -357,7 +357,8 @@ struct MonitorButtonStyle: ButtonStyle {
             .textCase(.uppercase)
             .foregroundStyle(filled ? theme.onPrimary : tint)
             .frame(maxWidth: .infinity)
-            .frame(height: height)
+            // 44 pt au moins (HIG), quelle que soit la hauteur demandée
+            .frame(height: max(height, 44))
             .background(filled ? tint : tint.opacity(0.08),
                         in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous)
@@ -389,5 +390,47 @@ struct IconButton: View {
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
+    }
+}
+
+// MARK: - Feuilles natives
+
+/// Une feuille hors compteur (skill reps-ux, § 11) : un `NavigationStack`, le titre natif (grand
+/// titre ou en ligne), le bouton de fermeture dans la barre. Le détail s'y pousse, avec le retour
+/// par glissement.
+struct SheetNavigation<Content: View>: View {
+    let title: String
+    let display: NavigationBarItem.TitleDisplayMode
+    let content: Content
+
+    var body: some View {
+        NavigationStack {
+            content
+                .navigationTitle(title)
+                .navigationBarTitleDisplayMode(display)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) { CloseButton() }
+                }
+        }
+    }
+}
+
+/// Fermer une feuille : xmark dans la barre de navigation.
+struct CloseButton: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Button { dismiss() } label: {
+            Image(systemName: "xmark")
+                .fontWeight(.semibold)
+        }
+        .accessibilityLabel("Fermer")
+    }
+}
+
+extension View {
+    /// Habille une feuille d'une barre de navigation native (titre et fermeture).
+    func sheetNavigation(_ title: String, display: NavigationBarItem.TitleDisplayMode = .large) -> some View {
+        SheetNavigation(title: title, display: display, content: self)
     }
 }
