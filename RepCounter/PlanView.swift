@@ -466,7 +466,8 @@ struct WeekDays: View {
             }
         }
         .onAppear {
-            if Schedule.takeResetNotice(exercise) { showsResetNotice = true }
+            // Le plan a ignoré des jours incohérents : l'avis reste affiché tant que la vue est là
+            if plan.daysReset { showsResetNotice = true }
         }
         .sheet(isPresented: $editing) {
             DaysEditor(exercise: exercise, perWeek: plan.perWeek,

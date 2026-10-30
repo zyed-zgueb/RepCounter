@@ -507,20 +507,6 @@ enum Schedule {
 
     static func days(_ weekdays: [Int]) -> [Int] { Array(Set(weekdays.filter { (1...7).contains($0) })).sorted() }
 
-    private static func resetKey(_ exercise: Exercise) -> String { "coaching.daysReset.\(exercise.rawValue)" }
-
-    /// Les jours enregistrés ont été réinitialisés : à signaler une fois.
-    static func noteReset(_ exercise: Exercise) {
-        UserDefaults.standard.set(true, forKey: resetKey(exercise))
-    }
-
-    /// Lit et efface l'avis de réinitialisation (affiché une seule fois).
-    static func takeResetNotice(_ exercise: Exercise) -> Bool {
-        let pending = UserDefaults.standard.bool(forKey: resetKey(exercise))
-        if pending { UserDefaults.standard.removeObject(forKey: resetKey(exercise)) }
-        return pending
-    }
-
     /// Le lundi de la semaine.
     static func weekStart(_ date: Date, calendar: Calendar) -> Date {
         let day = calendar.startOfDay(for: date)
@@ -644,11 +630,8 @@ extension HistoryStats {
         let plan = TrainingPlan.make(goal: goal, anchor: anchor, sessions: sessions, tired: tired, lowForm: lowForm,
                                      weekdays: Schedule.saved(exercise), legacyBefore: TrainingPlan.announcedTestSince,
                                      now: now, calendar: calendar)
-        if plan?.daysReset == true {
-            // Jours incohérents (3 jours pour 4 séances…) : retour aux jours proposés, signalé une fois
-            Schedule.save(nil, for: exercise)
-            Schedule.noteReset(exercise)
-        }
+        // Jours incohérents (3 jours pour 4 séances…) : le plan les ignore et le signale
+        // (`daysReset`) ; la vue Coaching enregistre le retour aux jours proposés, hors du calcul
         return plan
     }
 }

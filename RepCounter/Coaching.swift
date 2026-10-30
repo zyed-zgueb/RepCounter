@@ -219,6 +219,13 @@ struct CoachingView: View {
             }
         }
         .tint(theme.primary)
+        // Jours enregistrés incohérents : le retour aux jours proposés s'enregistre ici, hors du calcul
+        // de la vue (une seule fois : le plan suivant n'a plus de jours à réinitialiser)
+        .task(id: plan?.daysReset == true ? exercise.rawValue : nil) {
+            guard plan?.daysReset == true else { return }
+            Schedule.save(nil, for: exercise)
+            version += 1
+        }
         .onChange(of: exercise) { _, exercise in
             goal = Goal.load(exercise)
             version += 1
