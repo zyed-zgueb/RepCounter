@@ -19,6 +19,8 @@ struct WorkoutView: View {
     @State private var bump = false
     @State private var showsHistory = false
     @State private var showsCoaching = false
+    /// Exercice dont la séance démarre à la fermeture du Coaching (Démarrer touché).
+    @State private var coachingStart: Exercise?
     @State private var cachedPlan: TrainingPlan?
     @State private var planComputed = false
     /// La bulle qui explique le point d'état a été vue (une seule fois).
@@ -168,7 +170,7 @@ struct WorkoutView: View {
         .sheet(item: $guideExercise) { exercise in
             PlacementGuideView(guide: PlacementGuide(exercise: exercise, armband: hasArmband),
                                buttonTitle: guideStartsSession ? "C'est parti" : "J'ai compris") {
-                if guideStartsSession { start() }
+                if guideStartsSession { start(exercise) }
             }
             .environment(\.theme, themeStore.current)
             .preferredColorScheme(themeStore.current.colorScheme)
@@ -189,8 +191,16 @@ struct WorkoutView: View {
                 .environment(\.theme, themeStore.current)
                 .preferredColorScheme(themeStore.current.colorScheme)
         }
-        .sheet(isPresented: $showsCoaching) {
-            CoachingView(exercise: model.exercise)
+        .sheet(isPresented: $showsCoaching, onDismiss: {
+            // Démarrer touché dans le Coaching : la séance de cet exercice, au cadran
+            guard let exercise = coachingStart else { return }
+            coachingStart = nil
+            if model.phase == .ready || exercise != model.exercise { start(exercise) }
+        }) {
+            CoachingView(exercise: model.exercise, exercises: exercises) { exercise in
+                coachingStart = exercise
+                showsCoaching = false
+            }
                 .environment(\.theme, themeStore.current)
                 .preferredColorScheme(themeStore.current.colorScheme)
         }
@@ -214,10 +224,9 @@ struct WorkoutView: View {
         return HistoryStats(sessions: sessions, exercise: browsing).phase(all: sessions).stateColor(theme)
     }
 
-    /// Le plan d'un exercice (nil sans objectif).
+    /// Le plan d'un exercice (nil sans séance pour le caler).
     private func plan(_ exercise: Exercise) -> TrainingPlan? {
-        guard Goal.load(exercise) != nil || PlanAnchor.load(exercise) != nil else { return nil }
-        return HistoryStats(sessions: sessions, exercise: exercise).plan(all: sessions)
+        HistoryStats(sessions: sessions, exercise: exercise).plan(all: sessions)
     }
 
     /// Brassard déclaré ou retiré pour un exercice de bras : l'écran est recréé avec les bons
@@ -725,14 +734,16 @@ struct WorkoutView: View {
     /// Démarrer. La première fois pour un exercice, la fiche « Placer ton iPhone » d'abord.
     /// Si l'exercice affiché n'est pas encore adopté (Démarrer touché juste après un
     /// glissement), il l'est tout de suite, et sa séance démarre dès son affichage.
-    private func start() {
-        if !PlacementGuide(exercise: browsing, armband: hasArmband).seen {
-            showGuide(browsing, thenStart: true)
+    /// `exercise` : un autre exercice que celui affiché (Démarrer du Coaching, de la fiche).
+    private func start(_ exercise: Exercise? = nil) {
+        let exercise = exercise ?? browsing
+        if !PlacementGuide(exercise: exercise, armband: hasArmband).seen {
+            showGuide(exercise, thenStart: true)
             return
         }
-        if browsing != model.exercise {
+        if exercise != model.exercise {
             pendingSelection?.cancel()
-            onSelectExercise(browsing, true)
+            onSelectExercise(exercise, true)
         } else {
             model.beginSession()
         }

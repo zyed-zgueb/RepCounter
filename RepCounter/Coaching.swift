@@ -126,14 +126,20 @@ struct StateDotTip: View {
 
 // MARK: - Vue Coaching
 
-/// Le Coaching (skill reps-ux) : l'avenir et le plan d'un exercice, du plus long terme au plus
-/// court. L'objectif en très grand, le chemin jusqu'à lui (un graphique), le bloc en cours
-/// (intensité, frise, jours, prévu face au fait), puis l'état (phase, Forme, ressenti).
+/// Le Coaching (skill reps-ux) : l'avenir et le plan d'un exercice, l'exercice en titre (un
+/// glissement ou ‹ › passe à un autre de Mes exercices). Du plus proche au plus lointain : la
+/// séance du jour, l'objectif (ou l'invitation à en fixer un), le chemin jusqu'à lui, le bloc
+/// en cours, puis l'état (phase, Forme, ressenti). Sans objectif, le plan tourne quand même sur
+/// la séance habituelle : seul le chemin attend un objectif.
 struct CoachingView: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \SessionRecord.start, order: .reverse) private var sessions: [SessionRecord]
-    let exercise: Exercise
+    @State private var exercise: Exercise
+    /// Mes exercices, dans l'ordre du cadran.
+    let exercises: [Exercise]
+    /// Démarrer : la séance de cet exercice, au cadran.
+    let onStart: (Exercise) -> Void
     @State private var goal: Goal?
     @State private var editor: GoalEditor.Mode?
     @State private var showsMenu = false
@@ -142,8 +148,10 @@ struct CoachingView: View {
     /// Change quand un jour de séance est déplacé ou l'objectif retiré : le plan est recalculé.
     @State private var version = 0
 
-    init(exercise: Exercise) {
-        self.exercise = exercise
+    init(exercise: Exercise, exercises: [Exercise], onStart: @escaping (Exercise) -> Void) {
+        _exercise = State(initialValue: exercise)
+        self.exercises = exercises.contains(exercise) ? exercises : [exercise] + exercises
+        self.onStart = onStart
         _goal = State(initialValue: Goal.load(exercise))
     }
 
@@ -153,36 +161,34 @@ struct CoachingView: View {
         let plan = stats.plan(all: sessions)
         NavigationStack {
             VStack(spacing: 0) {
-                HStack {
-                    Text("COACHING")
-                        .font(theme.font(16, .bold))
-                        .tracking(3)
-                        .foregroundStyle(theme.text)
-                    Spacer()
-                    MonitorLabel(exercise.shortTitle)
-                    IconButton(systemImage: "info.circle", color: theme.dim) { showsInfo = true }
-                    IconButton(systemImage: "xmark") { dismiss() }
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-
+                header
                 VerticalScroll {
                     VStack(spacing: 14) {
-                        // Où je vais : l'objectif, le chemin, le bloc
-                        GoalHeader(goal: goal, current: stats.currentBest,
-                                   onEdit: { editor = goal == nil ? .new : .target },
-                                   onMenu: { showsMenu = true })
-                        if let plan {
-                            PathCard(plan: plan, exercise: exercise, sessions: stats.sessions)
-                            BlockCard(plan: plan, exercise: exercise) { version += 1 }
-                        } else if goal != nil {
-                            Text("plan · après ta première séance")
-                                .font(theme.font(12))
-                                .foregroundStyle(theme.dim)
-                                .coachingCard(theme)
+                        if stats.isEmpty {
+                            // Rien à caler : la première séance d'abord
+                            FirstSessionCard(exercise: exercise) { onStart(exercise) }
+                            if goal == nil { GoalInvitation(level: nil) { editor = .new } }
+                        } else {
+                            if let plan {
+                                TodayCard(plan: plan, todaySets: todaySets(stats)) { onStart(exercise) }
+                            }
+                            // Où je vais : l'objectif, le chemin, le bloc
+                            if goal != nil {
+                                GoalHeader(goal: goal, exercise: exercise, current: stats.currentBest,
+                                           onEdit: { editor = .target },
+                                           onMenu: { showsMenu = true })
+                            } else {
+                                GoalInvitation(level: stats.currentBest) { editor = .new }
+                            }
+                            if let plan {
+                                if goal != nil {
+                                    PathCard(plan: plan, exercise: exercise, sessions: stats.sessions)
+                                }
+                                BlockCard(plan: plan, exercise: exercise) { version += 1 }
+                            }
                         }
                         // Comment je suis
-                        if exercise != .auto {
+                        if exercise != .auto, !stats.isEmpty {
                             NavigationLink(value: CoachingPage.state) {
                                 StateCard(stats: stats, all: sessions)
                             }
@@ -191,7 +197,10 @@ struct CoachingView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 24)
+                    .id(exercise)
+                    .transition(.opacity)
                 }
+                .simultaneousGesture(swipe)
             }
             .background(theme.background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
@@ -209,6 +218,10 @@ struct CoachingView: View {
         .onAppear {
             // Le bloc s'explique une fois, à la première ouverture avec un plan
             if plan != nil, !UserDefaults.standard.bool(forKey: BlockSheet.key) { showsBlockSheet = true }
+        }
+        .onChange(of: exercise) { _, exercise in
+            goal = Goal.load(exercise)
+            version += 1
         }
         .sheet(isPresented: $showsBlockSheet) {
             if let plan {
@@ -237,7 +250,8 @@ struct CoachingView: View {
             }
         }
         .sheet(item: $editor) { mode in
-            GoalEditor(mode: mode, exercise: exercise, goal: goal, current: stats.currentBest) { newGoal in
+            GoalEditor(mode: mode, exercise: exercise, goal: goal, current: stats.currentBest,
+                       proposed: goal == nil ? GoalInvitation.proposal(stats.currentBest) : nil) { newGoal in
                 Goal.save(newGoal, for: exercise)
                 goal = newGoal
                 version += 1
@@ -246,17 +260,307 @@ struct CoachingView: View {
             .preferredColorScheme(theme.colorScheme)
         }
     }
+
+    /// « COACHING · POMPES » en grand, ‹ › pour passer d'un exercice à l'autre.
+    private var header: some View {
+        HStack(spacing: 2) {
+            if exercises.count > 1 {
+                arrow("chevron.left", -1)
+            }
+            Text("COACHING · \(exercise.shortTitle.uppercased())")
+                .font(theme.font(18, .bold))
+                .tracking(2)
+                .foregroundStyle(theme.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .contentTransition(.opacity)
+                .accessibilityAddTraits(.isHeader)
+            if exercises.count > 1 {
+                arrow("chevron.right", 1)
+            }
+            Spacer(minLength: 4)
+            IconButton(systemImage: "info.circle", color: theme.dim) { showsInfo = true }
+            IconButton(systemImage: "xmark") { dismiss() }
+        }
+        .padding(.leading, exercises.count > 1 ? 8 : 20)
+        .padding(.trailing, 20)
+        .padding(.vertical, 12)
+    }
+
+    private func arrow(_ systemImage: String, _ step: Int) -> some View {
+        Button { move(by: step) } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(theme.dim)
+                .frame(width: 26, height: 36)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(step < 0 ? "Exercice précédent" : "Exercice suivant")
+    }
+
+    /// Glisser à gauche ou à droite : l'exercice suivant ou précédent (le défilement vertical reste).
+    private var swipe: some Gesture {
+        DragGesture(minimumDistance: 30)
+            .onEnded { value in
+                let dx = value.translation.width, dy = value.translation.height
+                guard abs(dx) > 70, abs(dx) > abs(dy) * 2 else { return }
+                move(by: dx < 0 ? 1 : -1)
+            }
+    }
+
+    /// Passe à l'exercice voisin dans Mes exercices (en boucle).
+    private func move(by step: Int) {
+        guard exercises.count > 1, let index = exercises.firstIndex(of: exercise) else { return }
+        UISelectionFeedbackGenerator().selectionChanged()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            exercise = exercises[(index + step + exercises.count) % exercises.count]
+        }
+    }
+
+    /// Les séries faites aujourd'hui (séances espacées comprises), dans l'ordre.
+    private func todaySets(_ stats: HistoryStats) -> [Int] {
+        stats.sessions
+            .filter { stats.calendar.isDate($0.start, inSameDayAs: stats.now) }
+            .sorted { $0.start < $1.start }
+            .flatMap { $0.orderedSets.map(\.reps) }
+    }
 }
 
 enum CoachingPage: Hashable {
     case state
 }
 
+/// La séance du jour, en tête du Coaching (la ligne sous le cadran en est le résumé) :
+/// - à faire : les cibles en barres, ◷ le repos, l'intensité (pastille et mot), Démarrer ;
+/// - faite : « ✓ fait », le fait face aux cibles, puis la prochaine séance ;
+/// - repos : « repos · prochaine vendredi » et ses cibles ;
+/// - séance légère : « ! léger », barres réduites ; semaine allégée : « allégée ».
+private struct TodayCard: View {
+    @Environment(\.theme) private var theme
+    let plan: TrainingPlan
+    /// Les séries faites aujourd'hui.
+    let todaySets: [Int]
+    let onStart: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            switch plan.status {
+            case .due:
+                title("Aujourd'hui", plan.today)
+                session(plan.today, done: todaySets.isEmpty ? nil : todaySets)
+                Button("Démarrer", action: onStart)
+                    .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 48, fontSize: 13))
+            case .done:
+                HStack {
+                    Text("✓ fait")
+                        .font(theme.font(15, .bold))
+                        .foregroundStyle(theme.ok)
+                    Spacer()
+                }
+                TargetBars(targets: plan.todaySession?.targets ?? [], done: todaySets, color: plan.today.color(theme))
+                    .frame(height: 76)
+                upcoming
+            case .rest:
+                HStack {
+                    Text("repos")
+                        .font(theme.font(15, .bold))
+                        .foregroundStyle(theme.dim)
+                    Spacer()
+                }
+                upcoming
+            }
+        }
+        .coachingCard(theme)
+    }
+
+    /// « Aujourd'hui · ! léger » à gauche, l'intensité (pastille et mot) à droite.
+    private func title(_ label: String, _ day: TrainingPlan.Today) -> some View {
+        HStack(spacing: 6) {
+            MonitorLabel(label, color: theme.text)
+            if let mark = mark(day) {
+                MonitorLabel(mark, color: theme.text)
+            }
+            Spacer(minLength: 4)
+            Circle().fill(day.color(theme)).frame(width: 8, height: 8)
+            MonitorLabel(Intensity.word(day.intensity), color: day.color(theme))
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func mark(_ day: TrainingPlan.Today) -> String? {
+        switch day {
+        case .light: return "· ! léger"
+        case .deload: return "· allégée"
+        case .test: return "· ◆ test"
+        case .session: return nil
+        }
+    }
+
+    /// Les cibles en barres et le repos, ou, un jour de test, la série max.
+    @ViewBuilder
+    private func session(_ day: TrainingPlan.Today, done: [Int]?, compact: Bool = false) -> some View {
+        if case .test = day {
+            Text("◆ série max")
+                .font(theme.font(compact ? 14 : 22, .bold))
+                .foregroundStyle(day.color(theme))
+        } else if let s = sessionOf(day) {
+            HStack(alignment: .bottom, spacing: 12) {
+                TargetBars(targets: s.targets, done: done, color: day.color(theme))
+                    .frame(height: compact ? 52 : 84)
+                Text("◷ \(Format.clock(Double(s.rest)))")
+                    .font(theme.font(compact ? 11 : 13, .bold))
+                    .foregroundStyle(theme.dim)
+                    .padding(.bottom, 4)
+                    .accessibilityLabel("Repos \(Format.clock(Double(s.rest)))")
+            }
+        }
+    }
+
+    private func sessionOf(_ day: TrainingPlan.Today) -> Prescription.Session? {
+        switch day {
+        case .session(let s), .light(let s), .deload(let s): return s
+        case .test: return nil
+        }
+    }
+
+    /// « prochaine · vendredi » et ses cibles, en petit.
+    @ViewBuilder
+    private var upcoming: some View {
+        if let next = plan.next {
+            title("prochaine · \(Format.weekdayOrDate(next))", plan.upcoming)
+            session(plan.upcoming, done: nil, compact: true)
+                .opacity(0.85)
+            Button("Démarrer quand même", action: onStart)
+                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 40, fontSize: 12))
+        }
+    }
+}
+
+/// Une séance en barres, une par série : hauteur = cible, valeur au-dessus. Avec ce qui est
+/// fait : contour pointillé = cible, plein = fait, vert et ✓ si la cible est atteinte.
+private struct TargetBars: View {
+    @Environment(\.theme) private var theme
+    let targets: [Int]
+    let done: [Int]?
+    let color: Color
+
+    var body: some View {
+        let count = max(targets.count, done?.count ?? 0)
+        Canvas { context, size in
+            guard count > 0 else { return }
+            let top = CGFloat(max((targets + (done ?? [])).max() ?? 1, 1))
+            let base = size.height
+            let gap: CGFloat = 8
+            let width = min((size.width - gap * CGFloat(count - 1)) / CGFloat(count), 44)
+            let height = { (value: Int) -> CGFloat in max((base - 14) * CGFloat(value) / top, 2) }
+            for index in 0..<count {
+                let x = CGFloat(index) * (width + gap)
+                let target = index < targets.count ? targets[index] : nil
+                if let done, index < done.count {
+                    let value = done[index]
+                    let reached = target.map { value >= $0 } ?? true
+                    if let target {
+                        let h = height(target)
+                        context.stroke(Path(roundedRect: CGRect(x: x, y: base - h, width: width, height: h), cornerRadius: 2),
+                                       with: .color(theme.dim), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+                    }
+                    let h = height(value)
+                    context.fill(Path(roundedRect: CGRect(x: x + 3, y: base - h, width: width - 6, height: h), cornerRadius: 1.5),
+                                 with: .color(reached ? theme.ok : theme.primary))
+                    context.draw(Text("\(value)\(reached ? " ✓" : "")").font(theme.font(10, .bold))
+                                    .foregroundStyle(reached ? theme.ok : theme.text),
+                                 at: CGPoint(x: x + width / 2, y: base - max(h, target.map(height) ?? 0) - 7))
+                } else if let target {
+                    let h = height(target)
+                    context.fill(Path(roundedRect: CGRect(x: x, y: base - h, width: width, height: h), cornerRadius: 2),
+                                 with: .color(done == nil ? color.opacity(0.8) : theme.line))
+                    context.draw(Text("\(target)").font(theme.font(11, .bold)).foregroundStyle(theme.text),
+                                 at: CGPoint(x: x + width / 2, y: base - h - 7))
+                }
+            }
+        }
+        .accessibilityElement()
+        .accessibilityLabel(accessibility)
+    }
+
+    private var accessibility: String {
+        let planned = "Cibles " + targets.map(String.init).joined(separator: ", ")
+        guard let done, !done.isEmpty else { return planned }
+        return planned + ". Fait " + done.map(String.init).joined(separator: ", ")
+    }
+}
+
+/// Sans historique : la première séance cale le plan.
+private struct FirstSessionCard: View {
+    @Environment(\.theme) private var theme
+    let exercise: Exercise
+    let onStart: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            MonitorLabel("Aujourd'hui", color: theme.text)
+            Text("Fais une première séance : le plan partira de ton niveau.")
+                .font(theme.font(13))
+                .foregroundStyle(theme.text)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Démarrer", action: onStart)
+                .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 48, fontSize: 13))
+        }
+        .coachingCard(theme)
+    }
+}
+
+/// Sans objectif : « ⌖ Fixe un objectif pour voir ton chemin », avec une proposition tirée du
+/// niveau (« 33 → 40 ? »).
+private struct GoalInvitation: View {
+    @Environment(\.theme) private var theme
+    /// Le niveau (meilleure série récente) ; nil ou 0 : pas de proposition.
+    let level: Int?
+    let onSet: () -> Void
+
+    /// La proposition : environ 20 % au-dessus du niveau, arrondie, au moins +1. Un choix de
+    /// l'app, pas une norme : un point de départ que l'on modifie.
+    static func proposal(_ level: Int) -> Int? {
+        guard level > 0 else { return nil }
+        return max(Int((Double(level) * 1.2).rounded()), level + 1)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            MonitorLabel("⌖ Fixe un objectif pour voir ton chemin", color: theme.text)
+            if let level, let proposal = Self.proposal(level) {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(level)")
+                        .font(theme.font(28, .bold))
+                        .foregroundStyle(theme.text)
+                    Text("→")
+                        .font(theme.font(20, .bold))
+                        .foregroundStyle(theme.dim)
+                    Text("\(proposal) ?")
+                        .font(theme.font(28, .bold))
+                        .foregroundStyle(theme.ok)
+                    Spacer()
+                }
+                .monospacedDigit()
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Niveau \(level), objectif proposé \(proposal)")
+                MonitorLabel("niveau · proposé +20 %, choix de l'app")
+            }
+            Button("⌖ Fixer un objectif", action: onSet)
+                .buttonStyle(MonitorButtonStyle(color: theme.primary, filled: false, height: 44, fontSize: 12))
+        }
+        .coachingCard(theme)
+    }
+}
+
 /// L'en-tête : l'objectif, le chiffre le plus visible de l'écran (vert comme la ligne d'arrivée),
-/// « ⌖ pour le 12 fév. » au-dessus ; à droite, « auj. 33 », « reste 7 », ✎ et ⋯.
+/// « ⌖ pour le 12 fév. » au-dessus, l'unité dessous (« pompes d'affilée ») ; à droite,
+/// « niveau 33 », « reste 7 », ✎ et ⋯.
 private struct GoalHeader: View {
     @Environment(\.theme) private var theme
     let goal: Goal?
+    let exercise: Exercise
     let current: Int
     let onEdit: () -> Void
     let onMenu: () -> Void
@@ -264,7 +568,7 @@ private struct GoalHeader: View {
     var body: some View {
         if let goal {
             HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 0) {
                     MonitorLabel(goal.date.map { "⌖ pour le \(Format.shortDate($0))" } ?? "⌖ objectif")
                     Text("\(goal.target)")
                         .font(theme.font(64, .bold))
@@ -272,6 +576,7 @@ private struct GoalHeader: View {
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
+                    MonitorLabel("\(exercise.shortTitle.lowercased()) d'affilée")
                 }
                 Spacer(minLength: 8)
                 VStack(alignment: .trailing, spacing: 10) {
@@ -279,20 +584,13 @@ private struct GoalHeader: View {
                         symbolButton("✎", label: "Modifier l'objectif", action: onEdit)
                         symbolButton("⋯", label: "Menu de l'objectif", action: onMenu)
                     }
-                    figure("auj.", current)
+                    figure("niveau", current)
                     figure("reste", max(goal.target - current, 0))
                 }
                 .padding(.bottom, 6)
             }
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("Objectif \(goal.target), aujourd'hui \(current)")
-        } else {
-            VStack(alignment: .leading, spacing: 10) {
-                MonitorLabel("⌖ objectif")
-                Button("⌖ Fixer un objectif", action: onEdit)
-                    .buttonStyle(MonitorButtonStyle(color: theme.primary, filled: false, height: 44, fontSize: 12))
-            }
-            .coachingCard(theme)
+            .accessibilityLabel("Objectif \(goal.target) \(exercise.shortTitle.lowercased()) d'affilée, niveau \(current)")
         }
     }
 
@@ -528,13 +826,13 @@ private struct GoalEditor: View {
     @State private var hasDate: Bool
     @State private var date: Date
 
-    init(mode: Mode, exercise: Exercise, goal: Goal?, current: Int, onSave: @escaping (Goal?) -> Void) {
+    init(mode: Mode, exercise: Exercise, goal: Goal?, current: Int, proposed: Int? = nil, onSave: @escaping (Goal?) -> Void) {
         self.mode = mode
         self.exercise = exercise
         self.goal = goal
         self.current = current
         self.onSave = onSave
-        _target = State(initialValue: goal?.target ?? max(current + 5, 10))
+        _target = State(initialValue: goal?.target ?? proposed ?? max(current + 5, 10))
         _hasDate = State(initialValue: goal?.date != nil || mode == .date)
         _date = State(initialValue: goal?.date ?? Date().addingTimeInterval(16 * 7 * 86_400))
     }
@@ -561,7 +859,7 @@ private struct GoalEditor: View {
                             .frame(maxWidth: .infinity)
                         stepButton("plus", 1)
                     }
-                    Text("d'affilée · auj. \(current)")
+                    Text("d'affilée · niveau \(current)")
                         .font(theme.font(12))
                         .foregroundStyle(theme.dim)
                         .frame(maxWidth: .infinity)

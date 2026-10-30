@@ -1,10 +1,10 @@
 import SwiftData
 import SwiftUI
 
-/// Historique d'un exercice (ou de tous, Σ) : le passé seulement (skill reps-ux). Une place pour
-/// chaque chose : le score d'endurance et sa tendance, l'activité (la semaine et la régularité),
-/// puis les records et la liste des séances. Le détail de chaque bloc s'ouvre d'une touche. La
-/// phase et la Forme sont dans la carte État du Coaching.
+/// Historique d'un exercice (ou de tous, Σ) : le passé seulement (skill reps-ux), en deux
+/// cartes. « 12 semaines » (verdict de progression, meilleure série, volume) ouvre la page
+/// Progrès : score d'endurance, volume détaillé, régularité. « Journal » : les jours sur une
+/// frise horaire. La phase et la Forme sont dans la carte État du Coaching.
 struct HistoryView: View {
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
@@ -105,7 +105,7 @@ struct HistoryView: View {
     private func detail(_ page: HistoryPage, stats: HistoryStats) -> some View {
         switch page {
         case .activity:
-            HistoryDetailView(title: "Activité") {
+            HistoryDetailView(title: "Progrès") {
                 if let exercise { EndurancePanel(stats: stats, exercise: exercise) }
                 HistoryPanel(title: "Répétitions / semaine") {
                     VolumeBars(volumes: stats.lastWeeks(12).map { stats.volume(inWeek: $0) })
@@ -248,9 +248,11 @@ private struct ExerciseFilter: View {
 
 /// 12 semaines en un graphique, un axe des semaines commun : en haut la meilleure série par
 /// semaine (★ les semaines de record, « ★ 32 » le record actuel), en bas le volume en barres (la
-/// semaine en cours en couleur avec sa valeur, « · » sans séance). En tête, une seule information :
-/// la tendance du volume face à la moyenne des semaines précédentes. La semaine en cours se lit
-/// dans le journal, le suivi du plan dans le Coaching. Une touche ouvre l'activité.
+/// semaine en cours en couleur avec sa valeur, « · » sans séance). En tête, le verdict de
+/// progression du score d'endurance (« ▲ en progrès », « = stable », « ▼ en recul », rien tant
+/// qu'il n'est pas établi) ; la tendance du volume étiquette les barres (« reps / sem. · ▲ 4 % »).
+/// La semaine en cours se lit dans le journal, le suivi du plan dans le Coaching. Une touche
+/// ouvre la page Progrès (score d'endurance, volume détaillé, régularité).
 private struct WeeksCard: View {
     @Environment(\.theme) private var theme
     let stats: HistoryStats
@@ -262,21 +264,33 @@ private struct WeeksCard: View {
         let volumes = weeks.map { stats.volume(inWeek: $0) }
         HistoryPanel(title: "12 semaines", accessory: {
             HStack(spacing: 6) {
-                if let change = Self.trend(volumes) {
-                    Text("\(change >= 0 ? "▲" : "▼") \(Int(abs(change).rounded())) % vs moy.")
+                if let verdict {
+                    Text(verdict.text)
                         .font(theme.font(12, .bold))
-                        .foregroundStyle(change >= 0 ? theme.ok : theme.text)
+                        .foregroundStyle(verdict.up ? theme.ok : theme.text)
                 }
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(theme.dim)
             }
         }) {
-            WeeksChart(volumes: volumes, best: bestByWeek(weeks), record: planned ? stats.bestSet?.value : nil)
+            WeeksChart(volumes: volumes, best: bestByWeek(weeks), record: planned ? stats.bestSet?.value : nil,
+                       trend: Self.trend(volumes))
                 .frame(height: 130)
                 .accessibilityLabel(accessibility(volume: volumes.last ?? 0, trend: Self.trend(volumes)))
         }
         .contentShape(Rectangle())
+    }
+
+    /// Le verdict de progression du score d'endurance (un exercice), seulement s'il est établi.
+    private var verdict: (text: String, up: Bool)? {
+        guard planned else { return nil }
+        switch stats.progressVerdict.kind {
+        case .up: return ("▲ en progrès", true)
+        case .stable: return ("= stable", false)
+        case .down: return ("▼ en recul", false)
+        case .pending, .unreliable: return nil
+        }
     }
 
     /// Semaines précédentes actives nécessaires pour une moyenne (choix de l'app).
@@ -308,6 +322,7 @@ private struct WeeksCard: View {
         var parts = ["12 semaines"]
         if planned, let record = stats.bestSet { parts.append("meilleure série \(record.value)") }
         parts.append("\(volume) répétitions cette semaine")
+        if let verdict { parts.append(verdict.text.dropFirst(2).description) }
         if let trend { parts.append("\(trend >= 0 ? "plus" : "moins") \(Int(abs(trend).rounded())) % que la moyenne") }
         return parts.joined(separator: " : ")
     }
@@ -321,6 +336,8 @@ private struct WeeksChart: View {
     let best: [(value: Int?, record: Bool)]
     /// Le record actuel (un exercice), étiqueté « ★ 32 ».
     let record: Int?
+    /// Le volume de la semaine face à la moyenne des précédentes, en % (nil : pas assez d'historique).
+    let trend: Double?
 
     var body: some View {
         Canvas { context, size in
@@ -336,7 +353,8 @@ private struct WeeksChart: View {
             rule.addLine(to: CGPoint(x: size.width, y: split))
             context.stroke(rule, with: .color(theme.grid), lineWidth: 1)
             context.draw(Text("série max").font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: 5), anchor: .leading)
-            context.draw(Text("reps / sem.").font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: split + 7), anchor: .leading)
+            let volumeLabel = trend.map { "reps / sem. · \($0 >= 0 ? "▲" : "▼") \(Int(abs($0).rounded())) %" } ?? "reps / sem."
+            context.draw(Text(volumeLabel).font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: split + 7), anchor: .leading)
             // En haut : la meilleure série
             let values = best.compactMap(\.value)
             if values.count < 2 {

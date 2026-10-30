@@ -72,9 +72,22 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
    permet de corriger son compte** (− / +, avec le compte d'origine). Puis « Nouvelle séance ».
 
 - **Coaching** (icône cible, en veille et à la fin ; `Coaching.swift`, `PlanView.swift`) :
-  l'avenir et le plan d'un exercice, en graphiques (skill reps-ux, § 9), du plus long terme au
-  plus court. **En-tête** : l'objectif en très grand, vert comme la ligne d'arrivée, « ⌖ pour le
-  12 fév. » au-dessus, « auj. 33 · reste 7 », ✎ et ⋯ (✎ objectif : recalé au prochain bloc ;
+  l'avenir et le plan d'un exercice, en graphiques (skill reps-ux, § 9). **Titre** : « COACHING ·
+  POMPES » ; un glissement gauche/droite ou ‹ › passe d'un exercice à l'autre de Mes exercices.
+  **Aujourd'hui** (première carte) : un jour de séance, les cibles en barres (une par série,
+  valeur au-dessus), « ◷ 1:30 », l'intensité (pastille et mot) et Démarrer, qui revient au
+  cadran sur cet exercice ; séance faite : « ✓ fait », le fait face aux cibles, puis « prochaine ·
+  vendredi » et ses cibles ; jour de repos : « repos », puis la prochaine ; « ! léger » ou
+  « allégée » pour une séance réduite. La ligne sous le cadran en est le résumé.
+  **Sans objectif**, le plan démarre quand même sur la séance habituelle (son ancre est posée
+  dès qu'elle se calcule) : Aujourd'hui, le bloc et l'État s'affichent ; à la place de
+  l'objectif, « ⌖ Fixe un objectif pour voir ton chemin » avec une proposition « 33 → 40 ? »
+  (environ +20 % du niveau, arrondi : un choix de l'app) qui préremplit l'éditeur ; le chemin
+  n'apparaît qu'avec un objectif. Sans historique : « Fais une première séance : le plan partira
+  de ton niveau » et Démarrer. Ordre : Aujourd'hui, objectif, chemin, bloc, État.
+  **Objectif** : le nombre en très grand, vert comme la ligne d'arrivée, « ⌖ pour le
+  12 fév. » au-dessus, l'unité dessous (« pompes d'affilée »), « niveau 33 · reste 7 » (niveau :
+  meilleure série des 4 dernières semaines), ✎ et ⋯ (✎ objectif : recalé au prochain bloc ;
   ◷ date : déplace la ligne attendue ; ✕ retirer, avec confirmation : « Le plan s'arrête. Ton
   historique reste. » ; le plan continue alors en progression simple, ancré sur le max).
   **Chemin** : « pompes d'affilée » du départ à la date de l'objectif : le départ ●, la
@@ -97,11 +110,14 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
 - **Historique** (icône graphique, en veille et à la fin) : le passé seulement, en deux cartes. Σ (tous les exercices) ou un exercice :
   1. **12 semaines** : un seul graphique, axe des semaines commun ; en haut la meilleure série
      par semaine (★ les semaines de record, « ★ 32 »), en bas le volume en barres (la semaine en
-     cours en couleur avec sa valeur, « · » sans séance), séparés par un filet ; en tête la
-     seule tendance du volume, « ▲ 4 % vs moy. » (semaine en cours face à la moyenne des
-     semaines précédentes actives, 2 au moins) ; sous 2 semaines, la courbe laisse place à
-     « 1 / 2 semaines ». La semaine en cours se lit dans le journal, le plan dans le Coaching. Une touche ouvre
-     l'activité : score d'endurance et sa tendance (un exercice), volume détaillé, régularité.
+     cours en couleur avec sa valeur, « · » sans séance), séparés par un filet. En tête, le
+     verdict de progression du score d'endurance (un exercice) : « ▲ en progrès », « = stable »,
+     « ▼ en recul », rien tant qu'il n'est pas établi. Les barres portent la tendance du volume,
+     « reps / sem. · ▲ 4 % » (semaine en cours face à la moyenne des semaines précédentes
+     actives, 2 au moins). Sous 2 semaines, la courbe laisse place à « 1 / 2 semaines ». La
+     semaine en cours se lit dans le journal, le plan dans le Coaching. Une touche ouvre la page
+     **Progrès** : score d'endurance (valeur, jauge, niveau du barème SCPE pour les pompes,
+     explication), volume détaillé, régularité.
   2. **Journal** (`Journal.swift`) : une ligne par jour, aujourd'hui en haut (28 jours, « + 28
      jours » pour remonter) ; l'heure en abscisse, de la plage réglée (Réglages › Journal de
      l'historique : début et fin par pas de 30 min, 06:00 → 23:00 par défaut, 6 h au moins),

@@ -31,9 +31,9 @@ Plus une donnée est vue souvent, plus elle est réduite et proche du compteur. 
 
 ## 3. Rassembler ce qui se ressemble ou se complète
 
-- **Où je vais** (Coaching) : objectif et où j'en suis, bloc sur sa frise, prévu face au fait, mesuré face à attendu. Le plan et sa vérification restent ensemble.
+- **Où je vais** (Coaching, un exercice en titre, glissement pour passer à un autre) : d'abord la séance du jour (carte Aujourd'hui : cibles en barres, repos, intensité, Démarrer ; la ligne sous le cadran en est le résumé), puis l'objectif et où j'en suis (ou, sans objectif, une invitation avec une proposition), le chemin (seulement avec un objectif), le bloc sur sa frise, prévu face au fait. Le plan et sa vérification restent ensemble. Sans objectif, le plan tourne quand même : l'écran ne se vide jamais.
 - **Comment je suis** (carte État, dans le Coaching) : phase, Forme mesurée, ressenti (fatigue, effort). Une seule carte, jamais dispersée.
-- **D'où je viens** (Historique) : deux cartes. « 12 semaines » : la meilleure série en courbe (★ records) et le volume en barres, sur le même axe ; en tête la seule tendance du volume (« ▲ 4 % vs moy. »). La semaine en cours se lit dans le journal ; le suivi du plan (fait face au prévu) reste dans le Coaching. « Journal » : les jours sur une frise horaire. Le détail (régularité, volume détaillé, score d'endurance) s'ouvre en touchant une carte.
+- **D'où je viens** (Historique) : deux cartes. Strictement deux cartes. « 12 semaines » : la meilleure série en courbe (★ records) et le volume en barres, sur le même axe ; en tête le verdict de progression du score d'endurance (« ▲ en progrès », « = stable », « ▼ en recul », rien tant qu'il n'est pas établi) ; la tendance du volume étiquette les barres (« reps / sem. · ▲ 4 % »). Le score d'endurance n'a pas sa propre carte : il dit comment la performance évolue, comme « 12 semaines » ; son détail ouvre la page **Progrès** (score d'endurance, volume détaillé, régularité) en touchant la carte. « Journal » : les jours sur une frise horaire. La semaine en cours se lit dans le journal ; le suivi du plan (fait face au prévu) reste dans le Coaching.
 
 ## 4. Le cadran
 

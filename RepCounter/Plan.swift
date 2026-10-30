@@ -349,14 +349,34 @@ extension TrainingPlan {
     }
 
     static let minTests = 3
+
+    /// La prochaine séance (après aujourd'hui) : celle de sa semaine (progression ou allégée),
+    /// le test, ou, au-delà du bloc, la séance du jour.
+    var upcoming: Today {
+        guard let next else { return today }
+        // Le test du bloc déjà fait : la prochaine séance ouvre le bloc suivant
+        let tested = tests.last.map { $0.date >= testDate } ?? false
+        if tested { return today }
+        if next >= testDate { return .test }
+        if let week = weeks.first(where: { $0.start <= next && next < $0.start.addingTimeInterval(7 * 86_400) }) {
+            return week.kind == .deload ? .deload(week.planned) : .session(week.planned)
+        }
+        return today
+    }
 }
 
 extension HistoryStats {
-    /// Le plan de l'exercice de ces statistiques, s'il a un objectif. `all` : toutes les séances
-    /// (pour la phase, qui dit si la Forme est basse aujourd'hui).
+    /// Le plan de l'exercice de ces statistiques, avec ou sans objectif : sans objectif, il
+    /// démarre de lui-même sur la séance habituelle, dès qu'elle se calcule (l'ancre est posée
+    /// ce jour-là). « Autre exercice » mêle des mouvements : pas de plan sans objectif.
+    /// `all` : toutes les séances (pour la phase, qui dit si la Forme est basse aujourd'hui).
     func plan(all: [SessionRecord]) -> TrainingPlan? {
         guard let exercise = sessions.first?.exercise else { return nil }
         let goal = Goal.load(exercise)
+        if goal == nil, PlanAnchor.load(exercise) == nil, exercise != .auto,
+           Prescription.habitual(sessions, before: now.addingTimeInterval(1), calendar: calendar) != nil {
+            PlanAnchor.setIfNeeded(now, for: exercise)
+        }
         guard let anchor = goal?.created ?? PlanAnchor.load(exercise) else { return nil }
         let tired = Set(formResults.filter { $0.result.zone == .tired }.map { $0.session.persistentModelID })
         let lowForm = [.lowForm, .overreaching, .deloadAdvised, .persistentFatigue].contains(phase(all: all).kind)
