@@ -326,8 +326,10 @@ private struct TodayCard: View {
                 }
                 Button(action: onStartTest) { Text(symbols: "◆ Lancer le test") }
                     .buttonStyle(MonitorButtonStyle(color: theme.max, height: 48, fontSize: 13))
-                Button(plan.testOverdue ? "Séance allégée" : "Séance allégée à la place", action: onStart)
-                    .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 44, fontSize: 12))
+                // Bloc 1 : la séance de calibrage (normale) ; sinon la séance allégée
+                Button(plan.testStep != nil ? "Séance normale à la place"
+                       : (plan.testOverdue ? "Séance allégée" : "Séance allégée à la place"), action: onStart)
+                    .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 44, fontSize: 12, wraps: true))
             case .due:
                 if let mark = mark(plan.today) {
                     MonitorLabel(mark, color: theme.text)
@@ -355,12 +357,6 @@ private struct TodayCard: View {
             }
         }
         .coachingCard(theme)
-        .overlay {
-            // Test à faire : la carte est bordée de la couleur maximale
-            if plan.testOverdue {
-                RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.max, lineWidth: 1.5)
-            }
-        }
     }
 
     /// « ! ◆ test à faire », « ◆ test 1 / 2 » (bloc 1) ou « ◆ jour de test ».

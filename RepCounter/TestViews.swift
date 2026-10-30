@@ -25,24 +25,26 @@ enum TestReading {
     }
 }
 
-/// L'échauffement proposé avant le test : le cadran en couleur calme, sans jauge de mouvement.
+/// L'échauffement proposé avant le test : le cadran reste neutre (l'exercice), la consigne est
+/// dessous ; il ne compte, en couleur calme, que pendant la série d'échauffement.
 struct WarmupOfferFace: View {
     @Environment(\.theme) private var theme
-    let reps: Int?
+    let exercise: Exercise
 
     var body: some View {
-        Dial(face: CounterDialFace(lit: 0, color: theme.calm)) { side in
-            VStack(spacing: side * 0.02) {
-                MonitorLabel("échauffement", color: theme.calm)
-                Text(reps.map { "~\($0)" } ?? "~")
-                    .font(theme.dialFont(side * 0.26, .bold))
+        Dial(face: CounterDialFace(lit: 0, color: theme.primary)) { side in
+            VStack(spacing: side * 0.04) {
+                ExerciseIcon(exercise: exercise, size: side * 0.24)
+                    .foregroundStyle(theme.primary)
+                Text(exercise.shortTitle.uppercased())
+                    .font(theme.font(15, .bold))
+                    .tracking(2)
                     .foregroundStyle(theme.text)
-                    .monospacedDigit()
-                MonitorLabel("facile · puis ◷ 2:00")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                    .frame(width: side * 0.5)
             }
-            .padding(side * 0.2)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Échauffement conseillé : environ \(reps.map(String.init) ?? "quelques") répétitions faciles, puis 2 minutes de repos")
         }
     }
 }
@@ -60,26 +62,40 @@ struct TestResultPanel: View {
     let closesBlock: Bool
     let currentMax: Int?
     let goal: Goal?
+    /// Bloc 1 : « test 1 / 2 » ou « test 2 / 2 » (calibrage).
+    var step: TrainingPlan.TestStep? = nil
 
     var body: some View {
         let best = model.testBest ?? 0
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text("\(best)")
-                    .font(theme.font(46, .bold))
+                    .font(theme.font(34, .bold))
                     .foregroundStyle(theme.text)
                     .monospacedDigit()
-                MonitorLabel("\(exercise.shortTitle.lowercased()) d'affilée")
+                Text("\(exercise.shortTitle.lowercased()) d'affilée")
+                    .font(theme.font(12, .semibold))
+                    .foregroundStyle(theme.dim)
+                    .lineLimit(2)
             }
             .accessibilityElement(children: .combine)
             VStack(spacing: 6) {
-                if let previous {
+                if let step {
+                    // Bloc 1 : 2 tests, le meilleur fixe le départ
+                    if step.number < step.of {
+                        row("Test \(step.number) / \(step.of)", "le meilleur des deux fixe ton départ")
+                    } else {
+                        row("Départ", "\(max(best, previous ?? 0)) (meilleur des deux) → cibles calculées")
+                    }
+                } else if let previous {
                     row("Dernier test", "\(previous)")
                 }
-                if let gap = TestReading.gap(best, previous: previous) {
+                if step == nil, let gap = TestReading.gap(best, previous: previous) {
                     row("Écart", gap)
                 }
-                if closesBlock {
+                if step != nil {
+                    EmptyView()
+                } else if closesBlock {
                     row("Nouveau niveau", "\(best) → cibles recalées")
                 } else if let currentMax, best > currentMax {
                     row("Max relevé", "\(best) → cibles mises à jour")
@@ -135,14 +151,20 @@ struct TestResultPanel: View {
     }
 
     private func row(_ label: String, _ value: String) -> some View {
-        HStack {
-            MonitorLabel(label)
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .font(theme.font(12, .semibold))
+                .foregroundStyle(theme.dim)
+                .lineLimit(2)
             Spacer(minLength: 8)
             Text(symbols: value)
                 .font(theme.font(13, .bold))
                 .foregroundStyle(theme.text)
                 .multilineTextAlignment(.trailing)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        // « → » se lit en mots
+        .accessibilityLabel(label + " : " + value.replacingOccurrences(of: "→", with: "puis"))
     }
 }

@@ -31,8 +31,10 @@ struct WorkoutView: View {
     /// Touches sur le type de charge et le poids : le retour haptique ne suit qu'elles (pas le
     /// changement d'exercice, qui change aussi la charge).
     @State private var loadTouches = 0
-    /// « Quitter le test » après une série de test : confirmation.
+    /// « Quitter le test » avec une série en cours : confirmation.
     @State private var confirmsQuitTest = false
+    /// L'astuce du point d'état est affichée : celle du test attend (une astuce à la fois).
+    @State private var stateTipShown = false
     /// La séance terminée, enregistrée dans l'historique.
     @State private var record: SessionRecord?
     /// Exercice affiché dans le cadran pendant qu'on glisse ; adopté une fois le geste posé.
@@ -245,7 +247,8 @@ struct WorkoutView: View {
     /// Le jour de test (ou le test en retard, « à faire ») de l'exercice affiché : nil sinon, et
     /// jamais pour « Autre exercice » (pas de mode test).
     private var testDayPlan: TrainingPlan? {
-        guard browsing != .auto, let plan = plan(browsing), plan.today == .test, plan.status != .done else { return nil }
+        // Un jour de repos (même avec un test « à faire »), la veille reste celle d'un jour de repos
+        guard browsing != .auto, let plan = plan(browsing), plan.today == .test, plan.status == .due else { return nil }
         return plan
     }
 
@@ -342,7 +345,13 @@ struct WorkoutView: View {
                     showsCoaching = true
                 }
                 // Le point d'état s'explique une fois (TipKit), à son premier affichage, en veille
-                .stateTip(shown: model.phase == .ready && stateDot != nil)
+                .conditionalPopoverTip(StateTip(), shown: model.phase == .ready && stateDot != nil)
+                // Une astuce à la fois : celle du test attend que celle du point d'état soit fermée
+                .task {
+                    for await status in StateTip().statusUpdates {
+                        if case .available = status { stateTipShown = true } else { stateTipShown = false }
+                    }
+                }
                 IconButton(systemImage: "gearshape", color: theme.dim) { onOpenSettings() }
             }
         }
@@ -388,23 +397,20 @@ struct WorkoutView: View {
         VStack(spacing: 14) {
             switch model.phase {
             case .ready where model.testStage == .warmupOffer:
-                // Test lancé : l'échauffement est proposé (facultatif, jamais compté)
-                WarmupOfferFace(reps: model.warmupReps)
-                Text(model.warmupReps == nil ? "facile · ne compte pas" : "⅓ de ton dernier max · ne compte pas")
-                    .font(theme.font(11))
-                    .foregroundStyle(theme.dim)
+                // Test lancé : le cadran reste neutre ; la consigne d'échauffement (facultatif,
+                // jamais compté) passe dessous
+                WarmupOfferFace(exercise: model.exercise)
+                Text(symbols: "échauffement · " + (model.warmupReps.map { "~\($0) " } ?? "") + "facile · puis ◷ 2:00")
+                    .font(theme.font(13, .bold))
+                    .foregroundStyle(theme.text)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel("Échauffement conseillé : " + (model.warmupReps.map { "environ \($0) répétitions faciles" } ?? "quelques répétitions faciles") + ", puis 2 minutes de repos. Il ne compte pas.")
             case .ready:
                 let testPlan = testDayPlan
-                Dial(face: CounterDialFace(lit: 0, color: testPlan == nil ? theme.primary : theme.max, live: model.live, palePulse: true)) { side in
-                    ZStack {
-                        ExerciseCarousel(selection: $browsing, exercises: exercises, side: side)
-                        if testPlan != nil {
-                            // Jour de test : dit dans le cadran (skill § 4 : trois mots au plus)
-                            MonitorLabel("◆ jour de test", color: theme.max)
-                                .offset(y: side * 0.27)
-                                .allowsHitTesting(false)
-                        }
-                    }
+                // Le cadran reste neutre un jour de test : l'indication est dans la ligne dessous
+                Dial(face: CounterDialFace(lit: 0, color: theme.primary, live: model.live, palePulse: true)) { side in
+                    ExerciseCarousel(selection: $browsing, exercises: exercises, side: side)
                 }
                 // La séance du jour, si un plan existe (skill reps-ux : une ligne, pas le plan)
                 if let testPlan {
@@ -445,14 +451,18 @@ struct WorkoutView: View {
                 // Le résultat du test, puis la 2e tentative et « Terminer le test »
                 TestResultPanel(model: model, exercise: model.exercise,
                                 previous: sessionPlan?.tests.last?.value,
-                                closesBlock: testClosesBlock, currentMax: sessionPlan?.currentMax, goal: Goal.load(model.exercise))
-            case .active where model.isResting:
+                                closesBlock: testClosesBlock, currentMax: sessionPlan?.currentMax, goal: Goal.load(model.exercise),
+                                step: sessionPlan?.testStep)
+            case .active where model.isResting && model.testStage != .test:
                 // Un segment par tranche de 15 s (avec le bip), jusqu'au repos prévu, puis vert ;
-                // après l'échauffement d'un test, 2:00 puis le signal du test
-                let planned = model.testStage == .warmupRest ? Int(WorkoutModel.warmupRest) : plannedRest
+                // après l'échauffement d'un test, 2:00 en couleur calme, jamais vert (§ 5 : rien
+                // n'est atteint), puis le signal du test. Test armé (après le signal, ou 2e
+                // tentative) : le cadran du test, pas celui du repos
+                let warmupRest = model.testStage == .warmupRest
+                let planned = warmupRest ? Int(WorkoutModel.warmupRest) : plannedRest
                 let slices = max(1, planned / Self.restSlice)
                 let done = model.restDuration >= Double(planned)
-                let color = done ? theme.ok : theme.warn
+                let color = warmupRest ? theme.calm : (done ? theme.ok : theme.warn)
                 Dial(face: CounterDialFace(lit: min(Int(model.restDuration) / Self.restSlice, slices), segments: slices, color: color, rest: true)) { side in
                     VStack(spacing: side * 0.03) {
                         Text(Format.clock(model.restDuration))
@@ -805,21 +815,23 @@ struct WorkoutView: View {
                 VStack(spacing: 12) {
                     signalStrip
                     if model.testStage == .warmupOffer {
+                        // Une seule action principale, pleine ; passer et quitter restent discrets
                         Button("Démarrer l'échauffement") { model.startWarmup() }
-                            .buttonStyle(MonitorButtonStyle(color: theme.calm, filled: false, height: 56))
+                            .buttonStyle(MonitorButtonStyle(color: theme.calm, height: 56, wraps: true))
                         HStack(spacing: 10) {
                             Button("Quitter le test") { model.cancelTest() }
-                                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 44, fontSize: 12))
+                                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 44, fontSize: 12, wraps: true))
                             Button("Passer · test direct") { model.skipWarmup() }
-                                .buttonStyle(MonitorButtonStyle(color: theme.max, filled: false, height: 44, fontSize: 12))
+                                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 44, fontSize: 12, wraps: true))
                         }
-                    } else if testDayPlan != nil {
-                        // Jour de test : la personne lance le test elle-même ; la séance allégée reste possible
+                    } else if let testPlan = testDayPlan {
+                        // Jour de test : la personne lance le test elle-même ; l'autre séance reste possible
                         Button { launchTest() } label: { Text(symbols: "◆ Lancer le test") }
-                            .buttonStyle(MonitorButtonStyle(color: theme.max, height: 64))
-                            .popoverTip(TestTip())
-                        Button("Séance allégée à la place") { start() }
-                            .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 44, fontSize: 12))
+                            .buttonStyle(MonitorButtonStyle(color: theme.max, height: 64, wraps: true))
+                            .conditionalPopoverTip(TestTip(), shown: !stateTipShown)
+                        // Bloc 1 : la séance de calibrage ; sinon la séance allégée
+                        Button(testPlan.testStep != nil ? "Séance normale à la place" : "Séance allégée à la place") { start() }
+                            .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 44, fontSize: 12, wraps: true))
                     } else {
                         Button("Démarrer") { start() }
                             .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 64))
@@ -836,12 +848,13 @@ struct WorkoutView: View {
             }
         case .active where model.testStage != nil:
             // Toujours accessible en une action ; une confirmation seulement si une série de test serait perdue
-            Button("Quitter le test") {
-                if model.testAttempts > 0 { confirmsQuitTest = true } else { model.quitTest() }
+            // Une tentative close est enregistrée ; seule une série en cours serait perdue
+            Button("Quitter le test", role: .destructive) {
+                if model.setReps > 0 { confirmsQuitTest = true } else { model.quitTest() }
             }
             .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 50, fontSize: 12))
             .confirmationDialog("Quitter le test ?", isPresented: $confirmsQuitTest, titleVisibility: .visible) {
-                Button("Quitter, la série de test est perdue", role: .destructive) { model.quitTest() }
+                Button("Quitter, la série en cours est perdue", role: .destructive) { model.quitTest() }
                 Button("Continuer le test", role: .cancel) {}
             }
         case .active:
@@ -1327,8 +1340,8 @@ private struct SessionSummary: View {
                             .font(theme.font(11))
                             .foregroundStyle(theme.dim)
                     }
-                    // Une série ≥ 3 au-dessus de sa cible relève le max : les cibles suivent dès la
-                    // séance suivante (choix de l'app, METHODE-TEST.md, règle 13)
+                    // Une série qui dépasse le max le relève : les cibles suivent dès la séance
+                    // suivante (choix de l'app, METHODE-TEST.md)
                     if let currentMax = plan.currentMax, let raised = Self.raisedMax(record, from: currentMax) {
                         Text(symbols: "▲ max relevé à \(raised) · cibles mises à jour")
                             .font(theme.font(12, .bold))
@@ -1340,14 +1353,12 @@ private struct SessionSummary: View {
         }
     }
 
-    /// Le max relevé par une séance : la plus forte série au moins 3 au-dessus de sa cible
-    /// (nouveau max = max + dépassement, choix de l'app) ; nil si rien ne le relève.
+    /// Le max relevé par une séance : sa meilleure série (échauffement exclu), si elle dépasse le
+    /// max en cours ; nouveau max = ces répétitions (choix de l'app, METHODE-TEST.md). Nil sinon.
     static func raisedMax(_ record: SessionRecord, from max: Int) -> Int? {
-        let raised = record.orderedSets.compactMap { set -> Int? in
-            guard let target = set.target, !set.isWarmup, set.reps - target >= TrainingPlan.raiseMargin else { return nil }
-            return max + set.reps - target
-        }.max()
-        return raised.flatMap { $0 > max ? $0 : nil }
+        guard !record.isTest else { return nil }
+        let best = record.orderedSets.filter { !$0.isWarmup }.map(\.reps).max() ?? 0
+        return best > max ? best : nil
     }
 
     /// La prochaine séance prévue, après celle-ci : « Prochaine · vendredi · 29 · 25 · 22 ».
@@ -1699,12 +1710,12 @@ private struct RecordingSheet: View {
 }
 
 extension View {
-    /// L'astuce du point d'état, seulement quand le point est affiché. La variante de `popoverTip`
-    /// qui accepte une astuce optionnelle demande iOS 26 : on pose ou non le modificateur d'iOS 17.
+    /// Une astuce TipKit seulement quand `shown` : la variante de `popoverTip` qui accepte une
+    /// astuce optionnelle demande iOS 26 ; on pose ou non le modificateur d'iOS 17.
     @ViewBuilder
-    func stateTip(shown: Bool) -> some View {
+    func conditionalPopoverTip<T: Tip>(_ tip: T, shown: Bool) -> some View {
         if shown {
-            popoverTip(StateTip())
+            popoverTip(tip)
         } else {
             self
         }

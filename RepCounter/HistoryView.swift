@@ -82,7 +82,9 @@ struct HistoryView: View {
         let pauses = plan.blocks.enumerated().flatMap { index, block -> [Range<Date>] in
             let deloadEnd = block.deload.addingTimeInterval(7 * 86_400)
             let done = plan.tests.first { $0.block == index + 1 }
-            let end = done.map { Schedule.weekStart($0.date, calendar: stats.calendar).addingTimeInterval(7 * 86_400) } ?? .distantFuture
+            // Test fait : jusqu'au lundi suivant ; test manqué : jusqu'au bloc suivant ; en attente : sans fin
+            let next = index + 1 < plan.blocks.count ? plan.blocks[index + 1].start : Date.distantFuture
+            let end = done.map { Schedule.weekStart($0.date, calendar: stats.calendar).addingTimeInterval(7 * 86_400) } ?? next
             var ranges = [block.test..<max(end, block.test)]
             if let reprise = block.reprise, reprise > deloadEnd { ranges.append(deloadEnd..<reprise) }
             return ranges
@@ -379,15 +381,19 @@ private struct WeeksChart: View {
                             .foregroundStyle(theme.primary)
                             .symbolSize(point.record || point.test ? 0 : 24)
                             .annotation(position: .overlay) {
-                                // ★ record ; ◆ semaine de test
-                                if point.record {
-                                    Image(systemName: "star.fill")
-                                        .font(theme.font(11))
-                                        .foregroundStyle(theme.text)
-                                } else if point.test {
-                                    Image(systemName: "diamond.fill")
-                                        .font(theme.font(10))
-                                        .foregroundStyle(theme.max)
+                                // ★ record ; ◆ semaine de test ; les deux : ◆ sur le point, ★ juste au-dessus
+                                ZStack {
+                                    if point.test {
+                                        Image(systemName: "diamond.fill")
+                                            .font(theme.font(10))
+                                            .foregroundStyle(theme.max)
+                                    }
+                                    if point.record {
+                                        Image(systemName: "star.fill")
+                                            .font(theme.font(11))
+                                            .foregroundStyle(theme.text)
+                                            .offset(y: point.test ? -12 : 0)
+                                    }
                                 }
                             }
                     }
@@ -745,7 +751,10 @@ private struct SetBarsChart: View {
 
     private struct Bar: Identifiable {
         let id: Int
+        /// La catégorie, telle que VoiceOver et les Audio Graphs la lisent (« test, série 2 »).
         let name: String
+        /// Le libellé affiché sous la barre (« ◆ S2 », « échauf. »).
+        let label: String
         let reps: Int
         let target: Int?
         let rest: TimeInterval?
@@ -755,7 +764,9 @@ private struct SetBarsChart: View {
 
     var body: some View {
         let bars = session.orderedSets.enumerated().map { index, set in
-            Bar(id: index, name: set.isWarmup ? "échauf." : (set.isTest ? "◆ S\(index + 1)" : "S\(index + 1)"),
+            Bar(id: index,
+                name: set.isWarmup ? "échauffement" : (set.isTest ? "test, série \(index + 1)" : "série \(index + 1)"),
+                label: set.isWarmup ? "échauf." : (set.isTest ? "◆ S\(index + 1)" : "S\(index + 1)"),
                 reps: set.reps, target: set.target, rest: index > 0 ? session.rest(before: index) : nil,
                 role: set.role.flatMap(SetRole.init))
         }
@@ -786,7 +797,7 @@ private struct SetBarsChart: View {
                 AxisValueLabel {
                     if let name = value.as(String.self), let bar = bars.first(where: { $0.name == name }) {
                         VStack(spacing: 1) {
-                            Text(symbols: name)
+                            Text(symbols: bar.label)
                             if let rest = bar.rest {
                                 Text(symbols: "◷ \(Format.clock(rest))")
                             }
@@ -807,7 +818,10 @@ private struct SetBarsChart: View {
         let sets = session.orderedSets
         let reached = sets.filter { set in set.target.map { set.reps >= $0 } ?? false }.count
         let targets = sets.filter { $0.target != nil }.count
-        return "Séries : " + sets.map { "\($0.reps)" }.joined(separator: ", ")
+        // L'échauffement et les séries de test sont dits comme tels
+        return "Séries : " + sets.map { set in
+            set.isWarmup ? "échauffement \(set.reps)" : (set.isTest ? "test \(set.reps)" : "\(set.reps)")
+        }.joined(separator: ", ")
             + (targets > 0 ? ", \(reached) cibles atteintes sur \(targets)" : "")
     }
 }

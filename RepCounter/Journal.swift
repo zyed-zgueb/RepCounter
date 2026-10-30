@@ -360,6 +360,11 @@ struct JournalCard: View {
             return !sets.isEmpty && sets.allSatisfy { $0.reps >= ($0.target ?? .max) }
         }
         var text = "\(name) : \(sessions.count) séance\(sessions.count > 1 ? "s" : ""), \(total) répétitions"
+        // Les tests et leurs échauffements sont dits comme tels
+        for session in sessions where session.isTest {
+            text += " ; test à \(Format.time(session.start))" + (session.testBest.map { " : \($0)" } ?? "")
+            if session.orderedSets.contains(where: { $0.isWarmup }) { text += ", avec échauffement" }
+        }
         if !reached.isEmpty { text += " ; cibles atteintes à " + reached.map { Format.time($0.start) }.joined(separator: ", ") }
         return text
     }

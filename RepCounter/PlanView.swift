@@ -153,7 +153,8 @@ struct TodayLine: View {
     }
 }
 
-/// La ligne sous le cadran un jour de test : « ◆ série max · dernier test 33 », « ◆ test 1 / 2 »
+/// La ligne sous le cadran un jour de test (le cadran reste neutre) : « ◆ jour de test · série max ·
+/// dernier test 33 », « ◆ test 1 / 2 »
 /// au bloc 1, « ! ◆ test à faire » en retard (skill reps-ux § 5 : l'alerte porte « ! »).
 struct TestDayLine: View {
     @Environment(\.theme) private var theme
@@ -170,7 +171,7 @@ struct TestDayLine: View {
     private var text: String {
         if let step = plan.testStep { return "◆ test \(step.number) / \(step.of) · série max" }
         let last = plan.tests.last.map { " · dernier test \($0.value)" } ?? ""
-        return plan.testOverdue ? "! ◆ test à faire" + last : "◆ série max" + last
+        return plan.testOverdue ? "! ◆ test à faire" + last : "◆ jour de test · série max" + last
     }
 }
 
@@ -986,11 +987,11 @@ struct PlanInfoView: View {
                     section("Les jours",
                             "Les séances sont espacées dans la semaine : 2 séances, lundi et jeudi ; 3, lundi, mercredi et vendredi. Touche un jour dans le Coaching pour le déplacer. Une séance faite un autre jour compte, et remplace la prochaine prévue. L'ACSM ne fixe pas l'espacement : ce placement est un choix de l'app.")
                     section("Le test",
-                            "Sourcé : le test recale ton niveau, et les cibles du bloc suivant en partent (ACSM 2026, p. 863 : « regular strength testing »). Le reste est un choix de l'app. Le jour de test est le premier jour de séance après la semaine allégée ; c'est toi qui le lances (« ◆ Lancer le test »), et seules les séries faites en mode test comptent. Un échauffement facile est conseillé, jamais compté : environ un tiers de ton dernier max, puis 2 minutes de repos. Le résultat est ta meilleure série en mode test ; une 2e tentative est possible après au moins 3 minutes, le meilleur des deux compte. La série s'arrête quand le compteur détecte la fin. Au bloc 1 (et à un nouveau bloc 1 après plus de 28 jours sans séance), 2 tests sur 2 jours de la première semaine, et le meilleur sert de départ. Un test lancé en semaine allégée compte et clôt le bloc ; lancé en semaine de progression, il ne clôt pas le bloc mais relève le max s'il le dépasse. Plusieurs tests : le meilleur, du premier test au début du bloc suivant. Lancé puis abandonné sans série : il reste à faire. Pas lancé : « à faire » à chaque jour de séance suivant, avec une séance allégée en attendant (elle compte comme séance, pas comme test) ; 7 jours après le jour prévu, le bloc suivant repart de ton dernier max, sans recalage. Plus de 7 jours sans séance : une semaine de reprise avant le test. Entre deux tests, un écart de moins d'environ 10 % se lit « dans la variation » (seuil provisoire ; principe : Hopkins). Entre deux tests, une série au moins 3 au-dessus de sa cible relève le max, et les cibles suivent dès la séance suivante. Pas de mode test pour « Autre exercice ».")
+                            "Sourcé : le test recale ton niveau, et les cibles du bloc suivant en partent (ACSM 2026, p. 863 : « regular strength testing »). Le reste est un choix de l'app. Le jour de test est le premier jour de séance après la semaine allégée ; c'est toi qui le lances (« ◆ Lancer le test »), et seules les séries faites en mode test comptent. Un échauffement facile est conseillé, jamais compté : environ un tiers de ton dernier max, puis 2 minutes de repos. Le résultat est ta meilleure série en mode test ; une 2e tentative est possible après au moins 3 minutes, le meilleur des deux compte. La série s'arrête quand le compteur détecte la fin. Au bloc 1 (et à un nouveau bloc 1 après plus de 28 jours sans séance), 2 tests sur 2 jours de la première semaine, et le meilleur sert de départ. Un test lancé en semaine allégée compte et clôt le bloc ; lancé en semaine de progression, il ne clôt pas le bloc mais relève le max s'il le dépasse. Plusieurs tests : le meilleur, du premier test au début du bloc suivant. Lancé puis abandonné sans série : il reste à faire. Pas lancé : « à faire » à chaque jour de séance suivant, avec une séance allégée en attendant (elle compte comme séance, pas comme test) ; 7 jours après le jour prévu, le bloc suivant repart de ton dernier max, sans recalage. Plus de 7 jours sans séance : une semaine de reprise avant le test. Entre deux tests, un écart de moins d'environ 10 % se lit « dans la variation » (seuil provisoire ; principe : Hopkins). Entre deux tests, une série qui dépasse ton max le relève : le nouveau max est le nombre de répétitions faites (on ne suppose pas de réserve : on se trompe d'environ 1 répétition en l'estimant, Halperin et al. 2022 ; le test de fin de bloc mesure le reste), et les cibles suivent dès la séance suivante. Pas de mode test pour « Autre exercice ».")
                     section("Après une longue absence",
                             "Après plus de 28 jours sans séance, le plan ne propose qu'une séance de reprise, libre : elle ouvre un nouveau bloc 1, ancré sur elle. Ce bloc commence, comme le tout premier, par 2 tests dans la première semaine ; sans ces tests, la semaine 1 calibre (les cibles suivent chaque séance), puis les cibles restent fixes jusqu'au test, sauf si une série relève le max. Le seuil de 28 jours et ce calibrage sont des choix de l'app.")
                     section("La progression",
-                            "Par le test : ton nouveau max recale la cible du bloc suivant (l'ACSM recommande des tests réguliers). Entre deux tests, la cible ne monte pas d'elle-même : aucune hausse d'une semaine à l'autre, l'article n'en chiffre aucune. Mais une série faite au moins 3 au-dessus de sa cible relève le max (du dépassement), et les cibles suivent dès la séance suivante (choix de l'app).")
+                            "Par le test : ton nouveau max recale la cible du bloc suivant (l'ACSM recommande des tests réguliers). Entre deux tests, la cible ne monte pas d'elle-même : aucune hausse d'une semaine à l'autre, l'article n'en chiffre aucune. Mais une série qui dépasse ton max le relève à ses répétitions, et les cibles suivent dès la séance suivante (choix de l'app).")
                     section("Ce que la science ne dit pas",
                             "L'entraînement améliore l'endurance musculaire, mais les études ne permettent pas de dire quel dosage l'améliore le mieux (ACSM 2026). Le plan applique donc les recommandations générales (fréquence, séries, effort près de l'échec) et vérifie le résultat, test après test.")
                     section("La semaine allégée",
@@ -1000,7 +1001,7 @@ struct PlanInfoView: View {
                     section("Mesuré face à attendu",
                             "L'attendu est le rythme qu'il te faut pour aller de ton départ à ton objectif à la date choisie : ce n'est pas une prédiction, aucune courbe de progression au poids du corps n'est publiée. « En avance » ou « en retard » seulement après 3 tests, quand la pente de tes tests (Theil-Sen, intervalle à 99 %, Sen 1968) est sûrement au-dessus ou au-dessous du rythme nécessaire.")
                     section("Références",
-                            "Currier et al. (2026). Resistance training prescription for muscle function, hypertrophy and physical performance in healthy adults: an overview of reviews. Med Sci Sports Exerc 58(4):851–872. Bell et al. (2023), Sports Med Open 9:87. Rogerson et al. (2024), Sports Med Open 10:26. Meeusen et al. (2013), Med Sci Sports Exerc 45(1):186–205. Hopkins (2000), Sports Med 30(1):1–15. Sen (1968), J Am Stat Assoc 63:1379–1389.")
+                            "Currier et al. (2026). Resistance training prescription for muscle function, hypertrophy and physical performance in healthy adults: an overview of reviews. Med Sci Sports Exerc 58(4):851–872. Bell et al. (2023), Sports Med Open 9:87. Rogerson et al. (2024), Sports Med Open 10:26. Meeusen et al. (2013), Med Sci Sports Exerc 45(1):186–205. Hopkins (2000), Sports Med 30(1):1–15. Sen (1968), J Am Stat Assoc 63:1379–1389. Halperin et al. (2022), Sports Med 52:377–390 (résumé).")
                     section("Séance faite",
                             "Une séance compte comme faite dès que le total prévu est atteint, même si les séries diffèrent un peu (choix de l'app).")
                 }

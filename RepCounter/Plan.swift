@@ -123,8 +123,16 @@ struct TrainingPlan {
         let of: Int
     }
 
-    /// Une série au moins 3 au-dessus de sa cible relève le max (choix de l'app, audit point 3).
-    static let raiseMargin = 3
+    /// Le test annoncé est entré dans l'app au premier lancement de cette version : les séances
+    /// plus anciennes, sans rôle de série, gardent l'ancienne règle du test (première série > 0
+    /// faite à partir du jour de test), pour que l'historique ne perde pas ses tests.
+    static var announcedTestSince: Date {
+        let key = "test.announcedSince"
+        if let date = UserDefaults.standard.object(forKey: key) as? Date { return date }
+        let now = Date()
+        UserDefaults.standard.set(now, forKey: key)
+        return now
+    }
     /// Lecture d'un écart entre deux tests : sous ~10 %, « dans la variation » (provisoire,
     /// METHODE-TEST.md, règle 10 ; Hopkins pour le principe).
     static let testVariation = 0.10
@@ -155,7 +163,8 @@ struct TrainingPlan {
     ///   - lowForm: Forme basse aujourd'hui (phase : surcharge, forme basse…) : séance légère.
     ///   - weekdays: jours de séance choisis (1 = lundi … 7 = dimanche) ; nil : placés par l'app.
     static func make(goal: Goal?, anchor: Date, sessions: [SessionRecord], tired: Set<PersistentIdentifier>, lowForm: Bool,
-                     weekdays: [Int]? = nil, now: Date = Date(), calendar: Calendar = .current) -> TrainingPlan? {
+                     weekdays: [Int]? = nil, legacyBefore: Date? = nil, now: Date = Date(),
+                     calendar: Calendar = .current) -> TrainingPlan? {
         let sorted = sessions.filter { $0.start <= now }.sorted { $0.start < $1.start }
         let week = 7 * 86_400.0
         let day = 86_400.0
@@ -189,6 +198,13 @@ struct TrainingPlan {
         }
         /// Le test : la meilleure série faite en mode test (test annoncé) ; nil sans test.
         func testValue(_ session: SessionRecord) -> Int? { session.testBest }
+        /// Une séance d'avant le test annoncé (aucune série n'a de rôle) faite à partir de l'ancien
+        /// jour de test : l'ancienne règle, sa première série > 0.
+        func legacyValue(_ session: SessionRecord, from date: Date) -> Int? {
+            guard let legacyBefore, session.start < legacyBefore, session.start >= date,
+                  !session.orderedSets.contains(where: { $0.role != nil }) else { return nil }
+            return session.orderedSets.first { $0.reps > 0 }?.reps
+        }
         /// Le premier jour de séance prévu à partir de `date` (même semaine, sinon la suivante).
         func plannedDay(onOrAfter date: Date, _ days: [Int]) -> Date {
             let day0 = calendar.startOfDay(for: date)
@@ -253,9 +269,11 @@ struct TrainingPlan {
             if let chosen, chosen.count != habit.perWeek { daysReset = true }
             let days = chosen.flatMap { $0.count == habit.perWeek ? $0 : nil } ?? Schedule.defaultWeekdays(habit.perWeek)
             let perWeek = days.count
-            // Le max du bloc ; il est relevé en cours de bloc par une série ≥ 3 au-dessus de sa cible,
-            // ou un test fait en semaine de progression qui le dépasse (règle 13, choix de l'app) :
-            // les cibles suivent dès la séance suivante
+            // Le max du bloc ; il est relevé en cours de bloc par une série (ou un test fait en semaine
+            // de progression) qui le dépasse : nouveau max = les répétitions faites, seules mesurées
+            // (supposer des répétitions en réserve ne l'est pas : on se trompe d'environ 1 en les
+            // estimant, Halperin et al. 2022 ; le test de fin de bloc mesure le reste). Choix de
+            // l'app (METHODE-TEST.md). Les cibles suivent dès la séance suivante
             var currentMax = baseMax ?? (habit.session.targets.first ?? 1) + Prescription.repsInReserve
             var lastRaise: Int?
             func raise(from done: [SessionRecord]) {
@@ -265,11 +283,9 @@ struct TrainingPlan {
                         if tested > currentMax { currentMax = tested; lastRaise = tested }
                         continue
                     }
-                    for set in session.orderedSets {
-                        guard let target = set.target, !set.isWarmup, set.reps - target >= raiseMargin else { continue }
-                        let raised = currentMax + (set.reps - target)
-                        if raised > currentMax { currentMax = raised; lastRaise = raised }
-                    }
+                    // Un seul relèvement par séance : sa meilleure série (échauffement exclu)
+                    let best = session.orderedSets.filter { !$0.isWarmup }.map(\.reps).max() ?? 0
+                    if best > currentMax { currentMax = best; lastRaise = best }
                 }
             }
             var weeks: [Week] = []
@@ -317,7 +333,8 @@ struct TrainingPlan {
             // Jour de test : le premier jour de séance prévu après la semaine allégée (règle 2)
             var testDate = plannedDay(onOrAfter: deloadEnd, days)
             // Un test lancé dès la semaine allégée compte et clôt le bloc (règle 8)
-            let firstTest = sorted.first { $0.start >= deloadStart && !excluded.contains($0.persistentModelID) && testValue($0) != nil }
+            func closingValue(_ session: SessionRecord) -> Int? { testValue(session) ?? legacyValue(session, from: deloadEnd) }
+            let firstTest = sorted.first { $0.start >= deloadStart && !excluded.contains($0.persistentModelID) && closingValue($0) != nil }
             deloadDone.filter { testValue($0) == nil }.forEach { excluded.insert($0.persistentModelID) }
             // Plus de 7 jours sans séance avant le test : une semaine de reprise d'abord, puis le
             // test (choix de l'app ; Bell 2023)
@@ -337,7 +354,8 @@ struct TrainingPlan {
                                   isPast: repriseEnd <= now, isCurrent: reprise <= now && now < repriseEnd, redoReason: nil))
                 repriseStart = reprise
                 testDate = plannedDay(onOrAfter: repriseEnd, days)
-            } else if firstTest == nil, candidate == nil, now >= testDate, now.timeIntervalSince(last.start) > repriseDays * day {
+            } else if firstTest == nil, now >= testDate, now.timeIntervalSince(last.start) > repriseDays * day {
+                // Plus de 7 jours sans séance, même pendant l'attente du test : la reprise prime
                 // Pas encore revenu : la reprise d'abord (cette semaine), le test ensuite ; jamais de
                 // test à une date passée
                 repriseToday = true
@@ -350,7 +368,8 @@ struct TrainingPlan {
             blocks.append(Block(start: weeks.first?.start ?? blockStart, deload: deloadStart, test: testDate, reprise: repriseStart))
             // En attendant le test, les séances comptent comme séances, mais ni comme test ni comme
             // séance habituelle (règle 10)
-            let waitingEnd = firstTest?.start ?? now.addingTimeInterval(1)
+            // L'attente s'arrête au test, ou 7 jours après le jour prévu (le bloc suivant repart)
+            let waitingEnd = firstTest?.start ?? min(now.addingTimeInterval(1), testDate.addingTimeInterval(repriseDays * day))
             sorted.filter { $0.start >= testDate && $0.start < waitingEnd && testValue($0) == nil }
                 .forEach { excluded.insert($0.persistentModelID) }
 
@@ -358,9 +377,9 @@ struct TrainingPlan {
                 // Test fait : le meilleur entre le premier test et le début du bloc suivant (la
                 // semaine d'après) ; il recale le niveau (ACSM 2026, p. 863)
                 let next = weekStart(firstTest.start).addingTimeInterval(week)
-                let window = sorted.filter { $0.start >= firstTest.start && $0.start < next && testValue($0) != nil }
+                let window = sorted.filter { $0.start >= firstTest.start && $0.start < next && closingValue($0) != nil }
                 window.forEach { excluded.insert($0.persistentModelID) }
-                let value = window.compactMap(testValue).max() ?? testValue(firstTest) ?? currentMax
+                let value = window.compactMap(closingValue).max() ?? closingValue(firstTest) ?? currentMax
                 tests.append(Test(date: firstTest.start, value: value, block: block))
                 shift += waitingWeeks(from: testDate, to: firstTest.start)
                 baseMax = value
@@ -623,7 +642,8 @@ extension HistoryStats {
             ? Set(formResults.filter { $0.result.zone == .tired }.map { $0.session.persistentModelID }) : []
         let lowForm = [.lowForm, .overreaching, .deloadAdvised, .persistentFatigue].contains(phase(all: all).kind)
         let plan = TrainingPlan.make(goal: goal, anchor: anchor, sessions: sessions, tired: tired, lowForm: lowForm,
-                                     weekdays: Schedule.saved(exercise), now: now, calendar: calendar)
+                                     weekdays: Schedule.saved(exercise), legacyBefore: TrainingPlan.announcedTestSince,
+                                     now: now, calendar: calendar)
         if plan?.daysReset == true {
             // Jours incohérents (3 jours pour 4 séances…) : retour aux jours proposés, signalé une fois
             Schedule.save(nil, for: exercise)

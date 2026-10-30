@@ -185,9 +185,11 @@ faire » à chaque jour de séance suivant, séance allégée en attendant (comp
 ni séance habituelle) ; **7 jours** après le jour prévu, le bloc suivant repart du dernier max sans
 recalage (◆ creux « ! » sur le chemin, objectif décalé « +n sem. »). Plus de 7 jours sans séance
 avant le test : une **semaine de reprise** d'abord. Un écart de moins de ~10 % entre deux tests se
-lit « dans la variation » (provisoire). **Max relevé** en cours de bloc : une série ≥ 3 au-dessus de
-sa cible (max + dépassement) ou un test en progression au-dessus du max ; les cibles suivent dès la
-séance suivante (« ▲ max relevé à N » en fin de séance). Pas de mode test pour « Autre ». **Longue
+lit « dans la variation » (provisoire). **Max relevé** en cours de bloc : une série (ou un test en
+progression) qui dépasse le max le remplace par ses répétitions, seules mesurées (Halperin et al.
+2022 : on se trompe d'environ 1 répétition en estimant la réserve), un relèvement par séance ; les
+cibles suivent dès la séance suivante (« ▲ max relevé à N » en fin de séance). Les séances d'avant
+la mise à jour (sans rôle de série) gardent l'ancienne règle du test. Pas de mode test pour « Autre ». **Longue
 absence** : plus de 28 jours sans séance, la carte Aujourd'hui propose une séance de reprise libre
 (le chemin et l'objectif restent visibles) ; elle ouvre un nouveau bloc 1, ancré sur elle. Le
 plan n'est jamais vide pour un exercice qui a un historique, sauf « Autre exercice » (pas de

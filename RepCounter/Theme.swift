@@ -440,19 +440,24 @@ struct MonitorButtonStyle: ButtonStyle {
     var filled = true
     var height: CGFloat = 54
     var fontSize: CGFloat = 15
+    /// Libellé long : 2 lignes plutôt qu'un texte réduit ou tronqué (grandes tailles de texte).
+    var wraps = false
 
     func makeBody(configuration: Configuration) -> some View {
         let tint = color ?? theme.primary
         return configuration.label
             .font(theme.isSystem ? theme.font(17, .semibold) : theme.font(fontSize, .bold))
             .tracking(theme.isSystem ? 0 : (fontSize >= 14 ? 2 : 1))
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
+            .lineLimit(wraps ? 2 : 1)
+            .minimumScaleFactor(wraps ? 1 : 0.7)
+            .multilineTextAlignment(.center)
+            .padding(.vertical, wraps ? 6 : 0)
             .textCase(theme.isSystem ? nil : .uppercase)
             .foregroundStyle(filled ? theme.onPrimary : tint)
             .frame(maxWidth: .infinity)
-            // 44 pt au moins (HIG), quelle que soit la hauteur demandée
-            .frame(height: max(height, 44))
+            // 44 pt au moins (HIG), quelle que soit la hauteur demandée ; un libellé sur 2 lignes
+            // agrandit le bouton
+            .frame(minHeight: max(height, 44), maxHeight: wraps ? nil : max(height, 44))
             .background(filled ? tint : tint.opacity(0.08),
                         in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous)

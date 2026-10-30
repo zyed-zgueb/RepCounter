@@ -79,8 +79,10 @@ enum Prescription {
     /// La baisse habituelle d'une série à l'autre : médianes de série k ÷ série 1, sur les séances
     /// d'au moins `sets` séries faites avec un repos à ± 30 s de `rest`. Nil sous 3 séances.
     static func ratios(_ sessions: [SessionRecord], rest: Int) -> [Double]? {
+        // Ni séance de test (une série max), ni échauffement
         let eligible = sessions.filter { session in
-            let reps = session.orderedSets.map(\.reps)
+            guard !session.isTest else { return false }
+            let reps = session.workSets.map(\.reps)
             guard reps.count >= sets, reps[0] > 0 else { return false }
             return (1..<sets).allSatisfy { k in
                 session.rest(before: k).map { abs($0 - Double(rest)) <= ratioRestTolerance } ?? false
@@ -88,7 +90,7 @@ enum Prescription {
         }
         guard eligible.count >= ratioSessions else { return nil }
         return (0..<sets).map { k in
-            k == 0 ? 1 : median(eligible.map { Double($0.orderedSets[k].reps) / Double($0.orderedSets[0].reps) })
+            k == 0 ? 1 : median(eligible.map { Double($0.workSets[k].reps) / Double($0.workSets[0].reps) })
         }
     }
 

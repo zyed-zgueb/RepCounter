@@ -35,7 +35,9 @@ final class SessionRecord {
 
     var exercise: Exercise { Exercise(rawValue: exerciseID) ?? .auto }
     var orderedSets: [SetRecord] { (sets ?? []).sorted { $0.index < $1.index } }
-    var totalReps: Int { orderedSets.reduce(0) { $0 + $1.reps } }
+    /// Les séries de travail : sans l'échauffement d'un test, jamais compté.
+    var workSets: [SetRecord] { orderedSets.filter { !$0.isWarmup } }
+    var totalReps: Int { workSets.reduce(0) { $0 + $1.reps } }
     var duration: TimeInterval { max(0, end.timeIntervalSince(start)) }
     var bestSet: Int { orderedSets.map(\.reps).max() ?? 0 }
     /// Récupération avant une série : de la fin de la précédente au début de celle-ci.
@@ -53,7 +55,9 @@ final class SessionRecord {
     /// le format commun (3 séries) le rend comparable d'une séance et d'une personne à l'autre.
     /// Nil avec moins de 3 séries, ou sans charge pour un exercice avec haltère.
     var performanceIndex: Double? {
-        let sets = orderedSets
+        // Pas d'indice pour une séance de test (une série max), ni pour l'échauffement
+        guard !isTest else { return nil }
+        let sets = workSets
         guard sets.count >= Self.indexSets else { return nil }
         var index = Double(sets[0].reps)
         for i in 1..<Self.indexSets {

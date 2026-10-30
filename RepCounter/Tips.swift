@@ -8,6 +8,8 @@ enum RepsTips {
     /// reviennent pas.
     static func configure() {
         try? Tips.configure([.displayFrequency(.immediate)])
+        // Le test annoncé entre dans l'app : les séances d'avant gardent l'ancienne règle du test
+        _ = TrainingPlan.announcedTestSince
         let defaults = UserDefaults.standard
         if defaults.bool(forKey: "coaching.dotExplained") { StateTip().invalidate(reason: .actionPerformed) }
         if defaults.bool(forKey: "coaching.blockExplained") { BlockTip().invalidate(reason: .actionPerformed) }
@@ -35,9 +37,7 @@ struct BlockTip: Tip {
 
 /// Le premier jour de test : le principe, une seule fois.
 struct TestTip: Tip {
-    var title: Text { Text("Le jour de test") }
-    var message: Text? {
-        Text("Une série max, sans cible : va au bout. Un échauffement facile est conseillé avant ; une 2e tentative est possible après 3 minutes.")
-    }
+    var title: Text { Text("Jour de test") }
+    var message: Text? { Text("Une série max. Échauffe-toi d'abord ; une 2e tentative est possible.") }
     var image: Image? { Image(systemName: "diamond.fill") }
 }

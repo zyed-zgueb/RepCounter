@@ -226,10 +226,17 @@ final class WorkoutModel: ObservableObject {
         AccessibilityNotification.Announcement("Deuxième tentative").post()
     }
 
-    /// « Quitter le test » : la séance est abandonnée, rien n'est enregistré (le test reste à
-    /// faire). La vue demande confirmation si une série de test serait perdue.
+    /// « Quitter le test ». La série en cours est abandonnée (la vue demande confirmation si elle a
+    /// des répétitions). Une tentative déjà close n'est jamais perdue : la séance est enregistrée.
+    /// Sans tentative, rien n'est enregistré et le test reste à faire.
     func quitTest() {
         guard testStage != nil else { return }
+        setReps = 0
+        setRepDates = []
+        if testBest != nil {
+            finishSession()
+            return
+        }
         countdownTimer?.invalidate()
         if isRecording { stopRecording() }
         sets = []
