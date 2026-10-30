@@ -6,6 +6,10 @@ struct RepCounterApp: App {
     @StateObject private var themeStore = ThemeStore()
     @StateObject private var tipJar = TipJar()
 
+    init() {
+        RepsTips.configure()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

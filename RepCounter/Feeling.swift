@@ -119,7 +119,6 @@ struct FeelingScale: View {
                 ForEach(Array(values), id: \.self) { value in
                     let chosen = value == selection
                     Button {
-                        UISelectionFeedbackGenerator().selectionChanged()
                         withAnimation(.snappy(duration: 0.15)) { onSelect(chosen ? nil : value) }
                     } label: {
                         Text("\(value)")
@@ -139,6 +138,7 @@ struct FeelingScale: View {
                 }
             }
         }
+        .sensoryFeedback(.selection, trigger: selection)
     }
 }
 

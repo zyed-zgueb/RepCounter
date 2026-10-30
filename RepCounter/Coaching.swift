@@ -1,3 +1,4 @@
+import Charts
 import SwiftData
 import SwiftUI
 
@@ -76,54 +77,6 @@ struct CoachingButton: View {
     }
 }
 
-/// La bulle qui explique le point d'état, une seule fois, à son premier affichage : l'échelle
-/// d'intensité en dégradé, puis ses trois niveaux.
-struct StateDotTip: View {
-    @Environment(\.theme) private var theme
-    static let key = "coaching.dotExplained"
-    let onDone: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            MonitorLabel("Ton plan, en un point", color: theme.text)
-            VStack(spacing: 4) {
-                Capsule()
-                    .fill(LinearGradient(gradient: theme.intensityGradient, startPoint: .leading, endPoint: .trailing))
-                    .frame(height: 8)
-                HStack {
-                    MonitorLabel("calme")
-                    Spacer()
-                    MonitorLabel("intense")
-                }
-            }
-            VStack(alignment: .leading, spacing: 9) {
-                row(theme.calm, "Calme", "semaine allégée, ou séance légère")
-                row(theme.work, "Soutenu", "progression : la séance prévue")
-                row(theme.max, "Maximal", "◆ jour de test : une série max")
-            }
-            Text("Touche la cible : ton plan.")
-                .font(theme.font(11))
-                .foregroundStyle(theme.dim)
-            Button("Compris", action: onDone)
-                .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 40, fontSize: 12))
-        }
-        .padding(14)
-        .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius * 1.5, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: theme.radius * 1.5, style: .continuous).stroke(theme.line, lineWidth: 1))
-        .shadow(color: .black.opacity(0.6), radius: 20, y: 10)
-    }
-
-    private func row(_ color: Color, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Circle().fill(color).frame(width: 10, height: 10).padding(.top, 3)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(theme.font(12, .bold)).foregroundStyle(theme.text)
-                Text(symbols: detail).font(theme.font(11)).foregroundStyle(theme.dim)
-            }
-        }
-    }
-}
-
 // MARK: - Vue Coaching
 
 /// Le Coaching (skill reps-ux) : l'avenir et le plan d'un exercice, l'exercice en titre natif
@@ -144,7 +97,6 @@ struct CoachingView: View {
     @State private var editor: GoalEditor.Mode?
     @State private var showsMenu = false
     @State private var showsInfo = false
-    @State private var showsBlockSheet = false
     /// Change quand un jour de séance est déplacé ou l'objectif retiré : le plan est recalculé.
     @State private var version = 0
 
@@ -233,20 +185,9 @@ struct CoachingView: View {
             }
         }
         .tint(theme.primary)
-        .onAppear {
-            // Le bloc s'explique une fois, à la première ouverture avec un plan
-            if plan != nil, !UserDefaults.standard.bool(forKey: BlockSheet.key) { showsBlockSheet = true }
-        }
         .onChange(of: exercise) { _, exercise in
             goal = Goal.load(exercise)
             version += 1
-        }
-        .sheet(isPresented: $showsBlockSheet) {
-            if let plan {
-                BlockSheet(plan: plan)
-                    .environment(\.theme, theme)
-                    .preferredColorScheme(theme.colorScheme)
-            }
         }
         .sheet(isPresented: $showsInfo) {
             PlanInfoView()
@@ -277,6 +218,7 @@ struct CoachingView: View {
             .environment(\.theme, theme)
             .preferredColorScheme(theme.colorScheme)
         }
+        .sensoryFeedback(.selection, trigger: exercise)
     }
 
     /// Le choix de l'exercice dans le menu du titre (le système dessine la coche).
@@ -300,7 +242,6 @@ struct CoachingView: View {
     /// Passe à l'exercice voisin dans Mes exercices (en boucle).
     private func move(by step: Int) {
         guard exercises.count > 1, let index = exercises.firstIndex(of: exercise) else { return }
-        UISelectionFeedbackGenerator().selectionChanged()
         withAnimation(.easeInOut(duration: 0.2)) {
             exercise = exercises[(index + step + exercises.count) % exercises.count]
         }
@@ -352,7 +293,6 @@ private struct TodayCard: View {
                     Spacer()
                 }
                 TargetBars(targets: plan.todaySession?.targets ?? [], done: todaySets, color: plan.today.color(theme))
-                    .frame(height: 76)
                 upcoming
             case .rest:
                 HStack {
@@ -406,8 +346,7 @@ private struct TodayCard: View {
                 .foregroundStyle(day.color(theme))
         } else if let s = sessionOf(day) {
             HStack(alignment: .bottom, spacing: 12) {
-                TargetBars(targets: s.targets, done: done, color: day.color(theme))
-                    .frame(height: compact ? 52 : 84)
+                TargetBars(targets: s.targets, done: done, color: day.color(theme), compact: compact)
                 Text(symbols: "◷ \(Format.clock(Double(s.rest)))")
                     .font(theme.font(compact ? 11 : 13, .bold))
                     .foregroundStyle(theme.dim)
@@ -437,50 +376,62 @@ private struct TodayCard: View {
     }
 }
 
-/// Une séance en barres, une par série : hauteur = cible, valeur au-dessus. Avec ce qui est
-/// fait : contour pointillé = cible, plein = fait, vert et ✓ si la cible est atteinte.
+/// Une séance en barres (Swift Charts), une par série : hauteur = cible, valeur au-dessus. Avec
+/// ce qui est fait : barre pâle = cible, pleine = fait, verte et ✓ si la cible est atteinte.
 private struct TargetBars: View {
     @Environment(\.theme) private var theme
+    @ScaledMetric(relativeTo: .body) private var regularHeight: CGFloat = 84
+    @ScaledMetric(relativeTo: .body) private var compactHeight: CGFloat = 52
     let targets: [Int]
     let done: [Int]?
     let color: Color
+    var compact = false
+
+    private struct Bar: Identifiable {
+        let id: Int
+        let target: Int?
+        let done: Int?
+        var name: String { "S\(id + 1)" }
+        var reached: Bool { done.map { value in target.map { value >= $0 } ?? true } ?? false }
+    }
 
     var body: some View {
         let count = max(targets.count, done?.count ?? 0)
-        Canvas { context, size in
-            guard count > 0 else { return }
-            let top = CGFloat(max((targets + (done ?? [])).max() ?? 1, 1))
-            let base = size.height
-            let gap: CGFloat = 8
-            let width = min((size.width - gap * CGFloat(count - 1)) / CGFloat(count), 44)
-            let height = { (value: Int) -> CGFloat in max((base - 14) * CGFloat(value) / top, 2) }
-            for index in 0..<count {
-                let x = CGFloat(index) * (width + gap)
-                let target = index < targets.count ? targets[index] : nil
-                if let done, index < done.count {
-                    let value = done[index]
-                    let reached = target.map { value >= $0 } ?? true
-                    if let target {
-                        let h = height(target)
-                        context.stroke(Path(roundedRect: CGRect(x: x, y: base - h, width: width, height: h), cornerRadius: 2),
-                                       with: .color(theme.dim), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+        let bars = (0..<count).map { index in
+            Bar(id: index, target: index < targets.count ? targets[index] : nil,
+                done: done.flatMap { index < $0.count ? $0[index] : nil })
+        }
+        Chart(bars) { bar in
+            if let target = bar.target {
+                BarMark(x: .value("Série", bar.name), yStart: .value("Cible", 0), yEnd: .value("Cible", target),
+                        width: .ratio(0.7))
+                    .foregroundStyle(done == nil ? color.opacity(0.8) : theme.line.opacity(0.6))
+                    .cornerRadius(3)
+                    .annotation(position: .top) {
+                        if bar.done == nil {
+                            Text("\(target)")
+                                .font(theme.font(compact ? 11 : 13, .bold))
+                                .foregroundStyle(theme.text)
+                        }
                     }
-                    let h = height(value)
-                    context.fill(Path(roundedRect: CGRect(x: x + 3, y: base - h, width: width - 6, height: h), cornerRadius: 1.5),
-                                 with: .color(reached ? theme.ok : theme.primary))
-                    context.draw(Text(symbols: "\(value)\(reached ? " ✓" : "")").font(theme.font(10, .bold))
-                                    .foregroundStyle(reached ? theme.ok : theme.text),
-                                 at: CGPoint(x: x + width / 2, y: base - max(h, target.map(height) ?? 0) - 7))
-                } else if let target {
-                    let h = height(target)
-                    context.fill(Path(roundedRect: CGRect(x: x, y: base - h, width: width, height: h), cornerRadius: 2),
-                                 with: .color(done == nil ? color.opacity(0.8) : theme.line))
-                    context.draw(Text("\(target)").font(theme.font(11, .bold)).foregroundStyle(theme.text),
-                                 at: CGPoint(x: x + width / 2, y: base - h - 7))
-                }
+            }
+            if let value = bar.done {
+                BarMark(x: .value("Série", bar.name), yStart: .value("Fait", 0), yEnd: .value("Fait", value),
+                        width: .ratio(0.45))
+                    .foregroundStyle(bar.reached ? theme.ok : theme.primary)
+                    .cornerRadius(2)
+                    .annotation(position: .top) {
+                        Text(symbols: "\(value)\(bar.reached ? " ✓" : "")")
+                            .font(theme.font(11, .bold))
+                            .foregroundStyle(bar.reached ? theme.ok : theme.text)
+                    }
             }
         }
-        .accessibilityElement()
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .chartYScale(domain: 0...Double(max((targets + (done ?? [])).max() ?? 1, 1)) * 1.25)
+        .frame(height: compact ? compactHeight : regularHeight)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibility)
     }
 
@@ -490,6 +441,7 @@ private struct TargetBars: View {
         return planned + ". Fait " + done.map(String.init).joined(separator: ", ")
     }
 }
+
 
 /// Sans historique : la première séance cale le plan.
 private struct FirstSessionCard: View {
@@ -560,6 +512,8 @@ private struct GoalInvitation: View {
 /// « niveau 33 », « reste 7 », ✎ et ⋯.
 private struct GoalHeader: View {
     @Environment(\.theme) private var theme
+    /// Lu pour que le grand chiffre (au-delà du grand titre) suive un changement de taille de texte.
+    @Environment(\.dynamicTypeSize) private var typeSize
     let goal: Goal?
     let exercise: Exercise
     let current: Int
@@ -567,6 +521,7 @@ private struct GoalHeader: View {
     let onMenu: () -> Void
 
     var body: some View {
+        let _ = typeSize
         if let goal {
             VStack(alignment: .leading, spacing: 4) {
                 CardHeader(symbol: "scope", title: "Objectif") {
@@ -719,7 +674,6 @@ private struct StateCard: View {
             }
             if forms.count >= 2 {
                 FormSpark(results: forms)
-                    .frame(height: 40)
                     .accessibilityLabel(formAccessibility(forms.last))
             }
             HStack {
@@ -778,36 +732,45 @@ private struct Scale: View {
     }
 }
 
-/// La Forme des dernières séances, sur la bande de variation normale.
+/// La Forme des dernières séances (Swift Charts), sur sa bande de variation normale ; un doigt
+/// posé donne la Forme d'une séance.
 private struct FormSpark: View {
     @Environment(\.theme) private var theme
+    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 44
     let results: [FormResult]
+    @State private var selected: Int?
 
     var body: some View {
-        Canvas { context, size in
-            let low = 88.0, high = 112.0
-            let y = { (percent: Double) -> CGFloat in
-                2 + (size.height - 4) * CGFloat(1 - (min(max(percent, low), high) - low) / (high - low))
+        let band = results.last?.band ?? 3
+        Chart {
+            RectangleMark(xStart: .value("Séance", -0.3), xEnd: .value("Séance", Double(max(results.count - 1, 1)) + 0.3),
+                          yStart: .value("Bande", 100 - band), yEnd: .value("Bande", 100 + band))
+                .foregroundStyle(theme.primary.opacity(0.1))
+            ForEach(Array(results.enumerated()), id: \.offset) { index, result in
+                LineMark(x: .value("Séance", Double(index)), y: .value("Forme", min(max(result.percent, 88), 112)))
+                    .foregroundStyle(theme.primary)
+                PointMark(x: .value("Séance", Double(index)), y: .value("Forme", min(max(result.percent, 88), 112)))
+                    .foregroundStyle(theme.primary)
+                    .symbolSize(index == results.count - 1 ? 50 : 14)
             }
-            let band = results.last?.band ?? 3
-            context.fill(Path(CGRect(x: 0, y: y(100 + band), width: size.width, height: y(100 - band) - y(100 + band))),
-                         with: .color(theme.primary.opacity(0.1)))
-            let points = results.enumerated().map { index, result in
-                CGPoint(x: 4 + (size.width - 8) * CGFloat(index) / CGFloat(max(results.count - 1, 1)), y: y(result.percent))
-            }
-            var line = Path()
-            for (index, point) in points.enumerated() {
-                if index == 0 { line.move(to: point) } else { line.addLine(to: point) }
-            }
-            context.stroke(line, with: .color(theme.primary), lineWidth: 1.5)
-            for (index, point) in points.enumerated() {
-                let radius: CGFloat = index == points.count - 1 ? 3.5 : 1.8
-                context.fill(Path(ellipseIn: CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2)),
-                             with: .color(theme.primary))
+            if let selected, results.indices.contains(selected) {
+                RuleMark(x: .value("Séance", Double(selected)))
+                    .foregroundStyle(theme.dim.opacity(0.5))
+                    .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
+                        SelectionLabel(title: "\(Int(results[selected].percent.rounded())) %")
+                    }
             }
         }
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .chartYScale(domain: 88...112)
+        .chartXScale(domain: -0.3...(Double(max(results.count - 1, 1)) + 0.3))
+        .chartXSelection(value: Binding(get: { selected.map(Double.init) },
+                                        set: { selected = $0.map { Int($0.rounded()) } }))
+        .frame(height: height)
     }
 }
+
 
 /// Fixer l'objectif (nombre et date facultative), modifier le nombre (✎), ou la date (◷).
 private struct GoalEditor: View {
@@ -817,6 +780,7 @@ private struct GoalEditor: View {
     }
 
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.dismiss) private var dismiss
     let mode: Mode
     let exercise: Exercise
@@ -839,6 +803,7 @@ private struct GoalEditor: View {
     }
 
     var body: some View {
+        let _ = typeSize
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 18) {
                 if mode != .date {
@@ -893,11 +858,11 @@ private struct GoalEditor: View {
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.medium, .large])
         .sheetNavigation(mode == .date ? "Date · \(exercise.shortTitle)" : "Objectif · \(exercise.shortTitle)", display: .inline)
+        .sensoryFeedback(.selection, trigger: target)
     }
 
     private func stepButton(_ systemImage: String, _ step: Int) -> some View {
         Button {
-            UISelectionFeedbackGenerator().selectionChanged()
             withAnimation(.snappy(duration: 0.15)) { target = min(max(target + step, 1), 500) }
         } label: {
             Image(systemName: systemImage)

@@ -1,12 +1,15 @@
 import SwiftData
 import StoreKit
 import SwiftUI
+import TipKit
 
 /// L'écran unique de l'app : le cadran. En veille, on y glisse d'un exercice à l'autre ;
 /// pendant l'effort, il n'affiche que le nombre ; en récupération, le chronomètre ; à la fin,
 /// le total. Tout le reste est rangé dans les Réglages.
 struct WorkoutView: View {
     @Environment(\.theme) private var theme
+    /// Réduire les animations : un fondu au lieu d'un mouvement.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var themeStore: ThemeStore
     @Environment(\.modelContext) private var modelContext
     @StateObject private var model: WorkoutModel
@@ -24,7 +27,6 @@ struct WorkoutView: View {
     @State private var cachedPlan: TrainingPlan?
     @State private var planComputed = false
     /// La bulle qui explique le point d'état a été vue (une seule fois).
-    @AppStorage(StateDotTip.key) private var stateDotExplained = false
     /// La séance terminée, enregistrée dans l'historique.
     @State private var record: SessionRecord?
     /// Exercice affiché dans le cadran pendant qu'on glisse ; adopté une fois le geste posé.
@@ -203,16 +205,6 @@ struct WorkoutView: View {
             }
             .systemSheet()
         }
-        .overlay(alignment: .topTrailing) {
-            // Le point d'état s'explique une fois, à son premier affichage, en veille seulement
-            if model.phase == .ready, stateDot != nil, !stateDotExplained {
-                StateDotTip { withAnimation { stateDotExplained = true } }
-                    .padding(.top, 56)
-                    .padding(.horizontal, 20)
-                    .frame(maxWidth: 340)
-                    .transition(.opacity)
-            }
-        }
     }
 
     /// Le point d'état de l'icône Coaching (skill reps-ux, § 5) : celui du plan du jour s'il y a
@@ -290,7 +282,15 @@ struct WorkoutView: View {
                            highlighted: model.showsDiagnostics) { model.showsDiagnostics.toggle() }
             }
             if model.phase == .ready || model.phase == .finished {
-                CoachingButton(dot: model.phase == .ready ? stateDot : nil) { showsCoaching = true }
+                CoachingButton(dot: model.phase == .ready ? stateDot : nil) {
+                    StateTip().invalidate(reason: .actionPerformed)
+                    showsCoaching = true
+                }
+                // Le point d'état s'explique une fois (TipKit), à son premier affichage, en veille
+                .popoverTip(StateTip())
+                .task(id: model.phase == .ready && stateDot != nil) {
+                    StateTip.dotShown = model.phase == .ready && stateDot != nil
+                }
                 IconButton(systemImage: "gearshape", color: theme.dim) { onOpenSettings() }
             }
         }
@@ -430,7 +430,6 @@ struct WorkoutView: View {
     private var loadControl: some View {
         HStack(spacing: 10) {
             Button {
-                UISelectionFeedbackGenerator().selectionChanged()
                 withAnimation(.snappy(duration: 0.15)) { loadKind = loadKind.next }
             } label: {
                 HStack(spacing: 4) {
@@ -465,12 +464,13 @@ struct WorkoutView: View {
         .opacity(browsing.isWeighted ? 1 : 0)
         .allowsHitTesting(browsing.isWeighted)
         .accessibilityHidden(!browsing.isWeighted)
+        .sensoryFeedback(.selection, trigger: loadKind)
+        .sensoryFeedback(.selection, trigger: load)
         .animation(.easeInOut(duration: 0.2), value: browsing.isWeighted)
     }
 
     private func loadButton(_ systemImage: String, step: Double) -> some View {
         Button {
-            UISelectionFeedbackGenerator().selectionChanged()
             withAnimation(.snappy(duration: 0.15)) { load = min(max(load + step, 0.5), 100) }
         } label: {
             Image(systemName: systemImage)
@@ -497,7 +497,8 @@ struct WorkoutView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
                 .contentTransition(.numericText())
-                .scaleEffect(bump ? 1.08 : 1)
+                .scaleEffect(bump && !reduceMotion ? 1.08 : 1)
+                .opacity(bump && reduceMotion ? 0.75 : 1)
             if counting, let target = seriesTarget {
                 MonitorLabel("sur \(target)", color: model.setReps >= target ? theme.ok : theme.dim)
                 LapDots(target: target, done: model.setReps)
@@ -933,13 +934,15 @@ struct Dial<Face: View, Center: View>: View {
 /// Onde : invisible au repos (déployée et transparente), relancée à chaque changement de `pulse`.
 private struct Ripple: View {
     @Environment(\.theme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let pulse: Int
     @State private var expanded = true
 
     var body: some View {
         Circle()
             .stroke(theme.primary, lineWidth: 2)
-            .scaleEffect(expanded ? 1.0 : 0.55)
+            // Réduire les animations : l'onde ne grandit plus, elle s'efface sur place
+            .scaleEffect(reduceMotion || expanded ? 1.0 : 0.55)
             .opacity(expanded ? 0 : 0.8)
             .onChange(of: pulse) {
                 var reset = Transaction()
@@ -960,6 +963,8 @@ private struct HoldButton: View {
     let color: Color
     let action: () -> Void
     @State private var progress: CGFloat = 0
+    /// Maintiens menés au bout (retour haptique de succès).
+    @State private var completions = 0
     private static let duration = 0.8
 
     var body: some View {
@@ -987,7 +992,7 @@ private struct HoldButton: View {
         .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(color.opacity(0.6), lineWidth: 1))
         .contentShape(Rectangle())
         .onLongPressGesture(minimumDuration: Self.duration, maximumDistance: 40) {
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            completions += 1
             progress = 0
             action()
         } onPressingChanged: { pressing in
@@ -1000,6 +1005,7 @@ private struct HoldButton: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { action() }
+        .sensoryFeedback(.success, trigger: completions)
     }
 }
 
@@ -1048,6 +1054,7 @@ private struct SignalTrace: View {
 /// durée), et « Nouvelle séance ». Après un record, une seule fois : la note App Store, puis le don.
 private struct SessionSummary: View {
     @Environment(\.theme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.requestReview) private var requestReview
     @Environment(\.openURL) private var openURL
     @EnvironmentObject private var tipJar: TipJar
@@ -1056,6 +1063,8 @@ private struct SessionSummary: View {
     let record: SessionRecord?
     @Query(sort: \SessionRecord.start, order: .reverse) private var history: [SessionRecord]
     @State private var editing: Int?
+    /// Corrections − / + d'une série (retour haptique léger).
+    @State private var corrections = 0
     @State private var showsTipPrompt = false
     @State private var showsSupport = false
 
@@ -1082,7 +1091,6 @@ private struct SessionSummary: View {
             if let record {
                 highlights(record)
                 SetBars(sets: record.orderedSets.map(\.reps), recordIndex: recordSetIndex(record), editing: editing) { index in
-                    UISelectionFeedbackGenerator().selectionChanged()
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { editing = editing == index ? nil : index }
                 }
                 .frame(height: 100)
@@ -1127,6 +1135,8 @@ private struct SessionSummary: View {
                 .environmentObject(tipJar)
                 .systemSheet()
         }
+        .sensoryFeedback(.selection, trigger: editing)
+        .sensoryFeedback(.impact(weight: .light), trigger: corrections)
     }
 
     /// Après un record : la note App Store (dès la 5e séance), puis, à un record suivant, le don
@@ -1341,7 +1351,7 @@ private struct SessionSummary: View {
             .padding(.vertical, 8)
             .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))
-            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.96)))
         } else if SourceCode.isPublic, sets.contains(where: { $0.reps != $0.countedReps }) {
             // Un compte corrigé : proposer de le signaler, pour améliorer le compteur
             Button { report(record) } label: {
@@ -1362,7 +1372,7 @@ private struct SessionSummary: View {
 
     private func stepButton(_ systemImage: String, action: @escaping () -> Void) -> some View {
         Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            corrections += 1
             withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { action() }
         } label: {
             Image(systemName: systemImage)

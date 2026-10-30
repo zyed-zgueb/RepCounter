@@ -335,13 +335,13 @@ private struct MyExercisesView: View {
         .background(theme.background.ignoresSafeArea())
         .presentationDetents([.large])
         .sheetNavigation("Mes exercices", display: .inline)
+        .sensoryFeedback(.selection, trigger: mineValue)
     }
 
     private func row(_ exercise: Exercise, adding: Bool) -> some View {
         let locked = !adding && mine.count == 1
         return HStack(spacing: 12) {
             Button {
-                UISelectionFeedbackGenerator().selectionChanged()
                 withAnimation {
                     mineValue = Exercise.encode(adding ? mine + [exercise] : mine.filter { $0 != exercise })
                 }

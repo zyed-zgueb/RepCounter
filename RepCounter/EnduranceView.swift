@@ -139,8 +139,7 @@ struct EndurancePanel: View {
                                 .padding(.top, -6)
                         }
                         if curve.points.count >= 2 {
-                            LineChart(points: curve.points, span: curve.span)
-                                .frame(height: 40)
+                            LineChart(points: curve.points, span: curve.span, compact: true)
                         }
                         if assessment == nil, let record {
                             HStack {

@@ -1,3 +1,4 @@
+import Charts
 import SwiftUI
 
 extension TrainingPhase {
@@ -110,7 +111,6 @@ struct PhasePanel: View {
             VStack(alignment: .leading, spacing: 12) {
                 MonitorLabel("Charge · 12 semaines")
                 LoadBars(loads: loads.map(\.load), deloadWeeks: deloadWeeks(loads.map(\.week)))
-                    .frame(height: 80)
                 HStack {
                     Text("effort × minutes, toutes séances")
                     Spacer()
@@ -144,24 +144,39 @@ struct PhasePanel: View {
 /// Histogramme de la charge hebdomadaire ; les semaines de décharge sont marquées.
 private struct LoadBars: View {
     @Environment(\.theme) private var theme
+    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 80
     let loads: [Double]
     let deloadWeeks: Set<Int>
+    @State private var selected: Int?
 
     var body: some View {
-        Canvas { context, size in
-            let top = max(loads.max() ?? 0, 1)
-            let slot = size.width / CGFloat(max(loads.count, 1))
-            for (index, load) in loads.enumerated() {
-                let x = CGFloat(index) * slot
+        Chart {
+            ForEach(Array(loads.enumerated()), id: \.offset) { index, load in
                 if deloadWeeks.contains(index) {
-                    context.fill(Path(CGRect(x: x, y: 0, width: slot, height: size.height)), with: .color(theme.primary.opacity(0.08)))
+                    RectangleMark(xStart: .value("Semaine", Double(index) - 0.5), xEnd: .value("Semaine", Double(index) + 0.5),
+                                  yStart: .value("Charge", 0.0), yEnd: .value("Charge", max(loads.max() ?? 1, 1)))
+                        .foregroundStyle(theme.primary.opacity(0.08))
                 }
-                let height = max(size.height * CGFloat(load / top), load > 0 ? 2 : 0)
-                let bar = CGRect(x: x + slot * 0.2, y: size.height - height, width: slot * 0.6, height: height)
-                let isLast = index == loads.count - 1
-                context.fill(Path(roundedRect: bar, cornerRadius: 2), with: .color(isLast ? theme.primary : theme.primary.opacity(0.45)))
+                BarMark(x: .value("Semaine", Double(index)), y: .value("Charge", load), width: .fixed(12))
+                    .foregroundStyle(index == loads.count - 1 ? theme.primary : theme.primary.opacity(0.45))
+                    .cornerRadius(2)
+            }
+            if let selected, loads.indices.contains(selected) {
+                RuleMark(x: .value("Semaine", Double(selected)))
+                    .foregroundStyle(theme.dim.opacity(0.5))
+                    .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
+                        SelectionLabel(title: "\(Int(loads[selected].rounded()))",
+                                       detail: selected == loads.count - 1 ? "cette semaine" : "il y a \(loads.count - 1 - selected) sem.")
+                    }
             }
         }
+        .chartXScale(domain: -0.5...(Double(loads.count) - 0.5))
+        .chartXAxis(.hidden)
+        .chartYAxis(.hidden)
+        .chartXSelection(value: Binding(get: { selected.map(Double.init) },
+                                        set: { selected = $0.map { Int($0.rounded()) } }))
+        .frame(height: height)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel("Charge des 12 dernières semaines")
     }
 }

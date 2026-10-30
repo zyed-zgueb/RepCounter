@@ -1,4 +1,6 @@
+import Charts
 import SwiftUI
+import TipKit
 
 // MARK: - Intensité et mots du plan
 
@@ -197,6 +199,10 @@ struct BlockFrise: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Bloc \(plan.block), \(plan.currentWeek?.name ?? "test"), test le \(Format.shortDate(plan.testDate))")
+        .accessibilityChartDescriptor(SeriesChartDescriptor(
+            title: "Bloc \(plan.block)", summary: "Test le \(Format.shortDate(plan.testDate))",
+            xTitle: "Semaine", yTitle: "Répétitions faites",
+            points: plan.weeks.enumerated().map { (label: "\($0.offset + 1) \($0.element.short)", value: Double($0.element.doneReps)) }))
     }
 
     private func segment(_ week: TrainingPlan.Week) -> some View {
@@ -279,6 +285,10 @@ struct IntensityGauge: View {
             context.fill(Path(ellipseIn: CGRect(x: center.x - 3.5, y: center.y - 3.5, width: 7, height: 7)), with: .color(theme.text))
         }
         .accessibilityLabel("Intensité de la semaine : \(Intensity.word(level))")
+        .accessibilityChartDescriptor(SeriesChartDescriptor(
+            title: "Intensité de la semaine", summary: Intensity.word(level),
+            xTitle: "Semaine", yTitle: "Intensité",
+            points: [(label: "cette semaine", value: level * 100)], unit: " %"))
     }
 }
 
@@ -297,6 +307,7 @@ struct BlockCard: View {
         let level = plan.weekIntensity
         VStack(alignment: .leading, spacing: 12) {
             CardHeader(symbol: "square.stack.3d.up.fill", title: "Bloc")
+            TipView(BlockTip())
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(symbols: "B\(plan.block) · \(plan.today == .test ? "◆" : (plan.currentWeek?.short ?? "◆"))")
@@ -317,7 +328,6 @@ struct BlockCard: View {
                 WeekDays(plan: plan, exercise: exercise, onChange: onDaysChanged)
             }
             WeekBars(plan: plan)
-                .frame(height: 92)
         }
         .coachingCard(theme)
     }
@@ -325,10 +335,12 @@ struct BlockCard: View {
 
 /// La semaine en cours, L M M J V S D : ○ prévu, ● fait, ! manqué, aujourd'hui souligné.
 /// Toucher un jour l'ajoute ou le retire des jours de séance (2 au moins) : le placement est un
-/// choix de l'app, l'utilisateur le déplace. L'astuce s'affiche une fois.
+/// choix de l'app, l'utilisateur le déplace. L'astuce (TipKit) s'affiche une fois, après celle
+/// du bloc.
 struct WeekDays: View {
     @Environment(\.theme) private var theme
-    @AppStorage("coaching.daysHintSeen") private var hintSeen = false
+    /// Un jour touché : retour haptique.
+    @State private var toggles = 0
     let plan: TrainingPlan
     let exercise: Exercise
     let onChange: () -> Void
@@ -344,16 +356,15 @@ struct WeekDays: View {
                         .accessibilityLabel("\(Self.letters[index]) \(day.planned ? "prévu" : "repos")\(day.sessions > 0 ? ", fait" : "")\(day.missed ? ", manqué" : "")")
                 }
             }
-            if !hintSeen {
-                Text(symbols: "☝ touche un jour pour le déplacer")
-                    .font(theme.font(10))
-                    .foregroundStyle(theme.dim)
-                    .frame(maxWidth: .infinity)
+            // Une astuce à la fois : celle des jours attend que celle du bloc soit fermée
+            if !BlockTip().shouldDisplay {
+                TipView(DaysTip())
             }
             if let day = spaced.last {
                 MonitorLabel("séries espacées · \(Format.weekdayOrDate(day.date))")
             }
         }
+        .sensoryFeedback(.selection, trigger: toggles)
     }
 
     private func cell(_ index: Int, _ day: TrainingPlan.Day) -> some View {
@@ -388,50 +399,73 @@ struct WeekDays: View {
         } else {
             days.insert(weekday)
         }
-        UISelectionFeedbackGenerator().selectionChanged()
-        hintSeen = true
+        toggles += 1
+        DaysTip().invalidate(reason: .actionPerformed)
         Schedule.save(Array(days), for: exercise)
         onChange()
     }
 }
 
-/// Prévu face au fait, une barre par semaine du bloc : contour = prévu (couleur de
-/// l'intensité), plein = fait, ✓ si atteint, ← pour la semaine en cours.
+/// Prévu face au fait (Swift Charts), une barre par semaine du bloc : barre pâle = prévu (couleur
+/// de l'intensité), pleine = fait, ✓ si atteint, ← pour la semaine en cours.
 struct WeekBars: View {
     @Environment(\.theme) private var theme
+    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 100
     let plan: TrainingPlan
 
+    private struct Bar: Identifiable {
+        let id: Int
+        let week: TrainingPlan.Week
+        var reached: Bool { week.doneReps >= week.plannedReps && week.plannedReps > 0 }
+        /// ✓ atteint, ← en cours, ! manqué, ○ à venir.
+        var mark: String { reached ? "✓" : (week.isCurrent ? "←" : (week.isPast ? "!" : "○")) }
+        /// Nom unique sur l'axe (« P2 bis » peut suivre « P2 »).
+        var name: String { "\(id + 1) \(week.short)" }
+    }
+
     var body: some View {
-        Canvas { context, size in
-            let weeks = plan.weeks
-            guard !weeks.isEmpty else { return }
-            let top = CGFloat(weeks.map { max($0.plannedReps, $0.doneReps) }.max() ?? 1)
-            let slot = size.width / CGFloat(weeks.count)
-            let barWidth = min(slot * 0.62, 44)
-            let base = size.height - 16
-            let scale = (base - 18) / max(top, 1)
-            for (index, week) in weeks.enumerated() {
-                let x = CGFloat(index) * slot + (slot - barWidth) / 2
-                let color = theme.intensity(week.intensity)
-                let plannedHeight = CGFloat(week.plannedReps) * scale
-                let doneHeight = CGFloat(week.doneReps) * scale
-                let planned = CGRect(x: x, y: base - plannedHeight, width: barWidth, height: plannedHeight)
-                context.stroke(Path(roundedRect: planned, cornerRadius: 2), with: .color(color.opacity(0.75)),
-                               style: StrokeStyle(lineWidth: 1, dash: week.kind == .deload ? [3, 2] : []))
-                let reached = week.doneReps >= week.plannedReps && week.plannedReps > 0
-                if week.doneReps > 0 {
-                    let done = CGRect(x: x + 3, y: base - doneHeight, width: barWidth - 6, height: doneHeight)
-                    context.fill(Path(roundedRect: done, cornerRadius: 1.5),
-                                 with: .color((reached ? theme.ok : color).opacity(week.isCurrent ? 0.9 : 0.75)))
+        let bars = plan.weeks.enumerated().map { Bar(id: $0.offset, week: $0.element) }
+        Chart(bars) { bar in
+            let color = theme.intensity(bar.week.intensity)
+            BarMark(x: .value("Semaine", bar.name), yStart: .value("Prévu", 0), yEnd: .value("Prévu", bar.week.plannedReps),
+                    width: .ratio(0.7))
+                .foregroundStyle(color.opacity(bar.week.kind == .deload ? 0.18 : 0.28))
+                .cornerRadius(3)
+                .annotation(position: .top) {
+                    if bar.week.doneReps <= bar.week.plannedReps {
+                        Text(symbols: bar.mark)
+                            .font(theme.font(11, .bold))
+                            .foregroundStyle(bar.reached ? theme.ok : theme.text)
+                    }
                 }
-                let mark = reached ? "✓" : (week.isCurrent ? "←" : (week.isPast ? "!" : "○"))
-                context.draw(Text(symbols: mark).font(theme.font(10, .bold)).foregroundStyle(reached ? theme.ok : theme.text),
-                             at: CGPoint(x: x + barWidth / 2, y: base - max(plannedHeight, doneHeight) - 8))
-                context.draw(Text(week.short).font(theme.font(9, week.isCurrent ? .bold : .regular))
-                                .foregroundStyle(week.isCurrent ? theme.text : theme.dim),
-                             at: CGPoint(x: x + barWidth / 2, y: size.height - 6))
+            if bar.week.doneReps > 0 {
+                BarMark(x: .value("Semaine", bar.name), yStart: .value("Fait", 0), yEnd: .value("Fait", bar.week.doneReps),
+                        width: .ratio(0.45))
+                    .foregroundStyle((bar.reached ? theme.ok : color).opacity(bar.week.isCurrent ? 0.95 : 0.8))
+                    .cornerRadius(2)
+                    .annotation(position: .top) {
+                        if bar.week.doneReps > bar.week.plannedReps {
+                            Text(symbols: bar.mark)
+                                .font(theme.font(11, .bold))
+                                .foregroundStyle(bar.reached ? theme.ok : theme.text)
+                        }
+                    }
             }
         }
+        .chartXAxis {
+            AxisMarks { value in
+                AxisValueLabel {
+                    if let name = value.as(String.self), let bar = bars.first(where: { $0.name == name }) {
+                        Text(bar.week.short)
+                            .fontWeight(bar.week.isCurrent ? .bold : .regular)
+                            .foregroundStyle(bar.week.isCurrent ? theme.text : theme.dim)
+                    }
+                }
+            }
+        }
+        .chartYAxis(.hidden)
+        .frame(height: height)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibility)
     }
 
@@ -459,7 +493,6 @@ struct PathCard: View {
         VStack(alignment: .leading, spacing: 8) {
             CardHeader(symbol: "chart.line.uptrend.xyaxis", title: "Chemin")
             PathChart(plan: plan, exercise: exercise, sessions: sessions)
-                .frame(height: 160)
             Text(symbols: "● départ · • séances · ◆ test · ┄ attendu")
                 .font(theme.font(10))
                 .foregroundStyle(theme.dim)
@@ -500,134 +533,184 @@ struct PathCard: View {
     }
 }
 
+/// Le chemin (Swift Charts), sur un axe de dates : les blocs en repères (un filet, B1…Bn), la
+/// ligne d'arrivée ⚑, l'attendu en pointillés, la projection, la meilleure série de chaque séance,
+/// les tests (◆ pleins et chiffrés, creux à venir), le départ ● et aujourd'hui ▼. Un doigt posé
+/// donne la séance la plus proche.
 private struct PathChart: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 170
     let plan: TrainingPlan
     let exercise: Exercise
     let sessions: [SessionRecord]
+    @State private var selected: Date?
+
+    private struct Point: Identifiable {
+        let id: Int
+        let date: Date
+        let value: Int
+    }
 
     /// La meilleure série de chaque séance depuis le début du plan, hors séances de test.
-    private var points: [(date: Date, value: Int)] {
+    private var points: [Point] {
         let start = plan.goal?.created ?? plan.anchor
         let tests = Set(plan.tests.map(\.date))
         return sessions
             .filter { $0.start >= start && !tests.contains($0.start) && $0.bestSet > 0 }
-            .map { (date: $0.start, value: $0.bestSet) }
+            .enumerated()
+            .map { Point(id: $0.offset, date: $0.element.start, value: $0.element.bestSet) }
     }
 
     var body: some View {
         let points = self.points
-        Canvas { context, size in
-            let start = plan.goal?.created ?? plan.anchor
-            var end = max(plan.shiftedGoalDate ?? plan.testDate, plan.testDate)
-            end = max(end, start.addingTimeInterval(16 * 7 * 86_400))
-            let left: CGFloat = 22, right: CGFloat = 16, top: CGFloat = 22, bottom = size.height - 16
-            let span = max(end.timeIntervalSince(start), 1)
-            let x = { (date: Date) -> CGFloat in left + CGFloat(date.timeIntervalSince(start) / span) * (size.width - left - right) }
-            // L'échelle englobe le départ, l'objectif, les tests et les séances
-            var values = plan.tests.map { Double($0.value) } + points.map { Double($0.value) }
-            if let goal = plan.goal { values += [Double(goal.start), Double(goal.target)] }
-            let low = (values.min() ?? 0) - 2, high = (values.max() ?? 10) + 2
-            let y = { (value: Double) -> CGFloat in bottom - CGFloat((value - low) / max(high - low, 1)) * (bottom - top) }
-
-            // Ce qui est mesuré
-            context.draw(Text("\(exercise.shortTitle.lowercased()) d'affilée").font(theme.font(9, .bold)).foregroundStyle(theme.dim),
-                         at: CGPoint(x: 0, y: 6), anchor: .leading)
-
-            // Les blocs : un filet à chaque début, B1…Bn sous l'axe ; puis ceux à venir
-            var starts = plan.blocks.map(\.start)
-            var next = (plan.blocks.last?.test ?? start).addingTimeInterval(7 * 86_400)
-            while next < end {
-                starts.append(next)
-                next = next.addingTimeInterval(5 * 7 * 86_400)
-            }
-            let tests = plan.blocks.map(\.test) + starts.dropFirst(plan.blocks.count).map { $0.addingTimeInterval(4 * 7 * 86_400) }
-            for (index, blockStart) in starts.enumerated() where blockStart < end {
-                var rule = Path()
-                rule.move(to: CGPoint(x: x(blockStart), y: top))
-                rule.addLine(to: CGPoint(x: x(blockStart), y: bottom))
-                context.stroke(rule, with: .color(theme.grid), lineWidth: 1)
-                let blockEnd = index + 1 < starts.count ? min(starts[index + 1], end) : end
-                let current = index == plan.blocks.count - 1
-                context.draw(Text("B\(index + 1)").font(theme.font(8, current ? .bold : .regular))
-                                .foregroundStyle(current ? theme.text : theme.dim),
-                             at: CGPoint(x: (x(blockStart) + x(blockEnd)) / 2, y: bottom + 9))
-            }
-
-            if let goal = plan.goal {
-                // L'objectif : la ligne d'arrivée ⚑
-                var finish = Path()
-                finish.move(to: CGPoint(x: left, y: y(Double(goal.target))))
-                finish.addLine(to: CGPoint(x: size.width - right, y: y(Double(goal.target))))
-                context.stroke(finish, with: .color(theme.ok), lineWidth: 1)
-                context.draw(Text(symbols: "⚑").font(theme.font(10)).foregroundStyle(theme.ok),
-                             at: CGPoint(x: size.width - right + 8, y: y(Double(goal.target))))
-                context.draw(Text("\(goal.target)").font(theme.font(8)).foregroundStyle(theme.ok),
-                             at: CGPoint(x: left - 10, y: y(Double(goal.target))))
-                context.draw(Text("\(goal.start)").font(theme.font(8)).foregroundStyle(theme.dim),
-                             at: CGPoint(x: left - 10, y: y(Double(goal.start))))
-                // L'attendu : départ → objectif à la date choisie
-                if let goalDate = plan.shiftedGoalDate {
-                    var expected = Path()
-                    expected.move(to: CGPoint(x: x(goal.created), y: y(Double(goal.start))))
-                    expected.addLine(to: CGPoint(x: x(goalDate), y: y(Double(goal.target))))
-                    context.stroke(expected, with: .color(theme.dim), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                }
-            }
-            // Projection (après 3 tests)
-            if let projection = plan.projection, let last = plan.tests.last, let goal = plan.goal {
-                var line = Path()
-                line.move(to: CGPoint(x: x(last.date), y: y(Double(last.value))))
-                line.addLine(to: CGPoint(x: x(min(projection, end)), y: y(Double(goal.target))))
-                context.stroke(line, with: .color(theme.primary), style: StrokeStyle(lineWidth: 1.2, dash: [2, 3]))
-            }
-            // Les séances : la meilleure série de chacune
-            for point in points {
-                let p = CGPoint(x: x(point.date), y: y(Double(point.value)))
-                context.fill(Path(ellipseIn: CGRect(x: p.x - 1.8, y: p.y - 1.8, width: 3.6, height: 3.6)),
-                             with: .color(theme.primary.opacity(0.8)))
-            }
-            // Les tests à venir : ◆ creux, sur la ligne attendue ou au niveau du dernier max
-            let lastMax = plan.tests.last?.value ?? points.last?.value ?? plan.goal?.start
-            for test in tests.dropFirst(plan.tests.count) where test <= end {
-                let level = plan.expected(at: test) ?? lastMax.map(Double.init) ?? low + 2
-                context.stroke(diamond(CGPoint(x: x(test), y: y(level)), 4), with: .color(theme.dim), lineWidth: 1.2)
-            }
-            // Les tests faits : ◆ pleins, chiffrés
-            for test in plan.tests {
-                let point = CGPoint(x: x(test.date), y: y(Double(test.value)))
-                context.fill(diamond(point, 5), with: .color(theme.text))
-                context.draw(Text("\(test.value)").font(theme.font(9, .bold)).foregroundStyle(theme.text),
-                             at: CGPoint(x: point.x + 11, y: point.y - 7))
-            }
-            // Le départ
-            if let goal = plan.goal {
-                let p = CGPoint(x: x(goal.created), y: y(Double(goal.start)))
-                context.fill(Path(ellipseIn: CGRect(x: p.x - 4, y: p.y - 4, width: 8, height: 8)), with: .color(theme.text))
-            }
-            // Aujourd'hui
-            let now = x(Date())
-            var today = Path()
-            today.move(to: CGPoint(x: now, y: top))
-            today.addLine(to: CGPoint(x: now, y: bottom))
-            context.stroke(today, with: .color(theme.primary), lineWidth: 1.2)
-            context.draw(Text(symbols: "▼").font(theme.font(9)).foregroundStyle(theme.primary), at: CGPoint(x: now, y: top - 6))
+        let start = plan.goal?.created ?? plan.anchor
+        let end = max(max(plan.shiftedGoalDate ?? plan.testDate, plan.testDate), start.addingTimeInterval(16 * 7 * 86_400))
+        // Les blocs : ceux faits ou en cours, puis ceux à venir jusqu'à la fin de l'axe
+        var starts = plan.blocks.map(\.start)
+        var next = (plan.blocks.last?.test ?? start).addingTimeInterval(7 * 86_400)
+        while next < end {
+            starts.append(next)
+            next = next.addingTimeInterval(5 * 7 * 86_400)
         }
-        .accessibilityLabel(accessibility(points))
+        let blockStarts = starts.filter { $0 < end }
+        let upcoming = (plan.blocks.map(\.test) + starts.dropFirst(plan.blocks.count).map { $0.addingTimeInterval(4 * 7 * 86_400) })
+            .dropFirst(plan.tests.count)
+            .filter { $0 <= end }
+        let lastMax = plan.tests.last?.value ?? points.last?.value ?? plan.goal?.start
+        // L'échelle englobe le départ, l'objectif, les tests et les séances
+        var values = plan.tests.map { Double($0.value) } + points.map { Double($0.value) }
+        if let goal = plan.goal { values += [Double(goal.start), Double(goal.target)] }
+        let low = (values.min() ?? 0) - 2, high = (values.max() ?? 10) + 2
+        let chosen = selected.flatMap { date in points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) } }
+
+        return VStack(alignment: .leading, spacing: 4) {
+            MonitorLabel("\(exercise.shortTitle.lowercased()) d'affilée")
+            Chart {
+                blockMarks(blockStarts)
+                goalMarks(end: end)
+                sessionMarks(points, upcoming: Array(upcoming), level: { plan.expected(at: $0) ?? lastMax.map(Double.init) ?? low + 2 })
+                testMarks
+                todayMarks(chosen)
+            }
+            .chartXScale(domain: start...end)
+            .chartYScale(domain: low...high)
+            .chartXAxis(.hidden)
+            .chartYAxis {
+                AxisMarks(position: .leading, values: .automatic(desiredCount: ChartKit.ticks(typeSize, regular: 3)))
+            }
+            .chartXSelection(value: $selected)
+            .frame(height: height)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(accessibility(points))
+        }
     }
 
-    private func diamond(_ center: CGPoint, _ radius: CGFloat) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: center.x, y: center.y - radius))
-        path.addLine(to: CGPoint(x: center.x + radius, y: center.y))
-        path.addLine(to: CGPoint(x: center.x, y: center.y + radius))
-        path.addLine(to: CGPoint(x: center.x - radius, y: center.y))
-        path.closeSubpath()
-        return path
+    @ChartContentBuilder
+    private func blockMarks(_ starts: [Date]) -> some ChartContent {
+        ForEach(Array(starts.enumerated()), id: \.offset) { index, blockStart in
+            RuleMark(x: .value("Date", blockStart))
+                .foregroundStyle(theme.grid)
+                .lineStyle(StrokeStyle(lineWidth: 1))
+                .annotation(position: .bottom, alignment: .leading) {
+                    Text("B\(index + 1)")
+                        .font(theme.font(11, index == plan.blocks.count - 1 ? .bold : .regular))
+                        .foregroundStyle(index == plan.blocks.count - 1 ? theme.text : theme.dim)
+                }
+        }
+    }
+
+    /// La ligne d'arrivée ⚑, l'attendu (départ → objectif à la date choisie), la projection.
+    @ChartContentBuilder
+    private func goalMarks(end: Date) -> some ChartContent {
+        if let goal = plan.goal {
+            RuleMark(y: .value("Répétitions", Double(goal.target)))
+                .foregroundStyle(theme.ok)
+                .annotation(position: .top, alignment: .trailing) {
+                    Text(symbols: "⚑ \(goal.target)")
+                        .font(theme.font(11, .bold))
+                        .foregroundStyle(theme.ok)
+                }
+            if let goalDate = plan.shiftedGoalDate {
+                ForEach([(goal.created, goal.start), (goalDate, goal.target)], id: \.0) { date, value in
+                    LineMark(x: .value("Date", date), y: .value("Répétitions", Double(value)), series: .value("Ligne", "attendu"))
+                        .foregroundStyle(theme.dim)
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                }
+            }
+            if let projection = plan.projection, let last = plan.tests.last {
+                ForEach([(last.date, last.value), (min(projection, end), goal.target)], id: \.0) { date, value in
+                    LineMark(x: .value("Date", date), y: .value("Répétitions", Double(value)), series: .value("Ligne", "projection"))
+                        .foregroundStyle(theme.primary)
+                        .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [2, 3]))
+                }
+            }
+        }
+    }
+
+    /// La meilleure série de chaque séance, et les tests à venir (◆ creux).
+    @ChartContentBuilder
+    private func sessionMarks(_ points: [Point], upcoming: [Date], level: @escaping (Date) -> Double) -> some ChartContent {
+        ForEach(points) { point in
+            PointMark(x: .value("Date", point.date), y: .value("Répétitions", Double(point.value)))
+                .foregroundStyle(theme.primary.opacity(0.8))
+                .symbolSize(14)
+        }
+        ForEach(upcoming, id: \.self) { test in
+            PointMark(x: .value("Date", test), y: .value("Répétitions", level(test)))
+                .symbol {
+                    Image(systemName: "diamond")
+                        .font(theme.font(11))
+                        .foregroundStyle(theme.dim)
+                }
+        }
+    }
+
+    /// Les tests faits (◆ pleins, chiffrés) et le départ ●.
+    @ChartContentBuilder
+    private var testMarks: some ChartContent {
+        ForEach(plan.tests, id: \.date) { test in
+            PointMark(x: .value("Date", test.date), y: .value("Répétitions", Double(test.value)))
+                .symbol {
+                    Image(systemName: "diamond.fill")
+                        .font(theme.font(12))
+                        .foregroundStyle(theme.text)
+                }
+                .annotation(position: .topTrailing, spacing: 0) {
+                    Text("\(test.value)")
+                        .font(theme.font(11, .bold))
+                        .foregroundStyle(theme.text)
+                }
+        }
+        if let goal = plan.goal {
+            PointMark(x: .value("Date", goal.created), y: .value("Répétitions", Double(goal.start)))
+                .foregroundStyle(theme.text)
+                .symbolSize(60)
+        }
+    }
+
+    /// Aujourd'hui ▼, et la séance choisie au doigt.
+    @ChartContentBuilder
+    private func todayMarks(_ chosen: Point?) -> some ChartContent {
+        RuleMark(x: .value("Date", Date()))
+            .foregroundStyle(theme.primary)
+            .lineStyle(StrokeStyle(lineWidth: 1.2))
+            .annotation(position: .top, spacing: 0) {
+                Image(systemName: "arrowtriangle.down.fill")
+                    .font(theme.font(9))
+                    .foregroundStyle(theme.primary)
+            }
+        if let chosen {
+            RuleMark(x: .value("Date", chosen.date))
+                .foregroundStyle(theme.dim.opacity(0.5))
+                .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
+                    SelectionLabel(title: "\(chosen.value)", detail: Format.shortDate(chosen.date))
+                }
+        }
     }
 
     /// « Pompes d'affilée : départ 30, meilleure séance récente 32, dernier test 33, objectif 40 le 12 févr. »
-    private func accessibility(_ points: [(date: Date, value: Int)]) -> String {
+    private func accessibility(_ points: [Point]) -> String {
         var parts: [String] = []
         if let goal = plan.goal { parts.append("départ \(goal.start)") }
         if let recent = points.suffix(4).map(\.value).max() { parts.append("meilleure séance récente \(recent)") }
@@ -636,53 +719,6 @@ private struct PathChart: View {
             parts.append("objectif \(goal.target)" + (plan.shiftedGoalDate.map { " le \(Format.shortDate($0))" } ?? ""))
         }
         return "\(exercise.shortTitle) d'affilée : " + parts.joined(separator: ", ")
-    }
-}
-
-// MARK: - La fiche du bloc (une fois)
-
-/// « Un bloc = 4 semaines », à la première ouverture du Coaching avec un plan.
-struct BlockSheet: View {
-    @Environment(\.theme) private var theme
-    @Environment(\.dismiss) private var dismiss
-    static let key = "coaching.blockExplained"
-    let plan: TrainingPlan
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            MonitorLabel("Un bloc = 4 semaines", color: theme.text)
-                .padding(.top, 20)
-            BlockFrise(plan: plan, showsHere: false)
-            Text("Enchaîne les séries, avec le repos indiqué.")
-                .font(theme.font(12, .bold))
-                .foregroundStyle(theme.text)
-            VStack(alignment: .leading, spacing: 12) {
-                row(theme.work, "3 semaines de progression", "3 séries, 2 ou 3 en réserve")
-                row(theme.calm, "1 semaine allégée", "moins de volume : la fatigue retombe")
-                row(theme.max, "◆ Le test", "une série max : ton nouveau niveau")
-                row(theme.line, "Puis le bloc suivant", "recalé sur ce nouveau niveau")
-            }
-            Spacer(minLength: 0)
-            Button("Compris") {
-                UserDefaults.standard.set(true, forKey: Self.key)
-                dismiss()
-            }
-            .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 54))
-        }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 12)
-        .background(theme.background.ignoresSafeArea())
-        .presentationDetents([.medium])
-    }
-
-    private func row(_ color: Color, _ title: String, _ detail: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 12, height: 12).padding(.top, 2)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(symbols: title).font(theme.font(13, .bold)).foregroundStyle(theme.text)
-                Text(detail).font(theme.font(11)).foregroundStyle(theme.dim)
-            }
-        }
     }
 }
 

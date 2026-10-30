@@ -13,6 +13,8 @@ struct ExerciseCarousel: View {
 
     /// Déplacement du doigt en cours (pt).
     @State private var drag: CGFloat = 0
+    /// Touchers sur le cadran (retour haptique léger).
+    @State private var hints = 0
 
     private var index: Int { exercises.firstIndex(of: selection) ?? 0 }
     /// Distance entre deux exercices dans le défilement.
@@ -59,6 +61,8 @@ struct ExerciseCarousel: View {
             @unknown default: break
             }
         }
+        .sensoryFeedback(.selection, trigger: selection)
+        .sensoryFeedback(.impact(weight: .light), trigger: hints)
     }
 
     private func item(_ exercise: Exercise) -> some View {
@@ -104,7 +108,6 @@ struct ExerciseCarousel: View {
 
     private func move(by step: Int) {
         let target = min(max(index + step, 0), exercises.count - 1)
-        if target != index { UISelectionFeedbackGenerator().selectionChanged() }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.82)) {
             selection = exercises[target]
             drag = 0
@@ -113,7 +116,7 @@ struct ExerciseCarousel: View {
 
     /// Un toucher : le contenu esquisse un glissement vers l'exercice voisin, puis revient.
     private func hint() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        hints += 1
         let direction: CGFloat = index == exercises.count - 1 ? 1 : -1
         withAnimation(.easeOut(duration: 0.14)) { drag = direction * page * 0.16 }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) {

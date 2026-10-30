@@ -25,6 +25,10 @@ struct CounterDialFace: View {
             SegmentRing(lit: lit, segments: segments, color: color, goalSegment: goalSegment)
             if let live { LiveRing(live: live, pale: palePulse) }
         }
+        .accessibilityChartDescriptor(SeriesChartDescriptor(
+            title: "Tour en cours", summary: "\(min(lit, segments)) segments allumés sur \(segments)" + (goalSegment.map { ", objectif au segment \($0)" } ?? ""),
+            xTitle: "Segment", yTitle: "Allumé",
+            points: (1...max(segments, 1)).map { (label: "\($0)", value: $0 <= lit ? 1 : 0) }))
     }
 }
 

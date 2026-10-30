@@ -1,3 +1,4 @@
+import Charts
 import SwiftData
 import SwiftUI
 
@@ -102,7 +103,6 @@ struct HistoryView: View {
                 if let exercise { EndurancePanel(stats: stats, exercise: exercise) }
                 HistoryPanel(title: "Répétitions / semaine", symbol: "chart.bar") {
                     VolumeBars(volumes: stats.lastWeeks(12).map { stats.volume(inWeek: $0) })
-                        .frame(height: 110)
                 }
                 HistoryPanel(title: "Régularité", symbol: "calendar") { RegularityCalendar(stats: stats) }
             }
@@ -208,13 +208,13 @@ private struct ExerciseFilter: View {
             }
             MonitorLabel(selection?.title ?? "Tous les exercices", color: theme.text)
         }
+        .sensoryFeedback(.selection, trigger: selection)
     }
 
     private func item<Content: View>(_ exercise: Exercise?, @ViewBuilder content: () -> Content) -> some View {
         let on = exercise == selection
         let corner = max(theme.radius, 4) * 2
         return Button {
-            UISelectionFeedbackGenerator().selectionChanged()
             selection = exercise
         } label: {
             content()
@@ -257,7 +257,7 @@ private struct WeeksCard: View {
         }) {
             WeeksChart(volumes: volumes, best: bestByWeek(weeks), record: planned ? stats.bestSet?.value : nil,
                        trend: Self.trend(volumes))
-                .frame(height: 130)
+                .accessibilityElement(children: .contain)
                 .accessibilityLabel(accessibility(volume: volumes.last ?? 0, trend: Self.trend(volumes)))
         }
         .contentShape(Rectangle())
@@ -309,153 +309,253 @@ private struct WeeksCard: View {
     }
 }
 
-/// Le graphique des 12 semaines : la courbe de la meilleure série au-dessus d'un filet, le volume
-/// en barres dessous, sur le même axe.
+/// Le graphique des 12 semaines (Swift Charts) : la courbe de la meilleure série au-dessus, le
+/// volume en barres dessous, sur le même axe des semaines (skill reps-ux, § 3). Un doigt posé
+/// choisit une semaine : sa règle traverse les deux graphiques, ses valeurs s'affichent en haut.
 private struct WeeksChart: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .body) private var lineHeight: CGFloat = 72
+    @ScaledMetric(relativeTo: .body) private var barHeight: CGFloat = 64
     let volumes: [Int]
     let best: [(value: Int?, record: Bool)]
     /// Le record actuel (un exercice), étiqueté « ★ 32 ».
     let record: Int?
     /// Le volume de la semaine face à la moyenne des précédentes, en % (nil : pas assez d'historique).
     let trend: Double?
+    @State private var selected: Int?
+
+    /// L'axe est continu (Double) : la sélection revient à la semaine la plus proche.
+    private var selection: Binding<Double?> {
+        Binding(get: { selected.map(Double.init) }, set: { selected = $0.map { Int($0.rounded()) } })
+    }
+
+    private struct Point: Identifiable {
+        let id: Int
+        let value: Int
+        let record: Bool
+    }
+
+    private var points: [Point] {
+        best.enumerated().compactMap { index, item in
+            item.value.map { Point(id: index, value: $0, record: item.record) }
+        }
+    }
+
+    private var current: Int { volumes.count - 1 }
+    private var domain: ClosedRange<Double> { -0.5...(Double(volumes.count) - 0.5) }
 
     var body: some View {
-        Canvas { context, size in
-            let count = volumes.count
-            guard count > 0 else { return }
-            let slot = size.width / CGFloat(count)
-            let width = min(slot * 0.6, 16)
-            let center = { (index: Int) -> CGFloat in CGFloat(index) * slot + slot / 2 }
-            let split = size.height * 0.48
-            // Filet et étiquettes des deux parties
-            var rule = Path()
-            rule.move(to: CGPoint(x: 0, y: split))
-            rule.addLine(to: CGPoint(x: size.width, y: split))
-            context.stroke(rule, with: .color(theme.grid), lineWidth: 1)
-            context.draw(Text("série max").font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: 5), anchor: .leading)
-            let volumeLabel = trend.map { "reps / sem. · \($0 >= 0 ? "▲" : "▼") \(Int(abs($0).rounded())) %" } ?? "reps / sem."
-            context.draw(Text(symbols: volumeLabel).font(theme.font(7)).foregroundStyle(theme.dim), at: CGPoint(x: 0, y: split + 7), anchor: .leading)
-            // En haut : la meilleure série
-            let values = best.compactMap(\.value)
-            if values.count < 2 {
+        let points = self.points
+        VStack(alignment: .leading, spacing: 6) {
+            MonitorLabel("série max")
+            if points.count < 2 {
                 // Une courbe demande deux semaines : en attendant, un état en cours
-                context.draw(Text("\(values.count) / 2 semaines").font(theme.font(9)).foregroundStyle(theme.dim),
-                             at: CGPoint(x: size.width / 2, y: split / 2 + 4))
-            } else if let high = values.max(), let lowest = values.min() {
-                // Écart de 4 au moins, centré : une série stable reste au milieu, pas sur le filet
-                let span = Double(max(high - lowest, 4))
-                let low = Double(lowest) - (span - Double(high - lowest)) / 2
-                let y = { (value: Int) -> CGFloat in split - 8 - (split - 24) * CGFloat((Double(value) - low) / span) }
-                var line = Path()
-                var started = false
-                for (index, point) in best.enumerated() {
-                    guard let value = point.value else { continue }
-                    let p = CGPoint(x: center(index), y: y(value))
-                    if started { line.addLine(to: p) } else { line.move(to: p); started = true }
-                }
-                context.stroke(line, with: .color(theme.primary), lineWidth: 1.4)
-                for (index, point) in best.enumerated() {
-                    guard let value = point.value else { continue }
-                    let p = CGPoint(x: center(index), y: y(value))
-                    if point.record {
-                        context.draw(Text(symbols: "★").font(theme.font(10)).foregroundStyle(theme.text), at: p)
-                    } else {
-                        context.fill(Path(ellipseIn: CGRect(x: p.x - 1.8, y: p.y - 1.8, width: 3.6, height: 3.6)), with: .color(theme.primary))
+                Text("\(points.count) / 2 semaines")
+                    .font(theme.font(13))
+                    .foregroundStyle(theme.dim)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: lineHeight)
+            } else {
+                Chart {
+                    ForEach(points) { point in
+                        LineMark(x: .value("Semaine", Double(point.id)), y: .value("Série max", point.value))
+                            .foregroundStyle(theme.primary)
+                        PointMark(x: .value("Semaine", Double(point.id)), y: .value("Série max", point.value))
+                            .foregroundStyle(theme.primary)
+                            .symbolSize(point.record ? 0 : 24)
+                            .annotation(position: .overlay) {
+                                if point.record {
+                                    Image(systemName: "star.fill")
+                                        .font(theme.font(11))
+                                        .foregroundStyle(theme.text)
+                                }
+                            }
+                    }
+                    if let record, let last = points.last(where: { $0.value == record }), selected == nil {
+                        PointMark(x: .value("Semaine", Double(last.id)), y: .value("Série max", last.value))
+                            .symbolSize(0)
+                            .annotation(position: .top, spacing: 6) {
+                                Text(symbols: "★ \(record)")
+                                    .font(theme.font(11, .bold))
+                                    .foregroundStyle(theme.text)
+                            }
+                    }
+                    if let selected {
+                        RuleMark(x: .value("Semaine", Double(selected)))
+                            .foregroundStyle(theme.dim.opacity(0.5))
+                            .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
+                                SelectionLabel(title: selectionTitle(selected), detail: weekName(selected))
+                            }
                     }
                 }
-                if let record, let index = best.lastIndex(where: { $0.value == record }) {
-                    context.draw(Text(symbols: "★ \(record)").font(theme.font(8, .bold)).foregroundStyle(theme.text),
-                                 at: CGPoint(x: min(center(index), size.width - 18), y: y(record) - 10))
+                .chartXScale(domain: domain)
+                .chartXAxis(.hidden)
+                .chartYScale(domain: .automatic(includesZero: false))
+                .chartYAxis {
+                    AxisMarks(position: .trailing, values: .automatic(desiredCount: ChartKit.ticks(typeSize, regular: 3)))
+                }
+                .chartXSelection(value: selection)
+                .frame(height: lineHeight)
+            }
+            MonitorLabel(trend.map { "reps / sem. · \($0 >= 0 ? "▲" : "▼") \(Int(abs($0).rounded())) %" } ?? "reps / sem.")
+            Chart {
+                ForEach(Array(volumes.enumerated()), id: \.offset) { index, value in
+                    BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", value), width: .fixed(12))
+                        .foregroundStyle(index == current ? theme.primary : theme.line)
+                        .cornerRadius(2)
+                        .annotation(position: .top) {
+                            if index == current, value > 0, selected == nil {
+                                Text("\(value)")
+                                    .font(theme.font(11, .bold))
+                                    .foregroundStyle(theme.text)
+                            }
+                        }
+                }
+                if let selected {
+                    RuleMark(x: .value("Semaine", Double(selected)))
+                        .foregroundStyle(theme.dim.opacity(0.5))
                 }
             }
-            // En bas : le volume
-            let base = size.height - 2
-            let most = CGFloat(max(volumes.max() ?? 1, 1))
-            let barArea = base - split - 18
-            for (index, value) in volumes.enumerated() {
-                let current = index == count - 1
-                let x = center(index) - width / 2
-                if value == 0 {
-                    context.draw(Text("·").font(theme.font(10)).foregroundStyle(theme.dim), at: CGPoint(x: center(index), y: base - 4))
-                    continue
-                }
-                let h = max(barArea * CGFloat(value) / most, 2)
-                context.fill(Path(roundedRect: CGRect(x: x, y: base - h, width: width, height: h), cornerRadius: 1.5),
-                             with: .color(current ? theme.primary : theme.line))
-                if current {
-                    context.draw(Text("\(value)").font(theme.font(8, .bold)).foregroundStyle(theme.text),
-                                 at: CGPoint(x: min(center(index), size.width - 10), y: base - h - 6))
+            .chartXScale(domain: domain)
+            .chartXAxis {
+                AxisMarks(values: [0.0, Double(current)]) { value in
+                    AxisValueLabel {
+                        if let position = value.as(Double.self) {
+                            let index = Int(position.rounded())
+                            Text(index == current ? "cette sem." : "S−\(current)")
+                        }
+                    }
                 }
             }
+            .chartYAxis {
+                AxisMarks(position: .trailing, values: .automatic(desiredCount: ChartKit.ticks(typeSize, regular: 2)))
+            }
+            .chartXSelection(value: selection)
+            .frame(height: barHeight)
         }
+    }
+
+    /// « max 28 · 140 reps » pour la semaine choisie.
+    private func selectionTitle(_ index: Int) -> String {
+        guard volumes.indices.contains(index) else { return "" }
+        let max = best.indices.contains(index) ? best[index].value.map { "max \($0) · " } ?? "" : ""
+        return "\(max)\(volumes[index]) reps"
+    }
+
+    private func weekName(_ index: Int) -> String {
+        index == current ? "cette semaine" : "il y a \(current - index) sem."
     }
 }
 
-/// L'histogramme du volume : la semaine en cours en couleur, la moyenne en pointillés.
+/// L'histogramme du volume (Swift Charts) : la semaine en cours en couleur, la moyenne des
+/// précédentes en pointillés ; un doigt posé donne la valeur d'une semaine.
 private struct VolumeBars: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 110
     let volumes: [Int]
+    @State private var selected: Int?
+
+    /// L'axe est continu (Double) : la sélection revient à la semaine la plus proche.
+    private var selection: Binding<Double?> {
+        Binding(get: { selected.map(Double.init) }, set: { selected = $0.map { Int($0.rounded()) } })
+    }
 
     var body: some View {
-        Canvas { context, size in
-            guard !volumes.isEmpty else { return }
-            let most = CGFloat(max(volumes.max() ?? 1, 1))
-            let base = size.height - 14
-            let slot = size.width / CGFloat(volumes.count)
-            let width = min(slot * 0.62, 18)
-            let height = { (value: Int) -> CGFloat in (base - 16) * CGFloat(value) / most }
-            let mean = Double(volumes.dropLast().reduce(0, +)) / Double(max(volumes.count - 1, 1))
-            var average = Path()
-            average.move(to: CGPoint(x: 0, y: base - height(Int(mean.rounded()))))
-            average.addLine(to: CGPoint(x: size.width, y: base - height(Int(mean.rounded()))))
-            context.stroke(average, with: .color(theme.dim.opacity(0.7)), style: StrokeStyle(lineWidth: 0.8, dash: [3, 3]))
-            for (index, value) in volumes.enumerated() {
-                let current = index == volumes.count - 1
-                let x = CGFloat(index) * slot + (slot - width) / 2
-                let h = max(height(value), value > 0 ? 2 : 1)
-                context.fill(Path(roundedRect: CGRect(x: x, y: base - h, width: width, height: h), cornerRadius: 1.5),
-                             with: .color(current ? theme.primary : theme.line))
-                if current {
-                    context.draw(Text("\(value)").font(theme.font(9, .bold)).foregroundStyle(theme.text),
-                                 at: CGPoint(x: x + width / 2, y: base - h - 7))
+        let current = volumes.count - 1
+        let mean = Double(volumes.dropLast().reduce(0, +)) / Double(max(volumes.count - 1, 1))
+        Chart {
+            ForEach(Array(volumes.enumerated()), id: \.offset) { index, value in
+                BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", value), width: .fixed(14))
+                    .foregroundStyle(index == current ? theme.primary : theme.line)
+                    .cornerRadius(2)
+            }
+            RuleMark(y: .value("Moyenne", mean))
+                .foregroundStyle(theme.dim.opacity(0.7))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                .annotation(position: .top, alignment: .leading) {
+                    Text("moy. \(Int(mean.rounded()))")
+                        .font(theme.font(11))
+                        .foregroundStyle(theme.dim)
+                }
+            if let selected, volumes.indices.contains(selected) {
+                RuleMark(x: .value("Semaine", Double(selected)))
+                    .foregroundStyle(theme.dim.opacity(0.5))
+                    .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
+                        SelectionLabel(title: "\(volumes[selected]) reps",
+                                       detail: selected == current ? "cette semaine" : "il y a \(current - selected) sem.")
+                    }
+            }
+        }
+        .chartXScale(domain: -0.5...(Double(volumes.count) - 0.5))
+        .chartXAxis {
+            AxisMarks(values: [0.0, Double(current)]) { value in
+                AxisValueLabel {
+                    if let position = value.as(Double.self) {
+                            let index = Int(position.rounded())
+                        Text(index == current ? "cette sem." : "S−\(current)")
+                    }
                 }
             }
-            context.draw(Text("S−11").font(theme.font(8)).foregroundStyle(theme.dim), at: CGPoint(x: 2, y: size.height - 4), anchor: .leading)
-            context.draw(Text("cette sem.").font(theme.font(8)).foregroundStyle(theme.primary),
-                         at: CGPoint(x: size.width - 2, y: size.height - 4), anchor: .trailing)
         }
+        .chartYAxis {
+            AxisMarks(position: .trailing, values: .automatic(desiredCount: ChartKit.ticks(typeSize, regular: 3)))
+        }
+        .chartXSelection(value: selection)
+        .frame(height: height)
     }
 }
 
-/// Courbe d'une valeur : x de 0 (à gauche) à `span` (à droite).
+/// Courbe d'une valeur (Swift Charts) : x de 0 (à gauche) à `span` (à droite) ; un doigt posé
+/// donne la valeur la plus proche.
 struct LineChart: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 90
+    @ScaledMetric(relativeTo: .body) private var compactHeight: CGFloat = 44
     let points: [(x: Double, value: Double)]
     let span: Double
+    /// Une courbe d'appoint dans une carte : sans graduations, plus basse.
+    var compact = false
+    @State private var selected: Double?
+
+    private struct Point: Identifiable {
+        let id: Int
+        let x: Double
+        let value: Double
+    }
 
     var body: some View {
-        Canvas { context, size in
-            let values = points.map(\.value)
-            guard let low = values.min(), let high = values.max() else { return }
-            let span = max(high - low, 0.5)
-            let location = { (point: (x: Double, value: Double)) -> CGPoint in
-                CGPoint(x: size.width * CGFloat(min(max(point.x / max(span, 0.001), 0), 1)),
-                        y: 4 + (size.height - 8) * CGFloat(1 - (point.value - low) / span))
+        let points = self.points.enumerated().map { Point(id: $0.offset, x: $0.element.x, value: $0.element.value) }
+        let chosen = selected.flatMap { x in points.min { abs($0.x - x) < abs($1.x - x) } }
+        Chart {
+            ForEach(points) { point in
+                LineMark(x: .value("Jour", point.x), y: .value("Score", point.value))
+                    .foregroundStyle(theme.primary)
+                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+                PointMark(x: .value("Jour", point.x), y: .value("Score", point.value))
+                    .foregroundStyle(theme.primary)
+                    .symbolSize(point.id == points.count - 1 ? 50 : 16)
             }
-            var path = Path()
-            for (index, point) in points.enumerated() {
-                if index == 0 { path.move(to: location(point)) } else { path.addLine(to: location(point)) }
-            }
-            context.stroke(path, with: .color(theme.primary), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-            for (index, point) in points.enumerated() {
-                let radius: CGFloat = index == points.count - 1 ? 4 : 2
-                let center = location(point)
-                context.fill(Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2)),
-                             with: .color(theme.primary))
+            if let chosen {
+                RuleMark(x: .value("Jour", chosen.x))
+                    .foregroundStyle(theme.dim.opacity(0.5))
+                    .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
+                        SelectionLabel(title: "\(Int(chosen.value.rounded()))")
+                    }
             }
         }
-        .shadow(color: theme.primary.opacity(0.4 * min(theme.glow, 1)), radius: 4)
+        .chartXScale(domain: 0...Swift.max(span, 0.001))
+        .chartXAxis(.hidden)
+        .chartYScale(domain: .automatic(includesZero: false))
+        .chartYAxis {
+            if !compact {
+                AxisMarks(position: .trailing, values: .automatic(desiredCount: ChartKit.ticks(typeSize, regular: 3)))
+            }
+        }
+        .chartXSelection(value: $selected)
+        .frame(height: compact ? compactHeight : height)
     }
 }
 
@@ -537,12 +637,10 @@ struct SessionDetailView: View {
                     overview
                     HistoryPanel(title: "Séries", symbol: "chart.bar.xaxis", accessory: { seriesAccessory(sets) }) {
                         SetBarsChart(session: session)
-                            .frame(height: 120)
                     }
                     if sets.contains(where: { $0.repDurations.count >= 2 }) {
                         HistoryPanel(title: "Rythme", symbol: "metronome", accessory: { MonitorLabel("s / rep") }) {
                             RhythmChart(sets: sets)
-                                .frame(height: 106)
                             Text("Durée de chaque répétition")
                                 .font(theme.font(11))
                                 .foregroundStyle(theme.dim)
@@ -627,49 +725,66 @@ struct SessionDetailView: View {
     }
 }
 
-/// Les séries en barres : contour pointillé = cible (s'il y en avait une), plein = fait, ✓ si
-/// atteinte ; entre les barres, ◷ et le repos réel.
+/// Les séries en barres (Swift Charts) : barre pâle = cible (s'il y en avait une), pleine = fait,
+/// verte et ✓ si atteinte ; sous chaque série, ◷ et le repos réel qui l'a précédée.
 private struct SetBarsChart: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 130
     let session: SessionRecord
 
+    private struct Bar: Identifiable {
+        let id: Int
+        let name: String
+        let reps: Int
+        let target: Int?
+        let rest: TimeInterval?
+        var reached: Bool { target.map { reps >= $0 } ?? false }
+    }
+
     var body: some View {
-        let sets = session.orderedSets
-        Canvas { context, size in
-            guard !sets.isEmpty else { return }
-            let top = CGFloat(sets.map { max($0.reps, $0.target ?? 0) }.max() ?? 1)
-            let base = size.height - 16
-            let count = CGFloat(sets.count)
-            let gap: CGFloat = sets.count > 1 ? min(42, size.width * 0.15) : 0
-            let width = min((size.width - gap * (count - 1)) / count, 56)
-            let total = width * count + gap * (count - 1)
-            var x = (size.width - total) / 2
-            let height = { (value: Int) -> CGFloat in (base - 18) * CGFloat(value) / max(top, 1) }
-            for (index, set) in sets.enumerated() {
-                let reached = set.target.map { set.reps >= $0 } ?? false
-                if let target = set.target {
-                    let h = height(target)
-                    context.stroke(Path(roundedRect: CGRect(x: x, y: base - h, width: width, height: h), cornerRadius: 2),
-                                   with: .color(theme.dim), style: StrokeStyle(lineWidth: 1, dash: [3, 2]))
+        let bars = session.orderedSets.enumerated().map { index, set in
+            Bar(id: index, name: "S\(index + 1)", reps: set.reps, target: set.target,
+                rest: index > 0 ? session.rest(before: index) : nil)
+        }
+        Chart {
+            ForEach(bars) { bar in
+                if let target = bar.target {
+                    BarMark(x: .value("Série", bar.name), yStart: .value("Cible", 0), yEnd: .value("Cible", target),
+                            width: .ratio(0.8))
+                        .foregroundStyle(theme.line.opacity(0.6))
+                        .cornerRadius(3)
                 }
-                let h = max(height(set.reps), 2)
-                context.fill(Path(roundedRect: CGRect(x: x + 4, y: base - h, width: width - 8, height: h), cornerRadius: 1.5),
-                             with: .color((reached ? theme.ok : theme.primary).opacity(0.85)))
-                let labelTop = base - max(h, set.target.map(height) ?? 0) - 8
-                context.draw(Text(symbols: "\(set.reps)\(reached ? " ✓" : "")").font(theme.font(10, .bold))
-                                .foregroundStyle(reached ? theme.ok : theme.text),
-                             at: CGPoint(x: x + width / 2, y: labelTop))
-                context.draw(Text("S\(index + 1)").font(theme.font(9)).foregroundStyle(theme.dim),
-                             at: CGPoint(x: x + width / 2, y: size.height - 5))
-                if index < sets.count - 1, let rest = session.rest(before: index + 1) {
-                    context.draw(Text(symbols: "◷").font(theme.font(10)).foregroundStyle(theme.dim),
-                                 at: CGPoint(x: x + width + gap / 2, y: base - 8))
-                    context.draw(Text(Format.clock(rest)).font(theme.font(8)).foregroundStyle(theme.dim),
-                                 at: CGPoint(x: x + width + gap / 2, y: size.height - 5))
-                }
-                x += width + gap
+                BarMark(x: .value("Série", bar.name), yStart: .value("Répétitions", 0), yEnd: .value("Répétitions", bar.reps),
+                        width: .ratio(0.5))
+                    .foregroundStyle(bar.reached ? theme.ok : theme.primary)
+                    .cornerRadius(2)
+                    .annotation(position: .top) {
+                        Text(symbols: "\(bar.reps)\(bar.reached ? " ✓" : "")")
+                            .font(theme.font(11, .bold))
+                            .foregroundStyle(bar.reached ? theme.ok : theme.text)
+                    }
             }
         }
+        .chartXAxis {
+            AxisMarks { value in
+                AxisValueLabel {
+                    if let name = value.as(String.self), let bar = bars.first(where: { $0.name == name }) {
+                        VStack(spacing: 1) {
+                            Text(name)
+                            if let rest = bar.rest {
+                                Text(symbols: "◷ \(Format.clock(rest))")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .trailing, values: .automatic(desiredCount: ChartKit.ticks(typeSize, regular: 3)))
+        }
+        .frame(height: height)
+        .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibility)
     }
 
@@ -682,34 +797,49 @@ private struct SetBarsChart: View {
     }
 }
 
-/// Une courbe par série : la durée de chacune de ses répétitions, côte à côte.
+/// Une courbe par série (Swift Charts) : la durée de chacune de ses répétitions, côte à côte.
 private struct RhythmChart: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 110
     let sets: [SetRecord]
 
+    private struct Point: Identifiable {
+        let id: Int
+        let position: Int
+        let duration: Double
+        let series: String
+    }
+
     var body: some View {
-        let series = sets.map(\.repDurations)
-        let all = series.flatMap { $0 }
-        Canvas { context, size in
-            guard let low = all.min(), let high = all.max() else { return }
-            let span = max(high - low, 0.2)
-            let chartHeight = size.height - 16
-            let slots = series.reduce(0) { $0 + max($1.count, 1) } + max(series.count - 1, 0)
-            let step = size.width / CGFloat(max(slots, 1))
-            var x: CGFloat = 0
-            for (index, durations) in series.enumerated() {
-                let color = theme.secondary.mixed(with: theme.primary, by: Double(index) / Double(max(series.count - 1, 1)))
-                var path = Path()
-                for (i, duration) in durations.enumerated() {
-                    let point = CGPoint(x: x + CGFloat(i) * step,
-                                        y: 4 + (chartHeight - 8) * CGFloat(1 - (duration - low) / span))
-                    if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
-                }
-                context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                context.draw(Text(String(format: "S%02d", index + 1)).font(theme.font(9)).foregroundColor(theme.dim),
-                             at: CGPoint(x: x, y: size.height - 5), anchor: .leading)
-                x += CGFloat(max(durations.count, 1) + 1) * step
+        // Les séries se suivent sur l'axe, une case vide entre deux
+        var position = 0
+        var points: [Point] = []
+        for (index, set) in sets.enumerated() {
+            for duration in set.repDurations {
+                points.append(Point(id: points.count, position: position, duration: duration,
+                                    series: String(format: "S%02d", index + 1)))
+                position += 1
             }
+            position += 1
         }
+        let names = (0..<sets.count).map { String(format: "S%02d", $0 + 1) }
+        let colors = (0..<sets.count).map { index in
+            theme.secondary.mixed(with: theme.primary, by: Double(index) / Double(max(sets.count - 1, 1)))
+        }
+        return Chart(points) { point in
+            LineMark(x: .value("Répétition", point.position), y: .value("Durée (s)", point.duration),
+                     series: .value("Série", point.series))
+                .foregroundStyle(by: .value("Série", point.series))
+                .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+        }
+        .chartForegroundStyleScale(domain: names, range: colors)
+        .chartLegend(position: .bottom, alignment: .leading)
+        .chartXAxis(.hidden)
+        .chartYScale(domain: .automatic(includesZero: false))
+        .chartYAxis {
+            AxisMarks(position: .trailing, values: .automatic(desiredCount: ChartKit.ticks(typeSize, regular: 3)))
+        }
+        .frame(height: height)
     }
 }

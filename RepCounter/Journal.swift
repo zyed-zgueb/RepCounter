@@ -145,9 +145,20 @@ struct JournalCard: View {
                 RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1)
             }
         }
+        .accessibilityChartDescriptor(descriptor)
         .navigationDestination(item: $opened) { session in
             SessionDetailView(session: session, stats: HistoryStats(sessions: stats.sessions, exercise: session.exercise))
         }
+    }
+
+    /// Le journal pour les Audio Graphs : le total de chaque jour, du plus ancien à aujourd'hui.
+    private var descriptor: SeriesChartDescriptor {
+        let points = days.reversed().map { day in
+            (label: day.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)),
+             value: Double(stats.sessions.filter { stats.calendar.isDate($0.start, inSameDayAs: day) }.reduce(0) { $0 + $1.totalReps }))
+        }
+        return SeriesChartDescriptor(title: "Journal", summary: "Répétitions par jour, \(shownDays) derniers jours",
+                                     xTitle: "Jour", yTitle: "Répétitions", points: points)
     }
 
     /// Les jours montrés, aujourd'hui d'abord.

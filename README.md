@@ -97,12 +97,12 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   B1…Bn) ; légende « ● départ · • séances · ◆ test · ┄ attendu » ; « ◆ prochain test » ;
   verdict ▲ = ▼ et projection après 3 tests. **Bloc** : « B2 · P3 », l'intensité en mots et en jauge (demi-cercle, aiguille,
   repères A, P, ◆), la frise, la semaine L M M J V S D (○ prévu, ● fait, ! manqué, aujourd'hui
-  souligné ; « ☝ touche un jour pour le déplacer » une fois), le prévu face au fait en barres
-  (contour prévu, plein fait, ✓, ←). **État** : la phase en pastille, la Forme en courbe sur ses
+  souligné ; une astuce TipKit, une fois, après celle du bloc : « touche un jour »), le prévu
+  face au fait en barres (pâle prévu, plein fait, ✓, ←). **État** : la phase en pastille, la Forme en courbe sur ses
   8 dernières séances avec sa bande, la fatigue sur 5 points, l'effort sur 10 graduations ; une
   touche ouvre la charge, la décharge et la courbe de Forme. En veille, un **point d'état** sur
-  la cible, sur l'échelle d'intensité ; une bulle l'explique une seule fois (le dégradé, calme →
-  intense, et ses trois niveaux).
+  la cible, sur l'échelle d'intensité ; une astuce TipKit l'explique une seule fois (ses trois
+  niveaux). Le bloc s'explique aussi par une astuce TipKit, dans sa carte.
 - **Intensité** (skill reps-ux, § 5) : une seule échelle de couleur, bleu calme (semaine allégée,
   séance légère) → ambre soutenu (progression) → rouge maximal (jour de test), en dégradé
   (`calm`, `work`, `max` dans `Themes.json`, adaptés à chaque thème). Vert : objectif ou cible
@@ -322,6 +322,13 @@ la barre, le détail poussé avec retour par glissement. Les symboles de l'app s
 Symbols : les textes gardent leurs glyphes courts, `Text(symbols:)` (`Symbols.swift`) les
 remplace à l'affichage et VoiceOver lit un mot à leur place. Toute zone touchable mesure
 44 × 44 pt au moins. La barre d'état n'est masquée que pendant une série.
+Les graphiques du Coaching et de l'historique sont en Swift Charts (`ChartKit.swift`) : hauteurs
+en `@ScaledMetric`, graduations réduites en tailles d'accessibilité, sélection au doigt (une règle
+et la valeur en haut, comme Santé). Ce qui reste dessiné à la main (cadran, frise du bloc, jauge
+d'intensité, journal) décrit ses données aux Audio Graphs (`SeriesChartDescriptor`). Les
+explications du premier affichage passent par TipKit (`Tips.swift`), les retours haptiques des
+vues par `.sensoryFeedback` (ceux du compteur restent dans `WorkoutModel`), et « Réduire les
+animations » remplace le rebond du chiffre et l'onde par un fondu.
 
 ## Thèmes
 Les thèmes habillent **le compteur seulement** (cadran, série, récupération, fin de séance) :
