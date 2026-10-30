@@ -19,7 +19,7 @@ enum RepsTips {
 /// Le point d'état sur la cible du Coaching : l'échelle d'intensité.
 struct StateTip: Tip {
     /// Le point est affiché (en veille, avec une couleur) : l'astuce n'a de sens qu'avec lui.
-    @Parameter static var dotShown = false
+    @Parameter static var dotShown: Bool = false
 
     var title: Text { Text("Ton plan, en un point") }
     var message: Text? {
