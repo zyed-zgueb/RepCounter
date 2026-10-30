@@ -315,6 +315,22 @@ décharge, et celles dont une série a été corrigée de plus de 2 répétition
 projection d'un objectif de la feuille de route ne sont pas faites : aucune référence ne fixe une
 courbe de progression attendue au poids du corps.
 
+## Organisation du projet
+Trois sessions de travail, validées par Vincent, qui décide :
+
+| Rôle | Session | Livrable |
+|---|---|---|
+| Produit, coaching et expérience | étude | ce qu'on montre, où, pourquoi, sur quelle base scientifique ; maquettes |
+| Développement | dev | le code ; seule session qui modifie le skill reps-ux, après validation de Vincent |
+| Relecture conformité Apple et cas limites | « RepCounter iOS design » | audits aux étapes clés ; signale, ne conçoit pas |
+
+Les demandes de fonctions et de design viennent de la session d'étude. La session de conformité
+envoie directement à la session de dev les corrections techniques couvertes par une règle déjà
+validée du skill (44 pt, Dynamic Type, accessibilité…) ; le contenu et la structure passent par
+l'étude. Avant que Vincent teste un lot, la session de conformité en relit les cas limites (pas
+d'historique, beaucoup de séances, pas d'objectif, pas de test, thèmes, Dynamic Type, VoiceOver) :
+chaque livraison la prévient en même temps que Vincent.
+
 ## Conformité Apple (HIG)
 Skill reps-ux, § 11. Coaching, Historique, Réglages, fiches et (i) sont des feuilles natives :
 un `NavigationStack`, le grand titre (`sheetNavigation`, `Theme.swift`), la fermeture ✕ dans

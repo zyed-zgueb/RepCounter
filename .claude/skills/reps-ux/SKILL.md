@@ -5,6 +5,8 @@ description: Règles d'organisation des écrans de Reps (compteur, fin de séanc
 
 # Reps : où va chaque donnée
 
+Ce skill est modifié par la session de dev seulement, après validation de Vincent.
+
 Beaucoup de données, mais séparées et structurées. Ce qu'on voit tout le temps n'est pas traité comme ce qu'on voit de temps en temps. On rassemble ce qui se ressemble ou se complète.
 
 ## 1. La fréquence de lecture décide de la place et du traitement
