@@ -84,8 +84,61 @@ Des événements datés (séances, séries, tests) se placent sur un axe de temp
 
 La même logique vaut ailleurs : une frise pour un bloc (semaines), une rangée L M M J V S D pour la semaine, une frise horaire pour la journée. Chaque échelle de temps a sa frise, et chacune apparaît là où l'on regarde à cette fréquence (voir section 1).
 
-## 11. Conformité Apple (HIG), pour tout code écrit ou modifié
+## 11. Conformité Apple (HIG)
 
-- Zone de toucher d'au moins 44 × 44 pt (`frame` ou `contentShape`), même si le dessin est plus petit.
-- Une nouvelle icône ou un nouveau bouton : un SF Symbol (`chevron.left`, `pencil`, `ellipsis`) plutôt qu'un caractère Unicode.
-- Pas de nouvelle taille de police fixe quand un style de texte convient (le passage à Dynamic Type viendra dans un lot dédié).
+**Deux mondes.** Le compteur est immersif, comme l'app Exercice de la Watch : le thème choisi, plein écran, barre d'état masquée pendant une série seulement. Tout le reste ressemble à Santé : Coaching, Historique, Réglages, fiches et (i). Ces écrans suivent le mode clair ou sombre du système, jamais le thème.
+
+**Navigation.** Un seul écran : le cadran. Coaching et Historique s'ouvrent en feuilles, chacune dans un `NavigationStack` :
+- `navigationTitle` en grand titre, pas de titre fait main en capitales ;
+- bouton de fermeture dans la `toolbar` ;
+- le détail s'ouvre en poussant une page, avec le retour par glissement.
+
+**Couleurs.** Hors compteur, on utilise les couleurs sémantiques :
+- fond `systemGroupedBackground`, cartes `secondarySystemGroupedBackground` ;
+- texte `label` et `secondaryLabel`, filets `separator`.
+
+L'échelle d'intensité (§ 5) et le vert « atteint » existent en version claire et en version sombre, avec un contraste d'au moins 3:1 pour les tracés et 4,5:1 pour le texte.
+
+**Cartes façon Santé.**
+- En-tête : un SF Symbol et un libellé dans la couleur du domaine, la date à droite.
+- Corps : un gros chiffre en SF Rounded, l'unité en petit, puis le graphique.
+- Si la carte s'ouvre : un chevron, et toute la carte réagit au toucher.
+
+**Texte.**
+- Styles Dynamic Type (`.largeTitle` … `.caption2`), avec le design `.rounded`. Aucune taille fixe.
+- `@ScaledMetric` pour les dimensions qui suivent le texte.
+- Le cadran garde un chiffre calculé sur sa taille, mais ses libellés suivent Dynamic Type.
+- On vérifie chaque écran en taille AX3 : rien de tronqué, et on passe en disposition verticale si besoin.
+
+**Symboles (§ 9 en SF Symbols).**
+
+| Avant | SF Symbol |
+|---|---|
+| ⌖ | `scope` |
+| ◆ | `diamond.fill` |
+| ✓ | `checkmark` |
+| ● | `circle.fill` |
+| ○ | `circle` |
+| ! | `exclamationmark.circle` |
+| ★ | `star.fill` |
+| ▲▼ | `arrowtriangle.up.fill` / `arrowtriangle.down.fill` |
+| ◷ | `timer` |
+| ✎ | `pencil` |
+| ⋯ | `ellipsis` |
+| ⚑ | `flag.fill` |
+| < > | `chevron.left` / `chevron.right` |
+
+Σ reste un caractère, faute d'équivalent. Aucun caractère Unicode ne sert d'icône.
+
+**Toucher.** Toute zone touchable mesure au moins 44 × 44 pt, avec `contentShape` si le dessin est plus petit.
+
+**Graphiques.**
+- Swift Charts partout sauf sur le cadran (`CounterDial`, qui reste un dessin propre à l'app).
+- Sélection au doigt par une règle verticale, et Audio Graphs pour VoiceOver.
+
+**Explications (§ 6).** Les bulles « Compris » utilisent TipKit.
+
+**Accessibilité.**
+- Chaque élément porte un libellé VoiceOver qui dit la valeur, pas le symbole.
+- Les animations respectent « Réduire les animations ».
+- Les retours haptiques passent par `.sensoryFeedback`.

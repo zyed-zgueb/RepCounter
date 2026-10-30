@@ -314,9 +314,13 @@ projection d'un objectif de la feuille de route ne sont pas faites : aucune réf
 courbe de progression attendue au poids du corps.
 
 ## Thèmes
-Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis, lueur,
-clair/sombre), choisis dans les Réglages. Aucun écran n'a de couleur en dur : tout passe par
-`@Environment(\.theme)` (`Theme.swift`). Ajouter un thème = ajouter une entrée au fichier.
+Les thèmes habillent **le compteur seulement** (cadran, série, récupération, fin de séance) :
+c'est le monde immersif, comme l'app Exercice de la Watch. Coaching, Historique, Réglages,
+fiches et (i) suivent le mode clair ou sombre du système, avec les couleurs sémantiques
+d'Apple, façon Santé (skill reps-ux, § 11 ; passage en cours, lot 2 : ces écrans portent encore
+le thème). Les thèmes sont des données : `RepCounter/Themes.json` (couleurs, police, arrondis,
+lueur, clair/sombre), choisis dans les Réglages, lus par `@Environment(\.theme)`
+(`Theme.swift`). Ajouter un thème = ajouter une entrée au fichier.
 `ThemeStore` mémorise le choix. Tous les thèmes sont gratuits. Thèmes livrés :
 Moniteur, Phosphore, Clinique (clair), Néon.
 
