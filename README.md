@@ -354,6 +354,7 @@ Trois sessions de travail, validées par Vincent, qui décide :
 | Développement | dev | le code ; seule session qui modifie le skill reps-ux, après validation de Vincent |
 | Relecture conformité Apple et cas limites | « RepCounter iOS design » | audits aux étapes clés ; signale, ne conçoit pas |
 | Science du sport | « RepCounter · Science du sport » | méthodes de planification (dosage, progression, décharge, tests, réaction à la fatigue) et références ; propose, Vincent décide |
+| Contrôle du process | « RepCounter · Contrôle du process » | détecte et arrête les boucles ; n'intervient pas sur le fond |
 
 Les demandes de fonctions et de design viennent de la session d'étude ; les décisions de méthode
 validées viennent de la session Science du sport (ou de l'étude si elles changent l'affichage). La session de conformité
@@ -362,6 +363,22 @@ validée du skill (44 pt, Dynamic Type, accessibilité…) ; le contenu et la st
 l'étude. Avant que Vincent teste un lot, la session de conformité en relit les cas limites (pas
 d'historique, beaucoup de séances, pas d'objectif, pas de test, thèmes, Dynamic Type, VoiceOver) :
 chaque livraison la prévient en même temps que Vincent.
+
+### Règles de circulation
+- **R1** : on n'écrit à une autre session que pour demander une action, livrer un résultat ou
+  signaler un blocage. Pas d'accusé de réception ni de remerciement.
+- **R2** : chaque message commence par [ACTION] (le destinataire doit agir) ou [INFO] (aucune
+  réponse attendue). Un [INFO] n'appelle jamais de réponse.
+- **R3** : sur un même sujet, au plus 2 allers-retours entre deux sessions sans nouveau message de
+  Vincent. Au-delà, on s'arrête et on pose la question à Vincent.
+- **R4** : un seul rapport par lot (relecture, science), qui regroupe tous les points.
+- **R5** : un seul destinataire par message, celui qui doit agir ; une copie seulement si l'autre
+  doit aussi agir.
+- **R6** : un message « [STOP — Contrôle du process] » se respecte : on ne répond pas, on ne
+  relance pas l'autre session, on attend Vincent.
+
+À la livraison d'un lot, la session de dev écrit un seul [INFO] à Vincent (dans sa réponse) et un
+seul [ACTION] à la session de relecture.
 
 ## Conformité Apple (HIG)
 Skill reps-ux, § 11. Coaching, Historique, Réglages, fiches et (i) sont des feuilles natives :
