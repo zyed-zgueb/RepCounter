@@ -120,6 +120,8 @@ struct JournalCard: View {
     /// Une séance posée au bord de la plage reste à l'intérieur : elle ne recouvre ni le jour ni
     /// le total.
     private static let edgeInset: CGFloat = 16
+    /// La largeur d'une marque (★, ‹ ›, +n) au-dessus d'une silhouette, à l'échelle du texte.
+    @ScaledMetric(relativeTo: .caption2) private var markWidth: CGFloat = 10
 
     var body: some View {
         let days = self.days
@@ -239,19 +241,34 @@ struct JournalCard: View {
     private static let maxSilhouettes = 4
 
     /// Les séances du jour, de la plus tôt à la plus tard : chacune à son heure de début, décalée
-    /// juste après la précédente si elles se chevauchent.
+    /// juste après la précédente si elles se chevauchent (largeur des marques comprise). Celles qui
+    /// dépasseraient la fin de la plage s'y alignent par la droite, en repoussant les précédentes
+    /// vers la gauche : rien ne déborde sur la colonne du total.
     private func placements(_ sessions: [SessionRecord], width: CGFloat) -> [Placement] {
         let tick = sessions.count > Self.maxSilhouettes
         let usable = max(width - 2 * Self.edgeInset, 0)
+        let ordered = sessions.sorted { $0.start < $1.start }
+        let records = stats.recordSessions
+        var items: [(session: SessionRecord, x: CGFloat, footprint: CGFloat, edge: String?)] = []
         var nextFree: CGFloat = 0
-        return sessions.sorted { $0.start < $1.start }.map { session in
+        for session in ordered {
             let minutes = stats.calendar.component(.hour, from: session.start) * 60
                 + stats.calendar.component(.minute, from: session.start)
-            let wanted = labelWidth + Self.edgeInset + usable * share(minutes)
-            let x = max(wanted, nextFree)
-            nextFree = x + JournalSilhouette.width(sets: session.orderedSets.count, tick: tick) + 2
-            return Placement(session: session, x: x, edge: minutes < start ? "‹" : (minutes > end ? "›" : nil), tick: tick)
+            let edge = minutes < start ? "‹" : (minutes > end ? "›" : nil)
+            let marks = JournalSilhouette.marks(sets: session.orderedSets.count, record: records.contains(session.persistentModelID),
+                                                edge: edge, tick: tick)
+            let footprint = max(JournalSilhouette.width(sets: session.orderedSets.count, tick: tick), CGFloat(marks) * markWidth)
+            let x = max(labelWidth + Self.edgeInset + usable * share(minutes), nextFree)
+            items.append((session, x, footprint, edge))
+            nextFree = x + footprint + 2
         }
+        // De droite à gauche : la dernière s'aligne sur la fin de la plage si elle la dépasse
+        var limit = labelWidth + width - 2
+        for index in items.indices.reversed() {
+            items[index].x = max(min(items[index].x, limit - items[index].footprint), labelWidth)
+            limit = items[index].x - 2
+        }
+        return items.map { Placement(session: $0.session, x: $0.x, edge: $0.edge, tick: tick) }
     }
 
     /// L'échelle commune des silhouettes sur la période affichée : la plus grande série, et le plus
@@ -367,7 +384,14 @@ private struct JournalSilhouette: View {
     /// Barres montrées au plus : la silhouette reste étroite sur sa ligne.
     static let maxBars = 10
     static let barWidth: CGFloat = 3
+    /// Les marques au-dessus des barres : leur décalage suit la taille du texte.
+    @ScaledMetric(relativeTo: .caption2) private var lift: CGFloat = 10
     static let gap: CGFloat = 1
+
+    /// Le nombre de marques posées au-dessus (« +n » compte double).
+    static func marks(sets: Int, record: Bool, edge: String?, tick: Bool) -> Int {
+        (edge != nil ? 1 : 0) + (record ? 1 : 0) + (!tick && sets > maxBars ? 2 : 0)
+    }
 
     /// La largeur des barres (sans les marques, posées au-dessus).
     static func width(sets: Int, tick: Bool) -> CGFloat {
@@ -403,7 +427,7 @@ private struct JournalSilhouette: View {
                 if edge == "›" { marker("›") }
             }
             .fixedSize()
-            .offset(y: -10)
+            .offset(y: -lift)
         }
     }
 

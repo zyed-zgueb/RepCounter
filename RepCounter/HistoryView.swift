@@ -76,12 +76,16 @@ struct HistoryView: View {
     private func missedDays(_ stats: HistoryStats) -> Set<Date> {
         guard exercise != nil, let plan = stats.plan(all: sessions) else { return [] }
         let weekdays = Schedule.days(Schedule.saved(exercise ?? .auto) ?? Schedule.defaultWeekdays(plan.perWeek))
-        // Du jour du test jusqu'au bloc suivant (le lundi après le test fait), pas de séance prévue :
-        // c'est la pause du test, comme dans le Coaching
-        let pauses = plan.blocks.enumerated().map { index, block -> Range<Date> in
+        // Pas de séance prévue pendant les pauses, comme dans le Coaching : de la fin de la semaine
+        // allégée à la semaine de reprise, s'il y en a une ; du jour du test au bloc suivant (le
+        // lundi après le test fait)
+        let pauses = plan.blocks.enumerated().flatMap { index, block -> [Range<Date>] in
+            let deloadEnd = block.deload.addingTimeInterval(7 * 86_400)
             let done = plan.tests.first { $0.block == index + 1 }
             let end = done.map { Schedule.weekStart($0.date, calendar: stats.calendar).addingTimeInterval(7 * 86_400) } ?? .distantFuture
-            return block.test..<max(end, block.test)
+            var ranges = [block.test..<max(end, block.test)]
+            if let reprise = block.reprise, reprise > deloadEnd { ranges.append(deloadEnd..<reprise) }
+            return ranges
         }
         var missed = Set<Date>()
         var week = Schedule.weekStart(stats.now, calendar: stats.calendar)
@@ -89,7 +93,7 @@ struct HistoryView: View {
             let end = week.addingTimeInterval(7 * 86_400)
             let inWeek = stats.sessions.filter { $0.start >= week && $0.start < end }
             for day in Schedule.week(weekdays, start: week, sessions: inWeek, now: stats.now, calendar: stats.calendar).days
-                where day.missed && !pauses.contains(where: { $0.contains(day.date) }) {
+                where day.missed && day.date >= plan.firstDay && !pauses.contains(where: { $0.contains(day.date) }) {
                 missed.insert(day.date)
             }
             week = week.addingTimeInterval(-7 * 86_400)

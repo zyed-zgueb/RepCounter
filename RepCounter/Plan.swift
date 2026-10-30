@@ -36,11 +36,14 @@ struct TrainingPlan {
         var plannedReps: Int { planned.total * plannedSessions }
     }
 
-    /// Un bloc : son début, le début de sa semaine allégée, son test (à partir de ce jour).
+    /// Un bloc : son début, le début de sa semaine allégée, son test (à partir de ce jour), et le
+    /// début de sa semaine de reprise s'il y en a une (entre la fin de l'allégée et la reprise :
+    /// une pause, pas de séance prévue).
     struct Block {
         let start: Date
         let deload: Date
         let test: Date
+        var reprise: Date? = nil
     }
 
     struct Test {
@@ -78,6 +81,8 @@ struct TrainingPlan {
     let goal: Goal?
     /// Le début du plan (lundi de la semaine où il a commencé).
     let anchor: Date
+    /// Le premier jour du plan : les jours prévus avant lui (même semaine) ne comptent pas.
+    let firstDay: Date
     /// Les blocs, du premier au bloc en cours (bornes réelles), pour le graphique du chemin.
     let blocks: [Block]
     let block: Int
@@ -100,6 +105,8 @@ struct TrainingPlan {
     let perWeek: Int
 
     var currentWeek: Week? { weeks.first { $0.isCurrent } }
+    /// Un test est prévu (pas pendant une reprise après une longue absence).
+    var hasTest: Bool { today != .comeback }
     /// La date de l'objectif, décalée des semaines refaites.
     var shiftedGoalDate: Date? { goal?.date.map { $0.addingTimeInterval(Double(shiftWeeks) * 7 * 86_400) } }
 
@@ -135,14 +142,29 @@ struct TrainingPlan {
         // Plus de 28 jours sans séance : la carte Aujourd'hui propose une séance de reprise
         // (le chemin et l'objectif restent visibles)
         if now.timeIntervalSince(last.start) > comebackDays * day {
-            return TrainingPlan(goal: goal, anchor: weekStart(anchor), blocks: [], block: 1, weeks: [], testDate: now, tests: [],
+            return TrainingPlan(goal: goal, anchor: weekStart(anchor), firstDay: calendar.startOfDay(for: now),
+                                blocks: [], block: 1, weeks: [], testDate: now, tests: [],
                                 shiftWeeks: 0, today: .comeback, status: .due, next: nil, days: [], ratios: nil,
                                 perWeek: Prescription.minSessionsPerWeek)
         }
         // Une séance après plus de 28 jours sans séance ouvre un nouveau bloc 1, ancré sur elle
         var start0 = anchor
+        var comeback: Date?
         for (before, after) in zip(sorted, sorted.dropFirst()) where after.start.timeIntervalSince(before.start) > comebackDays * day {
             start0 = max(start0, after.start)
+            comeback = after.start
+        }
+        // Après une longue absence, rien d'avant le retour : le bloc 1 calibre sur les nouvelles séances
+        let usable = comeback.map { cutoff in sorted.filter { $0.start >= cutoff } } ?? sorted
+        let firstDay = calendar.startOfDay(for: start0)
+        /// Séances prévues dans la semaine qui commence `start` : les jours avant le début du plan
+        /// ne comptent pas.
+        func plannedDays(_ days: [Int], inWeek start: Date) -> [Int] {
+            days.filter { (calendar.date(byAdding: .day, value: $0 - 1, to: start) ?? start) >= firstDay }
+        }
+        /// Le test : la première série non nulle (une séance toute à 0 ne compte pas comme test).
+        func testValue(_ session: SessionRecord) -> Int? {
+            session.orderedSets.first { $0.reps > 0 }?.reps
         }
 
         var blockStart = weekStart(start0)
@@ -154,7 +176,7 @@ struct TrainingPlan {
         var excluded = Set<PersistentIdentifier>()
 
         while true {
-            let reference = sorted.filter { !excluded.contains($0.persistentModelID) }
+            let reference = usable.filter { !excluded.contains($0.persistentModelID) }
             // Le max : le dernier test ; au premier bloc, la meilleure série récente
             let testMax = tests.last?.value
             // Sans séance avant le bloc (nouvel utilisateur, bloc de reprise) : la semaine 1 calibre,
@@ -180,7 +202,7 @@ struct TrainingPlan {
                 let isPast = end <= now
                 var reason: String?
                 if isPast, repeats < Prescription.maxRepeats {
-                    let missed = perWeek - trainingDays(done)
+                    let missed = plannedDays(days, inWeek: start).count - trainingDays(done)
                     let tiredCount = done.filter { tired.contains($0.persistentModelID) }.count
                     if missed > 0 { reason = missed == 1 ? "1 séance manquée" : "\(missed) séances manquées" }
                     else if tiredCount >= 2 { reason = "Forme basse × \(tiredCount)" }
@@ -223,14 +245,21 @@ struct TrainingPlan {
                                   isPast: repriseEnd <= now, isCurrent: repriseStart <= now && now < repriseEnd, redoReason: nil))
                 testDate = repriseEnd
             } else if now >= testDate, now.timeIntervalSince(last.start) > repriseDays * day {
-                // Pas encore revenu : la reprise d'abord, pas le test
+                // Pas encore revenu : la reprise d'abord (cette semaine), le test la semaine d'après ;
+                // jamais de test à une date passée
                 repriseToday = true
+                let repriseStart = weekStart(now)
+                weeks.append(Week(start: repriseStart, kind: .reprise, planned: deload, plannedSessions: perWeek,
+                                  done: 0, doneReps: 0, isPast: false, isCurrent: true, redoReason: nil))
+                testDate = repriseStart.addingTimeInterval(week)
             }
-            blocks.append(Block(start: weeks.first?.start ?? start, deload: start, test: testDate))
-            if !repriseToday, let test = sorted.first(where: { $0.start >= testDate }) {
-                // Test fait : sa première série (on est frais : une série isolée suffit). Le bloc
-                // suivant repart la semaine d'après
-                tests.append(Test(date: test.start, value: test.orderedSets.first?.reps ?? test.bestSet, block: block))
+            let repriseStart = weeks.last { $0.kind == .reprise }?.start
+            blocks.append(Block(start: weeks.first?.start ?? start, deload: start, test: testDate, reprise: repriseStart))
+            if !repriseToday, let test = sorted.first(where: { $0.start >= testDate && testValue($0) != nil }),
+               let value = testValue(test) {
+                // Test fait : sa première série non nulle (on est frais : une série isolée suffit).
+                // Le bloc suivant repart la semaine d'après
+                tests.append(Test(date: test.start, value: value, block: block))
                 excluded.insert(test.persistentModelID)
                 blockStart = weekStart(test.start).addingTimeInterval(week)
                 block += 1
@@ -238,10 +267,10 @@ struct TrainingPlan {
                 // Le bloc suivant commence la semaine prochaine : jusque-là, repos. Ses cibles partent
                 // déjà du nouveau max (le test), pas de l'ancien
                 let next = Schedule.firstDay(days, inWeekOf: blockStart, calendar: calendar)
-                let reference = sorted.filter { !excluded.contains($0.persistentModelID) }
+                let reference = usable.filter { !excluded.contains($0.persistentModelID) }
                 let fresh = Prescription.habitual(reference, before: now.addingTimeInterval(1),
                                                   testMax: tests.last?.value, calendar: calendar) ?? habit
-                return TrainingPlan(goal: goal, anchor: weekStart(start0), blocks: blocks, block: block - 1, weeks: weeks, testDate: testDate, tests: tests,
+                return TrainingPlan(goal: goal, anchor: weekStart(start0), firstDay: firstDay, blocks: blocks, block: block - 1, weeks: weeks, testDate: testDate, tests: tests,
                                     shiftWeeks: shift, today: .session(fresh.session), status: .rest, next: next,
                                     days: [], ratios: fresh.ratios, perWeek: perWeek)
             }
@@ -260,7 +289,7 @@ struct TrainingPlan {
             }
             // La semaine en cours, jour par jour
             let thisWeek = weekStart(now)
-            let schedule = Schedule.week(days, start: thisWeek, sessions: inWeek(thisWeek), now: now, calendar: calendar)
+            let schedule = Schedule.week(plannedDays(days, inWeek: thisWeek), start: thisWeek, sessions: inWeek(thisWeek), now: now, calendar: calendar)
             let todaySessions = sorted.filter { calendar.isDate($0.start, inSameDayAs: now) }
             let todayReps = todaySessions.reduce(0) { $0 + $1.totalReps }
             let plannedToday: Int = {
@@ -283,7 +312,7 @@ struct TrainingPlan {
                 let nextWeek = thisWeek.addingTimeInterval(week)
                 next = nextWeek >= testDate ? testDate : Schedule.firstDay(days, inWeekOf: nextWeek, calendar: calendar)
             }
-            return TrainingPlan(goal: goal, anchor: weekStart(start0), blocks: blocks, block: block, weeks: weeks, testDate: testDate, tests: tests,
+            return TrainingPlan(goal: goal, anchor: weekStart(start0), firstDay: firstDay, blocks: blocks, block: block, weeks: weeks, testDate: testDate, tests: tests,
                                 shiftWeeks: shift, today: today, status: status, next: next, days: schedule.days,
                                 ratios: habit.ratios, perWeek: perWeek)
         }

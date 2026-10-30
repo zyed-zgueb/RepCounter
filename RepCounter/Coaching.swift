@@ -136,7 +136,7 @@ struct CoachingView: View {
                             FirstSessionCard(exercise: exercise) { onStart(exercise) }
                             if goal != nil {
                                 GoalHeader(goal: goal, shiftedDate: plan?.shiftedGoalDate, exercise: exercise, current: stats.currentBest,
-                                           levelDate: stats.levelDate,
+                                           levelDate: stats.levelDate, now: stats.now,
                                            onEdit: { editor = .target },
                                            onMenu: { showsMenu = true },
                                            onNext: { editor = .new })
@@ -150,7 +150,7 @@ struct CoachingView: View {
                             // Où je vais : l'objectif, le chemin, le bloc
                             if goal != nil {
                                 GoalHeader(goal: goal, shiftedDate: plan?.shiftedGoalDate, exercise: exercise, current: stats.currentBest,
-                                           levelDate: stats.levelDate,
+                                           levelDate: stats.levelDate, now: stats.now,
                                            onEdit: { editor = .target },
                                            onMenu: { showsMenu = true },
                                            onNext: { editor = .new })
@@ -161,7 +161,10 @@ struct CoachingView: View {
                                 if goal != nil {
                                     PathCard(plan: plan, exercise: exercise, sessions: stats.sessions)
                                 }
-                                BlockCard(plan: plan, exercise: exercise) { version += 1 }
+                                // Reprise après une longue absence : pas encore de bloc ni de test
+                                if plan.hasTest {
+                                    BlockCard(plan: plan, exercise: exercise) { version += 1 }
+                                }
                             }
                         }
                         // Comment je suis
@@ -555,6 +558,8 @@ private struct GoalHeader: View {
     let current: Int
     /// Le niveau date de plus de 28 jours : son ancienneté s'affiche.
     var levelDate: Date? = nil
+    /// Le jour de référence des statistiques (`HistoryStats.now`).
+    var now = Date()
     let onEdit: () -> Void
     let onMenu: () -> Void
     /// Objectif atteint : fixer le suivant.
@@ -592,6 +597,7 @@ private struct GoalHeader: View {
                             Text(symbols: "✓ atteint")
                                 .font(theme.font(15, .bold))
                                 .foregroundStyle(theme.ok)
+                                .accessibilityLabel("Objectif atteint")
                         } else {
                             figure("reste", goal.target - current)
                         }
@@ -604,11 +610,23 @@ private struct GoalHeader: View {
                 if current >= goal.target, let next = GoalInvitation.proposal(current) {
                     // L'objectif suivant : même règle que la proposition (+20 %, choix de l'app)
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        MonitorLabel("suivant · \(current) → \(next) ?", color: theme.text)
+                        Text(symbols: "suivant · \(current) → \(next) ?")
+                            .font(theme.font(13, .medium))
+                            .foregroundStyle(theme.text)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityLabel("Objectif suivant : \(current) à \(next) ?")
                         Spacer(minLength: 8)
-                        Button(action: onNext) { Text(symbols: "⌖ Fixer") }
-                            .buttonStyle(MonitorButtonStyle(color: theme.primary, filled: false, height: 44, fontSize: 12))
-                            .fixedSize()
+                        Button(action: onNext) {
+                            Text(symbols: "⌖ Fixer")
+                                .font(theme.font(15, .semibold))
+                                .foregroundStyle(theme.primary)
+                                .padding(.horizontal, 14)
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Fixer l'objectif suivant")
                     }
                     .padding(.top, 4)
                 }
@@ -620,7 +638,7 @@ private struct GoalHeader: View {
     /// « il y a 6 sem. » pour un niveau de plus de 28 jours.
     private var levelAge: String? {
         guard let levelDate else { return nil }
-        let weeks = Int(Date().timeIntervalSince(levelDate) / (7 * 86_400))
+        let weeks = Int(now.timeIntervalSince(levelDate) / (7 * 86_400))
         return "il y a \(max(weeks, 4)) sem."
     }
 

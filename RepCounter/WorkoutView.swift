@@ -1177,11 +1177,14 @@ private struct SessionSummary: View {
         if let plan {
             let sets = record.orderedSets.map(\.reps)
             VStack(spacing: 6) {
-                if plan.today == .test {
-                    // Le test : la première série de la séance (on est frais)
-                    let tested = record.orderedSets.first?.reps ?? record.bestSet
-                    planRow("Test · bloc \(plan.block)", "\(tested) d'affilée", color: theme.ok)
-                    if let expected = plan.expected(at: record.start) {
+                if plan.today == .test, let tested = record.orderedSets.first(where: { $0.reps > 0 })?.reps {
+                    // Le test : la première série non nulle de la séance (on est frais). Vert
+                    // seulement si l'attendu est atteint ou s'il y a un gain (skill reps-ux, § 5)
+                    let reference = plan.goal?.start ?? plan.tests.last?.value
+                    let expectedValue = plan.expected(at: record.start)
+                    let good = expectedValue.map { Double(tested) >= $0 } ?? reference.map { tested > $0 } ?? false
+                    planRow("Test · bloc \(plan.block)", "\(tested) d'affilée", color: good ? theme.ok : theme.text)
+                    if let expected = expectedValue {
                         planRow("Attendu", "\(Int(expected.rounded()))", color: theme.text)
                     }
                     // Sans objectif, pas de départ : le gain depuis le test précédent

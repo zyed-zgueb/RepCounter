@@ -134,13 +134,27 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
                     status="due", next=None, per_week=MIN_PER_WEEK, ratios=None)
     # Une séance après plus de 28 jours sans séance ouvre un nouveau bloc 1, ancré sur elle
     anchor = goal_day
+    comeback = None
     for before, after in zip(sessions, sessions[1:]):
         if after.day - before.day > COMEBACK_DAYS:
             anchor = max(anchor, after.day)
+            comeback = after.day
+    # Après une longue absence, rien d'avant le retour
+    usable = [s for s in sessions if comeback is None or s.day >= comeback]
+    first_day = int(anchor)
     block_start = (int(anchor) // 7) * 7
+
+    def planned(days, week_start):
+        # Les jours prévus avant le début du plan ne comptent pas
+        return [d for d in days if week_start + d - 1 >= first_day]
+
+    def test_value(session):
+        # La première série non nulle ; une séance toute à 0 n'est pas un test
+        return next((r for r in session.sets if r > 0), None)
+
     block, tests, shift, excluded = 1, [], 0, set()
     while True:
-        reference = [s for s in sessions if id(s) not in excluded]
+        reference = [s for s in usable if id(s) not in excluded]
         test_max = tests[-1][1] if tests else None
         # Sans séance avant le bloc : la semaine 1 calibre (cibles d'après chaque séance), puis
         # les cibles sont figées jusqu'au test
@@ -158,7 +172,7 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
             past = start + 7 <= now
             reason = None
             if past and repeats < MAX_REPEATS:
-                missed = per_week - training_days(done)
+                missed = len(planned(days, start)) - training_days(done)
                 tired = sum(s.tired for s in done)
                 if missed > 0:
                     reason = f"{missed} manquée(s)"
@@ -190,18 +204,22 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
                           training_days(reprise_done), None))
             test_day = reprise_start + 7
         elif candidate is None and now >= test_day and now - last.day > REPRISE_DAYS:
+            # Pas encore revenu : la reprise cette semaine, le test la semaine d'après
             reprise_today = True
-        test = None if reprise_today else next((s for s in sessions if s.day >= test_day), None)
+            reprise_start = (int(now) // 7) * 7
+            weeks.append(("Reprise", reprise_start, False, True, 0, None))
+            test_day = reprise_start + 7
+        test = None if reprise_today else next((s for s in sessions if s.day >= test_day and test_value(s)), None)
         if test is not None:
-            # Le test : la première série de la séance (on est frais)
-            tests.append((test.day, test.sets[0]))
+            # Le test : la première série non nulle de la séance (on est frais)
+            tests.append((test.day, test_value(test)))
             excluded.add(id(test))
             block_start = (int(test.day) // 7) * 7 + 7
             block += 1
             if block_start <= now:
                 continue
             # Jusqu'au bloc suivant, repos ; ses cibles partent déjà du nouveau max
-            reference = [x for x in sessions if id(x) not in excluded]
+            reference = [x for x in usable if id(x) not in excluded]
             fresh = habitual(reference, now + 1, test_max=tests[-1][1])
             if fresh is not None:
                 habit = fresh[0]
@@ -221,7 +239,7 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
             today = ("session", habit)
         this_week = (int(now) // 7) * 7
         week_sessions = [s for s in sessions if this_week <= s.day < this_week + 7]
-        due, nxt = week_status(days, this_week, week_sessions, now)
+        due, nxt = week_status(planned(days, this_week), this_week, week_sessions, now)
         today_sessions = [s for s in sessions if int(s.day) == int(now)]
         planned_today = sum(today[1][0]) if today[1] else 1
         if today_sessions and sum(s.total for s in today_sessions) >= planned_today:
@@ -380,6 +398,24 @@ def main():
     s4 = s3 + [Session(57.75, [30, 25, 20])]
     p = make(0, s4, 58.5)
     ok &= check("semaine 2 : cibles figées", dict(first=p["today"][1][0][0]), dict(first=17))
+
+    # 17. Relecture : test à série nulle, reprise sans date passée, retour en milieu de semaine
+    s = history + schedule(0, 28) + [Session(28.75, [0, 30])]
+    ok &= check("test : première série non nulle", make(0, s, 36.5), dict(tests=[(28.75, 30)]))
+    s = history + schedule(0, 28) + [Session(28.4, [0]), Session(29.75, [31])]
+    ok &= check("séance toute à 0 : pas un test", make(0, s, 36.5), dict(tests=[(29.75, 31)]))
+    s = history + schedule(0, 19)
+    p = make(0, s, 30.3)
+    ok &= check("reprise pas faite : test à venir", dict(test_day=p["test_day"], kind=p["today"][0]),
+                dict(test_day=35, kind="reprise"))
+    # Retour un mercredi (jour 51) après 40 jours : lundi 49 n'est pas « manqué »
+    s = history + schedule(0, 10) + [Session(51.75, [12, 10, 8])]
+    p = make(0, s, 56.5)
+    ok &= check("retour en milieu de semaine : rien de manqué avant", dict(shift=p["shift"]), dict(shift=0))
+    # Après l'absence, la séance d'avant ne sert pas au calibrage (série 1 = 12 − 3, pas 15 − 3)
+    s = history + schedule(0, 10) + [Session(38.75, [12, 10, 8])]
+    p = make(0, s, 39.5)
+    ok &= check("calibrage sans les séances d'avant l'absence", dict(first=p["today"][1][0][0]), dict(first=9))
 
     print("\nOK" if ok else "\nÉCHEC")
     return 0 if ok else 1

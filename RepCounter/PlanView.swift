@@ -549,10 +549,12 @@ struct PathCard: View {
                 .font(theme.font(10))
                 .foregroundStyle(theme.dim)
                 .accessibilityLabel("Légende : " + legend.map(\.spoken).joined(separator: " ; "))
-            HStack {
-                MonitorLabel(plan.today == .test ? "◆ test aujourd'hui" : "◆ prochain test")
-                Spacer()
-                MonitorLabel(Format.shortDate(plan.testDate))
+            if plan.hasTest {
+                HStack {
+                    MonitorLabel(plan.today == .test ? "◆ test aujourd'hui" : "◆ prochain test")
+                    Spacer()
+                    MonitorLabel(Format.shortDate(plan.testDate))
+                }
             }
             if let verdict = settledVerdict {
                 HStack {
@@ -572,11 +574,15 @@ struct PathCard: View {
     /// Les entrées de la légende, seulement pour ce que le chemin dessine.
     private var legend: [(symbol: String, spoken: String)] {
         var items: [(symbol: String, spoken: String)] = []
-        if plan.goal != nil { items.append(("● départ", "rond plein, le départ")) }
+        if plan.goal != nil { items.append(("● départ", "rond plein : départ")) }
+        // Les points dessinés : les séances depuis le début, hors séances de test
         let start = plan.goal?.created ?? plan.anchor
-        if sessions.contains(where: { $0.start >= start && $0.bestSet > 0 }) { items.append(("• séances", "petits points, les séances")) }
-        items.append(("◆ test", "losange, un test"))
-        if plan.shiftedGoalDate != nil { items.append(("┄ attendu", "pointillés, le rythme attendu")) }
+        let tests = Set(plan.tests.map(\.date))
+        if sessions.contains(where: { $0.start >= start && !tests.contains($0.start) && $0.bestSet > 0 }) {
+            items.append(("• séances", "petits points : séances"))
+        }
+        if plan.tests.contains(where: { $0.date >= start }) || plan.hasTest { items.append(("◆ test", "losange : test")) }
+        if plan.shiftedGoalDate != nil { items.append(("┄ attendu", "pointillés : attendu")) }
         return items
     }
 
@@ -644,7 +650,8 @@ private struct PathChart: View {
         // Les blocs : ceux faits ou en cours, puis ceux à venir jusqu'à la fin de l'axe
         var starts = plan.blocks.map(\.start)
         var next = (plan.blocks.last?.test ?? start).addingTimeInterval(7 * 86_400)
-        while next < end {
+        // Reprise après une longue absence : pas de bloc ni de test à venir sur le chemin
+        while plan.hasTest, next < end {
             starts.append(next)
             next = next.addingTimeInterval(5 * 7 * 86_400)
         }
