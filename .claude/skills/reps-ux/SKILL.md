@@ -71,6 +71,8 @@ Un graphique par question. Les chiffres ne sont que l'étiquette de la valeur cl
 
 Un symbole répété ne sert de compteur que si son nombre reste petit et borné (5 au plus) ; au-delà, un nombre ou un graphique.
 
+Une légende ne montre que ce qui est dessiné : un élément absent du graphique (pas de date d'objectif, donc pas de ligne attendue) n'apparaît pas dans sa légende.
+
 Maquette de référence : https://claude.ai/artifact/LHFCQ3zEWvjMoKSJFaXVJJ
 
 ## 10. Le temps se lit sur une frise, pas dans une liste

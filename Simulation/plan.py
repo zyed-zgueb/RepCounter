@@ -119,14 +119,34 @@ def week_status(days, start, sessions, now):
     return due, (later[0] if later else None)
 
 
+COMEBACK_DAYS = 28   # choix de l'app : au-delà, le plan repart de zéro (nouveau bloc 1)
+REPRISE_DAYS = 7     # choix de l'app : au-delà, une semaine de reprise avant le test (Bell 2023)
+
+
 def make(goal_day, sessions, now, low_form=False, weekdays=None):
     sessions = sorted([s for s in sessions if s.day <= now], key=lambda s: s.day)
-    block_start = (goal_day // 7) * 7
+    if not sessions:
+        return None
+    last = sessions[-1]
+    # Plus de 28 jours sans séance : une séance de reprise libre
+    if now - last.day > COMEBACK_DAYS:
+        return dict(block=1, weeks=[], test_day=now, tests=[], shift=0, today=("comeback", None),
+                    status="due", next=None, per_week=MIN_PER_WEEK, ratios=None)
+    # Une séance après plus de 28 jours sans séance ouvre un nouveau bloc 1, ancré sur elle
+    anchor = goal_day
+    for before, after in zip(sessions, sessions[1:]):
+        if after.day - before.day > COMEBACK_DAYS:
+            anchor = max(anchor, after.day)
+    block_start = (int(anchor) // 7) * 7
     block, tests, shift, excluded = 1, [], 0, set()
     while True:
         reference = [s for s in sessions if id(s) not in excluded]
         test_max = tests[-1][1] if tests else None
-        h = habitual(reference, block_start, test_max) or habitual(reference, now + 1e-6, test_max)
+        # Sans séance avant le bloc : la semaine 1 calibre (cibles d'après chaque séance), puis
+        # les cibles sont figées jusqu'au test
+        h = (habitual(reference, block_start, test_max)
+             or habitual(reference, min(now + 1e-6, block_start + 7), test_max)
+             or habitual(reference, now + 1e-6, test_max))
         if h is None:
             return None
         habit, ratios, per_week = h
@@ -158,9 +178,23 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
         excluded |= {id(s) for s in deload_done}
         weeks.append(("Allégée", start, start + 7 <= now, start <= now < start + 7, training_days(deload_done), None))
         test_day = start + 7
-        test = next((s for s in sessions if s.day >= test_day), None)
+        # Plus de 7 jours sans séance avant le test : une semaine de reprise, puis le test
+        reprise_today = False
+        candidate = next((s for s in sessions if s.day >= test_day), None)
+        previous = [s for s in sessions if candidate is not None and s.day < candidate.day]
+        if candidate is not None and previous and candidate.day - previous[-1].day > REPRISE_DAYS:
+            reprise_start = (int(candidate.day) // 7) * 7
+            reprise_done = [s for s in sessions if reprise_start <= s.day < reprise_start + 7]
+            excluded |= {id(s) for s in reprise_done}
+            weeks.append(("Reprise", reprise_start, reprise_start + 7 <= now, reprise_start <= now < reprise_start + 7,
+                          training_days(reprise_done), None))
+            test_day = reprise_start + 7
+        elif candidate is None and now >= test_day and now - last.day > REPRISE_DAYS:
+            reprise_today = True
+        test = None if reprise_today else next((s for s in sessions if s.day >= test_day), None)
         if test is not None:
-            tests.append((test.day, test.best))
+            # Le test : la première série de la séance (on est frais)
+            tests.append((test.day, test.sets[0]))
             excluded.add(id(test))
             block_start = (int(test.day) // 7) * 7 + 7
             block += 1
@@ -168,14 +202,16 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
                 continue
             # Jusqu'au bloc suivant, repos ; ses cibles partent déjà du nouveau max
             reference = [x for x in sessions if id(x) not in excluded]
-            fresh = habitual(reference, now + 1, test_max=test.best)
+            fresh = habitual(reference, now + 1, test_max=tests[-1][1])
             if fresh is not None:
                 habit = fresh[0]
             return dict(block=block - 1, weeks=weeks, test_day=test_day, tests=tests, shift=shift,
                         today=("session", habit), status="rest", next=block_start + days[0] - 1,
                         per_week=per_week, ratios=ratios)
         current = next((w for w in weeks if w[3]), None)
-        if now >= test_day:
+        if reprise_today or (current and current[0] == "Reprise"):
+            today = ("reprise", lighter(habit))
+        elif now >= test_day:
             today = ("test", None)
         elif current and current[0] == "Allégée":
             today = ("deload", lighter(habit))
@@ -190,7 +226,7 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
         planned_today = sum(today[1][0]) if today[1] else 1
         if today_sessions and sum(s.total for s in today_sessions) >= planned_today:
             status = "done"
-        elif today[0] == "test" or today_sessions or due:
+        elif today[0] == "test" or reprise_today or today_sessions or due:
             status = "due"
         else:
             status = "rest"
@@ -256,7 +292,8 @@ def main():
 
     # 5. Plafond : deux semaines refaites au plus par bloc
     s = history + schedule(0, 7)
-    ok &= check("deux semaines refaites au plus", make(0, s, 35.5), dict(shift=2))
+    # (jour 30 : moins de 28 jours sans séance, sinon c'est une reprise, scénario 16)
+    ok &= check("deux semaines refaites au plus", make(0, s, 30.5), dict(shift=2))
 
     # 6. Séance légère quand la Forme est basse aujourd'hui (jour 3 : jeudi, pas prévu → repos)
     s = history + schedule(0, 3)
@@ -308,6 +345,41 @@ def main():
 
     # 13. Sans aucune séance : pas de plan
     ok &= check("sans séance, pas de plan", dict(plan=make(0, [], 2)), dict(plan=None))
+
+    # 14. Le test est la première série de la séance (32 puis 20 : le test vaut 32 ; 20 puis 34 : 20)
+    s = history + schedule(0, 28) + [Session(28.75, [20, 34])]
+    ok &= check("test = première série", make(0, s, 36.5), dict(tests=[(28.75, 20)]))
+
+    # 15. Plus de 7 jours sans séance avant le test (rien en semaine allégée, retour jour 30) :
+    #     semaine de reprise (lundi 28 → 35), puis le test à partir du jour 35
+    s = history + schedule(0, 21) + [Session(30.75, [15, 15])]
+    p = make(0, s, 31.5)
+    ok &= check("reprise avant le test", p, dict(test_day=35, tests=[]))
+    ok &= check("reprise : séance allégée", dict(kind=p["today"][0], week=p["weeks"][-1][0]), dict(kind="reprise", week="Reprise"))
+    s2 = s + [Session(35.75, [30])]
+    ok &= check("test après la reprise", make(0, s2, 36.5), dict(tests=[(35.75, 30)], block=1, status="rest"))
+    # Pas encore revenu, jour de test atteint après 9 jours sans séance : la reprise, pas le test
+    s = history + schedule(0, 19)
+    ok &= check("pas de test après 7 jours d'absence", dict(kind=make(0, s, 28.3)["today"][0]), dict(kind="reprise"))
+    # Moins de 7 jours d'écart : le test directement
+    s = history + schedule(0, 26) + [Session(28.75, [31])]
+    ok &= check("test sans reprise", make(0, s, 29.5), dict(tests=[(28.75, 31)]))
+
+    # 16. Plus de 28 jours sans séance : jamais de plan nul, une séance de reprise libre
+    s = history + schedule(0, 10)
+    p = make(0, s, 45)
+    ok &= check("longue absence : reprise", p, dict(today=("comeback", None), status="due", block=1))
+    # La séance de reprise (jour 50, lundi 49) ouvre un nouveau bloc 1 ancré sur sa semaine
+    s2 = s + [Session(50.75, [12, 10, 8])]
+    p = make(0, s2, 51.5)
+    ok &= check("nouveau bloc 1 après l'absence", p, dict(block=1, tests=[], test_day=49 + 28))
+    # Semaine 1 : les cibles suivent chaque séance (calibrage) ; semaine 2 : figées
+    s3 = s2 + [Session(52.75, [20, 16, 13])]
+    p = make(0, s3, 53.5)
+    ok &= check("calibrage : la cible suit la séance", dict(first=p["today"][1][0][0]), dict(first=17))
+    s4 = s3 + [Session(57.75, [30, 25, 20])]
+    p = make(0, s4, 58.5)
+    ok &= check("semaine 2 : cibles figées", dict(first=p["today"][1][0][0]), dict(first=17))
 
     print("\nOK" if ok else "\nÉCHEC")
     return 0 if ok else 1

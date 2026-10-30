@@ -21,7 +21,7 @@ extension TrainingPlan.Today {
     var intensity: Double {
         switch self {
         case .session: return Intensity.work
-        case .light, .deload: return Intensity.calm
+        case .light, .deload, .reprise, .comeback: return Intensity.calm
         case .test: return Intensity.max
         }
     }
@@ -36,6 +36,8 @@ extension TrainingPlan.Today {
         case .session(let s): return "\(s.label) · ◷ \(Format.clock(Double(s.rest)))"
         case .light(let s): return "! léger · \(s.label) · ◷ \(Format.clock(Double(s.rest)))"
         case .deload(let s): return "allégée · \(s.label) · ◷ \(Format.clock(Double(s.rest)))"
+        case .reprise(let s): return "! reprise · \(s.label) · ◷ \(Format.clock(Double(s.rest)))"
+        case .comeback: return "! reprise · une séance"
         case .test: return "◆ test · série max"
         }
     }
@@ -46,6 +48,8 @@ extension TrainingPlan.Today {
         case .session(let s): return s.label
         case .light(let s): return "! léger · \(s.label)"
         case .deload(let s): return "allégée · \(s.label)"
+        case .reprise(let s): return "! reprise · \(s.label)"
+        case .comeback: return "! reprise"
         case .test: return "◆ test · série max"
         }
     }
@@ -57,6 +61,7 @@ extension TrainingPlan.Week {
         switch kind {
         case .progression(let index, let redo): return "P\(index + 1)\(redo ? " bis" : "")"
         case .deload: return "A"
+        case .reprise: return "R"
         }
     }
 
@@ -64,10 +69,11 @@ extension TrainingPlan.Week {
         switch kind {
         case .progression(let index, let redo): return "Progr. \(index + 1)\(redo ? " bis" : "")"
         case .deload: return "Allégée"
+        case .reprise: return "Reprise"
         }
     }
 
-    var intensity: Double { kind == .deload ? Intensity.calm : Intensity.work }
+    var intensity: Double { kind == .deload || kind == .reprise ? Intensity.calm : Intensity.work }
 
     /// Semaine refaite après un décrochage (alerte : « ! »).
     var isRedo: Bool {
@@ -163,7 +169,8 @@ struct SetRow: View {
     private func cell(_ index: Int, all: [Int], next: Int?) -> some View {
         let planned = index < planDay.session.sets ? planDay.session.targets[index] : nil
         if index < all.count {
-            let reached = planned.map { all[index] >= $0 } ?? true
+            // Sans cible (série au-delà du prévu) : ni ✓ ni vert
+            let reached = planned.map { all[index] >= $0 } ?? false
             Text(symbols: "\(all[index])\(reached ? " ✓" : "")").foregroundStyle(reached ? theme.ok : theme.text)
         } else if index == all.count {
             // La série en cours (ou la prochaine) : sa cible, réajustée
@@ -472,7 +479,7 @@ struct WeekBars: View {
             let color = theme.intensity(bar.week.intensity)
             BarMark(x: .value("Semaine", bar.name), yStart: .value("Prévu", 0.0), yEnd: .value("Prévu", Double(bar.week.plannedReps)),
                     width: .ratio(0.7))
-                .foregroundStyle(color.opacity(bar.week.kind == .deload ? 0.18 : 0.28))
+                .foregroundStyle(color.opacity(bar.week.intensity == Intensity.calm ? 0.18 : 0.28))
                 .cornerRadius(3)
                 .annotation(position: .top) {
                     if bar.week.doneReps <= bar.week.plannedReps {
@@ -536,10 +543,12 @@ struct PathCard: View {
         VStack(alignment: .leading, spacing: 8) {
             CardHeader(symbol: "chart.line.uptrend.xyaxis", title: "Chemin")
             PathChart(plan: plan, exercise: exercise, sessions: sessions)
-            Text(symbols: "● départ · • séances · ◆ test · ┄ attendu")
+            // Une légende ne montre que ce qui est dessiné (skill reps-ux, § 9)
+            let legend = self.legend
+            Text(symbols: legend.map(\.symbol).joined(separator: " · "))
                 .font(theme.font(10))
                 .foregroundStyle(theme.dim)
-                .accessibilityLabel("Légende : rond plein, le départ ; petits points, les séances ; losange, un test ; pointillés, le rythme attendu")
+                .accessibilityLabel("Légende : " + legend.map(\.spoken).joined(separator: " ; "))
             HStack {
                 MonitorLabel(plan.today == .test ? "◆ test aujourd'hui" : "◆ prochain test")
                 Spacer()
@@ -558,6 +567,17 @@ struct PathCard: View {
             }
         }
         .coachingCard(theme)
+    }
+
+    /// Les entrées de la légende, seulement pour ce que le chemin dessine.
+    private var legend: [(symbol: String, spoken: String)] {
+        var items: [(symbol: String, spoken: String)] = []
+        if plan.goal != nil { items.append(("● départ", "rond plein, le départ")) }
+        let start = plan.goal?.created ?? plan.anchor
+        if sessions.contains(where: { $0.start >= start && $0.bestSet > 0 }) { items.append(("• séances", "petits points, les séances")) }
+        items.append(("◆ test", "losange, un test"))
+        if plan.shiftedGoalDate != nil { items.append(("┄ attendu", "pointillés, le rythme attendu")) }
+        return items
     }
 
     /// Le verdict, seulement une fois établi (3 tests).
@@ -804,13 +824,17 @@ struct PlanInfoView: View {
                     section("Le bloc",
                             "3 semaines de progression, 1 semaine allégée, puis un test : une série max, ton nouveau niveau. Le bloc suivant repart de là. Le rythme 3 + 1 est un choix de l'app : l'ACSM ne trouve pas une programmation par blocs supérieure à une autre, pourvu que la charge progresse.")
                     section("Avec ou sans objectif",
-                            "Le plan démarre dès que ta séance habituelle se calcule, objectif ou non : la séance du jour, le bloc et l'état s'affichent. L'objectif ajoute le chemin, la ligne attendue et le verdict. La proposition d'objectif, environ 20 % au-dessus de ton niveau (ta meilleure série des 4 dernières semaines), est un choix de l'app : un point de départ, à modifier.")
+                            "Le plan démarre dès que ta séance habituelle se calcule, objectif ou non : la séance du jour, le bloc et l'état s'affichent. L'objectif ajoute le chemin, la ligne attendue et le verdict. La proposition d'objectif, environ 20 % au-dessus de ton niveau (ta meilleure série des 4 dernières semaines, ou la dernière connue), est un choix de l'app : un point de départ, à modifier. Objectif atteint : la même règle propose le suivant. « Autre exercice » mêle des mouvements : pas de plan ni d'objectif.")
                     section("La séance prévue",
                             "Au moins 2 séances par semaine et 3 séries par séance, enchaînées avec le repos indiqué (ACSM 2026 : « at least twice weekly », « 2–3 sets/session »). La règle de l'ACSM porte sur l'effort : chaque série s'arrête près de l'échec, à 2 ou 3 répétitions en réserve ; aller jusqu'à l'échec n'apporte rien de plus. La série 1 vise ton max moins 3. Avec la fatigue, le nombre baisse d'une série à l'autre : les séries 2 et 3 suivent ta baisse habituelle (mesurée sur tes séances des 4 dernières semaines faites avec un repos proche) ; sans elle, chaque série vise 80 % de la précédente. Une série sous sa cible réajuste aussitôt les suivantes, sans rattrapage. Ces règles, la formule « max − 3 » et les 80 % (une valeur prudente) sont des choix de l'app : l'ACSM précise que la cible exacte n'est pas établie. Le max est celui du dernier test ; au premier bloc, ta meilleure série des 4 dernières semaines.")
                     section("Le repos",
                             "Le tien : ton repos habituel pour l'exercice, arrondi à 15 s. La durée du repos ne change pas les gains de force (ACSM 2026). Des séries faites séparément dans la journée comptent dans la séance du jour, sans pénalité (« séries espacées ») ; la suivante repart de la cible de la série 1. L'ACSM ne les étudie pas : le plan ne les prévoit pas.")
                     section("Les jours",
                             "Les séances sont espacées dans la semaine : 2 séances, lundi et jeudi ; 3, lundi, mercredi et vendredi. Touche un jour dans le Coaching pour le déplacer. Une séance faite un autre jour compte, et remplace la prochaine prévue. L'ACSM ne fixe pas l'espacement : ce placement est un choix de l'app.")
+                    section("Le test",
+                            "Le test est la première série de la première séance faite à partir du jour du test : on est frais, une série suffit. Si plus de 7 jours se sont écoulés sans séance avant le test, une semaine de reprise vient d'abord (séance allégée, intensité calme), puis le test : une pause réduit le stress d'entraînement (Bell et al. 2023), le test ne la suit pas directement. Le seuil de 7 jours et cette semaine de reprise sont des choix de l'app.")
+                    section("Après une longue absence",
+                            "Après plus de 28 jours sans séance, le plan ne propose qu'une séance de reprise, libre : elle ouvre un nouveau bloc 1, ancré sur elle. Pour un nouvel utilisateur comme pour ce bloc de reprise, la semaine 1 sert de calibrage : les cibles suivent chaque séance ; à partir de la semaine 2, elles restent fixes jusqu'au test. Le seuil de 28 jours et ce calibrage sont des choix de l'app.")
                     section("La progression",
                             "Par le test : ton nouveau max recale la cible du bloc suivant (l'ACSM recommande des tests réguliers). Entre deux tests, la cible reste la même : en devenant plus fort, tu as plus de répétitions en réserve. Aucune hausse d'une semaine à l'autre : l'article n'en chiffre aucune.")
                     section("Ce que la science ne dit pas",

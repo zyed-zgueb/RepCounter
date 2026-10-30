@@ -88,7 +88,9 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   de ton niveau » et Démarrer. Ordre : Aujourd'hui, objectif, chemin, bloc, État.
   **Objectif** : le nombre en très grand, vert comme la ligne d'arrivée, « ⌖ pour le
   12 fév. » au-dessus, l'unité dessous (« pompes d'affilée »), « niveau 33 · reste 7 » (niveau :
-  meilleure série des 4 dernières semaines), ✎ et ⋯ (✎ objectif : recalé au prochain bloc ;
+  meilleure série des 4 dernières semaines, sinon la dernière connue avec son ancienneté,
+  « il y a 6 sem. » : jamais 0) ; atteint ou dépassé, « ✓ atteint » en vert et l'objectif suivant
+  proposé (même règle, +20 %, choix de l'app), qui ouvre l'éditeur prérempli ; ✎ et ⋯ (✎ objectif : recalé au prochain bloc ;
   ◷ date : déplace la ligne attendue ; ✕ retirer, avec confirmation : « Le plan s'arrête. Ton
   historique reste. » ; le plan continue alors en progression simple, ancré sur le max).
   **Chemin** : « pompes d'affilée » du départ à la date de l'objectif : le départ ●, la
@@ -122,8 +124,12 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   2. **Journal** (`Journal.swift`) : une ligne par jour, aujourd'hui en haut (28 jours, « + 28
      jours » pour remonter) ; l'heure en abscisse, de la plage réglée (Réglages › Journal de
      l'historique : début et fin par pas de 30 min, 06:00 → 23:00 par défaut, 6 h au moins),
-     graduée toutes les 3 h. Chaque séance est posée à son heure en silhouette (une barre fine par
-     série, verte si sa cible est atteinte), ★ si record, ‹ ou › hors de la plage ; total du jour
+     graduée toutes les 3 h. Chaque séance est posée à son heure de début en silhouette de largeur
+     fixe (une barre de 3 pt par série, 1 pt d'écart, 40 pt au plus : 10 séries puis « +n »),
+     à une échelle commune (la plus grande série de la période affichée) ; barre verte si sa cible
+     est atteinte, neutre sans cible ; ★ si record, ‹ ou › hors de la plage, au-dessus. Au-delà de
+     4 séances dans la journée, chacune devient un trait dont la hauteur donne son total (choix de
+     l'app) ; deux séances qui se chevauchent se suivent, sans empilement ; total du jour
      à droite (Σ) ; repos en pointillés ; « ! prévue, manquée » pour une séance du plan manquée.
      Lignes alternées, aujourd'hui teinté, un filet sous chaque lundi. Chaque ligne fait 44 pt
      et se touche en entier : une séance, elle s'ouvre ; plusieurs, un menu les liste (heure et
@@ -162,9 +168,16 @@ et dans le panneau Forme de l'historique (`Form.swift`).
 ## Plan
 Avec un objectif (Coaching), le plan d'un exercice se déduit de l'objectif et des séances faites
 (`Plan.swift`), rien d'autre n'est stocké. Un **bloc** : 3 semaines de progression, 1 semaine
-allégée (7 jours à volume réduit : Bell et al. 2023, Rogerson et al. 2024), puis un **test** (la
-première séance après la semaine allégée, une série max). Le bloc suivant repart la semaine
-d'après. Une semaine de progression finie avec des séances manquées, ou deux séances en Forme
+allégée (7 jours à volume réduit : Bell et al. 2023, Rogerson et al. 2024), puis un **test** : la
+première série de la première séance faite à partir du jour du test (on est frais : une série
+isolée suffit). Plus de 7 jours sans séance avant le test : une **semaine de reprise** d'abord
+(« ! reprise », séance allégée, intensité calme), puis le test (choix de l'app ; Bell 2023 : une
+pause réduit le stress d'entraînement). Le bloc suivant repart la semaine d'après. **Longue
+absence** : plus de 28 jours sans séance, la carte Aujourd'hui propose une séance de reprise libre
+(le chemin et l'objectif restent visibles) ; elle ouvre un nouveau bloc 1, ancré sur elle. Le
+plan n'est jamais vide pour un exercice qui a un historique, sauf « Autre exercice » (pas de
+coaching : ni plan ni objectif). Nouvel utilisateur ou bloc de reprise : la **semaine 1 calibre**
+(les cibles suivent chaque séance), puis les cibles sont figées jusqu'au test (choix de l'app). Une semaine de progression finie avec des séances manquées, ou deux séances en Forme
 basse, est **refaite** (deux fois au plus par bloc) : le test et la date de l'objectif reculent
 d'autant, et le Coaching l'affiche. Forme basse aujourd'hui : séance légère.
 
@@ -211,7 +224,9 @@ d'objectif (série max).
 Validation : `python3 Simulation/plan.py` (miroir Python : bloc régulier, semaine allégée, jour
 de test, bloc suivant recalé sur le test, séances manquées, Forme basse × 2, plafond des semaines
 refaites, séance légère, 2 séances par semaine au moins, cibles selon la baisse habituelle ou par
-défaut, réajustement en séance, séries espacées, placement et déplacement des jours).
+défaut, réajustement en séance, séries espacées, placement et déplacement des jours, test sur la
+première série, semaine de reprise avant le test, longue absence et nouveau bloc 1, calibrage de
+la semaine 1).
 
 ## Phases
 Dans la carte État du Coaching, la phase d'entraînement : une étiquette, une action, une

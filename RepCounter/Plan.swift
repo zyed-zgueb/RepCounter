@@ -12,6 +12,10 @@ struct TrainingPlan {
         /// Semaine de progression (0, 1, 2) ; `redo` : refaite après un décrochage.
         case progression(Int, redo: Bool)
         case deload
+        /// Semaine de reprise avant le test, après plus de 7 jours sans séance (« ! reprise »,
+        /// intensité calme). Choix de l'app ; Bell et al. 2023 : une pause réduit le stress
+        /// d'entraînement, le test ne la suit donc pas directement.
+        case reprise
     }
 
     struct Week {
@@ -49,6 +53,10 @@ struct TrainingPlan {
         case session(Prescription.Session)
         case light(Prescription.Session)
         case deload(Prescription.Session)
+        /// Semaine de reprise avant le test (séance allégée).
+        case reprise(Prescription.Session)
+        /// Plus de 28 jours sans séance : une séance libre, qui ouvre un nouveau bloc 1.
+        case comeback
         case test
     }
 
@@ -95,13 +103,18 @@ struct TrainingPlan {
     /// La date de l'objectif, décalée des semaines refaites.
     var shiftedGoalDate: Date? { goal?.date.map { $0.addingTimeInterval(Double(shiftWeeks) * 7 * 86_400) } }
 
-    /// La séance prévue aujourd'hui (nil : jour de test).
+    /// La séance prévue aujourd'hui (nil : jour de test, ou reprise libre après une longue absence).
     var todaySession: Prescription.Session? {
         switch today {
-        case .session(let s), .light(let s), .deload(let s): return s
-        case .test: return nil
+        case .session(let s), .light(let s), .deload(let s), .reprise(let s): return s
+        case .test, .comeback: return nil
         }
     }
+
+    /// Choix de l'app : sans séance depuis plus de 28 jours, le plan repart de zéro (nouveau bloc 1,
+    /// ancré sur la séance de reprise) ; plus de 7 jours avant le test, une semaine de reprise.
+    static let comebackDays = 28.0
+    static let repriseDays = 7.0
 
     /// Le plan au jour `now`. Nil sans aucune séance de l'exercice pour caler la séance.
     /// - Parameters:
@@ -113,11 +126,26 @@ struct TrainingPlan {
                      weekdays: [Int]? = nil, now: Date = Date(), calendar: Calendar = .current) -> TrainingPlan? {
         let sorted = sessions.filter { $0.start <= now }.sorted { $0.start < $1.start }
         let week = 7 * 86_400.0
+        let day = 86_400.0
         func weekStart(_ date: Date) -> Date { Schedule.weekStart(date, calendar: calendar) }
         func inWeek(_ start: Date) -> [SessionRecord] { sorted.filter { $0.start >= start && $0.start < start.addingTimeInterval(week) } }
         func trainingDays(_ list: [SessionRecord]) -> Int { Set(list.map { calendar.startOfDay(for: $0.start) }).count }
+        guard let last = sorted.last else { return nil }
 
-        var blockStart = weekStart(anchor)
+        // Plus de 28 jours sans séance : la carte Aujourd'hui propose une séance de reprise
+        // (le chemin et l'objectif restent visibles)
+        if now.timeIntervalSince(last.start) > comebackDays * day {
+            return TrainingPlan(goal: goal, anchor: weekStart(anchor), blocks: [], block: 1, weeks: [], testDate: now, tests: [],
+                                shiftWeeks: 0, today: .comeback, status: .due, next: nil, days: [], ratios: nil,
+                                perWeek: Prescription.minSessionsPerWeek)
+        }
+        // Une séance après plus de 28 jours sans séance ouvre un nouveau bloc 1, ancré sur elle
+        var start0 = anchor
+        for (before, after) in zip(sorted, sorted.dropFirst()) where after.start.timeIntervalSince(before.start) > comebackDays * day {
+            start0 = max(start0, after.start)
+        }
+
+        var blockStart = weekStart(start0)
         var blocks: [Block] = []
         var block = 1
         var tests: [Test] = []
@@ -129,7 +157,12 @@ struct TrainingPlan {
             let reference = sorted.filter { !excluded.contains($0.persistentModelID) }
             // Le max : le dernier test ; au premier bloc, la meilleure série récente
             let testMax = tests.last?.value
+            // Sans séance avant le bloc (nouvel utilisateur, bloc de reprise) : la semaine 1 calibre,
+            // les cibles suivent chaque séance ; à partir de la semaine 2, elles sont figées jusqu'au
+            // test (choix de l'app)
+            let calibrationEnd = blockStart.addingTimeInterval(week)
             guard let habit = Prescription.habitual(reference, before: blockStart, testMax: testMax, calendar: calendar)
+                    ?? Prescription.habitual(reference, before: min(now.addingTimeInterval(1), calibrationEnd), testMax: testMax, calendar: calendar)
                     ?? Prescription.habitual(reference, before: now.addingTimeInterval(1), testMax: testMax, calendar: calendar)
             else { return nil }
             let days = Schedule.days(weekdays ?? Schedule.defaultWeekdays(habit.perWeek))
@@ -174,11 +207,30 @@ struct TrainingPlan {
             weeks.append(Week(start: start, kind: .deload, planned: deload, plannedSessions: perWeek,
                               done: trainingDays(deloadDone), doneReps: deloadDone.reduce(0) { $0 + $1.totalReps },
                               isPast: deloadEnd <= now, isCurrent: start <= now && now < deloadEnd, redoReason: nil))
-            let testDate = deloadEnd
+            var testDate = deloadEnd
+            // Plus de 7 jours sans séance avant le test : une semaine de reprise d'abord, puis le
+            // test (choix de l'app ; Bell 2023)
+            var repriseToday = false
+            if let candidate = sorted.first(where: { $0.start >= testDate }),
+               let previous = sorted.last(where: { $0.start < candidate.start }),
+               candidate.start.timeIntervalSince(previous.start) > repriseDays * day {
+                let repriseStart = weekStart(candidate.start)
+                let repriseEnd = repriseStart.addingTimeInterval(week)
+                let repriseDone = inWeek(repriseStart)
+                repriseDone.forEach { excluded.insert($0.persistentModelID) }
+                weeks.append(Week(start: repriseStart, kind: .reprise, planned: deload, plannedSessions: perWeek,
+                                  done: trainingDays(repriseDone), doneReps: repriseDone.reduce(0) { $0 + $1.totalReps },
+                                  isPast: repriseEnd <= now, isCurrent: repriseStart <= now && now < repriseEnd, redoReason: nil))
+                testDate = repriseEnd
+            } else if now >= testDate, now.timeIntervalSince(last.start) > repriseDays * day {
+                // Pas encore revenu : la reprise d'abord, pas le test
+                repriseToday = true
+            }
             blocks.append(Block(start: weeks.first?.start ?? start, deload: start, test: testDate))
-            if let test = sorted.first(where: { $0.start >= testDate }) {
-                // Test fait : le bloc suivant repart la semaine d'après
-                tests.append(Test(date: test.start, value: test.bestSet, block: block))
+            if !repriseToday, let test = sorted.first(where: { $0.start >= testDate }) {
+                // Test fait : sa première série (on est frais : une série isolée suffit). Le bloc
+                // suivant repart la semaine d'après
+                tests.append(Test(date: test.start, value: test.orderedSets.first?.reps ?? test.bestSet, block: block))
                 excluded.insert(test.persistentModelID)
                 blockStart = weekStart(test.start).addingTimeInterval(week)
                 block += 1
@@ -187,14 +239,17 @@ struct TrainingPlan {
                 // déjà du nouveau max (le test), pas de l'ancien
                 let next = Schedule.firstDay(days, inWeekOf: blockStart, calendar: calendar)
                 let reference = sorted.filter { !excluded.contains($0.persistentModelID) }
-                let fresh = Prescription.habitual(reference, before: now.addingTimeInterval(1), testMax: test.bestSet, calendar: calendar) ?? habit
-                return TrainingPlan(goal: goal, anchor: weekStart(anchor), blocks: blocks, block: block - 1, weeks: weeks, testDate: testDate, tests: tests,
+                let fresh = Prescription.habitual(reference, before: now.addingTimeInterval(1),
+                                                  testMax: tests.last?.value, calendar: calendar) ?? habit
+                return TrainingPlan(goal: goal, anchor: weekStart(start0), blocks: blocks, block: block - 1, weeks: weeks, testDate: testDate, tests: tests,
                                     shiftWeeks: shift, today: .session(fresh.session), status: .rest, next: next,
                                     days: [], ratios: fresh.ratios, perWeek: perWeek)
             }
             let current = weeks.first { $0.isCurrent }
             let today: Today
-            if now >= testDate {
+            if repriseToday || current?.kind == .reprise {
+                today = .reprise(deload)
+            } else if now >= testDate {
                 today = .test
             } else if current?.kind == .deload {
                 today = .deload(deload)
@@ -210,14 +265,14 @@ struct TrainingPlan {
             let todayReps = todaySessions.reduce(0) { $0 + $1.totalReps }
             let plannedToday: Int = {
                 switch today {
-                case .session(let s), .light(let s), .deload(let s): return s.total
-                case .test: return 1
+                case .session(let s), .light(let s), .deload(let s), .reprise(let s): return s.total
+                case .test, .comeback: return 1
                 }
             }()
             let status: DayStatus
             if !todaySessions.isEmpty, todayReps >= plannedToday {
                 status = .done
-            } else if today == .test || !todaySessions.isEmpty || schedule.due {
+            } else if today == .test || repriseToday || !todaySessions.isEmpty || schedule.due {
                 status = .due
             } else {
                 status = .rest
@@ -228,7 +283,7 @@ struct TrainingPlan {
                 let nextWeek = thisWeek.addingTimeInterval(week)
                 next = nextWeek >= testDate ? testDate : Schedule.firstDay(days, inWeekOf: nextWeek, calendar: calendar)
             }
-            return TrainingPlan(goal: goal, anchor: weekStart(anchor), blocks: blocks, block: block, weeks: weeks, testDate: testDate, tests: tests,
+            return TrainingPlan(goal: goal, anchor: weekStart(start0), blocks: blocks, block: block, weeks: weeks, testDate: testDate, tests: tests,
                                 shiftWeeks: shift, today: today, status: status, next: next, days: schedule.days,
                                 ratios: habit.ratios, perWeek: perWeek)
         }
@@ -362,7 +417,11 @@ extension TrainingPlan {
         if tested { return today }
         if next >= testDate { return .test }
         if let week = weeks.first(where: { $0.start <= next && next < $0.start.addingTimeInterval(7 * 86_400) }) {
-            return week.kind == .deload ? .deload(week.planned) : .session(week.planned)
+            switch week.kind {
+            case .deload: return .deload(week.planned)
+            case .reprise: return .reprise(week.planned)
+            case .progression: return .session(week.planned)
+            }
         }
         return today
     }
@@ -371,12 +430,13 @@ extension TrainingPlan {
 extension HistoryStats {
     /// Le plan de l'exercice de ces statistiques, avec ou sans objectif : sans objectif, il
     /// démarre de lui-même sur la séance habituelle, dès qu'elle se calcule (l'ancre est posée
-    /// ce jour-là). « Autre exercice » mêle des mouvements : pas de plan sans objectif.
+    /// ce jour-là). Jamais nil pour un exercice qui a un historique, sauf « Autre exercice ».
     /// `all` : toutes les séances (pour la phase, qui dit si la Forme est basse aujourd'hui).
     func plan(all: [SessionRecord]) -> TrainingPlan? {
-        guard let exercise = sessions.first?.exercise else { return nil }
+        // « Autre exercice » mêle des mouvements : pas de plan, et un objectif déjà enregistré est ignoré
+        guard let exercise = sessions.first?.exercise, exercise != .auto else { return nil }
         let goal = Goal.load(exercise)
-        if goal == nil, PlanAnchor.load(exercise) == nil, exercise != .auto,
+        if goal == nil, PlanAnchor.load(exercise) == nil,
            Prescription.habitual(sessions, before: now.addingTimeInterval(1), calendar: calendar) != nil {
             PlanAnchor.setIfNeeded(now, for: exercise)
         }

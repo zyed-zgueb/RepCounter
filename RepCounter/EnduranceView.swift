@@ -179,8 +179,11 @@ struct EndurancePanel: View {
 
     private func caption(score: Double?, assessment: EnduranceAssessment?) -> String {
         if score == nil {
-            return "Le score se calcule sur les séances d'au moins 3 séries."
-                + (exercise.isWeighted ? " Pense à régler ta charge sous le cadran." : "")
+            // Aucune séance, ou des séances sans 3 séries enchaînées : deux cas, deux phrases
+            let reason = stats.isEmpty
+                ? "Aucune séance : le score se calcule dès une séance de 3 séries enchaînées."
+                : "Tes séances ont moins de 3 séries enchaînées : le score en demande 3."
+            return reason + (exercise.isWeighted ? " Pense à régler ta charge sous le cadran." : "")
         }
         if let assessment {
             return "Meilleure série : \(assessment.reps) pompes · niveau \(assessment.level.title.lowercased()) pour \(assessment.sex == .male ? "un homme" : "une femme") de \(assessment.ageBand) (barème SCPE)."

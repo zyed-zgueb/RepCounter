@@ -272,12 +272,16 @@ private struct WeeksCard: View {
     }
 
     /// Le verdict de progression du score d'endurance (un exercice), seulement s'il est établi.
+    /// Sans score (séances de moins de 3 séries enchaînées), le verdict sur la série max, dit
+    /// comme tel.
     private var verdict: (text: String, up: Bool)? {
         guard planned else { return nil }
-        switch stats.progressVerdict.kind {
-        case .up: return ("▲ en progrès", true)
-        case .stable: return ("= stable", false)
-        case .down: return ("▼ en recul", false)
+        let onScore = stats.performanceIndex() != nil
+        let suffix = onScore ? "" : " sur la série max"
+        switch (onScore ? stats.progressVerdict : stats.bestSetVerdict).kind {
+        case .up: return ("▲ en progrès" + suffix, true)
+        case .stable: return ("= stable" + suffix, false)
+        case .down: return ("▼ en recul" + suffix, false)
         case .pending, .unreliable: return nil
         }
     }
@@ -744,7 +748,8 @@ private struct SetBarsChart: View {
                 }
                 BarMark(x: .value("Série", bar.name), yStart: .value("Répétitions", 0.0), yEnd: .value("Répétitions", Double(bar.reps)),
                         width: .ratio(0.5))
-                    .foregroundStyle(bar.reached ? theme.ok : theme.primary)
+                    // Sans cible : couleur neutre, ni ✓ ni vert
+                    .foregroundStyle(bar.reached ? theme.ok : (bar.target == nil ? theme.dim : theme.primary))
                     .cornerRadius(2)
                     .annotation(position: .top) {
                         Text(symbols: "\(bar.reps)\(bar.reached ? " ✓" : "")")

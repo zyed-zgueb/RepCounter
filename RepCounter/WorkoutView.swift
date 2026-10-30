@@ -1178,13 +1178,15 @@ private struct SessionSummary: View {
             let sets = record.orderedSets.map(\.reps)
             VStack(spacing: 6) {
                 if plan.today == .test {
-                    planRow("Test · bloc \(plan.block)", "\(record.bestSet) d'affilée", color: theme.ok)
+                    // Le test : la première série de la séance (on est frais)
+                    let tested = record.orderedSets.first?.reps ?? record.bestSet
+                    planRow("Test · bloc \(plan.block)", "\(tested) d'affilée", color: theme.ok)
                     if let expected = plan.expected(at: record.start) {
                         planRow("Attendu", "\(Int(expected.rounded()))", color: theme.text)
                     }
                     // Sans objectif, pas de départ : le gain depuis le test précédent
                     if let start = plan.goal?.start ?? plan.tests.last?.value {
-                        planRow(plan.goal != nil ? "Depuis le départ" : "Depuis le test", Format.signed(record.bestSet - start), color: theme.text)
+                        planRow(plan.goal != nil ? "Depuis le départ" : "Depuis le test", Format.signed(tested - start), color: theme.text)
                     }
                 } else if let planned = plan.todaySession {
                     // Séries espacées dans la journée : elles comptent toutes dans le fait du jour

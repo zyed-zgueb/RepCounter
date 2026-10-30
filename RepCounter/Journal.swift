@@ -228,6 +228,40 @@ struct JournalCard: View {
         }
     }
 
+    private struct Placement {
+        let session: SessionRecord
+        let x: CGFloat
+        let edge: String?
+        let tick: Bool
+    }
+
+    /// Plus de 4 séances dans la journée : des traits (choix de l'app).
+    private static let maxSilhouettes = 4
+
+    /// Les séances du jour, de la plus tôt à la plus tard : chacune à son heure de début, décalée
+    /// juste après la précédente si elles se chevauchent.
+    private func placements(_ sessions: [SessionRecord], width: CGFloat) -> [Placement] {
+        let tick = sessions.count > Self.maxSilhouettes
+        let usable = max(width - 2 * Self.edgeInset, 0)
+        var nextFree: CGFloat = 0
+        return sessions.sorted { $0.start < $1.start }.map { session in
+            let minutes = stats.calendar.component(.hour, from: session.start) * 60
+                + stats.calendar.component(.minute, from: session.start)
+            let wanted = labelWidth + Self.edgeInset + usable * share(minutes)
+            let x = max(wanted, nextFree)
+            nextFree = x + JournalSilhouette.width(sets: session.orderedSets.count, tick: tick) + 2
+            return Placement(session: session, x: x, edge: minutes < start ? "‹" : (minutes > end ? "›" : nil), tick: tick)
+        }
+    }
+
+    /// L'échelle commune des silhouettes sur la période affichée : la plus grande série, et le plus
+    /// grand total d'une séance (pour les traits).
+    private var scale: (set: Int, total: Int) {
+        let oldest = days.last ?? stats.now
+        let shown = stats.sessions.filter { $0.start >= oldest }
+        return (shown.map(\.bestSet).max() ?? 1, shown.map(\.totalReps).max() ?? 1)
+    }
+
     private func rowContent(_ day: Date, index: Int, sessions: [SessionRecord], records: Set<PersistentIdentifier>) -> some View {
         let isToday = stats.calendar.isDate(day, inSameDayAs: stats.now)
         let isMonday = Schedule.isoWeekday(day, calendar: stats.calendar) == 1
@@ -260,14 +294,13 @@ struct JournalCard: View {
                         .stroke(theme.line, style: StrokeStyle(lineWidth: 1, dash: [1, 4]))
                     }
                 }
-                ForEach(sessions, id: \.persistentModelID) { session in
-                    let minutes = stats.calendar.component(.hour, from: session.start) * 60
-                        + stats.calendar.component(.minute, from: session.start)
-                    JournalSilhouette(session: session, record: records.contains(session.persistentModelID),
-                                      edge: minutes < start ? "‹" : (minutes > end ? "›" : nil),
-                                      height: Self.silhouetteHeight)
-                        .position(x: labelWidth + Self.edgeInset + max(width - 2 * Self.edgeInset, 0) * share(minutes),
-                                  y: rowHeight / 2)
+                // Posées à leur heure de début ; une séance qui en chevauche une autre se décale juste
+                // après elle (pas d'empilement)
+                ForEach(placements(sessions, width: width), id: \.session.persistentModelID) { placement in
+                    JournalSilhouette(session: placement.session, record: records.contains(placement.session.persistentModelID),
+                                      edge: placement.edge, height: Self.silhouetteHeight,
+                                      top: placement.tick ? scale.total : scale.set, tick: placement.tick)
+                        .offset(x: placement.x, y: (rowHeight - Self.silhouetteHeight) / 2 + 4)
                 }
             }
             HStack {
@@ -315,41 +348,68 @@ struct JournalCard: View {
     }
 }
 
-/// Une séance dans le journal : une barre fine par série (verte si sa cible est atteinte), ★ si
-/// record, ‹ ou › si elle tombe hors de la plage horaire.
+/// Une séance dans le journal, de largeur fixe et posée à son heure de début : une barre de 3 pt
+/// par série (1 pt d'écart, 40 pt au plus : 10 séries, puis « +n »), à l'échelle commune du
+/// journal ; verte si la cible de la série est atteinte, neutre sans cible. Au-dessus : ★ si
+/// record, ‹ ou › hors de la plage. Au-delà de 4 séances dans la journée, un simple trait dont la
+/// hauteur donne le total (choix de l'app).
 private struct JournalSilhouette: View {
     @Environment(\.theme) private var theme
     let session: SessionRecord
     let record: Bool
     let edge: String?
     let height: CGFloat
+    /// L'échelle commune : la plus grande série (barres) ou le plus grand total (traits) de la
+    /// période affichée.
+    let top: Int
+    /// Un trait (plus de 4 séances ce jour-là) au lieu des barres.
+    var tick = false
     /// Barres montrées au plus : la silhouette reste étroite sur sa ligne.
     static let maxBars = 10
+    static let barWidth: CGFloat = 3
+    static let gap: CGFloat = 1
+
+    /// La largeur des barres (sans les marques, posées au-dessus).
+    static func width(sets: Int, tick: Bool) -> CGFloat {
+        if tick { return 2 }
+        let count = CGFloat(min(max(sets, 1), maxBars))
+        return count * barWidth + (count - 1) * gap
+    }
 
     var body: some View {
         let sets = session.orderedSets
-        let top = CGFloat(max(sets.map(\.reps).max() ?? 1, 1))
-        HStack(alignment: .bottom, spacing: 1) {
-            if edge == "‹" { marker("‹") }
-            ForEach(Array(sets.prefix(Self.maxBars).enumerated()), id: \.offset) { _, set in
-                RoundedRectangle(cornerRadius: 0.8)
-                    .fill(set.target.map { set.reps >= $0 } == true ? theme.ok : theme.primary)
-                    .frame(width: 3, height: max(3, height * CGFloat(set.reps) / top))
+        let scale = CGFloat(max(top, 1))
+        HStack(alignment: .bottom, spacing: Self.gap) {
+            if tick {
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(theme.primary)
+                    .frame(width: 2, height: max(3, height * CGFloat(session.totalReps) / scale))
+            } else {
+                ForEach(Array(sets.prefix(Self.maxBars).enumerated()), id: \.offset) { _, set in
+                    RoundedRectangle(cornerRadius: 0.8)
+                        // Verte si la cible est atteinte ; sans cible, neutre
+                        .fill(set.target.map { set.reps >= $0 ? theme.ok : theme.primary } ?? theme.dim)
+                        .frame(width: Self.barWidth, height: max(3, height * min(CGFloat(set.reps) / scale, 1)))
+                }
             }
-            // Au-delà de 10 séries, la silhouette s'arrête et le dit
-            if sets.count > Self.maxBars { marker("+\(sets.count - Self.maxBars)") }
-            if record { marker("★") }
-            if edge == "›" { marker("›") }
         }
         .frame(height: height, alignment: .bottom)
-        .padding(.horizontal, 3)
-        .contentShape(Rectangle())
+        .overlay(alignment: .topLeading) {
+            // Les marques au-dessus des barres : la largeur ne dépend que des séries
+            HStack(spacing: 2) {
+                if edge == "‹" { marker("‹") }
+                if !tick, sets.count > Self.maxBars { marker("+\(sets.count - Self.maxBars)") }
+                if record { marker("★") }
+                if edge == "›" { marker("›") }
+            }
+            .fixedSize()
+            .offset(y: -10)
+        }
     }
 
     private func marker(_ symbol: String) -> some View {
         Text(symbols: symbol)
             .font(theme.font(9, .bold))
             .foregroundStyle(theme.text)
-            .frame(height: height, alignment: .center)
     }
 }

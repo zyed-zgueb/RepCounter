@@ -104,7 +104,16 @@ struct ProgressVerdict: Equatable {
 extension HistoryStats {
     /// Verdict de progression du score d'endurance sur les 8 dernières semaines.
     /// Les séances d'une décharge déclarée sont écartées (volume réduit exprès).
-    var progressVerdict: ProgressVerdict {
+    var progressVerdict: ProgressVerdict { verdict { $0.performanceIndex } }
+
+    /// Le même verdict (Theil-Sen, même seuil) sur la meilleure série de chaque séance : quand les
+    /// séances n'ont pas 3 séries enchaînées, il n'y a pas de score. Il s'affiche toujours avec
+    /// « sur la série max », pour ne jamais se confondre avec le verdict du score.
+    var bestSetVerdict: ProgressVerdict {
+        verdict { session in session.bestSet > 0 ? Double(session.bestSet) : nil }
+    }
+
+    private func verdict(of value: (SessionRecord) -> Double?) -> ProgressVerdict {
         guard countingIsReliable else { return ProgressVerdict(kind: .unreliable) }
         let deloads = Deloads.starts.map { DateInterval(start: calendar.startOfDay(for: $0), duration: Double(TrainingPhase.deloadDays) * 86_400) }
         let origin = calendar.startOfDay(for: now.addingTimeInterval(-Double(ProgressVerdict.windowDays) * 86_400))
@@ -113,7 +122,7 @@ extension HistoryStats {
             .filter { session in !session.orderedSets.contains { abs($0.reps - $0.countedReps) > 2 } }
             .filter { session in !deloads.contains { $0.contains(session.start) } }
             .compactMap { session -> (day: Double, value: Double)? in
-                guard let index = session.performanceIndex else { return nil }
+                guard let index = value(session) else { return nil }
                 let day = calendar.dateComponents([.day], from: origin, to: calendar.startOfDay(for: session.start)).day ?? 0
                 return (day: Double(day), value: index)
             }

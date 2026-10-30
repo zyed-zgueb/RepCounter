@@ -31,7 +31,17 @@ struct Goal: Codable, Equatable {
 
 extension HistoryStats {
     /// Où l'on en est par rapport à un objectif : la meilleure série des 4 dernières semaines.
-    var currentBest: Int { bestSet(lastDays: 28) ?? 0 }
+    /// Le niveau, jamais 0 : la meilleure série des 4 dernières semaines, sinon la dernière
+    /// meilleure série connue (son ancienneté s'affiche : `levelDate`).
+    var currentBest: Int {
+        bestSet(lastDays: 28) ?? sessions.sorted { $0.start > $1.start }.first { $0.bestSet > 0 }?.bestSet ?? 0
+    }
+
+    /// La date du niveau quand il a plus de 28 jours (nil : niveau récent, ou aucun).
+    var levelDate: Date? {
+        guard bestSet(lastDays: 28) == nil else { return nil }
+        return sessions.sorted { $0.start > $1.start }.first { $0.bestSet > 0 }?.start
+    }
 }
 
 // MARK: - Point d'état
@@ -115,13 +125,21 @@ struct CoachingView: View {
             VStack(spacing: 0) {
                 VerticalScroll {
                     VStack(spacing: 14) {
-                        if stats.isEmpty {
+                        if exercise == .auto {
+                            // « Autre exercice » mêle des mouvements : ni plan ni objectif
+                            Text("Le coaching suit un exercice précis.")
+                                .font(theme.font(15))
+                                .foregroundStyle(theme.dim)
+                                .coachingCard(theme)
+                        } else if stats.isEmpty {
                             // Rien à caler : la première séance d'abord
                             FirstSessionCard(exercise: exercise) { onStart(exercise) }
                             if goal != nil {
                                 GoalHeader(goal: goal, shiftedDate: plan?.shiftedGoalDate, exercise: exercise, current: stats.currentBest,
+                                           levelDate: stats.levelDate,
                                            onEdit: { editor = .target },
-                                           onMenu: { showsMenu = true })
+                                           onMenu: { showsMenu = true },
+                                           onNext: { editor = .new })
                             } else {
                                 GoalInvitation(level: nil) { editor = .new }
                             }
@@ -132,8 +150,10 @@ struct CoachingView: View {
                             // Où je vais : l'objectif, le chemin, le bloc
                             if goal != nil {
                                 GoalHeader(goal: goal, shiftedDate: plan?.shiftedGoalDate, exercise: exercise, current: stats.currentBest,
+                                           levelDate: stats.levelDate,
                                            onEdit: { editor = .target },
-                                           onMenu: { showsMenu = true })
+                                           onMenu: { showsMenu = true },
+                                           onNext: { editor = .new })
                             } else {
                                 GoalInvitation(level: stats.currentBest) { editor = .new }
                             }
@@ -145,7 +165,7 @@ struct CoachingView: View {
                             }
                         }
                         // Comment je suis
-                        if exercise != .auto, !stats.isEmpty {
+                        if !stats.isEmpty {
                             NavigationLink(value: CoachingPage.state) {
                                 StateCard(stats: stats, all: sessions)
                             }
@@ -216,7 +236,7 @@ struct CoachingView: View {
         }
         .sheet(item: $editor) { mode in
             GoalEditor(mode: mode, exercise: exercise, goal: goal, current: stats.currentBest,
-                       proposed: goal == nil ? GoalInvitation.proposal(stats.currentBest) : nil) { newGoal in
+                       proposed: mode == .new ? GoalInvitation.proposal(stats.currentBest) : nil) { newGoal in
                 Goal.save(newGoal, for: exercise)
                 goal = newGoal
                 version += 1
@@ -338,6 +358,7 @@ private struct TodayCard: View {
         switch day {
         case .light: return "! léger"
         case .deload: return "allégée"
+        case .reprise, .comeback: return "! reprise"
         case .test: return "◆ test"
         case .session: return nil
         }
@@ -350,6 +371,12 @@ private struct TodayCard: View {
             Text(symbols: "◆ série max")
                 .font(theme.font(compact ? 14 : 22, .bold))
                 .foregroundStyle(day.color(theme))
+        } else if case .comeback = day {
+            // Plus de 28 jours sans séance : une séance libre, le plan repart de ton niveau
+            Text("Reprise : fais une séance, le plan repart de ton niveau.")
+                .font(theme.font(compact ? 13 : 15))
+                .foregroundStyle(theme.text)
+                .fixedSize(horizontal: false, vertical: true)
         } else if let s = sessionOf(day) {
             HStack(alignment: .bottom, spacing: 12) {
                 TargetBars(targets: s.targets, done: done, color: day.color(theme), compact: compact)
@@ -364,8 +391,8 @@ private struct TodayCard: View {
 
     private func sessionOf(_ day: TrainingPlan.Today) -> Prescription.Session? {
         switch day {
-        case .session(let s), .light(let s), .deload(let s): return s
-        case .test: return nil
+        case .session(let s), .light(let s), .deload(let s), .reprise(let s): return s
+        case .test, .comeback: return nil
         }
     }
 
@@ -398,7 +425,8 @@ private struct TargetBars: View {
         let target: Int?
         let done: Int?
         var name: String { "S\(id + 1)" }
-        var reached: Bool { done.map { value in target.map { value >= $0 } ?? true } ?? false }
+        /// Pas de cible, pas de ✓ ni de vert (règle 6).
+        var reached: Bool { done.map { value in target.map { value >= $0 } ?? false } ?? false }
     }
 
     var body: some View {
@@ -424,7 +452,7 @@ private struct TargetBars: View {
             if let value = bar.done {
                 BarMark(x: .value("Série", bar.name), yStart: .value("Fait", 0.0), yEnd: .value("Fait", Double(value)),
                         width: .ratio(0.45))
-                    .foregroundStyle(bar.reached ? theme.ok : theme.primary)
+                    .foregroundStyle(bar.reached ? theme.ok : (bar.target == nil ? theme.dim : theme.primary))
                     .cornerRadius(2)
                     .annotation(position: .top) {
                         Text(symbols: "\(value)\(bar.reached ? " ✓" : "")")
@@ -525,8 +553,12 @@ private struct GoalHeader: View {
     var shiftedDate: Date? = nil
     let exercise: Exercise
     let current: Int
+    /// Le niveau date de plus de 28 jours : son ancienneté s'affiche.
+    var levelDate: Date? = nil
     let onEdit: () -> Void
     let onMenu: () -> Void
+    /// Objectif atteint : fixer le suivant.
+    var onNext: () -> Void = {}
 
     var body: some View {
         let _ = typeSize
@@ -552,15 +584,44 @@ private struct GoalHeader: View {
                             symbolButton("ellipsis", label: "Menu de l'objectif", action: onMenu)
                         }
                         figure("niveau", current)
-                        figure("reste", max(goal.target - current, 0))
+                        if let age = levelAge {
+                            MonitorLabel(age)
+                        }
+                        if current >= goal.target {
+                            // Atteint ou dépassé : en vert (skill reps-ux, § 5), à la place de « reste 0 »
+                            Text(symbols: "✓ atteint")
+                                .font(theme.font(15, .bold))
+                                .foregroundStyle(theme.ok)
+                        } else {
+                            figure("reste", goal.target - current)
+                        }
                     }
                     .padding(.bottom, 6)
                 }
                 .accessibilityElement(children: .contain)
-                .accessibilityLabel("Objectif \(goal.target) \(exercise.shortTitle.lowercased()) d'affilée, niveau \(current)")
+                .accessibilityLabel("Objectif \(goal.target) \(exercise.shortTitle.lowercased()) d'affilée, niveau \(current)"
+                                    + (current >= goal.target ? ", atteint" : ""))
+                if current >= goal.target, let next = GoalInvitation.proposal(current) {
+                    // L'objectif suivant : même règle que la proposition (+20 %, choix de l'app)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        MonitorLabel("suivant · \(current) → \(next) ?", color: theme.text)
+                        Spacer(minLength: 8)
+                        Button(action: onNext) { Text(symbols: "⌖ Fixer") }
+                            .buttonStyle(MonitorButtonStyle(color: theme.primary, filled: false, height: 44, fontSize: 12))
+                            .fixedSize()
+                    }
+                    .padding(.top, 4)
+                }
             }
             .coachingCard(theme)
         }
+    }
+
+    /// « il y a 6 sem. » pour un niveau de plus de 28 jours.
+    private var levelAge: String? {
+        guard let levelDate else { return nil }
+        let weeks = Int(Date().timeIntervalSince(levelDate) / (7 * 86_400))
+        return "il y a \(max(weeks, 4)) sem."
     }
 
     private func figure(_ label: String, _ value: Int) -> some View {
@@ -750,21 +811,26 @@ private struct FormSpark: View {
 
     var body: some View {
         let band = results.last?.band ?? 3
+        // L'échelle s'élargit pour contenir toutes les valeurs (88–112 % au moins) : rien n'est
+        // rogné sans le dire
+        let values = results.map(\.percent)
+        let low = min(88, (values.min() ?? 100) - 1)
+        let high = max(112, (values.max() ?? 100) + 1)
         Chart {
             RectangleMark(xStart: .value("Séance", -0.3), xEnd: .value("Séance", Double(max(results.count - 1, 1)) + 0.3),
-                          yStart: .value("Bande", 100 - band), yEnd: .value("Bande", 100 + band))
+                          yStart: .value("Bande", max(100 - band, low)), yEnd: .value("Bande", min(100 + band, high)))
                 .foregroundStyle(theme.primary.opacity(0.1))
             ForEach(Array(results.enumerated()), id: \.offset) { index, result in
-                LineMark(x: .value("Séance", Double(index)), y: .value("Forme", min(max(result.percent, 88), 112)))
+                LineMark(x: .value("Séance", Double(index)), y: .value("Forme", result.percent))
                     .foregroundStyle(theme.primary)
-                PointMark(x: .value("Séance", Double(index)), y: .value("Forme", min(max(result.percent, 88), 112)))
+                PointMark(x: .value("Séance", Double(index)), y: .value("Forme", result.percent))
                     .foregroundStyle(theme.primary)
                     .symbolSize(index == results.count - 1 ? 50 : 14)
             }
         }
         .chartXAxis(.hidden)
         .chartYAxis(.hidden)
-        .chartYScale(domain: 88...112)
+        .chartYScale(domain: low...high)
         .chartXScale(domain: -0.3...(Double(max(results.count - 1, 1)) + 0.3))
         .frame(height: height)
     }
@@ -796,7 +862,7 @@ private struct GoalEditor: View {
         self.goal = goal
         self.current = current
         self.onSave = onSave
-        _target = State(initialValue: goal?.target ?? proposed ?? max(current + 5, 10))
+        _target = State(initialValue: (mode == .new ? proposed : goal?.target) ?? proposed ?? max(current + 5, 10))
         _hasDate = State(initialValue: goal?.date != nil || mode == .date)
         _date = State(initialValue: goal?.date ?? Date().addingTimeInterval(16 * 7 * 86_400))
     }
@@ -847,7 +913,10 @@ private struct GoalEditor: View {
             Spacer(minLength: 16)
             Button("Enregistrer") {
                 let date = mode == .target ? goal?.date : (hasDate ? self.date : nil)
-                onSave(Goal(target: target, date: date, start: goal?.start ?? current, created: goal?.created ?? Date()))
+                // Un nouvel objectif (le premier, ou le suivant une fois atteint) part du niveau
+                // actuel ; modifier le nombre ou la date garde le départ
+                onSave(mode == .new ? Goal(target: target, date: date, start: current, created: Date())
+                                    : Goal(target: target, date: date, start: goal?.start ?? current, created: goal?.created ?? Date()))
                 dismiss()
             }
             .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 54))
