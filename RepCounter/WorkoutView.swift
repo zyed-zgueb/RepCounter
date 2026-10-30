@@ -287,10 +287,7 @@ struct WorkoutView: View {
                     showsCoaching = true
                 }
                 // Le point d'état s'explique une fois (TipKit), à son premier affichage, en veille
-                .popoverTip(StateTip())
-                .task(id: model.phase == .ready && stateDot != nil) {
-                    StateTip.dotShown = model.phase == .ready && stateDot != nil
-                }
+                .popoverTip(model.phase == .ready && stateDot != nil ? StateTip() : nil)
                 IconButton(systemImage: "gearshape", color: theme.dim) { onOpenSettings() }
             }
         }

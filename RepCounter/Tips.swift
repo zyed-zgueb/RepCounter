@@ -16,19 +16,14 @@ enum RepsTips {
     }
 }
 
-/// Le point d'état sur la cible du Coaching : l'échelle d'intensité.
+/// Le point d'état sur la cible du Coaching : l'échelle d'intensité. Il n'est proposé que si le
+/// point est affiché (en veille, avec une couleur) : la vue ne le passe qu'à cette condition.
 struct StateTip: Tip {
-    /// Le point est affiché (en veille, avec une couleur) : l'astuce n'a de sens qu'avec lui.
-    @Parameter static var dotShown: Bool = false
-
     var title: Text { Text("Ton plan, en un point") }
     var message: Text? {
         Text("Calme : semaine allégée ou séance légère. Soutenu : la séance prévue. Maximal : jour de test. Touche la cible : ton plan.")
     }
     var image: Image? { Image(systemName: "scope") }
-    var rules: [Rule] {
-        #Rule(Self.$dotShown) { $0 == true }
-    }
 }
 
 /// Le bloc, à la première ouverture du Coaching avec un plan.
