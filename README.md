@@ -98,8 +98,10 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   attendue en pointillés, l'objectif ⚑, aujourd'hui ▼ ; les blocs en simples repères (un filet,
   B1…Bn) ; légende « ● départ · • séances · ◆ test · ┄ attendu » ; « ◆ prochain test » ;
   verdict ▲ = ▼ et projection après 3 tests. **Bloc** : « B2 · P3 », l'intensité en mots et en jauge (demi-cercle, aiguille,
-  repères A, P, ◆), la frise, la semaine L M M J V S D (○ prévu, ● fait, ! manqué, aujourd'hui
-  souligné ; une astuce TipKit, une fois, après celle du bloc : « touche un jour »), le prévu
+  repères A, P, ◆), la frise, la semaine L M M J V S D en lecture seule (prévu : cercle épais de
+  la couleur d'intensité ; repos : la lettre seule ; fait : cercle plein, plus petit un jour non
+  prévu ; ! manqué ; aujourd'hui souligné) avec « ✎ jours » et une ligne « 2/4 · prochaine jeu. »,
+  le prévu
   face au fait en barres (pâle prévu, plein fait, ✓, ←). **État** : la phase en pastille, la Forme en courbe sur ses
   8 dernières séances avec sa bande, la fatigue sur 5 points, l'effort sur 10 graduations ; une
   touche ouvre la charge, la décharge et la courbe de Forme. En veille, un **point d'état** sur
@@ -216,11 +218,17 @@ des séries (arrondie au-dessus) en semaine allégée et en séance légère, la
 règle « séance faite » (total prévu atteint).
 
 **Les jours** : les séances sont espacées dans la semaine (2 : lundi, jeudi ; 3 : lundi, mercredi,
-vendredi), déplaçables d'une touche dans le Coaching (rangée L M M J V S D : prévus, faits,
-manqués, aujourd'hui) ; choix de l'app, l'ACSM ne fixant pas l'espacement. Une séance faite un
-jour non prévu compte et remplace la prochaine prévue. En veille : « aujourd'hui · 29 · 25 · 22 ·
-repos 1:30 », « fait ✓ · prochaine vendredi » ou « repos · prochaine vendredi » ; Démarrer reste
-toujours possible.
+vendredi ; 4 : lundi, mardi, jeudi, vendredi) ; choix de l'app, l'ACSM ne fixant pas
+l'espacement. La rangée L M M J V S D du Coaching ne se modifie plus d'une touche : « ✎ jours »
+ouvre « Jours d'entraînement » (7 jours cochables, « n séances / semaine · m choisies »,
+« Enregistrer » seulement si m = n, sinon « Choisis n jours » ; « Revenir aux jours proposés » ;
+« Annuler »). Le nombre de séances par semaine reste celui du plan (au moins 2). Des jours
+enregistrés qui ne correspondent plus à ce nombre sont ignorés : retour aux jours proposés, et
+« Jours réinitialisés : ils ne correspondaient plus à ton plan » une fois. Une séance faite un
+jour non prévu compte et remplace la prochaine prévue. Sous la rangée et en veille, la suite de
+la semaine : « 2/4 · prochaine jeu. », « semaine faite 4/4 · prochaine lun. », « séance en plus ·
+prochaine jeu. » (en veille : « aujourd'hui · 29 · 25 · 22 · repos 1:30 » un jour de séance,
+sinon « fait ✓ · … » ou « repos · … ») ; Démarrer reste toujours possible.
 
 **Pendant la séance** : sous le cadran, une case par série (« 29 ✓ · 25 ← · 22 ») ; en
 récupération, « Ensuite · série 2 · 25 » ou « Dernière série » ; un accord aigu quand la cible de

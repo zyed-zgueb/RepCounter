@@ -2,8 +2,7 @@ import SwiftUI
 import TipKit
 
 /// Les explications du premier affichage (skill reps-ux, § 6), en TipKit : chacune s'affiche une
-/// fois, au moment utile ; TipKit retient qu'elle a été vue. Une seule à la fois : l'astuce des
-/// jours attend que celle du bloc soit fermée.
+/// fois, au moment utile ; TipKit retient qu'elle a été vue.
 enum RepsTips {
     /// À l'ouverture de l'app. Les explications déjà vues avant TipKit (clés UserDefaults) ne
     /// reviennent pas.
@@ -12,7 +11,6 @@ enum RepsTips {
         let defaults = UserDefaults.standard
         if defaults.bool(forKey: "coaching.dotExplained") { StateTip().invalidate(reason: .actionPerformed) }
         if defaults.bool(forKey: "coaching.blockExplained") { BlockTip().invalidate(reason: .actionPerformed) }
-        if defaults.bool(forKey: "coaching.daysHintSeen") { DaysTip().invalidate(reason: .actionPerformed) }
     }
 }
 
@@ -33,13 +31,6 @@ struct BlockTip: Tip {
         Text("3 semaines de progression, 1 semaine allégée, puis le test : une série max, ton nouveau niveau. Le bloc suivant repart de là.")
     }
     var image: Image? { Image(systemName: "square.stack.3d.up.fill") }
-}
-
-/// Les jours de séance se déplacent d'une touche.
-struct DaysTip: Tip {
-    var title: Text { Text("Tes jours de séance") }
-    var message: Text? { Text("Touche un jour pour l'ajouter ou le retirer.") }
-    var image: Image? { Image(systemName: "hand.tap") }
 }
 
 /// Le premier jour de test : le principe, une seule fois.

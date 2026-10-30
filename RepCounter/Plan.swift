@@ -115,6 +115,8 @@ struct TrainingPlan {
     var currentMax: Int? = nil
     /// Le max relevé en cours de bloc (nil : pas relevé).
     var maxRaise: Int? = nil
+    /// Les jours enregistrés ne correspondaient pas au nombre de séances par semaine : ignorés.
+    var daysReset = false
 
     struct TestStep: Equatable {
         let number: Int
@@ -209,6 +211,7 @@ struct TrainingPlan {
         }
 
         var blockStart = weekStart(start0)
+        var daysReset = false
         var blocks: [Block] = []
         var block = 1
         var tests: [Test] = []
@@ -244,7 +247,11 @@ struct TrainingPlan {
                     ?? Prescription.habitual(reference, before: min(now.addingTimeInterval(1), calibrationEnd), testMax: baseMax, calendar: calendar)
                     ?? Prescription.habitual(reference, before: now.addingTimeInterval(1), testMax: baseMax, calendar: calendar)
             else { return nil }
-            let days = Schedule.days(weekdays ?? Schedule.defaultWeekdays(habit.perWeek))
+            // Les jours choisis doivent correspondre au nombre de séances par semaine du plan ; sinon
+            // ils sont ignorés (jours proposés), et la vue le signale une fois
+            let chosen = weekdays.map(Schedule.days)
+            if let chosen, chosen.count != habit.perWeek { daysReset = true }
+            let days = chosen.flatMap { $0.count == habit.perWeek ? $0 : nil } ?? Schedule.defaultWeekdays(habit.perWeek)
             let perWeek = days.count
             // Le max du bloc ; il est relevé en cours de bloc par une série ≥ 3 au-dessus de sa cible,
             // ou un test fait en semaine de progression qui le dépasse (règle 13, choix de l'app) :
@@ -367,7 +374,7 @@ struct TrainingPlan {
                 return TrainingPlan(goal: goal, anchor: weekStart(start0), firstDay: firstDay, blocks: blocks, block: block - 1, weeks: weeks,
                                     testDate: testDate, tests: tests, shiftWeeks: shift, today: .session(fresh.session), status: .rest,
                                     next: Schedule.firstDay(days, inWeekOf: blockStart, calendar: calendar), days: [],
-                                    ratios: fresh.ratios, perWeek: perWeek, missedTests: missedTests, currentMax: value)
+                                    ratios: fresh.ratios, perWeek: perWeek, missedTests: missedTests, currentMax: value, daysReset: daysReset)
             }
             // Test pas lancé 7 jours après le jour prévu, alors qu'on s'entraîne : le bloc suivant
             // repart du dernier max, sans recalage (règle 10, choix de l'app)
@@ -383,7 +390,7 @@ struct TrainingPlan {
                 return TrainingPlan(goal: goal, anchor: weekStart(start0), firstDay: firstDay, blocks: blocks, block: block - 1, weeks: weeks,
                                     testDate: testDate, tests: tests, shiftWeeks: shift, today: .session(sessionNow), status: .rest,
                                     next: Schedule.firstDay(days, inWeekOf: blockStart, calendar: calendar), days: [],
-                                    ratios: habit.ratios, perWeek: perWeek, missedTests: missedTests, currentMax: currentMax)
+                                    ratios: habit.ratios, perWeek: perWeek, missedTests: missedTests, currentMax: currentMax, daysReset: daysReset)
             }
             let current = weeks.last { $0.isCurrent }
             let today: Today
@@ -441,7 +448,7 @@ struct TrainingPlan {
                                 days: schedule.days, ratios: habit.ratios, perWeek: perWeek,
                                 testOverdue: overdue, testStep: testStep, missedTests: missedTests,
                                 fallback: today == .test ? (testStep == nil ? deload : sessionNow) : nil,
-                                currentMax: currentMax, maxRaise: lastRaise)
+                                currentMax: currentMax, maxRaise: lastRaise, daysReset: daysReset)
         }
     }
 }
@@ -480,6 +487,20 @@ enum Schedule {
     }
 
     static func days(_ weekdays: [Int]) -> [Int] { Array(Set(weekdays.filter { (1...7).contains($0) })).sorted() }
+
+    private static func resetKey(_ exercise: Exercise) -> String { "coaching.daysReset.\(exercise.rawValue)" }
+
+    /// Les jours enregistrés ont été réinitialisés : à signaler une fois.
+    static func noteReset(_ exercise: Exercise) {
+        UserDefaults.standard.set(true, forKey: resetKey(exercise))
+    }
+
+    /// Lit et efface l'avis de réinitialisation (affiché une seule fois).
+    static func takeResetNotice(_ exercise: Exercise) -> Bool {
+        let pending = UserDefaults.standard.bool(forKey: resetKey(exercise))
+        if pending { UserDefaults.standard.removeObject(forKey: resetKey(exercise)) }
+        return pending
+    }
 
     /// Le lundi de la semaine.
     static func weekStart(_ date: Date, calendar: Calendar) -> Date {
@@ -601,8 +622,14 @@ extension HistoryStats {
         let tired = countingIsReliable
             ? Set(formResults.filter { $0.result.zone == .tired }.map { $0.session.persistentModelID }) : []
         let lowForm = [.lowForm, .overreaching, .deloadAdvised, .persistentFatigue].contains(phase(all: all).kind)
-        return TrainingPlan.make(goal: goal, anchor: anchor, sessions: sessions, tired: tired, lowForm: lowForm,
-                                 weekdays: Schedule.saved(exercise), now: now, calendar: calendar)
+        let plan = TrainingPlan.make(goal: goal, anchor: anchor, sessions: sessions, tired: tired, lowForm: lowForm,
+                                     weekdays: Schedule.saved(exercise), now: now, calendar: calendar)
+        if plan?.daysReset == true {
+            // Jours incohérents (3 jours pour 4 séances…) : retour aux jours proposés, signalé une fois
+            Schedule.save(nil, for: exercise)
+            Schedule.noteReset(exercise)
+        }
+        return plan
     }
 }
 

@@ -187,6 +187,7 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
 
     block, tests, missed_tests, shift, excluded = 1, [], [], 0, set()
     base_max = None
+    days_reset = False
     while True:
         # Bloc 1 : 2 tests sur 2 jours de la première semaine, le meilleur sert de départ
         calibration_days = 0
@@ -207,7 +208,12 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
         if h is None:
             return None
         habit, ratios, per_week = h
-        days = sorted(set(weekdays or WEEKDAYS.get(per_week, [1, 2, 3, 4, 5, 6, 7])))
+        # Jours choisis incohérents avec le nombre de séances par semaine : ignorés (jours proposés)
+        chosen = sorted(set(weekdays)) if weekdays else None
+        if chosen is not None and len(chosen) != per_week:
+            days_reset = True
+            chosen = None
+        days = chosen or WEEKDAYS.get(per_week, [1, 2, 3, 4, 5, 6, 7])
         per_week = len(days)
         current_max = base_max if base_max is not None else habit[0][0] + RESERVE
         last_raise = None
@@ -297,7 +303,7 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
             fresh = habitual(reference, now + 1, test_max=value)
             return dict(block=block - 1, weeks=weeks, test_day=test_day, tests=[t[:2] for t in tests], shift=shift,
                         today=("session", fresh[0] if fresh else habit), status="rest", next=block_start + days[0] - 1,
-                        per_week=per_week, ratios=ratios, missed_tests=missed_tests, current_max=value)
+                        per_week=per_week, ratios=ratios, missed_tests=missed_tests, current_max=value, days_reset=days_reset)
         # Test pas lancé 7 jours après le jour prévu, en s'entraînant : bloc suivant sur le dernier max
         give_up = test_day + REPRISE_DAYS
         if not reprise_today and now >= give_up:
@@ -311,7 +317,7 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
                 continue
             return dict(block=block - 1, weeks=weeks, test_day=test_day, tests=[t[:2] for t in tests], shift=shift,
                         today=("session", session_now), status="rest", next=block_start + days[0] - 1,
-                        per_week=per_week, ratios=ratios, missed_tests=missed_tests, current_max=current_max)
+                        per_week=per_week, ratios=ratios, missed_tests=missed_tests, current_max=current_max, days_reset=days_reset)
         current = next((w for w in reversed(weeks) if w[3]), None)
         this_week = (int(now) // 7) * 7
         week_sessions = [s for s in sessions if this_week <= s.day < this_week + 7]
@@ -349,7 +355,7 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None):
             nxt = max(test_day, this_week + 7) if this_week + 7 >= test_day else this_week + 7 + days[0] - 1
         return dict(block=block, weeks=weeks, test_day=test_day, tests=[t[:2] for t in tests], shift=shift, today=today,
                     status=status, next=nxt, per_week=per_week, ratios=ratios, overdue=overdue, test_step=test_step,
-                    missed_tests=missed_tests, current_max=current_max, max_raise=last_raise,
+                    missed_tests=missed_tests, current_max=current_max, max_raise=last_raise, days_reset=days_reset,
                     fallback=(deload if test_step is None else session_now) if today[0] == "test" else None)
 
 
@@ -566,6 +572,12 @@ def main():
     ok &= check("max relevé : cibles recalculées dès la séance suivante", dict(first=p["today"][1][0][0]), dict(first=15))
     s = history + schedule(0, 7) + [Session(7.75, [14, 12, 10], targets=[12, 12, 12])]
     ok &= check("dépassement de 2 : max inchangé", make(0, s, 8.5), dict(current_max=15, max_raise=None))
+
+    # 19. Jours enregistrés incohérents (2 jours pour 3 séances par semaine) : ignorés, jours proposés
+    s = history + schedule(0, 9)
+    p = make(0, s, 9.5, weekdays=[5, 6])
+    ok &= check("jours incohérents : réinitialisés", p, dict(days_reset=True, per_week=3))
+    ok &= check("jours cohérents : gardés", make(0, s, 9.5, weekdays=[2, 4, 6]), dict(days_reset=False, per_week=3))
 
     print("\nOK" if ok else "\nÉCHEC")
     return 0 if ok else 1

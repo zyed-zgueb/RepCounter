@@ -232,6 +232,11 @@ enum Format {
         signed(Int(value.rounded()))
     }
 
+    /// « jeu. » : le jour de la semaine, abrégé.
+    static func shortWeekday(_ date: Date) -> String {
+        date.formatted(.dateTime.weekday(.abbreviated))
+    }
+
     /// « demain », « vendredi » (dans la semaine qui vient), sinon « 12 nov. ».
     static func weekdayOrDate(_ date: Date, now: Date = Date(), calendar: Calendar = .current) -> String {
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: calendar.startOfDay(for: date)).day ?? 0

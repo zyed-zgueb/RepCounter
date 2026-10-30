@@ -83,6 +83,24 @@ extension TrainingPlan.Week {
 }
 
 extension TrainingPlan {
+    /// La semaine en une ligne : « 2/4 · prochaine jeu. », « semaine faite 4/4 · prochaine lun. »,
+    /// « séance en plus · prochaine jeu. » (une séance faite aujourd'hui, un jour non prévu).
+    var weekLine: String? {
+        let nextText = next.map { "prochaine \(Format.shortWeekday($0))" }
+        guard !days.isEmpty else { return nextText }
+        let done = days.filter { $0.sessions > 0 }.count
+        let extraToday = days.contains { $0.isToday && $0.sessions > 0 && !$0.planned }
+        let head: String
+        if extraToday {
+            head = "séance en plus"
+        } else if done >= perWeek {
+            head = "semaine faite \(done)/\(perWeek)"
+        } else {
+            head = "\(done)/\(perWeek)"
+        }
+        return [head, nextText].compactMap { $0 }.joined(separator: " · ")
+    }
+
     /// L'intensité de la semaine en cours (jour de test : maximale).
     var weekIntensity: Double {
         if today == .test { return Intensity.max }
@@ -91,7 +109,7 @@ extension TrainingPlan {
 }
 
 /// La ligne du jour sous le cadran, en veille : « aujourd'hui · 29 · 25 · 22 · repos 1:30 »,
-/// « fait ✓ · prochaine vendredi », ou « repos · prochaine vendredi ». Démarrer reste possible.
+/// « fait ✓ · 2/4 · prochaine ven. », ou « repos · 2/4 · prochaine ven. ». Démarrer reste possible.
 struct TodayLine: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
@@ -125,16 +143,12 @@ struct TodayLine: View {
         }
     }
 
-    /// « · prochaine vendredi », sauf un jour de séance.
+    /// La suite de la semaine, comme sous la rangée des jours du Coaching : « · 2/4 · prochaine
+    /// jeu. », « · semaine faite 4/4 · prochaine lun. », « · séance en plus · prochaine jeu. ».
     @ViewBuilder
     private var trail: some View {
-        if plan.status != .due { nextText }
-    }
-
-    @ViewBuilder
-    private var nextText: some View {
-        if let next = plan.next {
-            Text("· prochaine \(Format.weekdayOrDate(next))").foregroundStyle(theme.dim)
+        if plan.status != .due, let line = plan.weekLine {
+            Text("· " + line).foregroundStyle(theme.text)
         }
     }
 }
@@ -399,63 +413,87 @@ struct BlockCard: View {
     }
 }
 
-/// La semaine en cours, L M M J V S D : ○ prévu, ● fait, ! manqué, aujourd'hui souligné.
-/// Toucher un jour l'ajoute ou le retire des jours de séance (2 au moins) : le placement est un
-/// choix de l'app, l'utilisateur le déplace. L'astuce (TipKit) s'affiche une fois, après celle
-/// du bloc.
+/// La semaine en cours, L M M J V S D, en lecture seule : le placement est un choix de l'app ;
+/// « ✎ jours » ouvre la feuille qui le change (autant de jours que de séances par semaine). Une
+/// ligne dessous dit la suite (« 2/4 · prochaine jeu. »).
 struct WeekDays: View {
     @Environment(\.theme) private var theme
-    /// Un jour touché : retour haptique.
-    @State private var toggles = 0
-    /// L'astuce du bloc est affichée : celle des jours attend (une astuce à la fois). Suivi par les
-    /// changements d'état de TipKit, donc réactif.
-    @State private var blockTipShown = true
+    @State private var editing = false
+    /// « Jours réinitialisés », une seule fois après une remise aux jours proposés.
+    @State private var showsResetNotice = false
     let plan: TrainingPlan
     let exercise: Exercise
     let onChange: () -> Void
-    private static let letters = ["L", "M", "M", "J", "V", "S", "D"]
+    static let letters = ["L", "M", "M", "J", "V", "S", "D"]
     /// Pour VoiceOver : « M » se lirait pareil pour mardi et mercredi.
-    private static let names = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+    static let names = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 
     var body: some View {
         let spaced = plan.days.filter { $0.sessions >= 2 }
+        let color = theme.intensity(plan.weekIntensity)
         VStack(alignment: .leading, spacing: 6) {
+            // La rangée affiche seulement : les jours se changent par « ✎ jours »
             HStack(spacing: 4) {
                 ForEach(Array(plan.days.enumerated()), id: \.offset) { index, day in
-                    Button { toggle(index + 1) } label: { cell(index, day) }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(Self.names[index]) \(day.planned ? "prévu" : "repos")\(day.sessions > 0 ? ", fait" : "")\(day.missed ? ", manqué" : "")")
+                    cell(index, day, color: color)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(accessibility(index, day))
                 }
+                Button { editing = true } label: {
+                    Label("jours", systemImage: "pencil")
+                        .font(theme.font(13, .semibold))
+                        .foregroundStyle(theme.primary)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Modifier les jours d'entraînement")
             }
-            // Une astuce à la fois : celle des jours attend que celle du bloc soit fermée
-            if !blockTipShown {
-                TipView(DaysTip())
+            if let line = plan.weekLine {
+                Text(symbols: line)
+                    .font(theme.font(12))
+                    .foregroundStyle(theme.text)
+            }
+            if showsResetNotice {
+                Text("Jours réinitialisés : ils ne correspondaient plus à ton plan.")
+                    .font(theme.font(12))
+                    .foregroundStyle(theme.dim)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if let day = spaced.last {
                 MonitorLabel("séries espacées · \(Format.weekdayOrDate(day.date))")
             }
         }
-        .sensoryFeedback(.selection, trigger: toggles)
-        .task {
-            for await status in BlockTip().statusUpdates {
-                if case .available = status { blockTipShown = true } else { blockTipShown = false }
+        .onAppear {
+            if Schedule.takeResetNotice(exercise) { showsResetNotice = true }
+        }
+        .sheet(isPresented: $editing) {
+            DaysEditor(exercise: exercise, perWeek: plan.perWeek,
+                       chosen: Set(plan.days.enumerated().filter { $0.element.planned }.map { $0.offset + 1 })) {
+                onChange()
             }
+            .environment(\.theme, theme)
+            .preferredColorScheme(theme.colorScheme)
         }
     }
 
-    private func cell(_ index: Int, _ day: TrainingPlan.Day) -> some View {
+    /// Prévu : cercle épais de la couleur d'intensité de la semaine ; repos : la lettre seule ;
+    /// fait : cercle plein (plus petit un jour non prévu) ; manqué : « ! » ; aujourd'hui souligné.
+    private func cell(_ index: Int, _ day: TrainingPlan.Day, color: Color) -> some View {
         let done = day.sessions > 0
         return VStack(spacing: 3) {
             Text(Self.letters[index])
                 .font(theme.font(10, day.isToday ? .bold : .regular))
-                .foregroundStyle(day.isToday ? theme.text : theme.dim)
+                .foregroundStyle(day.planned || done ? theme.text : theme.dim)
             ZStack {
                 if day.missed {
                     Text(symbols: "!").font(theme.font(12, .bold)).foregroundStyle(theme.text)
-                } else {
-                    Circle()
-                        .fill(done ? theme.text : .clear)
-                        .overlay(Circle().stroke(day.planned || done ? theme.text : theme.line, lineWidth: day.planned ? 1.5 : 1))
+                } else if done && day.planned {
+                    Circle().fill(color)
+                } else if done {
+                    Circle().fill(color).frame(width: 8, height: 8)
+                } else if day.planned {
+                    Circle().stroke(color, lineWidth: 2)
                 }
             }
             .frame(width: 14, height: 14)
@@ -464,22 +502,91 @@ struct WeekDays: View {
                 .frame(width: 10, height: 2)
         }
         .frame(maxWidth: .infinity, minHeight: 44)
-        .contentShape(Rectangle())
     }
 
-    private func toggle(_ weekday: Int) {
-        var days = Set(plan.days.enumerated().filter { $0.element.planned }.map { $0.offset + 1 })
-        if days.contains(weekday) {
-            guard days.count > Prescription.minSessionsPerWeek else { return }
-            days.remove(weekday)
-        } else {
-            days.insert(weekday)
-        }
-        toggles += 1
-        DaysTip().invalidate(reason: .actionPerformed)
-        Schedule.save(Array(days), for: exercise)
-        onChange()
+    /// « lundi, prévu, fait », « mardi, repos », « jeudi, prévu, manqué, aujourd'hui ».
+    private func accessibility(_ index: Int, _ day: TrainingPlan.Day) -> String {
+        var parts = [Self.names[index], day.planned ? "prévu" : "repos"]
+        if day.sessions > 0 { parts.append(day.planned ? "fait" : "séance en plus") }
+        if day.missed { parts.append("manqué") }
+        if day.isToday { parts.append("aujourd'hui") }
+        return parts.joined(separator: ", ")
     }
+}
+
+/// « Jours d'entraînement » : les 7 jours cochables ; « Enregistrer » seulement quand le nombre de
+/// jours choisis est celui des séances par semaine du plan (on ne change pas ce nombre ici).
+private struct DaysEditor: View {
+    @Environment(\.theme) private var theme
+    @Environment(\.dismiss) private var dismiss
+    let exercise: Exercise
+    let perWeek: Int
+    @State var chosen: Set<Int>
+    let onSave: () -> Void
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(1...7, id: \.self) { day in
+                    Button {
+                        if chosen.contains(day) { chosen.remove(day) } else { chosen.insert(day) }
+                    } label: {
+                        HStack {
+                            Text(WeekDays.names[day - 1].capitalized)
+                                .foregroundStyle(theme.text)
+                            Spacer()
+                            if chosen.contains(day) {
+                                Image(systemName: "checkmark")
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(theme.primary)
+                            }
+                        }
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .accessibilityAddTraits(chosen.contains(day) ? .isSelected : [])
+                }
+            } header: {
+                Text("\(perWeek) séances / semaine · \(chosen.count) choisie\(chosen.count > 1 ? "s" : "")")
+            } footer: {
+                if chosen.count != perWeek {
+                    Text("Choisis \(perWeek) jours.")
+                }
+            }
+            Section {
+                Button("Revenir aux jours proposés") {
+                    Schedule.save(nil, for: exercise)
+                    onSave()
+                    dismiss()
+                }
+            }
+        }
+        .scrollContentBackground(.hidden)
+        .background(theme.background.ignoresSafeArea())
+        .sensoryFeedback(.selection, trigger: chosen)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Annuler") { dismiss() }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Enregistrer") {
+                    Schedule.save(Array(chosen), for: exercise)
+                    onSave()
+                    dismiss()
+                }
+                .disabled(chosen.count != perWeek)
+            }
+        }
+        .navigationTitle("Jours d'entraînement")
+        .navigationBarTitleDisplayMode(.inline)
+        .embeddedInNavigation()
+        .presentationDetents([.large])
+    }
+}
+
+private extension View {
+    /// La feuille a sa propre barre (Annuler, Enregistrer).
+    func embeddedInNavigation() -> some View { NavigationStack { self } }
 }
 
 /// Prévu face au fait (Swift Charts), une barre par semaine du bloc : barre pâle = prévu (couleur
