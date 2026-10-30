@@ -289,7 +289,7 @@ struct WorkoutView: View {
                     showsCoaching = true
                 }
                 // Le point d'état s'explique une fois (TipKit), à son premier affichage, en veille
-                .popoverTip(model.phase == .ready && stateDot != nil ? StateTip() : nil)
+                .stateTip(shown: model.phase == .ready && stateDot != nil)
                 IconButton(systemImage: "gearshape", color: theme.dim) { onOpenSettings() }
             }
         }
@@ -1560,6 +1560,19 @@ private struct RecordingSheet: View {
                 .frame(width: 52, height: 52)
                 .background(theme.panel, in: RoundedRectangle(cornerRadius: 4))
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(theme.line, lineWidth: 1))
+        }
+    }
+}
+
+extension View {
+    /// L'astuce du point d'état, seulement quand le point est affiché. La variante de `popoverTip`
+    /// qui accepte une astuce optionnelle demande iOS 26 : on pose ou non le modificateur d'iOS 17.
+    @ViewBuilder
+    func stateTip(shown: Bool) -> some View {
+        if shown {
+            popoverTip(StateTip())
+        } else {
+            self
         }
     }
 }
