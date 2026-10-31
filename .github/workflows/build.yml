@@ -1,0 +1,55 @@
+name: Build
+
+# Compile l'app et rejoue la simulation du compteur à chaque push et pull request.
+# Un lot n'est proposé à Vincent que si ce workflow est vert (CLAUDE.md).
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulation:
+    name: Simulation du compteur
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install numpy
+      - name: simulate_counter.py (doit rester exacte)
+        working-directory: Simulation
+        run: python3 simulate_counter.py --seeds 5
+
+  xcode:
+    name: Compilation iOS
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Tools/build_number.sh compte les commits
+      - name: Version de Xcode
+        run: xcodebuild -version
+      - name: Compiler pour le simulateur, sans signature
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project RepCounter.xcodeproj \
+            -target RepCounter \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM= \
+            | tee build.log | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Journal complet en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
