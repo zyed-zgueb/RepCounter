@@ -115,12 +115,11 @@ enum Prescription {
     /// La séance d'une semaine de progression : la même tout le bloc (pas de hausse hebdomadaire).
     static func progression(_ base: Session, week: Int) -> Session { base }
 
-    /// La séance prévue, la baisse habituelle et le nombre de séances par semaine, d'après les
-    /// séances de l'exercice des `habitDays` jours avant `date` : max = le dernier test
-    /// (`testMax`), sinon la meilleure série de ces 4 semaines ; repos habituel (médiane, arrondi à
-    /// 15 s, entre 30 s et 5 min) ; séances par semaine habituelles, au moins 2. Nil sans séance.
+    /// La séance prévue et la baisse habituelle, d'après les séances de l'exercice des `habitDays`
+    /// jours avant `date` : max = le dernier test (`testMax`), sinon la meilleure série de ces
+    /// 4 semaines ; repos habituel (médiane, arrondi à 15 s, entre 30 s et 5 min). Nil sans séance.
     static func habitual(_ sessions: [SessionRecord], before date: Date, testMax: Int? = nil, calendar: Calendar)
-        -> (session: Session, ratios: [Double]?, perWeek: Int)? {
+        -> (session: Session, ratios: [Double]?)? {
         let since = date.addingTimeInterval(-Double(habitDays) * 86_400)
         let recent = sessions.filter { $0.start >= since && $0.start < date && !$0.orderedSets.isEmpty }
         guard !recent.isEmpty else { return nil }
@@ -130,17 +129,8 @@ enum Prescription {
         }
         let rest = rests.count >= 3 ? median(rests) : 60
         let plannedRest = Swift.min(Swift.max(Int((rest / 15).rounded()) * 15, 30), 300)
-        // Des jours d'entraînement, pas des séances : des séries espacées le même jour font une
-        // séance, comme dans le plan (`Week.done`)
-        var weeks: [Date: Set<Date>] = [:]
-        for session in recent {
-            let week = calendar.dateInterval(of: .weekOfYear, for: session.start)?.start ?? session.start
-            weeks[week, default: []].insert(calendar.startOfDay(for: session.start))
-        }
-        let perWeek = Int(median(weeks.values.map { Double($0.count) }).rounded())
         let ratios = ratios(recent, rest: plannedRest)
-        return (Session(targets: targets(first: target(max: testMax ?? best), ratios: ratios), rest: plannedRest),
-                ratios, Swift.max(minSessionsPerWeek, perWeek))
+        return (Session(targets: targets(first: target(max: testMax ?? best), ratios: ratios), rest: plannedRest), ratios)
     }
 
     private static func median(_ values: [Double]) -> Double {

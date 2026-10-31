@@ -168,7 +168,7 @@ struct CoachingView: View {
                                 }
                                 // Reprise après une longue absence : pas encore de bloc ni de test
                                 if plan.hasTest {
-                                    BlockCard(plan: plan, exercise: exercise) { version += 1 }
+                                    BlockCard(plan: plan)
                                 }
                             }
                         }
@@ -219,13 +219,6 @@ struct CoachingView: View {
             }
         }
         .tint(theme.primary)
-        // Jours enregistrés incohérents : le retour aux jours proposés s'enregistre ici, hors du calcul
-        // de la vue (une seule fois : le plan suivant n'a plus de jours à réinitialiser)
-        .task(id: plan?.daysReset == true ? exercise.rawValue : nil) {
-            guard plan?.daysReset == true else { return }
-            Schedule.save(nil, for: exercise)
-            version += 1
-        }
         .onChange(of: exercise) { _, exercise in
             goal = Goal.load(exercise)
             version += 1
@@ -304,7 +297,7 @@ enum CoachingPage: Hashable {
 /// La séance du jour, en tête du Coaching (la ligne sous le cadran en est le résumé) :
 /// - à faire : les cibles en barres, ◷ le repos, l'intensité (pastille et mot), Démarrer ;
 /// - faite : « ✓ fait », le fait face aux cibles, puis la prochaine séance ;
-/// - repos : « repos · prochaine vendredi » et ses cibles ;
+/// - repos conseillé : sa raison (« test demain »), puis la prochaine séance et ses cibles ;
 /// - séance légère : « ! léger », barres réduites ; semaine allégée : « allégée ».
 private struct TodayCard: View {
     @Environment(\.theme) private var theme
@@ -355,12 +348,21 @@ private struct TodayCard: View {
                 upcoming
             case .rest:
                 HStack {
-                    Text("repos")
+                    Text("repos conseillé")
                         .font(theme.font(15, .bold))
                         .foregroundStyle(theme.dim)
                     Spacer()
                 }
+                if let reason = plan.restReason {
+                    Text(reason.short)
+                        .font(theme.font(12))
+                        .foregroundStyle(theme.text)
+                }
                 upcoming
+            }
+            // Moins de 2 séances sur 7 jours : le minimum, une ligne discrète (METHODE-JOURS.md, règle 6)
+            if plan.belowMinimum, plan.status != .done {
+                MonitorLabel("au moins 2 séances par semaine")
             }
         }
         .coachingCard(theme)

@@ -8,6 +8,7 @@ struct RepCounterApp: App {
 
     init() {
         RepsTips.configure()
+        Schedule.forgetSavedDays()
     }
 
     var body: some Scene {

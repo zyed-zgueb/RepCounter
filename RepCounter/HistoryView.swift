@@ -43,7 +43,7 @@ struct HistoryView: View {
                                 WeeksCard(stats: stats, planned: exercise != nil)
                             }
                             .buttonStyle(.plain)
-                            JournalCard(stats: stats, missed: missedDays(stats)) { session in
+                            JournalCard(stats: stats) { session in
                                 withAnimation { modelContext.delete(session) }
                             }
                         }
@@ -69,38 +69,6 @@ struct HistoryView: View {
         .tint(theme.primary)
         .onAppear { showAllIfAbsent(practiced) }
         .onChange(of: practiced) { _, new in showAllIfAbsent(new) }
-    }
-
-    /// Les jours où une séance prévue par le plan a été manquée (un exercice avec un plan), sur
-    /// les 20 dernières semaines.
-    private func missedDays(_ stats: HistoryStats) -> Set<Date> {
-        guard exercise != nil, let plan = stats.plan(all: sessions) else { return [] }
-        let weekdays = Schedule.days(Schedule.saved(exercise ?? .auto) ?? Schedule.defaultWeekdays(plan.perWeek))
-        // Pas de séance prévue pendant les pauses, comme dans le Coaching : de la fin de la semaine
-        // allégée à la semaine de reprise, s'il y en a une ; du jour du test au bloc suivant (le
-        // lundi après le test fait)
-        let pauses = plan.blocks.enumerated().flatMap { index, block -> [Range<Date>] in
-            let deloadEnd = block.deload.addingTimeInterval(7 * 86_400)
-            let done = plan.tests.first { $0.block == index + 1 }
-            // Test fait : jusqu'au lundi suivant ; test manqué : jusqu'au bloc suivant ; en attente : sans fin
-            let next = index + 1 < plan.blocks.count ? plan.blocks[index + 1].start : Date.distantFuture
-            let end = done.map { Schedule.weekStart($0.date, calendar: stats.calendar).addingTimeInterval(7 * 86_400) } ?? next
-            var ranges = [block.test..<max(end, block.test)]
-            if let reprise = block.reprise, reprise > deloadEnd { ranges.append(deloadEnd..<reprise) }
-            return ranges
-        }
-        var missed = Set<Date>()
-        var week = Schedule.weekStart(stats.now, calendar: stats.calendar)
-        for _ in 0..<20 where week >= plan.anchor {
-            let end = week.addingTimeInterval(7 * 86_400)
-            let inWeek = stats.sessions.filter { $0.start >= week && $0.start < end }
-            for day in Schedule.week(weekdays, start: week, sessions: inWeek, now: stats.now, calendar: stats.calendar).days
-                where day.missed && day.date >= plan.firstDay && !pauses.contains(where: { $0.contains(day.date) }) {
-                missed.insert(day.date)
-            }
-            week = week.addingTimeInterval(-7 * 86_400)
-        }
-        return missed
     }
 
     /// Un exercice jamais pratiqué (ou dont on a supprimé les séances) n'est pas dans le filtre :

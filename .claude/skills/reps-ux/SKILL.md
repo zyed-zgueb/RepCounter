@@ -33,7 +33,7 @@ Plus une donnée est vue souvent, plus elle est réduite et proche du compteur. 
 
 ## 3. Rassembler ce qui se ressemble ou se complète
 
-- **Où je vais** (Coaching, un exercice en titre, glissement pour passer à un autre) : d'abord la séance du jour (carte Aujourd'hui : cibles en barres, repos, intensité, Démarrer ; la ligne sous le cadran en est le résumé), puis l'objectif et où j'en suis (ou, sans objectif, une invitation avec une proposition), le chemin (seulement avec un objectif), le bloc sur sa frise, prévu face au fait. Le plan et sa vérification restent ensemble. Sans objectif, le plan tourne quand même : l'écran ne se vide jamais.
+- **Où je vais** (Coaching, un exercice en titre, glissement pour passer à un autre) : d'abord la séance du jour (carte Aujourd'hui : cibles en barres, repos, intensité, Démarrer ; ou « repos conseillé » et sa raison en quelques mots, avec la prochaine séance et « Démarrer quand même » ; la ligne sous le cadran en est le résumé ; aucun réglage de jours : le coach décide chaque jour, Science/METHODE-JOURS.md), puis l'objectif et où j'en suis (ou, sans objectif, une invitation avec une proposition), le chemin (seulement avec un objectif), le bloc sur sa frise, prévu face au fait. Le plan et sa vérification restent ensemble. Sans objectif, le plan tourne quand même : l'écran ne se vide jamais.
 - **Comment je suis** (carte État, dans le Coaching) : phase, Forme mesurée, ressenti (fatigue, effort). Une seule carte, jamais dispersée.
 - **D'où je viens** (Historique) : deux cartes. Strictement deux cartes. « 12 semaines » : la meilleure série en courbe (★ records) et le volume en barres, sur le même axe ; en tête le verdict de progression du score d'endurance (« ▲ en progrès », « = stable », « ▼ en recul », rien tant qu'il n'est pas établi) ; la tendance du volume étiquette les barres (« reps / sem. · ▲ 4 % »). Le score d'endurance n'a pas sa propre carte : il dit comment la performance évolue, comme « 12 semaines » ; son détail ouvre la page **Progrès** (score d'endurance, volume détaillé, régularité) en touchant la carte. « Journal » : les jours sur une frise horaire. La semaine en cours se lit dans le journal ; le suivi du plan (fait face au prévu) reste dans le Coaching.
 
@@ -47,7 +47,7 @@ Plus une donnée est vue souvent, plus elle est réduite et proche du compteur. 
 
 ## 5. L'intensité, une seule échelle de couleur
 
-Bleu (calme) → ambre (soutenu) → rouge (maximal), en dégradé. Calme : semaine allégée, séance légère. Soutenu : progression. Maximal : jour de test. Vert : objectif ou cible atteints (✓, ⚑). Une tendance (▲ = ▼) n'est pas une atteinte : elle reste en couleur de texte. Les alertes (séance manquée, semaine refaite, Forme basse) ne prennent pas de couleur : elles portent le symbole « ! ». L'orange n'est plus une couleur d'alerte.
+Bleu (calme) → ambre (soutenu) → rouge (maximal), en dégradé. Calme : semaine allégée, séance légère. Soutenu : progression. Maximal : jour de test. Vert : objectif ou cible atteints (✓, ⚑). Une tendance (▲ = ▼) n'est pas une atteinte : elle reste en couleur de texte. Les alertes (semaine refaite, test à faire, Forme basse) ne prennent pas de couleur : elles portent le symbole « ! ». L'orange n'est plus une couleur d'alerte.
 
 ## 6. Expliquer une fois, au moment utile
 
@@ -81,12 +81,12 @@ Des événements datés (séances, séries, tests) se placent sur un axe de temp
 
 - **Deux axes** : une ligne par jour, aujourd'hui en haut, on fait défiler pour remonter ; en abscisse l'heure du jour, le matin à gauche, le soir à droite. La plage (début, fin) se règle dans les Réglages, 06:00 → 23:00 par défaut, 6 h au moins, graduée toutes les 3 h.
 - **Une séance = sa silhouette**, posée à son heure : une barre fine par série, hauteur proportionnelle aux répétitions, verte si la cible de la série est atteinte. Plusieurs séances dans la journée tiennent sur la même ligne : c'est le but.
-- **Symboles** : ★ record ; Σ total du jour à droite ; ligne pointillée = repos ; « ! prévue, manquée » = séance du plan non faite ; < > = séance hors de la plage, posée au bord, jamais masquée.
+- **Symboles** : ★ record ; Σ total du jour à droite ; ligne pointillée = jour sans séance (jamais « manqué » : il n'y a pas de jours prévus) ; < > = séance hors de la plage, posée au bord, jamais masquée.
 - **Lisibilité des lignes** : deux nuances alternées (environ 5 % en thème sombre, 7 % en thème clair) ; aujourd'hui teinté de la couleur principale (environ 12 %) ; un filet plein sous chaque lundi pour séparer les semaines.
 - **Gestes** : la ligne du jour (44 pt) se touche en entière : une séance, on pousse son détail ; plusieurs, un menu les liste (heure et total) ; appui long, supprimer une séance.
 - **Accessibilité** : une étiquette par jour qui résume ses séances et son total.
 
-La même logique vaut ailleurs : une frise pour un bloc (semaines), une rangée L M M J V S D pour la semaine, une frise horaire pour la journée. Chaque échelle de temps a sa frise, et chacune apparaît là où l'on regarde à cette fréquence (voir section 1).
+La même logique vaut ailleurs : une frise pour un bloc (semaines), une frise horaire pour la journée. Chaque échelle de temps a sa frise, et chacune apparaît là où l'on regarde à cette fréquence (voir section 1).
 
 ## 11. Conformité Apple (HIG)
 

@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   simulation:
-    name: Simulation du compteur
+    name: Simulations (compteur et plan)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,6 +25,8 @@ jobs:
       - name: simulate_counter.py (doit rester exacte)
         working-directory: Simulation
         run: python3 simulate_counter.py --seeds 5
+      - name: plan.py (miroir du plan)
+        run: python3 Simulation/plan.py
 
   xcode:
     name: Compilation iOS

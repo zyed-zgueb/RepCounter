@@ -5,7 +5,7 @@ avant tout code.
 
 ## Cycle 1 : une base qui compile, et un coach qui décide des jours
 
-**Statut** : proposé, à valider par Vincent.
+**Statut** : validé par Vincent le 31/10, en construction.
 
 **Objectif (vérifiable)** : la CI est verte sur `main`, et sur l'iPhone le Coaching n'a plus
 aucun réglage de jours : chaque jour il propose une séance ou un repos, selon

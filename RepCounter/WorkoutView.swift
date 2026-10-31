@@ -1336,7 +1336,7 @@ private struct SessionSummary: View {
                             sets.map(String.init).joined(separator: " · ") + (done ? " ✓" : ""),
                             color: done ? theme.ok : theme.text)
                     if let week = plan.currentWeek {
-                        Text("séance \(week.done + (earlierToday.isEmpty ? 1 : 0)) / \(week.plannedSessions) de la semaine")
+                        Text("séance \(week.done + (earlierToday.isEmpty ? 1 : 0)) de la semaine")
                             .font(theme.font(11))
                             .foregroundStyle(theme.dim)
                     }

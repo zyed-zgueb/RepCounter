@@ -83,22 +83,11 @@ extension TrainingPlan.Week {
 }
 
 extension TrainingPlan {
-    /// La semaine en une ligne : « 2/4 · prochaine jeu. », « semaine faite 4/4 · prochaine lun. »,
-    /// « séance en plus · prochaine jeu. » (une séance faite aujourd'hui, un jour non prévu).
+    /// La suite, en une ligne : « test demain · prochaine lun. » un jour de repos (la raison du
+    /// repos d'abord), « prochaine demain » une fois la séance faite.
     var weekLine: String? {
-        let nextText = next.map { "prochaine \(Format.shortWeekday($0))" }
-        guard !days.isEmpty else { return nextText }
-        let done = days.filter { $0.sessions > 0 }.count
-        let extraToday = days.contains { $0.isToday && $0.sessions > 0 && !$0.planned }
-        let head: String
-        if extraToday {
-            head = "séance en plus"
-        } else if done >= perWeek {
-            head = "semaine faite \(done)/\(perWeek)"
-        } else {
-            head = "\(done)/\(perWeek)"
-        }
-        return [head, nextText].compactMap { $0 }.joined(separator: " · ")
+        let nextText = next.map { "prochaine \(Format.weekdayOrDate($0))" }
+        return [restReason?.short, nextText].compactMap { $0 }.joined(separator: " · ")
     }
 
     /// L'intensité de la semaine en cours (jour de test : maximale).
@@ -109,7 +98,8 @@ extension TrainingPlan {
 }
 
 /// La ligne du jour sous le cadran, en veille : « aujourd'hui · 29 · 25 · 22 · repos 1:30 »,
-/// « fait ✓ · 2/4 · prochaine ven. », ou « repos · 2/4 · prochaine ven. ». Démarrer reste possible.
+/// « fait ✓ · prochaine demain », ou « repos conseillé · test demain · prochaine lundi ».
+/// Démarrer reste possible.
 struct TodayLine: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
@@ -127,7 +117,7 @@ struct TodayLine: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// « aujourd'hui · 29 · 25 · 22 », « fait ✓ » ou « repos ».
+    /// « aujourd'hui · 29 · 25 · 22 », « fait ✓ » ou « repos conseillé ».
     @ViewBuilder
     private func lead(_ label: String) -> some View {
         switch plan.status {
@@ -139,12 +129,11 @@ struct TodayLine: View {
         case .done:
             Text(symbols: "fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
         case .rest:
-            Text("repos").fontWeight(.bold).foregroundStyle(theme.dim)
+            Text("repos conseillé").fontWeight(.bold).foregroundStyle(theme.dim)
         }
     }
 
-    /// La suite de la semaine, comme sous la rangée des jours du Coaching : « · 2/4 · prochaine
-    /// jeu. », « · semaine faite 4/4 · prochaine lun. », « · séance en plus · prochaine jeu. ».
+    /// La suite : « · test demain · prochaine lundi », « · prochaine demain ».
     @ViewBuilder
     private var trail: some View {
         if plan.status != .due, let line = plan.weekLine {
@@ -220,8 +209,8 @@ struct SetRow: View {
 // MARK: - Frise
 
 /// Le bloc sur sa frise (skill reps-ux, § 4 : jamais sur le cadran) : les semaines colorées par
-/// l'intensité (progression ambre, allégée bleue, test rouge), un point par séance (● faite,
-/// ○ prévue, ! manquée), et « tu es ici ».
+/// l'intensité (progression ambre, allégée bleue, test rouge), un point par séance faite, et
+/// « tu es ici ».
 struct BlockFrise: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
@@ -289,17 +278,13 @@ struct BlockFrise: View {
             }
             .frame(height: 10)
             HStack(spacing: 3) {
-                ForEach(0..<max(week.plannedSessions, week.done), id: \.self) { index in
-                    if index >= week.done && week.isPast {
-                        Text(symbols: "!").font(theme.font(8, .bold)).foregroundStyle(theme.text).frame(width: 6, height: 6)
-                    } else {
-                        Circle()
-                            .fill(index < week.done ? theme.text : .clear)
-                            .overlay(Circle().stroke(index < week.done ? theme.text : theme.line, lineWidth: 1))
-                            .frame(width: 6, height: 6)
-                    }
+                ForEach(0..<week.done, id: \.self) { _ in
+                    Circle()
+                        .fill(theme.text)
+                        .frame(width: 6, height: 6)
                 }
             }
+            .frame(minHeight: 6)
         }
         .frame(maxWidth: .infinity)
     }
@@ -366,14 +351,11 @@ private struct HereWidthKey: PreferenceKey {
 // MARK: - Cartes du Coaching
 
 /// Le bloc en cours : « B2 · P3 », l'intensité en mots et en jauge, la date du test, la frise,
-/// la semaine jour par jour, et le prévu face au fait en barres.
+/// et le fait face aux cibles en barres.
 struct BlockCard: View {
     @Environment(\.theme) private var theme
     @Environment(\.dynamicTypeSize) private var typeSize
     let plan: TrainingPlan
-    let exercise: Exercise
-    /// Un jour de séance a été déplacé.
-    let onDaysChanged: () -> Void
 
     var body: some View {
         let level = plan.weekIntensity
@@ -405,194 +387,15 @@ struct BlockCard: View {
                     .frame(width: 112, height: 64)
             }
             BlockFrise(plan: plan)
-            if !plan.days.isEmpty {
-                WeekDays(plan: plan, exercise: exercise, onChange: onDaysChanged)
-            }
             WeekBars(plan: plan)
         }
         .coachingCard(theme)
     }
 }
 
-/// La semaine en cours, L M M J V S D, en lecture seule : le placement est un choix de l'app ;
-/// « ✎ jours » ouvre la feuille qui le change (autant de jours que de séances par semaine). Une
-/// ligne dessous dit la suite (« 2/4 · prochaine jeu. »).
-struct WeekDays: View {
-    @Environment(\.theme) private var theme
-    @State private var editing = false
-    /// « Jours réinitialisés », une seule fois après une remise aux jours proposés.
-    @State private var showsResetNotice = false
-    let plan: TrainingPlan
-    let exercise: Exercise
-    let onChange: () -> Void
-    static let letters = ["L", "M", "M", "J", "V", "S", "D"]
-    /// Pour VoiceOver : « M » se lirait pareil pour mardi et mercredi.
-    static let names = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
-
-    var body: some View {
-        let spaced = plan.days.filter { $0.sessions >= 2 }
-        let color = theme.intensity(plan.weekIntensity)
-        VStack(alignment: .leading, spacing: 6) {
-            // La rangée affiche seulement : les jours se changent par « ✎ jours »
-            HStack(spacing: 4) {
-                ForEach(Array(plan.days.enumerated()), id: \.offset) { index, day in
-                    cell(index, day, color: color)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(accessibility(index, day))
-                }
-                Button { editing = true } label: {
-                    Label("jours", systemImage: "pencil")
-                        .font(theme.font(13, .semibold))
-                        .foregroundStyle(theme.primary)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Modifier les jours d'entraînement")
-            }
-            if let line = plan.weekLine {
-                Text(symbols: line)
-                    .font(theme.font(12))
-                    .foregroundStyle(theme.text)
-            }
-            if showsResetNotice {
-                Text("Jours réinitialisés : ils ne correspondaient plus à ton plan.")
-                    .font(theme.font(12))
-                    .foregroundStyle(theme.dim)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if let day = spaced.last {
-                MonitorLabel("séries espacées · \(Format.weekdayOrDate(day.date))")
-            }
-        }
-        .onAppear {
-            // Le plan a ignoré des jours incohérents : l'avis reste affiché tant que la vue est là
-            if plan.daysReset { showsResetNotice = true }
-        }
-        .sheet(isPresented: $editing) {
-            DaysEditor(exercise: exercise, perWeek: plan.perWeek,
-                       chosen: Set(plan.days.enumerated().filter { $0.element.planned }.map { $0.offset + 1 })) {
-                onChange()
-            }
-            .environment(\.theme, theme)
-            .preferredColorScheme(theme.colorScheme)
-        }
-    }
-
-    /// Prévu : cercle épais de la couleur d'intensité de la semaine ; repos : la lettre seule ;
-    /// fait : cercle plein (plus petit un jour non prévu) ; manqué : « ! » ; aujourd'hui souligné.
-    private func cell(_ index: Int, _ day: TrainingPlan.Day, color: Color) -> some View {
-        let done = day.sessions > 0
-        return VStack(spacing: 3) {
-            Text(Self.letters[index])
-                .font(theme.font(10, day.isToday ? .bold : .regular))
-                .foregroundStyle(day.planned || done ? theme.text : theme.dim)
-            ZStack {
-                if day.missed {
-                    Text(symbols: "!").font(theme.font(12, .bold)).foregroundStyle(theme.text)
-                } else if done && day.planned {
-                    Circle().fill(color)
-                } else if done {
-                    Circle().fill(color).frame(width: 8, height: 8)
-                } else if day.planned {
-                    Circle().stroke(color, lineWidth: 2)
-                }
-            }
-            .frame(width: 14, height: 14)
-            Rectangle()
-                .fill(day.isToday ? theme.text : .clear)
-                .frame(width: 10, height: 2)
-        }
-        .frame(maxWidth: .infinity, minHeight: 44)
-    }
-
-    /// « lundi, prévu, fait », « mardi, repos », « jeudi, prévu, manqué, aujourd'hui ».
-    private func accessibility(_ index: Int, _ day: TrainingPlan.Day) -> String {
-        var parts = [Self.names[index], day.planned ? "prévu" : "repos"]
-        if day.sessions > 0 { parts.append(day.planned ? "fait" : "séance en plus") }
-        if day.missed { parts.append("manqué") }
-        if day.isToday { parts.append("aujourd'hui") }
-        return parts.joined(separator: ", ")
-    }
-}
-
-/// « Jours d'entraînement » : les 7 jours cochables ; « Enregistrer » seulement quand le nombre de
-/// jours choisis est celui des séances par semaine du plan (on ne change pas ce nombre ici).
-private struct DaysEditor: View {
-    @Environment(\.theme) private var theme
-    @Environment(\.dismiss) private var dismiss
-    let exercise: Exercise
-    let perWeek: Int
-    @State var chosen: Set<Int>
-    let onSave: () -> Void
-
-    var body: some View {
-        List {
-            Section {
-                ForEach(1...7, id: \.self) { day in
-                    Button {
-                        if chosen.contains(day) { chosen.remove(day) } else { chosen.insert(day) }
-                    } label: {
-                        HStack {
-                            Text(WeekDays.names[day - 1].capitalized)
-                                .foregroundStyle(theme.text)
-                            Spacer()
-                            if chosen.contains(day) {
-                                Image(systemName: "checkmark")
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(theme.primary)
-                            }
-                        }
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                    }
-                    .accessibilityAddTraits(chosen.contains(day) ? .isSelected : [])
-                }
-            } header: {
-                Text("\(perWeek) séances / semaine · \(chosen.count) choisie\(chosen.count > 1 ? "s" : "")")
-            } footer: {
-                if chosen.count != perWeek {
-                    Text("Choisis \(perWeek) jours.")
-                }
-            }
-            Section {
-                Button("Revenir aux jours proposés") {
-                    Schedule.save(nil, for: exercise)
-                    onSave()
-                    dismiss()
-                }
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(theme.background.ignoresSafeArea())
-        .sensoryFeedback(.selection, trigger: chosen)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Annuler") { dismiss() }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Enregistrer") {
-                    Schedule.save(Array(chosen), for: exercise)
-                    onSave()
-                    dismiss()
-                }
-                .disabled(chosen.count != perWeek)
-            }
-        }
-        .navigationTitle("Jours d'entraînement")
-        .navigationBarTitleDisplayMode(.inline)
-        .embeddedInNavigation()
-        .presentationDetents([.large])
-    }
-}
-
-private extension View {
-    /// La feuille a sa propre barre (Annuler, Enregistrer).
-    func embeddedInNavigation() -> some View { NavigationStack { self } }
-}
-
-/// Prévu face au fait (Swift Charts), une barre par semaine du bloc : barre pâle = prévu (couleur
-/// de l'intensité), pleine = fait, ✓ si atteint, ← pour la semaine en cours.
+/// Prévu face au fait (Swift Charts), une barre par semaine du bloc : barre pâle = prévu, les cibles
+/// des séances faites (pas de nombre de séances attendu : METHODE-JOURS.md), couleur de
+/// l'intensité ; pleine = fait, ✓ si atteint, ← pour la semaine en cours.
 struct WeekBars: View {
     @Environment(\.theme) private var theme
     @ScaledMetric(relativeTo: .body) private var height: CGFloat = 100
@@ -986,9 +789,9 @@ struct PlanInfoView: View {
                     section("Le repos",
                             "Le tien : ton repos habituel pour l'exercice, arrondi à 15 s. La durée du repos ne change pas les gains de force (ACSM 2026). Des séries faites séparément dans la journée comptent dans la séance du jour, sans pénalité (« séries espacées ») ; la suivante repart de la cible de la série 1. L'ACSM ne les étudie pas : le plan ne les prévoit pas.")
                     section("Les jours",
-                            "Les séances sont espacées dans la semaine : 2 séances, lundi et jeudi ; 3, lundi, mercredi et vendredi. Touche un jour dans le Coaching pour le déplacer. Une séance faite un autre jour compte, et remplace la prochaine prévue. L'ACSM ne fixe pas l'espacement : ce placement est un choix de l'app.")
+                            "Pas de jours à choisir : une séance est courte et se glisse n'importe quand dans la journée. Chaque jour, l'app propose une séance, ou conseille un repos dans quatre cas : la veille du test ; en fatigue persistante (Meeusen et al. 2013) ; le lendemain d'une séance notée « Très difficile » (effort 7 ou plus) ; après 20 séries sur les 7 derniers jours (au-delà d'environ 18 à 20 séries par semaine, les gains décroissent, ACSM 2026, établi pour le volume musculaire). Un repos est une proposition : une séance faite ce jour-là compte. À volume égal, la fréquence change peu le résultat (Grgic et al. 2018, résumé). Moins de 2 séances en 7 jours : l'app rappelle le minimum (ACSM 2026 : « at least twice weekly »). La veille du test et les seuils de 7 et de 20 sont des choix de l'app.")
                     section("Le test",
-                            "Sourcé : le test recale ton niveau, et les cibles du bloc suivant en partent (ACSM 2026, p. 863 : « regular strength testing »). Le reste est un choix de l'app. Le jour de test est le premier jour de séance après la semaine allégée ; c'est toi qui le lances (« ◆ Lancer le test »), et seules les séries faites en mode test comptent. Un échauffement facile est conseillé, jamais compté : environ un tiers de ton dernier max, puis 2 minutes de repos. Le résultat est ta meilleure série en mode test ; une 2e tentative est possible après au moins 3 minutes, le meilleur des deux compte. La série s'arrête quand le compteur détecte la fin. Au bloc 1 (et à un nouveau bloc 1 après plus de 28 jours sans séance), 2 tests sur 2 jours de la première semaine, et le meilleur sert de départ. Un test lancé en semaine allégée compte et clôt le bloc ; lancé en semaine de progression, il ne clôt pas le bloc mais relève le max s'il le dépasse. Plusieurs tests : le meilleur, du premier test au début du bloc suivant. Lancé puis abandonné sans série : il reste à faire. Pas lancé : « à faire » à chaque jour de séance suivant, avec une séance allégée en attendant (elle compte comme séance, pas comme test) ; 7 jours après le jour prévu, le bloc suivant repart de ton dernier max, sans recalage. Plus de 7 jours sans séance : une semaine de reprise avant le test. Entre deux tests, un écart de moins d'environ 10 % se lit « dans la variation » (seuil provisoire ; principe : Hopkins). Entre deux tests, une série qui dépasse ton max le relève : le nouveau max est le nombre de répétitions faites (on ne suppose pas de réserve : on se trompe d'environ 1 répétition en l'estimant, Halperin et al. 2022 ; le test de fin de bloc mesure le reste), et les cibles suivent dès la séance suivante. Pas de mode test pour « Autre exercice ».")
+                            "Sourcé : le test recale ton niveau, et les cibles du bloc suivant en partent (ACSM 2026, p. 863 : « regular strength testing »). Le reste est un choix de l'app. Le jour de test est le lundi qui suit la semaine allégée ; c'est toi qui le lances (« ◆ Lancer le test »), et seules les séries faites en mode test comptent. Un échauffement facile est conseillé, jamais compté : environ un tiers de ton dernier max, puis 2 minutes de repos. Le résultat est ta meilleure série en mode test ; une 2e tentative est possible après au moins 3 minutes, le meilleur des deux compte. La série s'arrête quand le compteur détecte la fin. Au bloc 1 (et à un nouveau bloc 1 après plus de 28 jours sans séance), 2 tests sur 2 jours de la première semaine, et le meilleur sert de départ. Un test lancé en semaine allégée compte et clôt le bloc ; lancé en semaine de progression, il ne clôt pas le bloc mais relève le max s'il le dépasse. Plusieurs tests : le meilleur, du premier test au début du bloc suivant. Lancé puis abandonné sans série : il reste à faire. Pas lancé : « à faire » les jours suivants, avec une séance allégée en attendant (elle compte comme séance, pas comme test) ; 7 jours après le jour prévu, le bloc suivant repart de ton dernier max, sans recalage. Plus de 7 jours sans séance : une semaine de reprise avant le test. Entre deux tests, un écart de moins d'environ 10 % se lit « dans la variation » (seuil provisoire ; principe : Hopkins). Entre deux tests, une série qui dépasse ton max le relève : le nouveau max est le nombre de répétitions faites (on ne suppose pas de réserve : on se trompe d'environ 1 répétition en l'estimant, Halperin et al. 2022 ; le test de fin de bloc mesure le reste), et les cibles suivent dès la séance suivante. Pas de mode test pour « Autre exercice ».")
                     section("Après une longue absence",
                             "Après plus de 28 jours sans séance, le plan ne propose qu'une séance de reprise, libre : elle ouvre un nouveau bloc 1, ancré sur elle. Ce bloc commence, comme le tout premier, par 2 tests dans la première semaine ; sans ces tests, la semaine 1 calibre (les cibles suivent chaque séance), puis les cibles restent fixes jusqu'au test, sauf si une série relève le max. Le seuil de 28 jours et ce calibrage sont des choix de l'app.")
                     section("La progression",
@@ -998,11 +801,11 @@ struct PlanInfoView: View {
                     section("La semaine allégée",
                             "7 jours à volume réduit : la moitié des séries, arrondie au-dessus (part choisie par l'app). Réduire le volume fait consensus (Bell et al. 2023) ; les athlètes de force allègent en moyenne 6,4 jours (Rogerson et al. 2024). L'ACSM ne traite pas des décharges.")
                     section("Quand ça décroche",
-                            "Une semaine de progression avec des séances manquées, ou deux séances en Forme basse, est refaite (deux fois au plus par bloc). Le test recule d'autant, et la date de l'objectif aussi. Forme basse aujourd'hui : séance légère, la moitié des séries. Ces règles sont des choix de l'app ; deux mesures plutôt qu'une, pour ne pas confondre une baisse et le bruit (Hopkins 2000) ; au-delà de 2 semaines de baisse, une semaine allégée (Meeusen et al. 2013).")
+                            "Une semaine de progression avec moins de 2 séances (une seule la semaine où le plan commence en cours de semaine), ou deux séances en Forme basse, est refaite (deux fois au plus par bloc). Le test recule d'autant, et la date de l'objectif aussi. Forme basse aujourd'hui : séance légère, la moitié des séries. Ces règles sont des choix de l'app ; deux mesures plutôt qu'une, pour ne pas confondre une baisse et le bruit (Hopkins 2000) ; au-delà de 2 semaines de baisse, une semaine allégée (Meeusen et al. 2013).")
                     section("Mesuré face à attendu",
                             "L'attendu est le rythme qu'il te faut pour aller de ton départ à ton objectif à la date choisie : ce n'est pas une prédiction, aucune courbe de progression au poids du corps n'est publiée. « En avance » ou « en retard » seulement après 3 tests, quand la pente de tes tests (Theil-Sen, intervalle à 99 %, Sen 1968) est sûrement au-dessus ou au-dessous du rythme nécessaire.")
                     section("Références",
-                            "Currier et al. (2026). Resistance training prescription for muscle function, hypertrophy and physical performance in healthy adults: an overview of reviews. Med Sci Sports Exerc 58(4):851–872. Bell et al. (2023), Sports Med Open 9:87. Rogerson et al. (2024), Sports Med Open 10:26. Meeusen et al. (2013), Med Sci Sports Exerc 45(1):186–205. Hopkins (2000), Sports Med 30(1):1–15. Sen (1968), J Am Stat Assoc 63:1379–1389. Halperin et al. (2022), Sports Med 52:377–390 (résumé).")
+                            "Currier et al. (2026). Resistance training prescription for muscle function, hypertrophy and physical performance in healthy adults: an overview of reviews. Med Sci Sports Exerc 58(4):851–872. Bell et al. (2023), Sports Med Open 9:87. Rogerson et al. (2024), Sports Med Open 10:26. Meeusen et al. (2013), Med Sci Sports Exerc 45(1):186–205. Hopkins (2000), Sports Med 30(1):1–15. Sen (1968), J Am Stat Assoc 63:1379–1389. Halperin et al. (2022), Sports Med 52:377–390 (résumé). Grgic et al. (2018), Sports Med 48(5):1207–1220 (résumé).")
                     section("Séance faite",
                             "Une séance compte comme faite dès que le total prévu est atteint, même si les séries diffèrent un peu (choix de l'app).")
                 }

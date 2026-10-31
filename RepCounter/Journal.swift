@@ -95,16 +95,14 @@ private struct DayRangeBar: View {
 /// Le journal de l'historique (skill reps-ux, § 9) : une ligne par jour, aujourd'hui en haut ;
 /// en abscisse l'heure (plage des Réglages, graduée toutes les 3 h). Chaque séance est posée à son
 /// heure en silhouette (une barre fine par série, verte si sa cible est atteinte), ★ si record ;
-/// le total du jour à droite (Σ). Jour de repos : pointillés ; séance prévue manquée :
-/// « ! prévue, manquée ». Lignes alternées, aujourd'hui teinté, un filet sous chaque lundi.
+/// le total du jour à droite (Σ). Jour sans séance : pointillés (jamais « manqué » : pas de jours
+/// prévus, METHODE-JOURS.md). Lignes alternées, aujourd'hui teinté, un filet sous chaque lundi.
 /// Toucher une silhouette ouvre la séance.
 struct JournalCard: View {
     @Environment(\.theme) private var theme
     @AppStorage(JournalHours.startKey) private var start = JournalHours.defaultStart
     @AppStorage(JournalHours.endKey) private var end = JournalHours.defaultEnd
     let stats: HistoryStats
-    /// Jours où une séance prévue par le plan a été manquée (début du jour).
-    let missed: Set<Date>
     let onDelete: (SessionRecord) -> Void
     @State private var shownDays = 28
     /// La séance ouverte (poussée dans l'historique).
@@ -298,12 +296,7 @@ struct JournalCard: View {
                         .position(x: labelWidth + width * share(minutes), y: rowHeight / 2)
                 }
                 if sessions.isEmpty {
-                    if missed.contains(day) {
-                        Text(symbols: "! prévue, manquée")
-                            .font(theme.font(9))
-                            .foregroundStyle(theme.text)
-                            .position(x: labelWidth + width / 2, y: rowHeight / 2)
-                    } else if day < stats.calendar.startOfDay(for: stats.now) {
+                    if day < stats.calendar.startOfDay(for: stats.now) {
                         Path { path in
                             path.move(to: CGPoint(x: labelWidth, y: rowHeight / 2))
                             path.addLine(to: CGPoint(x: labelWidth + width, y: rowHeight / 2))
@@ -354,7 +347,7 @@ struct JournalCard: View {
 
     private func accessibility(_ day: Date, sessions: [SessionRecord], total: Int) -> String {
         let name = Format.dayName(day)
-        guard !sessions.isEmpty else { return missed.contains(day) ? "\(name) : séance prévue, manquée" : "\(name) : repos" }
+        guard !sessions.isEmpty else { return "\(name) : repos" }
         let reached = sessions.filter { session in
             let sets = session.orderedSets.filter { $0.target != nil }
             return !sets.isEmpty && sets.allSatisfy { $0.reps >= ($0.target ?? .max) }

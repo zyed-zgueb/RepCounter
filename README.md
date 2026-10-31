@@ -98,11 +98,8 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
   attendue en pointillés, l'objectif ⚑, aujourd'hui ▼ ; les blocs en simples repères (un filet,
   B1…Bn) ; légende « ● départ · • séances · ◆ test · ┄ attendu » ; « ◆ prochain test » ;
   verdict ▲ = ▼ et projection après 3 tests. **Bloc** : « B2 · P3 », l'intensité en mots et en jauge (demi-cercle, aiguille,
-  repères A, P, ◆), la frise, la semaine L M M J V S D en lecture seule (prévu : cercle épais de
-  la couleur d'intensité ; repos : la lettre seule ; fait : cercle plein, plus petit un jour non
-  prévu ; ! manqué ; aujourd'hui souligné) avec « ✎ jours » et une ligne « 2/4 · prochaine jeu. »,
-  le prévu
-  face au fait en barres (pâle prévu, plein fait, ✓, ←). **État** : la phase en pastille, la Forme en courbe sur ses
+  repères A, P, ◆), la frise (un point par séance faite), le prévu
+  face au fait en barres (prévu = cibles des séances faites) (pâle prévu, plein fait, ✓, ←). **État** : la phase en pastille, la Forme en courbe sur ses
   8 dernières séances avec sa bande, la fatigue sur 5 points, l'effort sur 10 graduations ; une
   touche ouvre la charge, la décharge et la courbe de Forme. En veille, un **point d'état** sur
   la cible, sur l'échelle d'intensité ; une astuce TipKit l'explique une seule fois (ses trois
@@ -171,9 +168,9 @@ et dans le panneau Forme de l'historique (`Form.swift`).
 Avec un objectif (Coaching), le plan d'un exercice se déduit de l'objectif et des séances faites
 (`Plan.swift`), rien d'autre n'est stocké. Un **bloc** : 3 semaines de progression, 1 semaine
 allégée (7 jours à volume réduit : Bell et al. 2023, Rogerson et al. 2024), puis un **test
-annoncé** (méthode : `Science/METHODE-TEST.md`, branche de la session Science du sport). Sourcé :
-le test recale le niveau (ACSM 2026, p. 863). Choix de l'app : le **jour de test** est le premier
-jour de séance après la semaine allégée ; la personne le **lance** (« ◆ Lancer le test ») et
+annoncé** (méthode : `Science/METHODE-TEST.md`). Sourcé :
+le test recale le niveau (ACSM 2026, p. 863). Choix de l'app : le **jour de test** est le lundi
+qui suit la semaine allégée ; la personne le **lance** (« ◆ Lancer le test ») et
 seules les séries faites **en mode test** comptent (rôle `SetRecord.role` : échauffement, test).
 **Échauffement** conseillé, jamais compté (~⅓ du dernier max, puis 2:00) ; **résultat** = la
 meilleure série en mode test, **2e tentative** possible après 3:00 ; fin de série détectée par le
@@ -181,7 +178,7 @@ compteur. **Bloc 1** (et nouveau bloc 1 après plus de 28 jours) : 2 tests sur 2
 première semaine, le meilleur sert de départ. Test lancé en **semaine allégée** : il clôt le bloc ;
 en **progression** : il relève seulement le max s'il le dépasse ; plusieurs tests : le meilleur
 jusqu'au bloc suivant ; abandonné sans série : il reste à faire. **Pas lancé** : « ! ◆ test à
-faire » à chaque jour de séance suivant, séance allégée en attendant (comptée comme séance, ni test
+faire » les jours suivants, séance allégée en attendant (comptée comme séance, ni test
 ni séance habituelle) ; **7 jours** après le jour prévu, le bloc suivant repart du dernier max sans
 recalage (◆ creux « ! » sur le chemin, objectif décalé « +n sem. »). Plus de 7 jours sans séance
 avant le test : une **semaine de reprise** d'abord. Un écart de moins de ~10 % entre deux tests se
@@ -194,8 +191,8 @@ absence** : plus de 28 jours sans séance, la carte Aujourd'hui propose une séa
 (le chemin et l'objectif restent visibles) ; elle ouvre un nouveau bloc 1, ancré sur elle. Le
 plan n'est jamais vide pour un exercice qui a un historique, sauf « Autre exercice » (pas de
 coaching : ni plan ni objectif). Sans tests de calibrage, la **semaine 1 calibre** (les cibles
-suivent chaque séance), puis les cibles sont figées jusqu'au test, sauf max relevé. Une semaine de progression finie avec des séances manquées, ou deux séances en Forme
-basse, est **refaite** (deux fois au plus par bloc) : le test et la date de l'objectif reculent
+suivent chaque séance), puis les cibles sont figées jusqu'au test, sauf max relevé. Une semaine de progression finie avec moins de 2 séances (une seule la semaine où le
+plan commence en cours de semaine), ou deux séances en Forme basse, est **refaite** (deux fois au plus par bloc) : le test et la date de l'objectif reculent
 d'autant, et le Coaching l'affiche. Forme basse aujourd'hui : séance légère.
 
 **Prescription** (`Prescription.swift`, un seul module), d'après la prise de position de l'ACSM
@@ -219,18 +216,16 @@ l'app : le rythme 3 + 1 et le test (l'ACSM ne trouve pas la périodisation supé
 des séries (arrondie au-dessus) en semaine allégée et en séance légère, la semaine refaite, la
 règle « séance faite » (total prévu atteint).
 
-**Les jours** : les séances sont espacées dans la semaine (2 : lundi, jeudi ; 3 : lundi, mercredi,
-vendredi ; 4 : lundi, mardi, jeudi, vendredi) ; choix de l'app, l'ACSM ne fixant pas
-l'espacement. La rangée L M M J V S D du Coaching ne se modifie plus d'une touche : « ✎ jours »
-ouvre « Jours d'entraînement » (7 jours cochables, « n séances / semaine · m choisies »,
-« Enregistrer » seulement si m = n, sinon « Choisis n jours » ; « Revenir aux jours proposés » ;
-« Annuler »). Le nombre de séances par semaine reste celui du plan (au moins 2). Des jours
-enregistrés qui ne correspondent plus à ce nombre sont ignorés : retour aux jours proposés, et
-« Jours réinitialisés : ils ne correspondaient plus à ton plan » une fois. Une séance faite un
-jour non prévu compte et remplace la prochaine prévue. Sous la rangée et en veille, la suite de
-la semaine : « 2/4 · prochaine jeu. », « semaine faite 4/4 · prochaine lun. », « séance en plus ·
-prochaine jeu. » (en veille : « aujourd'hui · 29 · 25 · 22 · repos 1:30 » un jour de séance,
-sinon « fait ✓ · … » ou « repos · … ») ; Démarrer reste toujours possible.
+**Les jours** (`Science/METHODE-JOURS.md`, décision de Vincent) : aucun réglage. Une séance est
+courte et se glisse n'importe quand : chaque jour, l'app propose la séance, sauf **repos
+conseillé** dans quatre cas : la veille du test ; en fatigue persistante ; le lendemain d'une
+séance notée « Très difficile » (effort ≥ 7) ; après 20 séries sur les 7 derniers jours (ACSM
+2026, p. 864 : rendements décroissants au-delà de ~18–20 séries par semaine, établi pour
+l'hypertrophie). Un repos est une proposition : une séance faite ce jour-là compte, et aucun jour
+n'est « manqué ». Moins de 2 séances sur 7 jours : « au moins 2 séances par semaine » dans la
+carte Aujourd'hui. En veille, sous le cadran : « aujourd'hui · 29 · 25 · 22 · repos 1:30 »,
+« fait ✓ · prochaine demain » ou « repos conseillé · test demain » ; Démarrer reste toujours
+possible. Les jours choisis des anciennes versions sont effacés au lancement.
 
 **Pendant la séance** : sous le cadran, une case par série (« 29 ✓ · 25 ← · 22 ») ; en
 récupération, « Ensuite · série 2 · 25 » ou « Dernière série » ; un accord aigu quand la cible de
@@ -246,8 +241,10 @@ d'objectif (série max).
 
 Validation : `python3 Simulation/plan.py` (miroir Python : bloc régulier, semaine allégée, jour
 de test, bloc suivant recalé sur le test, séances manquées, Forme basse × 2, plafond des semaines
-refaites, séance légère, 2 séances par semaine au moins, cibles selon la baisse habituelle ou par
-défaut, réajustement en séance, séries espacées, placement et déplacement des jours, test sur la
+refaites, séance légère, rappel du minimum de 2 séances, cibles selon la baisse habituelle ou par
+défaut, réajustement en séance, séries espacées, coach au jour le jour (séance proposée, repos
+conseillé la veille du test, en fatigue persistante, après une séance très difficile, après
+20 séries en 7 jours ; séance faite un jour de repos), test sur la
 première série, semaine de reprise avant le test, longue absence et nouveau bloc 1, calibrage de
 la semaine 1 ; test annoncé : échauffement exclu, 2e tentative, tests sur plusieurs jours, test
 anticipé en semaine allégée et en progression, abandon, test non lancé et attente de 7 jours,
