@@ -5,7 +5,7 @@ avant tout code.
 
 ## Cycle 1 : une base qui compile, et un coach qui décide des jours
 
-**Statut** : validé par Vincent le 31/10, en construction.
+**Statut** : livré le 31/10, en recette (`Process/RECETTE-CYCLE-1.md`).
 
 **Objectif (vérifiable)** : la CI est verte sur `main`, et sur l'iPhone le Coaching n'a plus
 aucun réglage de jours : chaque jour il propose une séance ou un repos, selon
@@ -30,7 +30,7 @@ aucun réglage de jours : chaque jour il propose une séance ou un repos, selon
 2. **Sources scientifiques bloquées** (PubMed Central, Europe PMC, jssm.org, csep.ca).
    *Recommandé : ouvrir ces domaines dans le réseau de l'environnement* ; sinon, déposer les PDF
    dans `Science/sources/`.
-3. **Le cadrage ci-dessus vous va-t-il ?** Un « oui » suffit pour lancer le code.
+3. ~~Le cadrage~~ : **oui** (Vincent, 31/10).
 
 ## Backlog
 - Rafraîchir la ligne du jour au passage de minuit, app ouverte (aucun observateur aujourd'hui ;
