@@ -7,7 +7,9 @@ Les plus récentes en haut. « V » = décidé par Vincent ; « B » = décidé 
 |---|---|---|---|
 | 2026-10-31 | Nouvelle organisation : Vincent, un Builder, un Reviewer ponctuel ; règles dans `CLAUDE.md`. Les sessions Produit, Développement, Relecture, Science du sport et Contrôle du process sont closes. | V | Cinq sessions convergeaient mal, consommaient beaucoup et faisaient de Vincent le relais et le compilateur. |
 | 2026-10-31 | Les documents de méthode (`Science/`) sont ramenés sur `main` depuis `science/audit-planification`. | V | Le code citait `Science/METHODE-TEST.md`, absent de `main`. |
-| 2026-10-31 | Jours d'entraînement : la personne choisit N jours par semaine au plus ; le plan s'adapte à N (règles 1 à 9). Remplace la réinitialisation des jours de 72c3383. | V | `Science/METHODE-JOURS.md`. **Pas encore dans le code** (voir `Process/CYCLE.md`). |
+| 2026-10-31 | Règles du coach quotidien : séance par défaut ; repos conseillé seulement la veille du test, en fatigue persistante, après une séance « Très difficile », ou au-delà de 20 séries sur 7 jours ; un repos reste une proposition. | B | `Science/METHODE-JOURS.md`, règles 1 à 8. |
+| 2026-10-31 | **Plus de réglage de jours.** Le coach suppose qu'on peut s'entraîner tous les jours et propose chaque jour une séance ou un repos. Remplace « N jours au plus » (même jour) et la réinitialisation des jours (72c3383). | V | Les pompes sont courtes et se glissent n'importe quand dans une journée. **Pas encore dans le code** (`Process/CYCLE.md`). |
+| 2026-10-31 | ~~Jours d'entraînement : N jours par semaine au plus.~~ Remplacée par la décision ci-dessus. | V | — |
 | 2026-10-30 | Test annoncé : jour de test visible, la personne lance elle-même la série max ; max relevé = répétitions faites. | V | `Science/METHODE-TEST.md` ; commits 31c8351, 16ada77. |
 | 2026-10-30 | Cas limites du test, de la reprise, du journal, des verdicts, de l'objectif atteint. | V | Commit 609d333. |
 | 2026-10-30 | Tendances en couleur de texte ; vert du test seulement sur un gain réel. | V | Skill reps-ux § 5 ; Hopkins. |

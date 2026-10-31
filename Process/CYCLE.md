@@ -3,35 +3,34 @@
 Ce fichier est réécrit à chaque cycle (l'historique reste dans git). Vincent valide le cadrage
 avant tout code.
 
-## Cycle 1 : repartir sur une base qui compile et qui suit les décisions
+## Cycle 1 : une base qui compile, et un coach qui décide des jours
 
 **Statut** : proposé, à valider par Vincent.
 
-**Objectif (vérifiable)** : la CI est verte sur `main`, et le plan applique la règle des jours
-validée (`Science/METHODE-JOURS.md`), vérifié sur l'iPhone par la recette.
+**Objectif (vérifiable)** : la CI est verte sur `main`, et sur l'iPhone le Coaching n'a plus
+aucun réglage de jours : chaque jour il propose une séance ou un repos, selon
+`Science/METHODE-JOURS.md`.
 
 **Dedans**
-- Faire passer la CI : corriger tout ce que Xcode refuse dans le code actuel (jamais compilé par
-  un agent jusqu'ici).
-- Appliquer `Science/METHODE-JOURS.md` : N choisi par la personne (l'habitude reste le défaut),
-  repos la veille du test, mention pour N = 1, repos placé par l'app jamais compté comme manqué.
-  Retirer la réinitialisation des jours de 72c3383 / ef25a42, que cette règle remplace.
-- Mettre `Simulation/plan.py` en phase avec le code.
+- Faire passer la CI : corriger ce que Xcode refuse dans le code actuel.
+- Retirer les jours : rangée et feuille des jours, « Jours réinitialisés », jours enregistrés,
+  `perWeek`, « semaine faite 2/4 », séances manquées (journal et historique).
+- Ajouter la décision du jour (règles 3 à 6) : « séance » ou « repos conseillé » avec sa raison
+  en quelques mots, sur la ligne sous le cadran et dans la carte Aujourd'hui du Coaching.
+- Jour de test sans jour fixe (règle 7).
+- Mettre `Simulation/plan.py` en phase, et le skill reps-ux et le (i) « Les jours » à jour.
 
 **Dehors (backlog)**
-- Audit complet des règles de planification (`Science/AUDIT-PLANIFICATION.md`, provisoire :
-  textes intégraux bloqués par le réseau).
+- Audit complet de la planification (`Science/AUDIT-PLANIFICATION.md`, provisoire).
 - Tout nouvel écran, nouvelle astuce, nouveau graphique.
 
 **Questions à Vincent**
-1. **La CI sur un Mac de GitHub** (runner macOS, minutes facturées au-delà du quota gratuit
-   pour un dépôt privé). *Recommandé : oui*, c'est ce qui vous retire le rôle de compilateur.
-   Sinon : vous compilez vous-même, mais une fois par lot seulement.
-2. **Sources scientifiques bloquées** : la session Science ne pouvait pas lire les textes
-   intégraux (PubMed Central, Europe PMC, jssm.org, csep.ca). *Recommandé : ouvrir ces domaines
-   dans le réseau de l'environnement* ; sinon, déposer les PDF dans `Science/sources/`.
-3. **Ce cycle est-il le bon premier pas ?** *Recommandé : oui* ; l'alternative serait de
-   d'abord valider le comptage sur de nouveaux enregistrements réels (4 seulement à ce jour).
+1. **La CI sur un Mac de GitHub** (minutes facturées au-delà du quota gratuit pour un dépôt
+   privé). *Recommandé : oui*, c'est ce qui vous retire le rôle de compilateur.
+2. **Sources scientifiques bloquées** (PubMed Central, Europe PMC, jssm.org, csep.ca).
+   *Recommandé : ouvrir ces domaines dans le réseau de l'environnement* ; sinon, déposer les PDF
+   dans `Science/sources/`.
+3. **Le cadrage ci-dessus vous va-t-il ?** Un « oui » suffit pour lancer le code.
 
 ## Backlog
 - Audit complet de la planification, une fois les textes intégraux accessibles.
