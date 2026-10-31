@@ -98,7 +98,8 @@ extension TrainingPlan {
 }
 
 /// La ligne du jour sous le cadran, en veille : « aujourd'hui · 29 · 25 · 22 · repos 1:30 »,
-/// « fait ✓ · prochaine demain », ou « repos conseillé · test demain · prochaine lundi ».
+/// « fait ✓ · prochaine demain » (« fait · cible non atteinte » sous le total prévu), ou
+/// « repos conseillé · test demain · prochaine lundi ».
 /// Démarrer reste possible.
 struct TodayLine: View {
     @Environment(\.theme) private var theme
@@ -117,7 +118,7 @@ struct TodayLine: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// « aujourd'hui · 29 · 25 · 22 », « fait ✓ » ou « repos conseillé ».
+    /// « aujourd'hui · 29 · 25 · 22 », « fait ✓ », « fait · cible non atteinte » ou « repos conseillé ».
     @ViewBuilder
     private func lead(_ label: String) -> some View {
         switch plan.status {
@@ -127,7 +128,12 @@ struct TodayLine: View {
                 Text(symbols: label).fontWeight(.bold).foregroundStyle(plan.today.color(theme))
             }
         case .done:
-            Text(symbols: "fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
+            if plan.targetMissed {
+                // Pas de vert ni de ✓ : la cible n'est pas atteinte (skill reps-ux § 5)
+                Text("fait · cible non atteinte").fontWeight(.bold).foregroundStyle(theme.text)
+            } else {
+                Text(symbols: "fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
+            }
         case .rest:
             Text("repos conseillé").fontWeight(.bold).foregroundStyle(theme.dim)
         }

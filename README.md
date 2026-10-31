@@ -214,7 +214,8 @@ L'ACSM ne fixe aucun dosage pour l'endurance musculaire (« insufficient data »
 applique les recommandations générales et vérifie par les tests ; le (i) le dit. Autres choix de
 l'app : le rythme 3 + 1 et le test (l'ACSM ne trouve pas la périodisation supérieure), la moitié
 des séries (arrondie au-dessus) en semaine allégée et en séance légère, la semaine refaite, la
-règle « séance faite » (total prévu atteint).
+règle « séance faite » : une séance terminée est faite ; sous le total prévu, « fait · cible non
+atteinte » (sans ✓ ni vert ; décision de Vincent).
 
 **Les jours** (`Science/METHODE-JOURS.md`, décision de Vincent) : aucun réglage. Une séance est
 courte et se glisse n'importe quand : chaque jour, l'app propose la séance, sauf **repos
@@ -224,7 +225,8 @@ séance notée « Très difficile » (effort ≥ 7) ; après 20 séries sur les 
 l'hypertrophie). Un repos est une proposition : une séance faite ce jour-là compte, et aucun jour
 n'est « manqué ». Moins de 2 séances sur 7 jours : « au moins 2 séances par semaine » dans la
 carte Aujourd'hui. En veille, sous le cadran : « aujourd'hui · 29 · 25 · 22 · repos 1:30 »,
-« fait ✓ · prochaine demain » ou « repos conseillé · test demain » ; Démarrer reste toujours
+« fait ✓ · prochaine demain » (« fait · cible non atteinte » sous le total prévu) ou « repos
+conseillé · test demain » ; Démarrer reste toujours
 possible. Les jours choisis des anciennes versions sont effacés au lancement.
 
 **Pendant la séance** : sous le cadran, une case par série (« 29 ✓ · 25 ← · 22 ») ; en

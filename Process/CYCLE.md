@@ -30,6 +30,9 @@ jour, l'app lui propose une séance, ou lui conseille un repos en disant pourquo
 **Questions d'utilisateur final** : aucune en attente.
 
 ## Backlog
+- **Prochain cycle proposé** : alléger l'écran de fin de séance (recette du cycle 1 : « grosse
+  densité d'infos, surcharge cognitive »). Demander à Vincent les 2–3 informations utiles.
+- Journal : les pointillés des jours sans séance sont trop pâles pour être vus (recette du cycle 1).
 - Rafraîchir la ligne du jour au passage de minuit, app ouverte (aucun observateur aujourd'hui ;
   relecture du cycle 1).
 - Audit complet de la planification. Les textes intégraux restent bloqués par le réseau de

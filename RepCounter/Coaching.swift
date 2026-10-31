@@ -339,9 +339,9 @@ private struct TodayCard: View {
                     .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 48, fontSize: 13))
             case .done:
                 HStack {
-                    Text(symbols: "✓ fait")
+                    Text(symbols: plan.targetMissed ? "fait · cible non atteinte" : "✓ fait")
                         .font(theme.font(15, .bold))
-                        .foregroundStyle(theme.ok)
+                        .foregroundStyle(plan.targetMissed ? theme.text : theme.ok)
                     Spacer()
                 }
                 TargetBars(targets: plan.todaySession?.targets ?? [], done: todaySets, color: plan.today.color(theme))

@@ -193,7 +193,8 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
                   else None if today[0] == "test" else rest_reason(sessions, int(now), test_day))
         if today[0] == "test" and any(s.test_best for s in today_sessions):
             status = "done"
-        elif today[0] != "test" and today_sessions and sum(s.total for s in today_sessions) >= planned_today:
+        elif today[0] != "test" and today_sessions:
+            # Une séance terminée est faite, cible atteinte ou non (décision de Vincent)
             status = "done"
         elif today_sessions or reason is None:
             status = "due"
@@ -201,8 +202,10 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
             status = "rest"
         recent = {int(s.day) for s in sessions if int(now) - 6 <= s.day < int(now) + 1}
         below = status == "due" and int(now) - first_day >= 7 and len(recent) < MIN_PER_WEEK
+        missed = (status == "done" and today[0] != "test"
+                  and sum(s.total for s in today_sessions) < planned_today)
         return dict(status=status, rest_reason=reason if status == "rest" else None,
-                    next=next_day(sessions, now, test_day), below_minimum=below)
+                    next=next_day(sessions, now, test_day), below_minimum=below, target_missed=missed)
 
     def waiting_weeks(test_day, day):
         late = int(day) - int(test_day)
@@ -471,7 +474,10 @@ def main():
     s = schedule(-28, 0, days=(0, 3))
     ok &= check("sans séance hier : séance proposée", make(0, s, 1.5), dict(status="due", next=2))
     s2 = s + [Session(1.5, [15, 15, 15])]
-    ok &= check("séance du jour faite", make(0, s2, 1.7), dict(status="done", next=2))
+    ok &= check("séance du jour faite", make(0, s2, 1.7), dict(status="done", next=2, target_missed=False))
+    # Séance terminée sous la cible (cibles 12 · 12 · 12, fait 8 · 12 · 12) : faite, cible non atteinte
+    ok &= check("séance sous la cible : faite, cible non atteinte", make(0, s + [Session(8.5, [8, 12, 12])], 8.7),
+                dict(status="done", target_missed=True))
     # (c) La séance d'hier « Très difficile » (effort ≥ 7) : repos conseillé, prochaine demain
     #     (semaine 2 : en semaine 1 du bloc 1, chaque jour propose un test de calibrage)
     w2 = schedule(-28, 8, days=(0, 3))
