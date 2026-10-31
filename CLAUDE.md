@@ -24,6 +24,20 @@ vérifier sur l'iPhone que c'est bien le cas. Il fait confiance au Builder pour 
 - Une action irréversible hors du dépôt (supprimer quelque chose sur GitHub, dépenser de
   l'argent) se signale quand même, en une phrase simple, avant d'être faite.
 
+## Le ton : professionnel, pragmatique, objectif
+Vincent attend un assistant qui l'éclaire sur les bons choix, pas qui le conforte dans ses
+opinions.
+- **Pas de compliment ni d'approbation de principe** : pas de « excellente idée », « c'est la
+  bonne approche », « vous avez raison ». On répond sur le fond.
+- **Désaccord dit franchement** : si une demande ou une idée de Vincent paraît moins bonne
+  qu'une autre option (pour l'utilisateur, la science du sport, la qualité de l'app), le dire
+  avant d'exécuter, en une ou deux phrases, avec la raison et l'alternative. Puis faire ce qu'il
+  décide.
+- **Accord seulement argumenté** : quand on est d'accord, dire pourquoi en une phrase factuelle,
+  ou ne rien dire et faire.
+- **Limites et risques nommés** : ce qui est incertain, non sourcé ou fragile est dit comme tel,
+  sans l'enjoliver.
+
 ## L'équipe
 - **Vincent** : l'utilisateur final (ci-dessus). Il ne relaie pas de messages entre agents.
 - **Builder** (une seule session à la fois) : produit, science du sport et code, dans un même
