@@ -101,7 +101,7 @@ struct TrainingPlan {
     let goal: Goal?
     /// Le début du plan (lundi de la semaine où il a commencé).
     let anchor: Date
-    /// Le premier jour du plan : les jours prévus avant lui (même semaine) ne comptent pas.
+    /// Le premier jour du plan : la semaine où il commence en cours de semaine n'exige qu'une séance.
     let firstDay: Date
     /// Les blocs, du premier au bloc en cours (bornes réelles), pour le graphique du chemin.
     let blocks: [Block]
@@ -113,7 +113,7 @@ struct TrainingPlan {
     let tests: [Test]
     /// Semaines refaites depuis le début de l'objectif : la date de l'objectif recule d'autant.
     let shiftWeeks: Int
-    /// La séance du jour (ou de la prochaine séance, un jour de repos).
+    /// La séance du jour (celle que « Démarrer quand même » lance un jour de repos conseillé).
     let today: Today
     let status: DayStatus
     /// La prochaine séance (après aujourd'hui) : le premier jour sans repos conseillé.
@@ -252,7 +252,10 @@ struct TrainingPlan {
                 case .test, .comeback: return 1
                 }
             }()
-            let reason: RestReason? = persistentFatigue ? .persistentFatigue : restReason(on: today0, testDate: testDate)
+            // Un jour de test (du jour, à faire, ou de calibrage), seule la fatigue persistante
+            // conseille un repos : l'effort d'une série max ne doit pas repousser le test suivant
+            let reason: RestReason? = persistentFatigue ? .persistentFatigue
+                : (today == .test ? nil : restReason(on: today0, testDate: testDate))
             let status: DayStatus
             if today == .test, todaySessions.contains(where: { testValue($0) != nil }) {
                 status = .done
@@ -264,7 +267,9 @@ struct TrainingPlan {
                 status = .rest
             }
             let recent = sorted.filter { $0.start >= dayOffset(-6, from: today0) && $0.start <= now }
-            let below = today0 >= dayOffset(7, from: firstDay) && trainingDays(recent) < Prescription.minSessionsPerWeek
+            // Le rappel du minimum, jamais un jour de repos conseillé ni une fois la séance faite
+            let below = status == .due && today0 >= dayOffset(7, from: firstDay)
+                && trainingDays(recent) < Prescription.minSessionsPerWeek
             return (status, status == .rest ? reason : nil, nextDay(testDate: testDate), below)
         }
         /// Les semaines d'attente du test (jours de retard, arrondis à la semaine supérieure) : la
@@ -476,7 +481,8 @@ struct TrainingPlan {
                 // Bloc 1, première semaine : les 2 tests de calibrage
                 today = .test
                 testStep = TestStep(number: calibrationDays + (todaySessions.contains { testValue($0) != nil } ? 0 : 1), of: 2)
-            } else if lowForm, current != nil {
+            } else if lowForm || persistentFatigue, current != nil {
+                // Forme basse, ou fatigue persistante si l'on s'entraîne quand même : séance légère
                 today = .light(Prescription.lighter(sessionNow))
             } else {
                 today = .session(sessionNow)
@@ -560,6 +566,9 @@ extension TrainingPlan {
     /// le test, ou, au-delà du bloc, la séance du jour.
     var upcoming: Today {
         guard let next else { return today }
+        // Bloc 1 : le test 1 / 2 fait, le 2e est proposé les jours suivants de la première semaine
+        if let step = testStep, step.number < step.of, let week = currentWeek,
+           next < week.start.addingTimeInterval(7 * 86_400) { return .test }
         // Le test du bloc déjà fait : la prochaine séance ouvre le bloc suivant
         let tested = tests.last.map { $0.date >= testDate } ?? false
         if tested { return today }

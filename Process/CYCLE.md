@@ -33,6 +33,8 @@ aucun réglage de jours : chaque jour il propose une séance ou un repos, selon
 3. **Le cadrage ci-dessus vous va-t-il ?** Un « oui » suffit pour lancer le code.
 
 ## Backlog
+- Rafraîchir la ligne du jour au passage de minuit, app ouverte (aucun observateur aujourd'hui ;
+  relecture du cycle 1).
 - Audit complet de la planification, une fois les textes intégraux accessibles.
 - Nouveaux enregistrements réels du compteur (Développé épaules non simulé).
 - Fiche App Store (tickets `lancement`, session marketing du 28/10).

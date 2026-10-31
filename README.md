@@ -107,7 +107,7 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
 - **Intensité** (skill reps-ux, § 5) : une seule échelle de couleur, bleu calme (semaine allégée,
   séance légère) → ambre soutenu (progression) → rouge maximal (jour de test), en dégradé
   (`calm`, `work`, `max` dans `Themes.json`, adaptés à chaque thème). Vert : objectif ou cible
-  atteints ; une tendance (▲ = ▼) n'est pas une atteinte : elle reste en couleur de texte. Les alertes (séance manquée, semaine refaite, Forme basse) n'ont pas de couleur :
+  atteints ; une tendance (▲ = ▼) n'est pas une atteinte : elle reste en couleur de texte. Les alertes (semaine refaite, test à faire, Forme basse) n'ont pas de couleur :
   elles portent « ! ».
 - **Historique** (icône graphique, en veille et à la fin) : le passé seulement, en deux cartes. Σ (tous les exercices) ou un exercice :
   1. **12 semaines** : un seul graphique, axe des semaines commun ; en haut la meilleure série
@@ -129,7 +129,7 @@ par leurs choix : une ligne seulement quand la conséquence n'est pas évidente.
      est atteinte, neutre sans cible ; ★ si record, ‹ ou › hors de la plage, au-dessus. Au-delà de
      4 séances dans la journée, chacune devient un trait dont la hauteur donne son total (choix de
      l'app) ; deux séances qui se chevauchent se suivent, sans empilement ; total du jour
-     à droite (Σ) ; repos en pointillés ; « ! prévue, manquée » pour une séance du plan manquée.
+     à droite (Σ) ; jour sans séance en pointillés (jamais « manqué » : pas de jours prévus).
      Lignes alternées, aujourd'hui teinté, un filet sous chaque lundi. Chaque ligne fait 44 pt
      et se touche en entier : une séance, elle s'ouvre ; plusieurs, un menu les liste (heure et
      total) ; appui long, supprimer une séance du jour : son total, les séries en barres (cible en
@@ -240,11 +240,12 @@ cadran est le nombre de répétitions prévu, et le repos prévu celui du plan ;
 d'objectif (série max).
 
 Validation : `python3 Simulation/plan.py` (miroir Python : bloc régulier, semaine allégée, jour
-de test, bloc suivant recalé sur le test, séances manquées, Forme basse × 2, plafond des semaines
+de test, bloc suivant recalé sur le test, semaine à moins de 2 séances, Forme basse × 2, plafond des semaines
 refaites, séance légère, rappel du minimum de 2 séances, cibles selon la baisse habituelle ou par
 défaut, réajustement en séance, séries espacées, coach au jour le jour (séance proposée, repos
 conseillé la veille du test, en fatigue persistante, après une séance très difficile, après
-20 séries en 7 jours ; séance faite un jour de repos), test sur la
+20 séries en 7 jours ; séance faite un jour de repos ; un jour de test, l'effort d'hier ne
+repousse pas le test ; fatigue persistante : séance légère si l'on s'entraîne), test sur la
 première série, semaine de reprise avant le test, longue absence et nouveau bloc 1, calibrage de
 la semaine 1 ; test annoncé : échauffement exclu, 2e tentative, tests sur plusieurs jours, test
 anticipé en semaine allégée et en progression, abandon, test non lancé et attente de 7 jours,

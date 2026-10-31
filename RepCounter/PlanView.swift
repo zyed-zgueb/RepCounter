@@ -405,8 +405,14 @@ struct WeekBars: View {
         let id: Int
         let week: TrainingPlan.Week
         var reached: Bool { week.doneReps >= week.plannedReps && week.plannedReps > 0 }
-        /// ✓ atteint, ← en cours, ! manqué, ○ à venir.
-        var mark: String { reached ? "✓" : (week.isCurrent ? "←" : (week.isPast ? "!" : "○")) }
+        /// ✓ atteint, ← en cours, ! cibles pas atteintes, ○ à venir ; rien pour une semaine passée
+        /// sans séance (aucun jour n'est « manqué » : METHODE-JOURS.md, règle 5).
+        var mark: String {
+            if reached { return "✓" }
+            if week.isCurrent { return "←" }
+            if week.isPast { return week.done > 0 ? "!" : "" }
+            return "○"
+        }
         /// Nom unique sur l'axe (« P2 bis » peut suivre « P2 »).
         var name: String { "\(id + 1) \(week.short)" }
     }

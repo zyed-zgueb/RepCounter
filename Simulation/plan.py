@@ -188,7 +188,9 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
         """Le statut du jour et le repos conseillé (METHODE-JOURS.md)."""
         today_sessions = [s for s in sessions if int(s.day) == int(now)]
         planned_today = sum(today[1][0]) if today[1] else 1
-        reason = "persistent_fatigue" if persistent_fatigue else rest_reason(sessions, int(now), test_day)
+        # Un jour de test, seule la fatigue persistante conseille un repos
+        reason = ("persistent_fatigue" if persistent_fatigue
+                  else None if today[0] == "test" else rest_reason(sessions, int(now), test_day))
         if today[0] == "test" and any(s.test_best for s in today_sessions):
             status = "done"
         elif today[0] != "test" and today_sessions and sum(s.total for s in today_sessions) >= planned_today:
@@ -198,7 +200,7 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
         else:
             status = "rest"
         recent = {int(s.day) for s in sessions if int(now) - 6 <= s.day < int(now) + 1}
-        below = int(now) - first_day >= 7 and len(recent) < MIN_PER_WEEK
+        below = status == "due" and int(now) - first_day >= 7 and len(recent) < MIN_PER_WEEK
         return dict(status=status, rest_reason=reason if status == "rest" else None,
                     next=next_day(sessions, now, test_day), below_minimum=below)
 
@@ -356,7 +358,7 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
               and (any(s.test_best for s in today_sessions) if today_sessions else True)):
             today = ("test", None)
             test_step = (calibration_days + (0 if any(s.test_best for s in today_sessions) else 1), 2)
-        elif low_form:
+        elif low_form or persistent_fatigue:
             today = ("light", lighter(session_now))
         else:
             today = ("session", session_now)
@@ -471,12 +473,14 @@ def main():
     s2 = s + [Session(1.5, [15, 15, 15])]
     ok &= check("séance du jour faite", make(0, s2, 1.7), dict(status="done", next=2))
     # (c) La séance d'hier « Très difficile » (effort ≥ 7) : repos conseillé, prochaine demain
-    hard = s + [Session(1.5, [15, 15, 15], effort=8)]
-    ok &= check("séance d'hier très difficile : repos", make(0, hard, 2.4),
-                dict(status="rest", rest_reason="hard_yesterday", next=3))
-    ok &= check("effort 6 : séance", make(0, s + [Session(1.5, [15, 15, 15], effort=6)], 2.4), dict(status="due"))
+    #     (semaine 2 : en semaine 1 du bloc 1, chaque jour propose un test de calibrage)
+    w2 = schedule(-28, 8, days=(0, 3))
+    hard = w2 + [Session(8.5, [15, 15, 15], effort=8)]
+    ok &= check("séance d'hier très difficile : repos", make(0, hard, 9.4),
+                dict(status="rest", rest_reason="hard_yesterday", next=10))
+    ok &= check("effort 6 : séance", make(0, w2 + [Session(8.5, [15, 15, 15], effort=6)], 9.4), dict(status="due"))
     # Un repos est une proposition : une séance faite ce jour-là compte
-    ok &= check("séance faite un jour de repos", make(0, hard + [Session(2.5, [15, 15, 15])], 2.7), dict(status="done"))
+    ok &= check("séance faite un jour de repos", make(0, hard + [Session(9.5, [15, 15, 15])], 9.7), dict(status="done"))
     # (d) 21 séries sur les 7 derniers jours : repos ; le lendemain, 18 : séance
     daily = s + [Session(d + 0.5, [12, 12, 12]) for d in range(0, 7)]
     ok &= check("20 séries en 7 jours : repos", make(0, daily, 7.4),
@@ -488,6 +492,20 @@ def main():
     # (b) Fatigue persistante : repos
     ok &= check("fatigue persistante : repos", make(0, history + schedule(0, 10), 10.5, persistent_fatigue=True),
                 dict(status="rest", rest_reason="persistent_fatigue"))
+    # Fatigue persistante, séance faite quand même : la séance légère
+    ok &= check("fatigue persistante : séance légère si l'on s'entraîne", make(0, history + schedule(0, 10), 10.5, persistent_fatigue=True),
+                dict(today=("light", ([12, 12], 60))))
+    # Un jour de repos conseillé : pas de rappel du minimum (qui contredirait le repos)
+    ok &= check("repos conseillé : pas de rappel du minimum", make(0, s + [Session(d + 0.5, [12, 12, 12]) for d in range(0, 7)], 7.4),
+                dict(status="rest", below_minimum=False))
+    # Jour de test : l'effort d'hier ne repousse pas le test (test du jour, à faire, calibrage 2 / 2)
+    s5 = history + schedule(0, 26) + [Session(27.5, [15, 15, 15], effort=9)]
+    ok &= check("jour de test après une séance très difficile : test", make(0, s5, 28.3),
+                dict(today=("test", None), status="due"))
+    cal = history + [Session(test_session(0.75, attempts=(30,)).day, [30], roles=["test"], effort=10)]
+    p = make(0, cal, 1.5)
+    ok &= check("calibrage : test 2 / 2 le lendemain d'un test noté 10", dict(t=p["today"][0], st=p["status"], step=p["test_step"]),
+                dict(t="test", st="due", step=(2, 2)))
     # Après le test, jusqu'au bloc suivant : une séance chaque jour, de son nouveau max
     s4 = history + schedule(0, 28) + [test_session(28.75, attempts=(32,))]
     p = make(0, s4, 29.5)
