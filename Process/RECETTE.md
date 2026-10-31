@@ -1,7 +1,8 @@
 # Recette (modèle)
 
 Le Builder la remplit à chaque livraison et la joint à sa réponse à Vincent. Vincent coche sur
-l'iPhone ; un point non coché devient un correctif du même cycle.
+l'iPhone ; un point non coché devient un correctif du même cycle. Tout est écrit en mots
+d'utilisateur : ce qu'on fait dans l'app, ce qui doit apparaître. Aucun terme technique.
 
 **Cycle** : …   **Commit** : … (affiché en bas des Réglages)   **CI** : verte
 

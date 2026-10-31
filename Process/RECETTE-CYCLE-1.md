@@ -1,8 +1,7 @@
 # Recette du cycle 1
 
-**Cycle** : 1, le coach décide des jours   **Branche** : `claude/awesome-dirac-n1emli`
-**Commit** : le dernier de la branche (affiché en bas des Réglages)   **CI** : verte (run 7 :
-compilation iOS, simulation du compteur, simulation du plan, 73 vérifications)
+Le coach décide des jours. Pour toi : récupère la dernière version, lance l'app sur l'iPhone,
+et coche ce que tu vois. (Pour le Builder : branche `claude/awesome-dirac-n1emli`, CI verte.)
 
 ## Ce qui a changé
 - Plus aucun réglage de jours : chaque jour, l'app propose une séance, ou « repos conseillé »

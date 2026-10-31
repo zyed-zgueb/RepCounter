@@ -24,17 +24,15 @@ aucun réglage de jours : chaque jour il propose une séance ou un repos, selon
 - Audit complet de la planification (`Science/AUDIT-PLANIFICATION.md`, provisoire).
 - Tout nouvel écran, nouvelle astuce, nouveau graphique.
 
-**Questions à Vincent**
-1. ~~La CI sur un Mac de GitHub~~ : **oui** (Vincent, 31/10). Elle est verte : le code actuel
-   compile (runs 1 et 2 de `.github/workflows/build.yml`).
-2. **Sources scientifiques bloquées** (PubMed Central, Europe PMC, jssm.org, csep.ca).
-   *Recommandé : ouvrir ces domaines dans le réseau de l'environnement* ; sinon, déposer les PDF
-   dans `Science/sources/`.
-3. ~~Le cadrage~~ : **oui** (Vincent, 31/10).
+**Ce que Vincent vivra dans l'app** (validé le 31/10) : plus aucun réglage de jours ; chaque
+jour, l'app lui propose une séance, ou lui conseille un repos en disant pourquoi.
+
+**Questions d'utilisateur final** : aucune en attente.
 
 ## Backlog
 - Rafraîchir la ligne du jour au passage de minuit, app ouverte (aucun observateur aujourd'hui ;
   relecture du cycle 1).
-- Audit complet de la planification, une fois les textes intégraux accessibles.
+- Audit complet de la planification. Les textes intégraux restent bloqués par le réseau de
+  l'environnement : on continue avec les résumés (décision du Builder, 31/10).
 - Nouveaux enregistrements réels du compteur (Développé épaules non simulé).
 - Fiche App Store (tickets `lancement`, session marketing du 28/10).
