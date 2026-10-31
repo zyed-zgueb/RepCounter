@@ -12,7 +12,7 @@ aucun réglage de jours : chaque jour il propose une séance ou un repos, selon
 `Science/METHODE-JOURS.md`.
 
 **Dedans**
-- Faire passer la CI : corriger ce que Xcode refuse dans le code actuel.
+- ~~Faire passer la CI~~ : fait, le code actuel compile.
 - Retirer les jours : rangée et feuille des jours, « Jours réinitialisés », jours enregistrés,
   `perWeek`, « semaine faite 2/4 », séances manquées (journal et historique).
 - Ajouter la décision du jour (règles 3 à 6) : « séance » ou « repos conseillé » avec sa raison
@@ -25,8 +25,8 @@ aucun réglage de jours : chaque jour il propose une séance ou un repos, selon
 - Tout nouvel écran, nouvelle astuce, nouveau graphique.
 
 **Questions à Vincent**
-1. **La CI sur un Mac de GitHub** (minutes facturées au-delà du quota gratuit pour un dépôt
-   privé). *Recommandé : oui*, c'est ce qui vous retire le rôle de compilateur.
+1. ~~La CI sur un Mac de GitHub~~ : **oui** (Vincent, 31/10). Elle est verte : le code actuel
+   compile (runs 1 et 2 de `.github/workflows/build.yml`).
 2. **Sources scientifiques bloquées** (PubMed Central, Europe PMC, jssm.org, csep.ca).
    *Recommandé : ouvrir ces domaines dans le réseau de l'environnement* ; sinon, déposer les PDF
    dans `Science/sources/`.
