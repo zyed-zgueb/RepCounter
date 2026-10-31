@@ -30,8 +30,16 @@ jour, l'app lui propose une séance, ou lui conseille un repos en disant pourquo
 **Questions d'utilisateur final** : aucune en attente.
 
 ## Backlog
-- **Prochain cycle proposé** : alléger l'écran de fin de séance (recette du cycle 1 : « grosse
-  densité d'infos, surcharge cognitive »). Demander à Vincent les 2–3 informations utiles.
+- **Prochain cycle proposé : la fin de séance, comme un coach.** Recette du cycle 1 : « grosse
+  densité d'infos, surcharge cognitive ». Ce que Vincent veut y voir (31/10) :
+  1. objectif atteint ou pas ;
+  2. la suite pour la journée ;
+  3. un conseil concret quand les mesures le justifient (« cette série montre que tu es
+     fatigué, je te conseille de… »), comme le ferait un coach.
+  Tout le reste quitte cet écran (il reste disponible dans l'historique). Conseils : seulement
+  sur ce que l'app mesure vraiment (répétitions face aux cibles, ralentissement des
+  répétitions, repos, « Effort ? », Forme) et avec une base (source ou choix de l'app
+  assumé) ; pas de conseil quand la mesure est douteuse.
 - Journal : les pointillés des jours sans séance sont trop pâles pour être vus (recette du cycle 1).
 - Rafraîchir la ligne du jour au passage de minuit, app ouverte (aucun observateur aujourd'hui ;
   relecture du cycle 1).
