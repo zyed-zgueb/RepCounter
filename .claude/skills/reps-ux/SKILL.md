@@ -162,6 +162,9 @@ sur l'habitude.
   au plus en texte (17) ; le reste se lit sur une page de détail, en touchant la carte.
 - **Une phrase, pas un paragraphe** : une raison tient en moins de dix mots (« Test 1 sur 2 : ton
   niveau de départ. »). Si elle n'apporte rien de neuf, on ne l'écrit pas.
+- **Le texte long est optionnel** : l'explication complète (le pourquoi, les sources, les règles)
+  est permise, mais seulement dans une vue qu'on ouvre exprès : « En savoir plus » sous la phrase,
+  page de détail, (i). Elle n'est jamais sur l'écran principal.
 - **De l'air** : marge intérieure des cartes 20 pt, 20 pt entre les cartes, 16 pt entre les
   éléments d'une carte ; une ligne touchable fait 44 pt au moins.
 - **Le chiffre avant les mots** : quand une donnée se montre (frise, barre, chiffre), on ne la

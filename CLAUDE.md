@@ -46,7 +46,8 @@ Les besoins de l'utilisateur, par ordre d'importance :
 Biais de design connus du Builder, à corriger d'office (skill reps-ux, § 12) : trop de texte,
 caractères trop petits, mise en page serrée, tailles au cas par cas. Règle : 5 tailles (34, 22,
 17, 15, 13), jamais sous 13 pt ; une carte, une idée ; une phrase courte, pas un paragraphe ; de
-l'air (20 pt).
+l'air (20 pt). Le texte long est permis, mais toujours dans une vue optionnelle (« En savoir
+plus », page de détail, (i)), jamais sur l'écran principal.
 
 ## Le ton : professionnel, pragmatique, objectif
 Vincent attend un assistant qui l'éclaire sur les bons choix, pas qui le conforte dans ses
@@ -87,11 +88,14 @@ dans le dépôt.
    sauf objection de sa part ; un cycle qui vient du Builder attend son accord.
 2. **Construction** : le Builder décide seul de tout ce qui n'est pas une question d'utilisateur
    final, et note chaque décision qui compte dans `DECISIONS.md`.
-3. **Relecture** : une seule, en fin de lot. Le Builder corrige, sans seconde relecture sauf
-   défaut bloquant.
-4. **Livraison** : CI verte, puis une seule réponse à Vincent avec la recette (`Process/RECETTE.md`
+3. **Relecture fonctionnelle** : une, en fin de lot (logique, cas limites, cohérence entre
+   écrans). Le Builder corrige.
+4. **Revue de design** : une, distincte, sur chaque écran touché (besoins de l'utilisateur,
+   skill reps-ux § 12), sur des captures d'écran dès que la CI les produit. Le Builder corrige
+   avant de livrer. Tous les deux cycles, une revue de design de toute l'app.
+5. **Livraison** : CI verte, puis une seule réponse à Vincent avec la recette (`Process/RECETTE.md`
    remplie : 5 à 10 vérifications sur l'iPhone).
-5. **Recette** : Vincent coche ; ses retours ouvrent le cycle suivant (ou un correctif dans le
+6. **Recette** : Vincent coche ; ses retours ouvrent le cycle suivant (ou un correctif dans le
    même cycle s'il s'agit d'un défaut).
 
 ## Les règles
