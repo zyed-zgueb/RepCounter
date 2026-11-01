@@ -29,8 +29,33 @@ jour, l'app lui propose une séance, ou lui conseille un repos en disant pourquo
 
 **Questions d'utilisateur final** : aucune en attente.
 
+## Cycle 2 (proposé) : le plan, visible et compris
+
+**Statut** : proposé à Vincent le 01/11, en attente de son accord.
+
+**Pourquoi** (recette du cycle 1, Vincent) : « Je dois faire un test de max sans comprendre dans
+quoi il s'inscrit. » Le besoin de contrôle n'est pas satisfait : le plan existe dans l'app mais
+ne se lit pas. Constat du Builder : un jour de test, l'écran dit seulement « ◆ test 1 / 2 · série
+max » ; la carte Bloc parle en sigles (« B1 · P1 », « A », « ◆ ») ; la raison des tests et des
+semaines n'est que dans le (i) ; et le cycle 1 a rendu le test de départ proposable n'importe
+quel jour de la première semaine, sans prévenir.
+
+**Ce que Vincent vivra dans l'app**
+1. **Le plan, daté, en mots** : en tête du Coaching, le bloc en cours semaine par semaine, avec
+   dates et but (« mesurer ton niveau », « progresser », « récupérer », « test : mesurer ton
+   progrès »), « tu es ici », et le prochain test daté.
+2. **Le pourquoi de chaque jour** : la proposition du jour dit sa raison en une phrase et ce qui
+   suit (« Test 1 sur 2 : il mesure ton niveau de départ. Tes cibles des 3 prochaines semaines
+   en partiront. Prochain test : lundi 30 novembre. »).
+3. **Pas de surprise** : les 2 tests de départ sont annoncés à l'avance, à des jours fixés ; tout
+   changement du plan (semaine refaite, test décalé, cibles relevées) est dit au moment même,
+   avec la raison et la nouvelle date.
+4. **Plus de sigles** : des mots partout où l'on voyait « B1 · P2 », « A », « ◆ ».
+
+**Dehors** : la fin de séance (cycle 3) ; tout nouveau réglage.
+
 ## Backlog
-- **Prochain cycle proposé : la fin de séance, comme un coach.** Recette du cycle 1 : « grosse
+- **Cycle 3 proposé : la fin de séance, comme un coach.** Recette du cycle 1 : « grosse
   densité d'infos, surcharge cognitive ». Ce que Vincent veut y voir (31/10) :
   1. objectif atteint ou pas ;
   2. la suite pour la journée ;

@@ -24,6 +24,25 @@ vérifier sur l'iPhone que c'est bien le cas. Il fait confiance au Builder pour 
 - Une action irréversible hors du dépôt (supprimer quelque chose sur GitHub, dépenser de
   l'argent) se signale quand même, en une phrase simple, avant d'être faite.
 
+## L'expérience : le Builder en répond
+Vincent ne doit pas avoir à micro-gérer l'UX ni à découvrir un défaut que le Builder aurait pu
+voir. Avant toute livraison, le Builder parcourt chaque écran touché comme un utilisateur qui
+ouvre l'app sans rien savoir du code, avec la grille des besoins ci-dessous (reprise dans
+`Process/RELECTURE.md`), et corrige avant de livrer. Il dit lui-même ce qui ne va pas encore.
+
+Les besoins de l'utilisateur, par ordre d'importance :
+1. **Contrôle et prévisibilité.** Le plan est la clé : l'utilisateur voit à tout moment où il en
+   est, ce qui vient, quand et pourquoi (prochain test daté, avec sa raison). Pas de surprise :
+   l'app se comporte comme annoncé ; quand le plan change (semaine refaite, test décalé, cibles
+   relevées), elle le dit au moment même, avec la raison et la nouvelle date.
+2. **Compréhension.** Chaque proposition dit pourquoi, en une phrase de tous les jours (« Test 1
+   sur 2 : il mesure ton niveau de départ ; tes cibles des 3 prochaines semaines en partiront »).
+   Pas de sigle ni de symbole seul qui demande une explication (« B1 · P2 », « A », « ◆ »).
+3. **Charge mentale réduite.** Un écran, une idée principale ; à chaud (pendant et juste après
+   l'effort), trois informations au plus.
+4. **Progrès visible.** L'utilisateur voit qu'il avance, et sur quoi on le mesure.
+5. **Souplesse.** Dévier du plan est permis et jamais puni ; l'app s'adapte et dit comment.
+
 ## Le ton : professionnel, pragmatique, objectif
 Vincent attend un assistant qui l'éclaire sur les bons choix, pas qui le conforte dans ses
 opinions.
