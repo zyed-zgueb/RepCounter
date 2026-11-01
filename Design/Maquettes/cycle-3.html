@@ -1,0 +1,225 @@
+<title>Maquette Reps · à chaud</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Trois écrans de téléphone côte à côte (empilés sur un téléphone) dans le style du cadran de l'app ; sous chacun, ce qui change et l'avis de Vincent. */
+:root {
+  --page: #f2f2f7; --surface: #ffffff; --fg: #111418; --dim: #5d6670; --line: #d8dde3; --accent: #007aff;
+  --ok: #248a3d; --ko: #c9342b;
+  /* l'écran du compteur (thème par défaut de l'app) */
+  --screen: #070b0f; --screen-2: #0e1820; --ring: #1f2a33; --s-fg: #e6edf3; --s-dim: #7d8b97; --s-accent: #3ec1ff; --s-work: #ff9a3c; --s-ok: #3ddc84;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --page: #000000; --surface: #1c1c1e; --fg: #f2f2f7; --dim: #9a9aa1; --line: #38383a; --accent: #0a84ff; --ok: #30d158; --ko: #ff6961; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --page: #000000; --surface: #1c1c1e; --fg: #f2f2f7; --dim: #9a9aa1; --line: #38383a; --accent: #0a84ff; --ok: #30d158; --ko: #ff6961; color-scheme: dark; }
+body { background: var(--page); color: var(--fg); font-family: var(--font); font-size: 17px; line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 1120px; margin: 0 auto; padding-block: 24px 48px; display: grid; gap: 28px; }
+h1 { font-size: 34px; margin: 0; text-wrap: balance; }
+h2 { font-size: 22px; margin: 0; }
+p { margin: 0; }
+.lead { color: var(--dim); max-width: 62ch; }
+.screens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start; }
+@media (max-width: 900px) { .screens { grid-template-columns: 1fr; max-width: 400px; margin: 0 auto; width: 100%; } }
+.col { display: grid; gap: 16px; min-width: 0; }
+.phone { background: var(--screen); border-radius: 38px; aspect-ratio: 390 / 844; padding: 22px 20px; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; color: var(--s-fg); font-family: var(--mono); border: 6px solid #22262b; max-width: 100%; }
+.status { width: 100%; display: flex; justify-content: space-between; font: 600 13px var(--font); color: var(--s-fg); margin-bottom: 18px; }
+.dial { width: 78%; aspect-ratio: 1; border-radius: 50%; border: 10px solid var(--ring); display: grid; place-items: center; position: relative; margin-top: 8px; }
+.dial.work { border-color: color-mix(in srgb, var(--s-work) 75%, var(--ring)); }
+.dial.rest { border-color: color-mix(in srgb, var(--s-accent) 55%, var(--ring)); }
+.dial .big { font: 700 64px var(--mono); letter-spacing: -2px; }
+.dial .under { font: 600 15px var(--mono); color: var(--s-dim); text-align: center; }
+.info { margin-top: 22px; display: grid; gap: 10px; text-align: center; width: 100%; }
+.info .k { font: 600 13px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--s-dim); }
+.info .v { font: 700 22px var(--mono); }
+.info .v.work { color: var(--s-work); }
+.end { width: 100%; display: grid; gap: 14px; margin-top: 6px; font-family: var(--font); }
+.end .block { background: var(--screen-2); border-radius: 14px; padding: 14px; display: grid; gap: 6px; }
+.end .t { font: 700 20px var(--font); }
+.end .t.ok { color: var(--s-ok); }
+.end .s { font: 400 15px var(--font); color: var(--s-dim); }
+.end .coach { font: 400 16px var(--font); color: var(--s-fg); }
+.end .more { font: 600 15px var(--font); color: var(--s-accent); }
+.end .tag { font: 600 13px var(--font); letter-spacing: .06em; text-transform: uppercase; color: var(--s-dim); }
+.btn { margin-top: auto; width: 100%; border-radius: 14px; background: var(--s-accent); color: #001018; text-align: center;
+  font: 700 17px var(--mono); letter-spacing: .12em; padding: 16px 0; }
+.btn.ghost { background: transparent; color: var(--s-dim); border: 1px solid var(--ring); }
+.card { background: var(--surface); border-radius: 14px; padding: 20px; display: grid; gap: 12px; }
+.card h3 { margin: 0; font-size: 17px; }
+.card ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.card li { font-size: 15px; }
+.gone { color: var(--dim); }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choices button { flex: 1 1 120px; min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--fg); font: 600 17px var(--font); cursor: pointer; }
+.choices button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.choices .ok[aria-pressed="true"] { background: color-mix(in srgb, var(--ok) 16%, transparent); border-color: var(--ok); color: var(--ok); }
+.choices .ko[aria-pressed="true"] { background: color-mix(in srgb, var(--ko) 16%, transparent); border-color: var(--ko); color: var(--ko); }
+label.note { display: grid; gap: 6px; font-size: 15px; color: var(--dim); }
+textarea { width: 100%; box-sizing: border-box; min-height: 44px; resize: vertical; border-radius: 10px; border: 1px solid var(--line); background: var(--page); color: var(--fg); font: 400 17px var(--font); padding: 10px 12px; }
+.st { font-size: 15px; color: var(--dim); min-height: 1.3em; }
+.st.warn { color: var(--ko); }
+</style>
+
+<main>
+  <header style="display:grid;gap:8px">
+    <h1>À chaud : trois informations, pas plus</h1>
+    <p class="lead">Maquette du prochain cycle : ce que tu verras pendant la série, pendant la récupération et en fin de séance. Dis pour chaque écran s'il te va. Rien n'est codé avant ton avis.</p>
+    <p class="st" id="status" aria-live="polite">Chargement de tes avis…</p>
+  </header>
+
+  <div class="screens">
+    <section class="col" aria-labelledby="t-serie">
+      <h2 id="t-serie">Pendant la série</h2>
+      <div class="phone" aria-label="Maquette : pendant la série">
+        <div class="status"><span>9:41</span><span>●●●</span></div>
+        <div class="dial work"><div><div class="big">17</div><div class="under">sur 28</div></div></div>
+        <div class="info">
+          <p class="k">Série 1 sur 3</p>
+        </div>
+        <div class="btn ghost" style="margin-top:auto">TERMINER</div>
+      </div>
+      <div class="card">
+        <h3>Ce que tu vois</h3>
+        <ul>
+          <li>Le nombre de répétitions, en très grand.</li>
+          <li>La cible de la série : « sur 28 ».</li>
+          <li>Où tu en es : « Série 1 sur 3 ».</li>
+        </ul>
+        <h3 class="gone">Ce qui disparaît</h3>
+        <ul class="gone">
+          <li>Le chronomètre « T+ 03:12 ».</li>
+          <li>La rangée des séries « 28 ✓ · 23 ← · 20 ».</li>
+          <li>Les étiquettes de capteur (« mouvement · caméra »).</li>
+        </ul>
+        <div class="avis" data-id="serie">
+          <div class="choices" role="group" aria-label="Ton avis"><button type="button" class="ok" aria-pressed="false">Ça me va</button><button type="button" class="ko" aria-pressed="false">À revoir</button></div>
+          <label class="note">Ton commentaire (facultatif)<textarea rows="2" id="note-serie"></textarea></label>
+        </div>
+      </div>
+    </section>
+
+    <section class="col" aria-labelledby="t-recup">
+      <h2 id="t-recup">Pendant la récupération</h2>
+      <div class="phone" aria-label="Maquette : pendant la récupération">
+        <div class="status"><span>9:41</span><span>●●●</span></div>
+        <div class="dial rest"><div><div class="big">0:45</div><div class="under">repos</div></div></div>
+        <div class="info">
+          <p class="k">Ensuite · série 2</p>
+          <p class="v work">23</p>
+        </div>
+        <div class="btn ghost" style="margin-top:auto">TERMINER</div>
+      </div>
+      <div class="card">
+        <h3>Ce que tu vois</h3>
+        <ul>
+          <li>Le temps de repos qui reste.</li>
+          <li>La série suivante et sa cible.</li>
+          <li>Si la cible a été baissée : « cible baissée à 21 : la série 1 était sous la sienne ».</li>
+        </ul>
+        <h3 class="gone">Ce qui disparaît</h3>
+        <ul class="gone">
+          <li>« 0:45 sur 1:30 » (le temps total).</li>
+          <li>La rangée des séries et le chronomètre de séance.</li>
+        </ul>
+        <div class="avis" data-id="recup">
+          <div class="choices" role="group" aria-label="Ton avis"><button type="button" class="ok" aria-pressed="false">Ça me va</button><button type="button" class="ko" aria-pressed="false">À revoir</button></div>
+          <label class="note">Ton commentaire (facultatif)<textarea rows="2" id="note-recup"></textarea></label>
+        </div>
+      </div>
+    </section>
+
+    <section class="col" aria-labelledby="t-fin">
+      <h2 id="t-fin">Fin de séance</h2>
+      <div class="phone" aria-label="Maquette : fin de séance">
+        <div class="status"><span>9:41</span><span>●●●</span></div>
+        <div class="end">
+          <div class="block">
+            <p class="tag">Cible</p>
+            <p class="t ok">Cible atteinte ✓</p>
+            <p class="s">28 · 23 · 21 pour 28 · 23 · 20</p>
+          </div>
+          <div class="block">
+            <p class="tag">La suite</p>
+            <p class="t">Demain : repos conseillé</p>
+            <p class="s">Prochaine séance mercredi : 28 · 23 · 20</p>
+          </div>
+          <div class="block">
+            <p class="tag">Le coach</p>
+            <p class="coach">Tes dernières répétitions de la série 3 ont nettement ralenti : tu étais près de ta limite. C'est le bon effort.</p>
+            <p class="more">En savoir plus</p>
+          </div>
+        </div>
+        <div class="btn" style="margin-top:auto">TERMINÉ</div>
+      </div>
+      <div class="card">
+        <h3>Ce que tu vois</h3>
+        <ul>
+          <li>Cible atteinte ou pas, série par série.</li>
+          <li>La suite pour la journée et la prochaine séance.</li>
+          <li>Un conseil, seulement quand les mesures le justifient ; le détail dans « En savoir plus ».</li>
+        </ul>
+        <h3 class="gone">Ce qui passe dans « En savoir plus » ou l'historique</h3>
+        <ul class="gone">
+          <li>Score, Forme, durée, barres détaillées, « séance N de la semaine ».</li>
+          <li>La question « Effort ? » reste, juste avant « Terminé ».</li>
+        </ul>
+        <div class="avis" data-id="fin">
+          <div class="choices" role="group" aria-label="Ton avis"><button type="button" class="ok" aria-pressed="false">Ça me va</button><button type="button" class="ko" aria-pressed="false">À revoir</button></div>
+          <label class="note">Ton commentaire (facultatif)<textarea rows="2" id="note-fin"></textarea></label>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  var statusEl = document.getElementById("status");
+  function setStatus(t, w) { statusEl.textContent = t; statusEl.classList.toggle("warn", !!w); }
+  var cards = Array.prototype.slice.call(document.querySelectorAll(".avis"));
+  var state = {}; cards.forEach(function (c) { state[c.dataset.id] = { verdict: null, note: "" }; });
+  var db = null, writing = {}, pending = {}, timers = {};
+  function render() {
+    cards.forEach(function (c) {
+      var s = state[c.dataset.id];
+      c.querySelector(".ok").setAttribute("aria-pressed", s.verdict === "ok" ? "true" : "false");
+      c.querySelector(".ko").setAttribute("aria-pressed", s.verdict === "ko" ? "true" : "false");
+      var ta = c.querySelector("textarea");
+      if (document.activeElement !== ta && ta.value !== s.note) ta.value = s.note;
+    });
+  }
+  function save(id) {
+    try { localStorage.setItem("maquette3", JSON.stringify(state)); } catch (e) {}
+    if (!db) return;
+    if (writing[id]) { pending[id] = true; return; }
+    writing[id] = true; setStatus("Enregistrement…");
+    db.doc("avis/" + id).set({ verdict: state[id].verdict, note: state[id].note, updatedAt: new Date().toISOString() })
+      .then(function () { setStatus("Enregistré."); }, function () { setStatus("Pas enregistré pour l'instant. Dis-moi ton avis dans la conversation.", true); })
+      .then(function () { writing[id] = false; if (pending[id]) { pending[id] = false; save(id); } });
+  }
+  cards.forEach(function (c) {
+    var id = c.dataset.id;
+    c.querySelector(".ok").addEventListener("click", function () { state[id].verdict = state[id].verdict === "ok" ? null : "ok"; render(); save(id); });
+    c.querySelector(".ko").addEventListener("click", function () { state[id].verdict = state[id].verdict === "ko" ? null : "ko"; render(); save(id); });
+    c.querySelector("textarea").addEventListener("input", function (e) { state[id].note = e.target.value; clearTimeout(timers[id]); timers[id] = setTimeout(function () { save(id); }, 900); });
+  });
+  try { var saved = JSON.parse(localStorage.getItem("maquette3") || "null"); if (saved) Object.keys(saved).forEach(function (k) { if (state[k]) state[k] = saved[k]; }); } catch (e) {}
+  render();
+  if (!window.claude || !window.claude.use) { setStatus("Tes avis restent sur cet appareil : dis-les-moi dans la conversation.", true); return; }
+  window.claude.use("db").then(function (h) {
+    if (!h) { setStatus("Tes avis restent sur cet appareil : dis-les-moi dans la conversation.", true); return; }
+    db = h; var loaded = false;
+    var timer = setTimeout(function () { if (!loaded) setStatus("Tes avis ne se chargent pas encore ; tu peux continuer.", true); }, 10000);
+    db.collection("avis").onSnapshot(function (snap) {
+      if (!snap.metadata.fromCache) { loaded = true; clearTimeout(timer); }
+      snap.docs.forEach(function (d) { var x = d.data() || {}; if (!state[d.id]) return;
+        state[d.id].verdict = x.verdict === "ok" || x.verdict === "ko" ? x.verdict : null; state[d.id].note = typeof x.note === "string" ? x.note : ""; });
+      render();
+      if (loaded && !statusEl.classList.contains("warn")) setStatus("Tes avis sont enregistrés ici.");
+    }, function () { clearTimeout(timer); db = null; setStatus("Tes avis ne peuvent plus être enregistrés ici. Dis-les-moi dans la conversation.", true); });
+  });
+})();
+</script>

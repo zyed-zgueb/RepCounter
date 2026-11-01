@@ -54,6 +54,19 @@ quel jour de la première semaine, sans prévenir.
 
 **Dehors** : la fin de séance (cycle 3) ; tout nouveau réglage.
 
+## Cycle 3 (cadrage) : à chaud, comme un coach
+
+**Statut** : maquette envoyée à Vincent le 01/11 (https://claude.ai/artifact/BtPJ2GpQMMutW2PsWpXTPA,
+`Design/Maquettes/cycle-3.html`, avis enregistrés avec la page) ; rien n'est codé avant ses avis.
+
+**Ce que Vincent vivra**
+- Pendant la série : le nombre de répétitions, la cible (« sur 28 »), « Série 1 sur 3 ». Plus de
+  chronomètre « T+ », plus de rangée des séries ni d'étiquettes de capteur.
+- Pendant la récupération : le temps qui reste, la série suivante et sa cible ; si la cible a
+  baissé, pourquoi.
+- Fin de séance : cible atteinte ou pas, la suite pour la journée, un conseil seulement quand
+  les mesures le justifient, et « En savoir plus » pour le détail ; « Effort ? » reste.
+
 ## Feuille de route (décidée par le Builder le 01/11)
 
 Chaque cycle : **maquette visuelle** au cadrage (si un écran change) → construction → relecture
