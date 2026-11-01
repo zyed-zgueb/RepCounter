@@ -158,7 +158,7 @@ struct EndurancePanel: View {
                 HStack {
                     MonitorLabel("8 semaines")
                     Spacer()
-                    Text(verdict.kind == .pending || verdict.kind == .unreliable ? verdict.title : "\(verdict.title) · \(Format.signedDecimal(verdict.weeklySlope)) / sem.")
+                    Text(verdict.kind == .pending || verdict.kind == .unreliable ? verdict.title : "\(verdict.title) · \(Format.signedDecimal(verdict.weeklySlope)) par semaine")
                         .font(theme.font(13, .bold))
                         .foregroundStyle(verdictColor(verdict, theme: theme))
                 }

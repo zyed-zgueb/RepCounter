@@ -130,7 +130,7 @@ struct JournalCard: View {
             CardHeader(symbol: "calendar.day.timeline.left", title: "Journal") {
                 MonitorLabel("\(JournalHours.label(start)) → \(JournalHours.label(end))")
                     .accessibilityLabel("de \(JournalHours.spoken(start)) à \(JournalHours.spoken(end))")
-                MonitorLabel("Σ")
+                MonitorLabel("total")
                     .accessibilityLabel("total du jour")
                     .frame(width: totalWidth, alignment: .trailing)
             }
@@ -342,7 +342,6 @@ struct JournalCard: View {
     }
 
     private func dayLabel(_ day: Date) -> String {
-        if stats.calendar.isDateInToday(day) { return "auj." }
         let text = day.formatted(.dateTime.weekday(.abbreviated))
         return text + " " + day.formatted(.dateTime.day())
     }

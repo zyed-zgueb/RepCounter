@@ -166,7 +166,7 @@ private struct LoadBars: View {
                     .foregroundStyle(theme.dim.opacity(0.5))
                     .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
                         SelectionLabel(title: "\(Int(loads[selected].rounded()))",
-                                       detail: selected == loads.count - 1 ? "cette semaine" : "il y a \(loads.count - 1 - selected) sem.")
+                                       detail: selected == loads.count - 1 ? "cette semaine" : "il y a \(loads.count - 1 - selected) semaines")
                     }
             }
         }

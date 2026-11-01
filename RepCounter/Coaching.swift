@@ -426,7 +426,7 @@ private struct TodayCard: View {
     private func intensity(_ day: TrainingPlan.Today) -> some View {
         HStack(spacing: 6) {
             Circle().fill(day.color(theme)).frame(width: 8, height: 8)
-            MonitorLabel(Intensity.word(day.intensity), color: day.color(theme))
+            MonitorLabel("intensité \(Intensity.word(day.intensity))", color: day.color(theme))
         }
     }
 
@@ -734,7 +734,7 @@ private struct GoalHeader: View {
     private var levelAge: String? {
         guard let levelDate else { return nil }
         let weeks = Int(now.timeIntervalSince(levelDate) / (7 * 86_400))
-        return "il y a \(max(weeks, 4)) sem."
+        return "il y a \(max(weeks, 4)) semaines"
     }
 
     private func figure(_ label: String, _ value: Int) -> some View {

@@ -785,7 +785,8 @@ private struct PathChart: View {
         let low = (values.min() ?? 0) - 2, high = (values.max() ?? 10) + 2
         let chosen = selected.flatMap { date in points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) } }
 
-        return VStack(alignment: .leading, spacing: 4) {
+        // De l'espace sous le titre : le ▼ d'aujourd'hui se pose au-dessus du graphique
+        return VStack(alignment: .leading, spacing: 16) {
             MonitorLabel("\(exercise.shortTitle.lowercased()) d'affilée")
             Chart {
                 blockMarks(blockStarts)

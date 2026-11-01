@@ -182,7 +182,9 @@ private struct ExerciseFilter: View {
             // Σ et les exercices : une grille de 6 colonnes, sans défilement
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                 item(nil) {
-                    Text("Σ").font(theme.font(17, .bold))
+                    Text("Tous").font(theme.font(15, .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
                 ForEach(exercises) { exercise in
                     item(exercise) { ExerciseIcon(exercise: exercise, size: 22) }
@@ -356,7 +358,8 @@ private struct WeeksChart: View {
                                             .font(theme.font(13))
                                             .foregroundStyle(theme.max)
                                     }
-                                    if point.record {
+                                    // Semaine de test : le ◆ seul (le test est la mesure) ; ★ sinon
+                                    if point.record && !point.test {
                                         Image(systemName: "star.fill")
                                             .font(theme.font(13))
                                             .foregroundStyle(theme.text)
@@ -383,7 +386,7 @@ private struct WeeksChart: View {
                 }
                 .frame(height: lineHeight)
             }
-            MonitorLabel(trend.map { "reps / sem. · " + Format.trend($0, unit: " %") } ?? "reps / sem.")
+            MonitorLabel(trend.map { "répétitions par semaine · " + Format.trend($0, unit: " %") } ?? "répétitions par semaine")
             Chart {
                 ForEach(Array(volumes.enumerated()), id: \.offset) { index, value in
                     BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", Double(value)), width: .fixed(12))
@@ -401,11 +404,10 @@ private struct WeeksChart: View {
             .chartXScale(domain: domain)
             .chartXAxis {
                 AxisMarks(values: [0.0, Double(current)]) { value in
-                    AxisValueLabel {
-                        if let position = value.as(Double.self) {
-                            let index = Int(position.rounded())
-                            Text(index == current ? "cette semaine" : "il y a \(current) semaines")
-                        }
+                    // Les libellés des bords rentrent vers l'intérieur : jamais coupés
+                    let last = Int((value.as(Double.self) ?? 0).rounded()) == current
+                    AxisValueLabel(anchor: last ? .topTrailing : .topLeading) {
+                        Text(last ? "cette semaine" : "il y a \(current) semaines")
                     }
                 }
             }
@@ -459,18 +461,16 @@ private struct VolumeBars: View {
                     .foregroundStyle(theme.dim.opacity(0.5))
                     .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
                         SelectionLabel(title: "\(volumes[selected]) reps",
-                                       detail: selected == current ? "cette semaine" : "il y a \(current - selected) sem.")
+                                       detail: selected == current ? "cette semaine" : "il y a \(current - selected) semaines")
                     }
             }
         }
         .chartXScale(domain: -0.5...(Double(volumes.count) - 0.5))
         .chartXAxis {
             AxisMarks(values: [0.0, Double(current)]) { value in
-                AxisValueLabel {
-                    if let position = value.as(Double.self) {
-                            let index = Int(position.rounded())
-                        Text(index == current ? "cette semaine" : "il y a \(current) semaines")
-                    }
+                let last = Int((value.as(Double.self) ?? 0).rounded()) == current
+                AxisValueLabel(anchor: last ? .topTrailing : .topLeading) {
+                    Text(last ? "cette semaine" : "il y a \(current) semaines")
                 }
             }
         }

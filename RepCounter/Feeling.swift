@@ -169,6 +169,6 @@ struct FatigueQuestion: View {
     }
 
     private var caption: String {
-        fatigue.map(Feeling.fatigueLabel) ?? "1 toujours fatigué · 5 très frais"
+        fatigue.map(Feeling.fatigueLabel) ?? "1 fatigué · 5 frais"
     }
 }

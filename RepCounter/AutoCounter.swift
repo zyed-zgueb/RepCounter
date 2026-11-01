@@ -13,7 +13,7 @@ enum SignalSource: String, CaseIterable {
     /// Nom court pour le tableau de bord.
     var code: String {
         switch self {
-        case .depth: return "CAM 3D"
+        case .depth: return "caméra"
         case .pixels: return "IMAGE"
         case .face: return "VISAGE"
         case .pose: return "SQUELETTE"

@@ -86,7 +86,7 @@ enum Exercise: String, CaseIterable, Identifiable {
         if countsWithCamera { return "CAMÉRA" }
         switch self {
         case .auto: return "MULTI"
-        case .pushups: return "CAM 3D"
+        case .pushups: return "caméra"
         case .crunches: return "GYRO"
         case .squats: return "ACCÉL"
         case .curls, .row: return "INCL"
