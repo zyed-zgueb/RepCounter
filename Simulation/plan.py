@@ -202,10 +202,21 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
             status = "rest"
         recent = {int(s.day) for s in sessions if int(now) - 6 <= s.day < int(now) + 1}
         below = status == "due" and int(now) - first_day >= 7 and len(recent) < MIN_PER_WEEK
-        missed = (status == "done" and today[0] != "test"
-                  and sum(s.total for s in today_sessions) < planned_today)
+        # Cible manquée : d'après les cibles affichées par le compteur (réajustées en séance) quand
+        # elles sont enregistrées, sinon d'après le total prévu ; une série prévue non faite manque
+        recorded = [(r, t) for x in today_sessions for r, t, role in zip(x.sets, x.targets, x.roles)
+                    if role != "warmup" and t is not None]
+        work = [r for x in today_sessions for r, role in zip(x.sets, x.roles) if role != "warmup"]
+        planned_sets = len(today[1][0]) if today[1] else 1
+        if recorded:
+            short = any(r < t for r, t in recorded) or len(work) < planned_sets
+        else:
+            short = sum(s.total for s in today_sessions) < planned_today
+        missed = status == "done" and today[0] != "test" and short
+        tomorrow_rest = rest_reason(sessions, int(now) + 1, test_day)
         return dict(status=status, rest_reason=reason if status == "rest" else None,
-                    next=next_day(sessions, now, test_day), below_minimum=below, target_missed=missed)
+                    next=next_day(sessions, now, test_day), below_minimum=below, target_missed=missed,
+                    tomorrow_rest=tomorrow_rest)
 
     def waiting_weeks(test_day, day):
         late = int(day) - int(test_day)
@@ -514,6 +525,18 @@ def main():
     # (b) Fatigue persistante : repos
     ok &= check("fatigue persistante : repos", make(0, history + schedule(0, 10), 10.5, persistent_fatigue=True),
                 dict(status="rest", rest_reason="persistent_fatigue"))
+    # Cibles réajustées par le compteur (97 · 78 · 62 au lieu de 68) toutes atteintes : pas de « cible
+    # non atteinte » ; une série sous sa cible réajustée, si
+    adj = s + [Session(8.5, [97, 78, 62], targets=[97, 78, 62])]
+    ok &= check("cibles réajustées atteintes : pas de cible manquée", make(0, adj, 8.7), dict(status="done", target_missed=False))
+    adj2 = s + [Session(8.5, [97, 70, 62], targets=[97, 78, 64])]
+    ok &= check("une série sous sa cible réajustée : cible manquée", make(0, adj2, 8.7), dict(target_missed=True))
+    adj3 = s + [Session(8.5, [97, 78], targets=[97, 78])]
+    ok &= check("une série prévue non faite : cible manquée", make(0, adj3, 8.7), dict(target_missed=True))
+    # Séance très difficile aujourd'hui : demain repos conseillé, la prochaine après-demain, et on le sait
+    hard_today = w2 + [Session(8.5, [15, 15, 15], effort=8)]
+    ok &= check("séance très difficile : demain repos, et pourquoi", make(0, hard_today, 8.7),
+                dict(status="done", next=10, tomorrow_rest="hard_yesterday"))
     # Fatigue persistante, séance faite quand même : la séance légère
     ok &= check("fatigue persistante : séance légère si l'on s'entraîne", make(0, history + schedule(0, 10), 10.5, persistent_fatigue=True),
                 dict(today=("light", ([12, 12], 60))))

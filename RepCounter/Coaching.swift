@@ -149,7 +149,7 @@ struct CoachingView: View {
                             }
                         } else {
                             if let plan {
-                                TodayCard(plan: plan, todaySets: todaySets(stats), onStart: { onStart(exercise) },
+                                TodayCard(plan: plan, todayRecords: todaySets(stats), onStart: { onStart(exercise) },
                                           onStartTest: { onStartTest(exercise) })
                                 // Le plan, daté et en mots, juste sous le jour : il donne le contrôle
                                 // (reprise après une longue absence : pas encore de bloc ni de test)
@@ -283,11 +283,13 @@ struct CoachingView: View {
     }
 
     /// Les séries faites aujourd'hui (séances espacées comprises), dans l'ordre.
-    private func todaySets(_ stats: HistoryStats) -> [Int] {
+    /// Les séries faites aujourd'hui (échauffement exclu), dans l'ordre, avec la cible que le
+    /// compteur affichait (réajustée en séance).
+    private func todaySets(_ stats: HistoryStats) -> [SetRecord] {
         stats.sessions
             .filter { stats.calendar.isDate($0.start, inSameDayAs: stats.now) }
             .sorted { $0.start < $1.start }
-            .flatMap { $0.orderedSets.map(\.reps) }
+            .flatMap(\.workSets)
     }
 }
 
@@ -303,8 +305,12 @@ enum CoachingPage: Hashable {
 private struct TodayCard: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
-    /// Les séries faites aujourd'hui.
-    let todaySets: [Int]
+    /// Les séries faites aujourd'hui, avec la cible affichée par le compteur.
+    let todayRecords: [SetRecord]
+    private var todaySets: [Int] { todayRecords.map(\.reps) }
+    /// La cible de chaque série faite, telle que le compteur l'affichait (réajustée en séance) :
+    /// le Coaching juge comme le compteur.
+    private var doneTargets: [Int?] { todayRecords.map(\.target) }
     let onStart: () -> Void
     var onStartTest: () -> Void = {}
 
@@ -347,7 +353,9 @@ private struct TodayCard: View {
                         .foregroundStyle(plan.targetMissed ? theme.text : theme.ok)
                     Spacer()
                 }
-                TargetBars(targets: plan.todaySession?.targets ?? [], done: todaySets, color: plan.today.color(theme))
+                TargetBars(targets: plan.todaySession?.targets ?? [], done: todaySets, doneTargets: doneTargets,
+                           color: plan.today.color(theme))
+                reasonText
                 upcoming
             case .rest:
                 HStack {
@@ -431,7 +439,8 @@ private struct TodayCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         } else if let s = sessionOf(day) {
             HStack(alignment: .bottom, spacing: 12) {
-                TargetBars(targets: s.targets, done: done, color: day.color(theme), compact: compact)
+                TargetBars(targets: s.targets, done: done, doneTargets: done == nil ? nil : doneTargets,
+                           color: day.color(theme), compact: compact)
                 Text(symbols: "◷ \(Format.clock(Double(s.rest)))")
                     .font(theme.font(compact ? 11 : 13, .bold))
                     .foregroundStyle(theme.dim)
@@ -448,15 +457,24 @@ private struct TodayCard: View {
         }
     }
 
-    /// « prochaine · vendredi » et ses cibles, en petit.
+    /// « Prochaine séance : mercredi · 97 · 78 · 68 », et pourquoi pas demain.
     @ViewBuilder
     private var upcoming: some View {
         if let next = plan.next {
-            title("prochaine · \(Format.weekdayOrDate(next))", plan.upcoming)
-            session(plan.upcoming, done: nil, compact: true)
-                .opacity(0.85)
-            Button("Démarrer quand même", action: onStart)
-                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 40, fontSize: 12))
+            VStack(alignment: .leading, spacing: 4) {
+                Text(symbols: "Prochaine séance : \(Format.dayDate(next)) · \(plan.upcoming.short)")
+                    .font(theme.font(13, .semibold))
+                    .foregroundStyle(theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let rest = plan.tomorrowRest, !Calendar.current.isDateInTomorrow(next) {
+                    Text("Demain, repos conseillé : \(rest.tomorrowExplanation).")
+                        .font(theme.font(12))
+                        .foregroundStyle(theme.dim)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Button(plan.status == .done ? "Refaire une séance aujourd'hui" : "Démarrer quand même", action: onStart)
+                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 44, fontSize: 12))
         }
     }
 }
@@ -469,6 +487,8 @@ private struct TargetBars: View {
     @ScaledMetric(relativeTo: .body) private var compactHeight: CGFloat = 52
     let targets: [Int]
     let done: [Int]?
+    /// La cible de chaque série faite, telle que le compteur l'affichait (nil : la cible prévue).
+    var doneTargets: [Int?]? = nil
     let color: Color
     var compact = false
 
@@ -484,7 +504,8 @@ private struct TargetBars: View {
     var body: some View {
         let count = max(targets.count, done?.count ?? 0)
         let bars = (0..<count).map { index in
-            Bar(id: index, target: index < targets.count ? targets[index] : nil,
+            Bar(id: index,
+                target: (doneTargets.flatMap { index < $0.count ? $0[index] : nil }) ?? (index < targets.count ? targets[index] : nil),
                 done: done.flatMap { index < $0.count ? $0[index] : nil })
         }
         Chart(bars) { bar in

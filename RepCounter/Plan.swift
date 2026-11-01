@@ -122,6 +122,9 @@ struct TrainingPlan {
     let ratios: [Double]?
     /// Le repos conseillé aujourd'hui (nil : pas un jour de repos).
     var restReason: RestReason? = nil
+    /// Le repos conseillé demain, d'après les séances jusqu'à aujourd'hui (dit pourquoi la
+    /// prochaine séance n'est pas demain).
+    var tomorrowRest: RestReason? = nil
     /// Moins de 2 séances sur les 7 derniers jours, le plan ayant au moins une semaine (règle 6).
     var belowMinimum = false
     /// La séance du jour est faite, mais sous le total prévu : « fait · cible non atteinte »
@@ -256,7 +259,8 @@ struct TrainingPlan {
         }
         /// Le statut du jour, le repos conseillé, la prochaine séance et le rappel du minimum.
         func dayPlan(_ today: Today, testDate: Date?)
-            -> (status: DayStatus, rest: RestReason?, next: Date, belowMinimum: Bool, targetMissed: Bool) {
+            -> (status: DayStatus, rest: RestReason?, next: Date, belowMinimum: Bool, targetMissed: Bool,
+                tomorrowRest: RestReason?) {
             let todaySessions = sorted.filter { calendar.isDate($0.start, inSameDayAs: now) }
             let todayReps = todaySessions.reduce(0) { $0 + $1.totalReps }
             let plannedToday: Int = {
@@ -284,8 +288,22 @@ struct TrainingPlan {
             // Le rappel du minimum, jamais un jour de repos conseillé ni une fois la séance faite
             let below = status == .due && today0 >= dayOffset(7, from: firstDay)
                 && trainingDays(recent) < Prescription.minSessionsPerWeek
-            let missed = status == .done && today != .test && todayReps < plannedToday
-            return (status, status == .rest ? reason : nil, nextDay(testDate: testDate), below, missed)
+            // Cible manquée : d'après les cibles affichées par le compteur (réajustées en séance)
+            // quand elles sont enregistrées, sinon d'après le total prévu ; une série prévue non
+            // faite manque aussi
+            let work = todaySessions.flatMap(\.workSets)
+            let recorded = work.filter { $0.target != nil }
+            let plannedSets: Int = {
+                switch today {
+                case .session(let s), .light(let s), .deload(let s), .reprise(let s): return s.sets
+                case .test, .comeback: return 1
+                }
+            }()
+            let short = recorded.isEmpty ? todayReps < plannedToday
+                : recorded.contains { $0.reps < ($0.target ?? 0) } || work.count < plannedSets
+            let missed = status == .done && today != .test && short
+            let tomorrow = restReason(on: dayOffset(1, from: today0), testDate: testDate)
+            return (status, status == .rest ? reason : nil, nextDay(testDate: testDate), below, missed, tomorrow)
         }
         /// Les semaines d'attente du test (jours de retard, arrondis à la semaine supérieure) : la
         /// date de l'objectif recule d'autant.
@@ -465,7 +483,7 @@ struct TrainingPlan {
                 let d = dayPlan(today, testDate: nil)
                 return TrainingPlan(goal: goal, anchor: weekStart(start0), firstDay: firstDay, blocks: blocks, block: block - 1, weeks: weeks,
                                     testDate: testDate, tests: tests, shiftWeeks: shift, today: today, status: d.status,
-                                    next: d.next, ratios: fresh.ratios, restReason: d.rest, belowMinimum: d.belowMinimum, targetMissed: d.targetMissed,
+                                    next: d.next, ratios: fresh.ratios, restReason: d.rest, tomorrowRest: d.tomorrowRest, belowMinimum: d.belowMinimum, targetMissed: d.targetMissed,
                                     missedTests: missedTests, currentMax: value)
             }
             // Test pas lancé 7 jours après le jour prévu, alors qu'on s'entraîne : le bloc suivant
@@ -483,7 +501,7 @@ struct TrainingPlan {
                 let d = dayPlan(today, testDate: nil)
                 return TrainingPlan(goal: goal, anchor: weekStart(start0), firstDay: firstDay, blocks: blocks, block: block - 1, weeks: weeks,
                                     testDate: testDate, tests: tests, shiftWeeks: shift, today: today, status: d.status,
-                                    next: d.next, ratios: habit.ratios, restReason: d.rest, belowMinimum: d.belowMinimum, targetMissed: d.targetMissed,
+                                    next: d.next, ratios: habit.ratios, restReason: d.rest, tomorrowRest: d.tomorrowRest, belowMinimum: d.belowMinimum, targetMissed: d.targetMissed,
                                     missedTests: missedTests, currentMax: currentMax)
             }
             let current = weeks.last { $0.isCurrent }
@@ -530,7 +548,7 @@ struct TrainingPlan {
             let d = dayPlan(today, testDate: testDate)
             return TrainingPlan(goal: goal, anchor: weekStart(start0), firstDay: firstDay, blocks: blocks, block: block, weeks: weeks,
                                 testDate: testDate, tests: tests, shiftWeeks: shift, today: today, status: d.status, next: d.next,
-                                ratios: habit.ratios, restReason: d.rest, belowMinimum: d.belowMinimum, targetMissed: d.targetMissed,
+                                ratios: habit.ratios, restReason: d.rest, tomorrowRest: d.tomorrowRest, belowMinimum: d.belowMinimum, targetMissed: d.targetMissed,
                                 testOverdue: overdue, testStep: testStep, startTests: startTests, missedTests: missedTests,
                                 fallback: today == .test ? (testStep == nil ? deload : sessionNow) : nil,
                                 currentMax: currentMax, maxRaise: lastRaise)

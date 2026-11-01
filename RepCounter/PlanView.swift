@@ -224,6 +224,16 @@ extension TrainingPlan.RestReason {
         case .weeklyVolume: return "\(TrainingPlan.weeklySetCap) séries ces 7 derniers jours : au-delà, les gains diminuent."
         }
     }
+
+    /// La même raison, vue d'aujourd'hui pour demain (« Demain, repos conseillé : … »).
+    var tomorrowExplanation: String {
+        switch self {
+        case .beforeTest: return "après-demain, c'est le test"
+        case .persistentFatigue: return "ta fatigue dure"
+        case .hardYesterday: return "ta séance d'aujourd'hui était très difficile"
+        case .weeklyVolume: return "tu auras fait \(TrainingPlan.weeklySetCap) séries en 7 jours"
+        }
+    }
 }
 
 extension TrainingPlan {
@@ -331,6 +341,100 @@ extension TrainingPlan {
     }
 }
 
+extension TrainingPlan {
+    /// « Bloc 2 · semaine 2 sur 4 · test dans 16 jours », « Bloc 2 · test aujourd'hui »,
+    /// « Bloc 2 terminé · le bloc 3 commence lundi 9 nov. ».
+    var whereAmI: String {
+        let calendar = Calendar.current
+        if let start = nextBlockStart {
+            return "Bloc \(block) terminé · le bloc \(block + 1) commence \(Format.dayDate(start))"
+        }
+        if testOverdue { return "Bloc \(block) · test à faire" }
+        if today == .test, testStep == nil { return "Bloc \(block) · test aujourd'hui" }
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()), to: calendar.startOfDay(for: testDate)).day ?? 0
+        let testText = days <= 0 ? "test aujourd'hui" : (days == 1 ? "test demain" : "test dans \(days) jours")
+        if let index = weeks.firstIndex(where: { $0.isCurrent }) {
+            return "Bloc \(block) · semaine \(index + 1) sur \(weeks.count) · \(testText)"
+        }
+        return "Bloc \(block) · \(testText)"
+    }
+}
+
+/// La frise du bloc : une case par semaine (sa couleur d'intensité, remplie jusqu'à aujourd'hui),
+/// le test au bout, et sous chaque case son but en un mot ; la semaine en cours est marquée
+/// « ▲ ». Se lit d'un coup d'œil : début ou fin de bloc, sans lire de date.
+struct PlanTimeline: View {
+    @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let plan: TrainingPlan
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 4) {
+            ForEach(Array(plan.weeks.enumerated()), id: \.offset) { index, week in
+                column(word(week, index: index), fill: fill(week), color: theme.intensity(week.intensity),
+                       current: week.isCurrent)
+            }
+            // Le test, au bout
+            VStack(spacing: 4) {
+                Rectangle()
+                    .fill(plan.blockTestDone != nil ? theme.max : .clear)
+                    .overlay(Rectangle().stroke(theme.max, lineWidth: 1.5))
+                    .frame(width: 10, height: 10)
+                    .rotationEffect(.degrees(45))
+                    .frame(height: 12)
+                label("Test", current: plan.today == .test && plan.testStep == nil)
+            }
+            .frame(width: typeSize.isAccessibilitySize ? 64 : 44)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(plan.whereAmI)
+    }
+
+    private func column(_ word: String, fill: Double, color: Color, current: Bool) -> some View {
+        VStack(spacing: 4) {
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3).fill(color.opacity(0.22))
+                    RoundedRectangle(cornerRadius: 3).fill(color).frame(width: geometry.size.width * fill)
+                    if current {
+                        RoundedRectangle(cornerRadius: 3).stroke(theme.text, lineWidth: 1.5)
+                    }
+                }
+            }
+            .frame(height: 12)
+            label((current ? "▲ " : "") + word, current: current)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func label(_ text: String, current: Bool) -> some View {
+        Text(symbols: text)
+            .font(theme.font(10, current ? .bold : .regular))
+            .foregroundStyle(current ? theme.text : theme.dim)
+            .lineLimit(2)
+            .minimumScaleFactor(0.8)
+            .multilineTextAlignment(.center)
+    }
+
+    /// Le but de la semaine en un mot.
+    private func word(_ week: TrainingPlan.Week, index: Int) -> String {
+        switch week.kind {
+        case .progression(let step, let redo):
+            if plan.block == 1, step == 0, !redo { return "Mesurer" }
+            return redo ? "Refaire" : "Progresser"
+        case .deload: return "Récupérer"
+        case .reprise: return "Reprendre"
+        }
+    }
+
+    /// Passée : pleine ; en cours : jusqu'à aujourd'hui ; à venir : vide.
+    private func fill(_ week: TrainingPlan.Week) -> Double {
+        if week.isPast { return 1 }
+        guard week.isCurrent else { return 0 }
+        return min(max(Date().timeIntervalSince(week.start) / (7 * 86_400), 0.08), 1)
+    }
+}
+
 /// Le plan en tête du Coaching, en mots et daté : chaque semaine du bloc avec son but, où l'on
 /// est, et le test qui le clôt, avec sa raison. C'est lui qui donne le contrôle (CLAUDE.md) : ce
 /// qui vient, quand, pourquoi.
@@ -353,9 +457,15 @@ struct PlanCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             CardHeader(symbol: "calendar", title: "Ton plan")
-            Text(headline)
-                .font(theme.font(13))
+            // D'un coup d'œil : où j'en suis dans le bloc, et quand vient le test
+            Text(plan.whereAmI)
+                .font(theme.font(15, .bold))
                 .foregroundStyle(theme.text)
+                .fixedSize(horizontal: false, vertical: true)
+            PlanTimeline(plan: plan)
+            Text(headline)
+                .font(theme.font(12))
+                .foregroundStyle(theme.dim)
                 .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(rows) { row in
@@ -684,7 +794,7 @@ private struct PathChart: View {
                 .foregroundStyle(theme.grid)
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .annotation(position: .bottom, alignment: .leading) {
-                    Text("B\(index + 1)")
+                    Text("bloc \(index + 1)")
                         .font(theme.font(11, index == plan.blocks.count - 1 ? .bold : .regular))
                         .foregroundStyle(index == plan.blocks.count - 1 ? theme.text : theme.dim)
                 }

@@ -1367,7 +1367,7 @@ private struct SessionSummary: View {
         let upTo = history.filter { $0.start <= record.start }
         if let plan = HistoryStats(sessions: upTo, exercise: record.exercise, now: record.end.addingTimeInterval(1)).plan(all: upTo),
            let next = plan.next {
-            planRow("Prochaine · \(Format.weekdayOrDate(next))", plan.today.short, color: theme.dim)
+            planRow("Prochaine séance · \(Format.dayDate(next))", plan.upcoming.short, color: theme.dim)
         }
     }
 

@@ -734,7 +734,7 @@ private struct SetBarsChart: View {
         let bars = session.orderedSets.enumerated().map { index, set in
             Bar(id: index,
                 name: set.isWarmup ? "échauffement" : (set.isTest ? "test, série \(index + 1)" : "série \(index + 1)"),
-                label: set.isWarmup ? "échauf." : (set.isTest ? "◆ S\(index + 1)" : "S\(index + 1)"),
+                label: set.isWarmup ? "échauf." : (set.isTest ? "◆ série \(index + 1)" : "série \(index + 1)"),
                 reps: set.reps, target: set.target, rest: index > 0 ? session.rest(before: index) : nil,
                 role: set.role.flatMap(SetRole.init))
         }
