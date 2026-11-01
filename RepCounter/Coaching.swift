@@ -111,6 +111,8 @@ struct CoachingView: View {
     @State private var showsInfo = false
     /// Change quand un jour de séance est déplacé ou l'objectif retiré : le plan est recalculé.
     @State private var version = 0
+    /// Les pages poussées (État, Ton plan).
+    @State private var path = NavigationPath()
 
     init(exercise: Exercise, exercises: [Exercise], onStart: @escaping (Exercise) -> Void,
          onStartTest: @escaping (Exercise) -> Void = { _ in }) {
@@ -125,7 +127,7 @@ struct CoachingView: View {
         let stats = HistoryStats(sessions: sessions, exercise: exercise)
         let _ = version
         let plan = stats.plan(all: sessions)
-        NavigationStack {
+        NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 VerticalScroll {
                     VStack(spacing: 20) {
@@ -227,6 +229,10 @@ struct CoachingView: View {
             }
         }
         .tint(theme.primary)
+        // Mode capture (CI) : la page des semaines s'ouvre d'elle-même
+        .task {
+            if Capture.screen == "planWeeks" { path.append(CoachingPage.plan) }
+        }
         .onChange(of: exercise) { _, exercise in
             goal = Goal.load(exercise)
             version += 1

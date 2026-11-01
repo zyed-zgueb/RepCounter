@@ -61,7 +61,7 @@ jobs:
       # Captures d'écran de l'app réelle, dans le simulateur, avec des séances d'exemple (mode
       # capture, RepCounterApp.swift) : clair et sombre. Publiées sur la branche ci-captures,
       # pour les revues de design et pour montrer les écrans à valider.
-      - name: Captures d'écran (simulateur)
+      - name: Tests du plan (Swift) et captures d'écran (simulateur)
         if: github.event_name == 'push'
         run: |
           set -e
@@ -75,15 +75,37 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100
           xcrun simctl install "$UDID" build/Debug-iphonesimulator/RepCounter.app
+          # Tests du plan sur le vrai code Swift (PlanSelfTest, RepCounterApp.swift)
+          OUT=$(xcrun simctl launch --console "$UDID" com.zgueb.RepCounter -planSelfTest YES 2>&1 || true)
+          echo "$OUT" | grep "PLAN SELFTEST" || echo "$OUT" | tail -20
+          echo "$OUT" | grep -q "PLAN SELFTEST OK"
+          # Les bannières du premier démarrage du simulateur passent avant les captures
+          sleep 60
           mkdir -p captures
+          # capture <nom> <écran> <situation> : l'app relancée dans cette situation
+          capture() {
+            xcrun simctl launch --terminate-running-process "$UDID" com.zgueb.RepCounter \
+              -captureDemo YES -captureScreen "$2" -captureScenario "$3"
+            sleep 8
+            xcrun simctl io "$UDID" screenshot "captures/$1.png"
+          }
           for appearance in light dark; do
             xcrun simctl ui "$UDID" appearance $appearance
-            for screen in counter coaching history; do
-              xcrun simctl launch --terminate-running-process "$UDID" com.zgueb.RepCounter -captureDemo YES -captureScreen $screen
-              sleep 8
-              xcrun simctl io "$UDID" screenshot "captures/$screen-$appearance.png"
-            done
+            capture "coaching-$appearance" coaching progression
+            capture "history-$appearance" history progression
+            capture "counter-$appearance" counter progression
           done
+          xcrun simctl ui "$UDID" appearance light
+          capture semaines planWeeks progression
+          capture repos-conseille coaching restDay
+          capture seance-faite coaching done
+          capture jour-de-test coaching testDay
+          capture cadran-repos counter restDay
+          # Grand texte (Dynamic Type, taille d'accessibilité) : les débordements se voient ici
+          xcrun simctl ui "$UDID" content_size accessibility-large
+          capture grand-texte-coaching coaching progression
+          capture grand-texte-cadran counter progression
+          xcrun simctl ui "$UDID" content_size large
           echo "${GITHUB_SHA::7}" > captures/COMMIT
       # Archive : un dossier par version (date et commit), jamais effacé, et latest/ pour la
       # dernière ; sert aux revues de design et aux « Nouveautés » (Process/NOUVEAUTES.md)

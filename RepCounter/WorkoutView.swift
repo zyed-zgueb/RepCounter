@@ -214,7 +214,7 @@ struct WorkoutView: View {
         // Mode capture (CI) : l'écran à photographier s'ouvre de lui-même
         .task {
             switch Capture.screen {
-            case "coaching": showsCoaching = true
+            case "coaching", "planWeeks": showsCoaching = true
             case "history": showsHistory = true
             default: break
             }
