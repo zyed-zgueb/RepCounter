@@ -523,16 +523,23 @@ struct WorkoutView: View {
                 let reached = target.map { done >= $0 } ?? false
                 // Test : en rouge (intensité maximale), sans cible ; échauffement : calme, sans jauge
                 let base = model.testStage == .warmup ? theme.calm : (model.testStage == .test ? theme.max : theme.primary)
-                // Avec une cible : un segment par répétition, qui s'allume jusqu'à la cible (on voit
-                // où on en est et ce qui reste) ; sans cible, des tours de 10
-                let perRep = target.map { CounterDial.perRep($0) } ?? false
-                Dial(face: CounterDialFace(lit: perRep ? min(done, target ?? 0) : CounterDial.lit(done),
-                                           segments: perRep ? (target ?? CounterDial.segmentsPerLap) : CounterDial.segmentsPerLap,
-                                           color: reached ? theme.ok : (counting ? base : base.opacity(0.42)),
-                                           goalSegment: perRep ? nil : CounterDial.goalSegment(done: done, target: target),
-                                           live: counting || model.testStage == .warmup ? nil : model.live, palePulse: !counting),
-                     pulse: counting ? nil : model.tentativePulse) { side in
-                    dialCount(side: side, counting: counting)
+                // Avec une cible : le tunnel (un anneau par dizaine, la cible entière visible) ;
+                // sans cible (test, échauffement, pas de plan), des tours de 10
+                Group {
+                    if let target, target > 0 {
+                        Dial(face: TunnelFace(done: done, target: target, color: counting ? base : base.opacity(0.42),
+                                              pale: !counting),
+                             pulse: counting ? nil : model.tentativePulse) { side in
+                            dialCount(side: side, counting: counting)
+                        }
+                    } else {
+                        Dial(face: CounterDialFace(lit: CounterDial.lit(done),
+                                                   color: reached ? theme.ok : (counting ? base : base.opacity(0.42)),
+                                                   live: counting || model.testStage == .warmup ? nil : model.live, palePulse: !counting),
+                             pulse: counting ? nil : model.tentativePulse) { side in
+                            dialCount(side: side, counting: counting)
+                        }
+                    }
                 }
                 if model.testStage == nil {
                     Text(setTitle)

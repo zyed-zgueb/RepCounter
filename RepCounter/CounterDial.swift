@@ -60,12 +60,6 @@ enum CounterDial {
         done <= 0 ? 0 : (done % segmentsPerLap == 0 ? segmentsPerLap : done % segmentsPerLap)
     }
 
-    /// Plus de segments que cela, un segment par répétition ne se lit plus : on revient aux tours de 10.
-    static let maxPerRep = 40
-
-    /// Un segment par répétition jusqu'à la cible (cible de 1 à 40).
-    static func perRep(_ target: Int) -> Bool { target >= 1 && target <= maxPerRep }
-
     /// Case de l'objectif, cerclée sur le tour où il tombe (nil s'il tombe sur une dizaine).
     static func goalSegment(done: Int, target: Int?) -> Int? {
         guard let target, target > 0, target % segmentsPerLap != 0 else { return nil }
@@ -82,15 +76,18 @@ private struct SegmentRing: View {
     let segments: Int
     let color: Color
     let goalSegment: Int?
+    /// Segments dessinés (le dernier anneau du tunnel n'a que ceux de la cible) ; nil : tous.
+    var drawn: Int? = nil
+    /// Épaisseur de l'anneau, en part du rayon.
+    var thickness: CGFloat = 0.105
 
     var body: some View {
         Canvas { context, size in
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             let outer = min(size.width, size.height) / 2 - 3
-            let inner = outer * 0.895
-            // L'écart suit le nombre de segments : 10 (tours) ou un par répétition (jusqu'à 40)
-            let gap = min(0.07, .pi / Double(max(segments, 1)) * 0.3)
-            for i in 0..<segments {
+            let inner = outer * (1 - thickness)
+            let gap = 0.07
+            for i in 0..<min(drawn ?? segments, segments) {
                 let start = Double(i) / Double(segments) * 2 * .pi - .pi / 2 + gap
                 let end = Double(i + 1) / Double(segments) * 2 * .pi - .pi / 2 - gap
                 var path = Path()
@@ -155,5 +152,50 @@ struct LapDots: View {
             }
             .accessibilityHidden(true)
         }
+    }
+}
+
+/// Le tunnel de comptage (idée de Vincent, `Process/CYCLE.md`) : un anneau de 10 segments par
+/// dizaine de la cible. Le tour en cours est devant ; les suivants sont derrière, plus petits et
+/// serrés, comme au fond d'un tunnel ; le dernier n'a que les segments de la cible, qui se voit en
+/// entier. À chaque dizaine faite, on avance d'un cran : l'anneau fait passe derrière soi.
+/// Au-delà de la cible, un anneau vert de 10 à la fois.
+struct TunnelFace: View {
+    @Environment(\.theme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let done: Int
+    let target: Int
+    let color: Color
+    /// Pâle avant la validation (répétitions pas encore comptées).
+    var pale = false
+
+    /// Anneaux visibles au plus (cible jusqu'à 40) ; les plus lointains se fondent au fond.
+    static let depth = 4
+    /// Écart entre deux anneaux du tunnel, en part du rayon : faible (Vincent).
+    static let step: CGFloat = 0.1
+
+    var body: some View {
+        let per = CounterDial.segmentsPerLap
+        let laps = max(1, (target + per - 1) / per)
+        // Le tour en cours : il change à la 11e, 21e… répétition (le tour plein reste affiché à 10, 20…)
+        let current = max(0, done - 1) / per
+        let beyond = done > target || current >= laps
+        let visible = beyond ? [current] : Array(current..<min(laps, current + Self.depth))
+        ZStack {
+            ForEach(visible.reversed(), id: \.self) { lap in
+                let rank = lap - current
+                let lapDone = min(max(done - lap * per, 0), per)
+                let segments = beyond || lap < laps - 1 ? per : target - (laps - 1) * per
+                SegmentRing(lit: lapDone, segments: per, color: done >= target ? theme.ok : color,
+                            goalSegment: nil, drawn: segments,
+                            thickness: rank == 0 ? 0.105 : 0.07)
+                    .opacity(rank == 0 ? 1 : (pale ? 0.35 : 0.75) - Double(rank) * 0.12)
+                    .scaleEffect(1 - CGFloat(rank) * Self.step)
+                    .transition(reduceMotion ? .opacity : .scale(scale: 1.25).combined(with: .opacity))
+            }
+        }
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.85), value: current)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(done) sur \(target)")
     }
 }
