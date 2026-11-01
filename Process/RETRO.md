@@ -29,3 +29,24 @@ comme « livrable », et j'ai découvert les défauts visibles par Vincent, l'un
   le Swift et le Python passerait. → Des tests Swift du plan, lancés par la CI.
 - Les relectures par agent partent de mon brief : elles cherchent où je leur dis de chercher.
   → La revue de design se fait sur les captures, avec la grille, sans mon avis préalable.
+
+## 01/11 (soir) : avis de Vincent sur les Nouveautés et la maquette du cycle 3
+
+**Ce qui a échappé** : 7 « À revoir » sur 12 changements, et 2 écrans de maquette sur 3.
+- Des puces et des pictogrammes décoratifs (« • intensité », « ! ◆ Série max », « ◆ Lancer le
+  test ») : je les prenais pour de la clarté ; ils ajoutent du bruit.
+- Des mots vagues (« soutenue », « série max ») qu'un utilisateur ne sait pas relier à son effort.
+- Une correction de sigle qui allonge sans rien clarifier (« répétitions par semaine » au lieu de
+  « reps », que tout le monde comprend).
+- La maquette du cycle 3 a perdu ce que l'app faisait bien (les segments qui s'allument à chaque
+  répétition) : je l'ai dessinée de mémoire, sans partir de la capture de l'écran réel.
+
+**Pourquoi** : je jugeais chaque élément seul (« est-ce compréhensible ? ») et pas « est-ce
+utile ? ». Et ma grille ne demandait pas ce que l'écran actuel fait de bien, à garder.
+
+**Ce que je change** :
+1. Une maquette part toujours de la capture de l'écran réel ; je note d'abord ce qui marche et
+   doit rester.
+2. Dans la revue de design, pour chaque symbole, puce ou mot : « que perd-on si on l'enlève ? » ;
+   si rien, on l'enlève (skill reps-ux § 12, règles ajoutées).
+3. Un sigle se remplace par le mot le plus court que tout le monde comprend, pas par une phrase.

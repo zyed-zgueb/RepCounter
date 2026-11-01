@@ -54,18 +54,25 @@ quel jour de la première semaine, sans prévenir.
 
 **Dehors** : la fin de séance (cycle 3) ; tout nouveau réglage.
 
-## Cycle 3 (cadrage) : à chaud, comme un coach
+## Cycle 3 : à chaud, comme un coach
 
-**Statut** : maquette envoyée à Vincent le 01/11 (https://claude.ai/artifact/BtPJ2GpQMMutW2PsWpXTPA,
-`Design/Maquettes/cycle-3.html`, avis enregistrés avec la page) ; rien n'est codé avant ses avis.
+**Statut** : en construction depuis le 01/11 au soir (avis de Vincent sur la maquette et sur les
+Nouveautés, `DECISIONS.md`).
+
+**Objectif (vérifiable)** : sur les captures de la CI (série, repos, fin de séance, en grand texte
+aussi), trois informations au plus pendant la série et le repos, et une fin de séance en trois
+blocs ; les 7 « À revoir » des Nouveautés corrigés.
 
 **Ce que Vincent vivra**
-- Pendant la série : le nombre de répétitions, la cible (« sur 28 »), « Série 1 sur 3 ». Plus de
-  chronomètre « T+ », plus de rangée des séries ni d'étiquettes de capteur.
-- Pendant la récupération : le temps qui reste, la série suivante et sa cible ; si la cible a
-  baissé, pourquoi.
-- Fin de séance : cible atteinte ou pas, la suite pour la journée, un conseil seulement quand
-  les mesures le justifient, et « En savoir plus » pour le détail ; « Effort ? » reste.
+- Pendant la série : un segment du cadran s'allume à chaque répétition jusqu'à la cible ; le
+  nombre et « sur 28 » en grand ; « Série 2 sur 3 ».
+- Pendant le repos : un compte à rebours ; la série suivante et sa cible en grand ; pourquoi si
+  elle a baissé.
+- Fin de séance : cible atteinte ou pas, la suite, un conseil quand une mesure le justifie ; le
+  détail sur une page à part ; « Effort ? » reste.
+- Corrections : « effort normal » avec une petite jauge ; jour de test clair (chiffre à battre en
+  grand, « En savoir plus ») ; « record : N » de toujours ; « reps » ; plus de puce ni de nom de
+  capteur sous la question de fatigue.
 
 ## Feuille de route (décidée par le Builder le 01/11)
 

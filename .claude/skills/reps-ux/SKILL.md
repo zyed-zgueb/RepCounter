@@ -39,15 +39,15 @@ Plus une donnée est vue souvent, plus elle est réduite et proche du compteur. 
 
 ## 4. Le cadran
 
-- Deux anneaux. **Extérieur : il compte.** Toujours 10 segments, un par répétition ; le tour repart à chaque dizaine, avec les trois notes déjà jouées toutes les 10 répétitions.
-- **Objectif de la série** : une pastille par dizaine sous le nombre ; quand l'objectif ne tombe pas sur une dizaine, sa case est cerclée d'un filet de la couleur des segments allumés, intérieur éteint. Objectif atteint : le cadran passe au vert.
-- **Intérieur : la jauge du mouvement capté en direct**, pâle avant la validation (3 répétitions).
-- **Récupération** : un segment par tranche de 15 s (avec le bip), jusqu'au repos prévu, puis vert. Jamais une trotteuse de 60 s : le cadran n'est pas une horloge.
+- **Pendant la série (cycle 3)** : avec une cible, **un segment par répétition**, qui s'allume jusqu'à la cible (on voit où on en est et ce qui reste), vert à la cible ; au-delà de 40, ou sans cible, des tours de 10 segments (les trois notes toutes les 10 restent). Au centre, le nombre et « sur N » en grand ; sous le cadran, « Série 2 sur 3 » (22). Rien d'autre : ni chronomètre, ni rangée des séries, ni nom de capteur.
+- **Intérieur : la jauge du mouvement capté**, seulement avant la validation (3 répétitions) ; pendant la série, le nombre suffit.
+- **Récupération : un compte à rebours.** Le temps qui reste au centre ; un segment par tranche de 15 s (avec le bip), qui s'éteint ; à zéro, l'anneau plein passe au vert et affiche « Prêt ». Dessous : « Ensuite : série 2 sur 3 », sa cible en grand (34), et une phrase si la cible a baissé. Jamais une trotteuse de 60 s.
+- **Fin de séance** : trois blocs, « Cible » (atteinte ou pas, le fait face aux cibles), « La suite » (prochaine séance, repos de demain), « Le coach » (seulement si une mesure le justifie, `Science/CONSEILS.md`) ; le total, les séries à corriger et les mesures dans « Détail de la séance » ; « Effort ? » ; « Terminé ».
 - Un bloc ou des jours ne se représentent jamais sur le cadran : c'est une **frise** (3 semaines de progression, 1 semaine allégée, le test). Une jauge d'intensité en demi-cercle est permise (Coaching) ; elle ne doit pas ressembler au cadran de comptage.
 
 ## 5. L'intensité, une seule échelle de couleur
 
-Bleu (calme) → ambre (soutenu) → rouge (maximal), en dégradé. Calme : semaine allégée, séance légère. Soutenu : progression. Maximal : jour de test. Vert : objectif ou cible atteints (✓, ⚑). Une tendance (▲ = ▼) n'est pas une atteinte : elle reste en couleur de texte. Les alertes (semaine refaite, test à faire, Forme basse) ne prennent pas de couleur : elles portent le symbole « ! ». L'orange n'est plus une couleur d'alerte.
+Bleu (calme) → ambre (soutenu) → rouge (maximal), en dégradé. En mots pour l'utilisateur : « effort facile / normal / maximal », avec une jauge à 3 crans (jamais « intensité soutenue »). Calme : semaine allégée, séance légère. Soutenu : progression. Maximal : jour de test. Vert : objectif ou cible atteints (✓, ⚑). Une tendance (▲ = ▼) n'est pas une atteinte : elle reste en couleur de texte. Les alertes (semaine refaite, test à faire, Forme basse) ne prennent pas de couleur : elles portent le symbole « ! ». L'orange n'est plus une couleur d'alerte.
 
 ## 6. Expliquer une fois, au moment utile
 
@@ -167,6 +167,10 @@ sur l'habitude.
   page de détail, (i). Elle n'est jamais sur l'écran principal.
 - **De l'air** : marge intérieure des cartes 20 pt, 20 pt entre les cartes, 16 pt entre les
   éléments d'une carte ; une ligne touchable fait 44 pt au moins.
+- **Pas de puce devant un mot seul** : les puces sont pour les listes. Un état se dit par un mot
+  (et, au besoin, une petite jauge qui dit à quoi elle se rapporte : « effort normal »).
+- **Pas de pictogramme décoratif** devant un titre ou dans un bouton (« ◆ Lancer le test » →
+  « Lancer le test ») : un symbole n'est permis que s'il porte une information absente du texte.
 - **Le chiffre avant les mots** : quand une donnée se montre (frise, barre, chiffre), on ne la
   répète pas en phrase.
 
