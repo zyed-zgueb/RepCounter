@@ -89,29 +89,50 @@ private struct SegmentRing: View {
     var body: some View {
         Canvas { context, size in
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let outer = min(size.width, size.height) / 2 - 3
+            // Le Canvas déborde de 12 pt (padding négatif) : le halo n'est pas coupé
+            let outer = min(size.width, size.height) / 2 - 15
             let inner = outer * (1 - thickness)
             let gap = 0.07
-            for i in 0..<min(drawn ?? segments, segments) {
+            let glow = min(theme.glow, 1)
+            func tile(_ i: Int) -> Path {
                 let start = Double(i) / Double(segments) * 2 * .pi - .pi / 2 + gap
                 let end = Double(i + 1) / Double(segments) * 2 * .pi - .pi / 2 - gap
                 var path = Path()
                 path.addArc(center: center, radius: outer, startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
                 path.addArc(center: center, radius: inner, startAngle: .radians(end), endAngle: .radians(start), clockwise: true)
                 path.closeSubpath()
-                let fill = i < lit ? color : (unlit ?? theme.line)
+                return path
+            }
+            let count = min(drawn ?? segments, segments)
+            // Éteint : il ne fait que réfléchir la lumière ambiante. En paroi de tunnel, un dégradé
+            // vers le fond ; jamais de halo (avis de Vincent)
+            for i in 0..<count where i >= lit {
+                let fill = unlit ?? theme.line
                 if shaded {
-                    context.fill(path, with: .radialGradient(Gradient(colors: [fill.opacity(0.35), fill]),
-                                                             center: center, startRadius: inner, endRadius: outer))
+                    context.fill(tile(i), with: .radialGradient(Gradient(colors: [fill.opacity(0.35), fill]),
+                                                                center: center, startRadius: inner, endRadius: outer))
                 } else {
-                    context.fill(path, with: .color(fill))
+                    context.fill(tile(i), with: .color(fill))
                 }
-                if i == goalSegment, i >= lit {
-                    context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+                if i == goalSegment {
+                    context.stroke(tile(i), with: .color(color), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+                }
+            }
+            // Allumé : il émet. Une couleur uniforme, un liseré à peine plus clair, et un halo
+            // autour de lui seul
+            context.drawLayer { layer in
+                if glow > 0 {
+                    layer.addFilter(.shadow(color: color.opacity(0.55 * glow), radius: 9))
+                }
+                for i in 0..<min(lit, count) {
+                    layer.fill(tile(i), with: .color(color))
+                    if shaded {
+                        layer.stroke(tile(i), with: .color(.white.opacity(0.18)), lineWidth: 1)
+                    }
                 }
             }
         }
-        .shadow(color: color.opacity(lit > 0 ? 0.4 * min(theme.glow, 1) : 0), radius: 10)
+        .padding(-12)
         .accessibilityHidden(true)
     }
 }
@@ -241,14 +262,19 @@ struct RestLedFace: View {
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             let radius = min(size.width, size.height) / 2 - 8
             let dot = min(5, .pi * radius / Double(count) * 0.55)
-            for i in 0..<count {
+            func led(_ i: Int) -> Path {
                 let angle = Double(i) / Double(count) * 2 * .pi - .pi / 2
                 let point = CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
-                let rect = CGRect(x: point.x - dot, y: point.y - dot, width: dot * 2, height: dot * 2)
-                context.fill(Path(ellipseIn: rect), with: .color(i < lit ? color : theme.line))
+                return Path(ellipseIn: CGRect(x: point.x - dot, y: point.y - dot, width: dot * 2, height: dot * 2))
+            }
+            // Éteinte : elle ne fait que réfléchir, sans halo ; allumée, elle émet, avec un halo
+            for i in lit..<count { context.fill(led(i), with: .color(theme.line)) }
+            let glow = min(theme.glow, 1)
+            context.drawLayer { layer in
+                if glow > 0 { layer.addFilter(.shadow(color: color.opacity(0.5 * glow), radius: 5)) }
+                for i in 0..<lit { layer.fill(led(i), with: .color(color)) }
             }
         }
-        .shadow(color: color.opacity(0.35 * min(theme.glow, 1)), radius: 6)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(remaining <= 0 ? "Repos fait" : "Repos : \(Int(remaining.rounded(.up))) secondes restantes")
     }
