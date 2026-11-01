@@ -4,15 +4,15 @@
 /* Une colonne : chaque version, puis chaque changement avec ses deux extraits côte à côte (empilés sur téléphone). */
 :root {
   --bg: #f2f2f7; --surface: #ffffff; --fg: #111418; --dim: #5d6670; --line: #d8dde3;
-  --accent: #007aff; --before: #8e8e93; --after: #248a3d;
+  --accent: #007aff; --before: #8e8e93; --after: #248a3d; --ko: #c9342b;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) { --bg: #000000; --surface: #1c1c1e; --fg: #f2f2f7; --dim: #9a9aa1; --line: #38383a;
-    --accent: #0a84ff; --before: #8e8e93; --after: #30d158; color-scheme: dark; }
+    --accent: #0a84ff; --before: #8e8e93; --after: #30d158; --ko: #ff6961; color-scheme: dark; }
 }
 :root[data-theme="dark"] { --bg: #000000; --surface: #1c1c1e; --fg: #f2f2f7; --dim: #9a9aa1; --line: #38383a;
-  --accent: #0a84ff; --before: #8e8e93; --after: #30d158; color-scheme: dark; }
+  --accent: #0a84ff; --before: #8e8e93; --after: #30d158; --ko: #ff6961; color-scheme: dark; }
 body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 17px; line-height: 1.4;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 main { max-width: 760px; margin: 0 auto; padding-block: 24px 48px; display: grid; gap: 32px; }
@@ -31,12 +31,25 @@ figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
 figcaption { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--before); }
 .after figcaption { color: var(--after); }
 img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+.avis { display: grid; gap: 12px; padding-top: 4px; border-top: 1px solid var(--line); padding-block-start: 16px; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choices button { flex: 1 1 140px; min-height: 44px; border-radius: 10px; border: 1px solid var(--line);
+  background: transparent; color: var(--fg); font: 600 17px var(--font); cursor: pointer; }
+.choices button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.choices button.ok[aria-pressed="true"] { background: color-mix(in srgb, var(--after) 16%, transparent); border-color: var(--after); color: var(--after); }
+.choices button.ko[aria-pressed="true"] { background: color-mix(in srgb, var(--ko) 16%, transparent); border-color: var(--ko); color: var(--ko); }
+.note { display: grid; gap: 6px; font-size: 15px; color: var(--dim); }
+textarea { width: 100%; box-sizing: border-box; min-height: 44px; resize: vertical; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--fg); font: 400 17px var(--font); padding: 10px 12px; }
+.status { font-size: 15px; color: var(--dim); min-height: 1.3em; }
+.status.warn { color: var(--ko); }
 </style>
 
 <main>
   <header style="display:grid;gap:8px">
     <h1>Nouveautés</h1>
-    <p class="lead">Ce qui change à l'écran, version après version : un extrait avant, un extrait après. Captures de l'app réelle sur iPhone 14, avec des séances d'exemple.</p>
+    <p class="lead">Ce qui change à l'écran, version après version : un extrait avant, un extrait après. Dis pour chaque changement s'il te va ; ton avis est enregistré et je le lis.</p>
+    <p class="status" id="status" aria-live="polite">Chargement de tes avis…</p>
   </header>
 
   <section class="version" aria-labelledby="v-2026-11-01">
@@ -50,12 +63,30 @@ img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--lin
           <figure><figcaption>Avant</figcaption><img src="2026-11-01/01-intensite-avant.png" alt="Avant : « soutenue » devient « intensité soutenue »." loading="lazy"></figure>
           <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/01-intensite-apres.png" alt="Après : « soutenue » devient « intensité soutenue »." loading="lazy"></figure>
         </div>
+        <div class="avis" data-id="2026-11-01-01-intensite">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-01-intensite"></textarea>
+          </label>
+        </div>
       </article>
       <article class="change">
         <header><p class="where">Coaching · Chemin</p><h3>Le repère d'aujourd'hui ne masque plus « pompes d'affilée ».</h3></header>
         <div class="pair">
           <figure><figcaption>Avant</figcaption><img src="2026-11-01/02-chemin-avant.png" alt="Avant : Le repère d'aujourd'hui ne masque plus « pompes d'affilée »." loading="lazy"></figure>
           <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/02-chemin-apres.png" alt="Après : Le repère d'aujourd'hui ne masque plus « pompes d'affilée »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-02-chemin">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-02-chemin"></textarea>
+          </label>
         </div>
       </article>
       <article class="change">
@@ -64,12 +95,30 @@ img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--lin
           <figure><figcaption>Avant</figcaption><img src="2026-11-01/03-tous-avant.png" alt="Avant : « Σ » devient « Tous »." loading="lazy"></figure>
           <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/03-tous-apres.png" alt="Après : « Σ » devient « Tous »." loading="lazy"></figure>
         </div>
+        <div class="avis" data-id="2026-11-01-03-tous">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-03-tous"></textarea>
+          </label>
+        </div>
       </article>
       <article class="change">
         <header><p class="where">Historique · 12 semaines</p><h3>« cette semaine » n'est plus coupé.</h3></header>
         <div class="pair">
           <figure><figcaption>Avant</figcaption><img src="2026-11-01/04-cette-semaine-avant.png" alt="Avant : « cette semaine » n'est plus coupé." loading="lazy"></figure>
           <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/04-cette-semaine-apres.png" alt="Après : « cette semaine » n'est plus coupé." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-04-cette-semaine">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-04-cette-semaine"></textarea>
+          </label>
         </div>
       </article>
       <article class="change">
@@ -78,12 +127,30 @@ img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--lin
           <figure><figcaption>Avant</figcaption><img src="2026-11-01/05-etoiles-avant.png" alt="Avant : Plus d'étoiles empilées sur les semaines de test." loading="lazy"></figure>
           <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/05-etoiles-apres.png" alt="Après : Plus d'étoiles empilées sur les semaines de test." loading="lazy"></figure>
         </div>
+        <div class="avis" data-id="2026-11-01-05-etoiles">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-05-etoiles"></textarea>
+          </label>
+        </div>
       </article>
       <article class="change">
         <header><p class="where">Historique · 12 semaines</p><h3>« reps / sem. » devient « répétitions par semaine ».</h3></header>
         <div class="pair">
           <figure><figcaption>Avant</figcaption><img src="2026-11-01/06-repetitions-avant.png" alt="Avant : « reps / sem. » devient « répétitions par semaine »." loading="lazy"></figure>
           <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/06-repetitions-apres.png" alt="Après : « reps / sem. » devient « répétitions par semaine »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-06-repetitions">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-06-repetitions"></textarea>
+          </label>
         </div>
       </article>
       <article class="change">
@@ -92,6 +159,15 @@ img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--lin
           <figure><figcaption>Avant</figcaption><img src="2026-11-01/07-journal-avant.png" alt="Avant : « Σ » devient « total » ; « auj. » devient la date du jour." loading="lazy"></figure>
           <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/07-journal-apres.png" alt="Après : « Σ » devient « total » ; « auj. » devient la date du jour." loading="lazy"></figure>
         </div>
+        <div class="avis" data-id="2026-11-01-07-journal">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-07-journal"></textarea>
+          </label>
+        </div>
       </article>
       <article class="change">
         <header><p class="where">Cadran</p><h3>« Fatigue ? » n'est plus coupé ; « CAM 3D » devient « caméra ».</h3></header>
@@ -99,6 +175,80 @@ img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--lin
           <figure><figcaption>Avant</figcaption><img src="2026-11-01/08-fatigue-avant.png" alt="Avant : « Fatigue ? » n'est plus coupé ; « CAM 3D » devient « caméra »." loading="lazy"></figure>
           <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/08-fatigue-apres.png" alt="Après : « Fatigue ? » n'est plus coupé ; « CAM 3D » devient « caméra »." loading="lazy"></figure>
         </div>
+        <div class="avis" data-id="2026-11-01-08-fatigue">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-08-fatigue"></textarea>
+          </label>
+        </div>
       </article>
   </section>
 </main>
+
+<script>
+(function () {
+  var statusEl = document.getElementById("status");
+  function setStatus(t, warn) { statusEl.textContent = t; statusEl.classList.toggle("warn", !!warn); }
+  var state = {};
+  var db = null;
+  var cards = Array.prototype.slice.call(document.querySelectorAll(".avis"));
+  cards.forEach(function (card) { state[card.dataset.id] = { verdict: null, note: "" }; });
+
+  function render() {
+    cards.forEach(function (card) {
+      var s = state[card.dataset.id];
+      card.querySelector(".ok").setAttribute("aria-pressed", s.verdict === "ok" ? "true" : "false");
+      card.querySelector(".ko").setAttribute("aria-pressed", s.verdict === "ko" ? "true" : "false");
+      var ta = card.querySelector("textarea");
+      if (document.activeElement !== ta && ta.value !== s.note) ta.value = s.note;
+    });
+  }
+  var writing = {}, pending = {}, timers = {};
+  function save(id) {
+    try { localStorage.setItem("nouveautes", JSON.stringify(state)); } catch (e) {}
+    if (!db) return;
+    if (writing[id]) { pending[id] = true; return; }
+    writing[id] = true;
+    setStatus("Enregistrement…");
+    db.doc("avis/" + id).set({ verdict: state[id].verdict, note: state[id].note, updatedAt: new Date().toISOString() })
+      .then(function () { setStatus("Enregistré."); },
+            function () { setStatus("Pas enregistré pour l'instant. Dis-moi ton avis dans la conversation.", true); })
+      .then(function () { writing[id] = false; if (pending[id]) { pending[id] = false; save(id); } });
+  }
+  cards.forEach(function (card) {
+    var id = card.dataset.id;
+    card.querySelector(".ok").addEventListener("click", function () {
+      state[id].verdict = state[id].verdict === "ok" ? null : "ok"; render(); save(id); });
+    card.querySelector(".ko").addEventListener("click", function () {
+      state[id].verdict = state[id].verdict === "ko" ? null : "ko"; render(); save(id); });
+    card.querySelector("textarea").addEventListener("input", function (e) {
+      state[id].note = e.target.value; clearTimeout(timers[id]); timers[id] = setTimeout(function () { save(id); }, 900); });
+  });
+  try {
+    var saved = JSON.parse(localStorage.getItem("nouveautes") || "null");
+    if (saved) Object.keys(saved).forEach(function (k) { if (state[k]) state[k] = saved[k]; });
+  } catch (e) {}
+  render();
+  if (!window.claude || !window.claude.use) { setStatus("Tes avis restent sur cet appareil : dis-les-moi dans la conversation.", true); return; }
+  window.claude.use("db").then(function (handle) {
+    if (!handle) { setStatus("Tes avis restent sur cet appareil : dis-les-moi dans la conversation.", true); return; }
+    db = handle;
+    var loaded = false;
+    var timer = setTimeout(function () { if (!loaded) setStatus("Tes avis ne se chargent pas encore ; tu peux continuer.", true); }, 10000);
+    db.collection("avis").onSnapshot(function (snap) {
+      if (!snap.metadata.fromCache) { loaded = true; clearTimeout(timer); }
+      snap.docs.forEach(function (d) {
+        var data = d.data() || {};
+        if (!state[d.id]) return;
+        state[d.id].verdict = data.verdict === "ok" || data.verdict === "ko" ? data.verdict : null;
+        state[d.id].note = typeof data.note === "string" ? data.note : "";
+      });
+      render();
+      if (loaded && !statusEl.classList.contains("warn")) setStatus("Tes avis sont enregistrés ici.");
+    }, function () { clearTimeout(timer); db = null; setStatus("Tes avis ne peuvent plus être enregistrés ici. Dis-les-moi dans la conversation.", true); });
+  });
+})();
+</script>

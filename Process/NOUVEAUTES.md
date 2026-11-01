@@ -7,6 +7,9 @@ livraison : on juge plus facilement un changement qu'un écran entier.
 
 Page pour Vincent (la même adresse à chaque livraison, nouvelle version en tête) :
 https://claude.ai/artifact/4BvJtn4xJ2R8gYSd8CT6HP, publiée depuis `Design/Nouveautes/index.html`.
+Sous chaque changement, Vincent dit « Ça me va » ou « À revoir » et peut commenter ; ses avis
+sont enregistrés avec la page (collection `avis`, identifiant `<date>-<extrait>`). Le Builder
+les lit au début de chaque cycle et à chaque livraison ; un « À revoir » est un défaut du cycle.
 
 Les captures complètes de chaque version sont archivées par la CI sur la branche `ci-captures`
 (un dossier par version : date et commit ; `latest/` pour la dernière).
