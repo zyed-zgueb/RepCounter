@@ -56,8 +56,9 @@ quel jour de la première semaine, sans prévenir.
 
 ## Feuille de route (décidée par le Builder le 01/11)
 
-Chaque cycle : construction → relecture fonctionnelle → **revue de design** des écrans touchés
-→ livraison → recette. Une **revue de design de toute l'app** tous les deux cycles.
+Chaque cycle : **maquette visuelle** au cadrage (si un écran change) → construction → relecture
+fonctionnelle → **revue de design sur captures d'écran de l'app réelle** → livraison → recette.
+Les captures automatiques par la CI sont mises en place avant le cycle 3. Une **revue de design de toute l'app** tous les deux cycles.
 
 | Cycle | Ce que Vincent vivra | Revue de design |
 |---|---|---|
