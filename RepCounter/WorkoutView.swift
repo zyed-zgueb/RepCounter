@@ -1502,7 +1502,9 @@ private struct SessionSummary: View {
         // sa cible (même règle que le plan, Plan.swift)
         let credited = recorded.count == daySets.count && !recorded.isEmpty
             ? daySets.reduce(0) { $0 + min($1.reps, $1.target ?? $1.reps) } : min(dayReps, planned.total)
-        let percent = min(99, Int((Double(credited) / Double(max(planned.total, 1)) * 100).rounded(.down)))
+        // Rapportée aux cibles affichées (celles de la ligne ✓ / −1), plus les séries prévues non faites
+        let shown = targets.reduce(0, +) + planned.targets.dropFirst(targets.count).reduce(0, +)
+        let percent = min(99, Int((Double(credited) / Double(max(recorded.count == daySets.count && !recorded.isEmpty ? shown : planned.total, 1)) * 100).rounded(.down)))
         // Chaque série face à sa cible, pour voir d'un coup d'œil laquelle manque et de combien
         let pairs = daySets.enumerated().map { index, set in
             (reps: set.reps, target: set.target ?? (index < planned.targets.count ? planned.targets[index] : set.reps))

@@ -220,7 +220,15 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
                            for r, t, role in zip(x.sets, x.targets, x.roles) if role != "warmup")
         else:
             credited = min(sum(s.total for s in today_sessions), planned_today)
-        percent = min(99, int(credited / max(planned_today, 1) * 100)) if missed else None
+        # Rapportée aux cibles affichées par le compteur, plus celles des séries prévues non faites
+        planned_targets = list(today[1][0]) if today[1] else []
+        if recorded:
+            work_targets = [t for x in today_sessions for t, role in zip(x.targets, x.roles) if role != "warmup"]
+            base = sum(t if t is not None else (planned_targets[i] if i < len(planned_targets) else work[i])
+                       for i, t in enumerate(work_targets)) + sum(planned_targets[len(work):])
+        else:
+            base = planned_today
+        percent = min(99, int(credited / max(base, 1) * 100)) if missed else None
         tomorrow_rest = rest_reason(sessions, int(now) + 1, test_day)
         return dict(status=status, rest_reason=reason if status == "rest" else None,
                     next=next_day(sessions, now, test_day), below_minimum=below, target_missed=missed,
@@ -541,8 +549,8 @@ def main():
     ok &= check("une série sous sa cible réajustée : cible manquée", make(0, adj2, 8.7), dict(target_missed=True))
     adj3 = s + [Session(8.5, [97, 78], targets=[97, 78])]
     ok &= check("une série prévue non faite : cible manquée", make(0, adj3, 8.7), dict(target_missed=True))
-    # Part faite : chaque série jusqu'à sa cible, 97 + 70 + 62 = 229 sur 94 · 94 · 94 = 282 prévus
-    ok &= check("cible manquée : part faite, 81 %", make(0, adj2, 8.7), dict(target_percent=81))
+    # Part faite : chaque série jusqu'à sa cible affichée, 97 + 70 + 62 = 229 sur 97 + 78 + 64 = 239
+    ok &= check("cible manquée : part faite, 95 %", make(0, adj2, 8.7), dict(target_percent=95))
     # Séance très difficile aujourd'hui : demain repos conseillé, la prochaine après-demain, et on le sait
     hard_today = w2 + [Session(8.5, [15, 15, 15], effort=8)]
     ok &= check("séance très difficile : demain repos, et pourquoi", make(0, hard_today, 8.7),

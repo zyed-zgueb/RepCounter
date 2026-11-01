@@ -311,7 +311,17 @@ struct TrainingPlan {
             // rattrape pas une série manquée) ; 99 % au plus quand la cible est manquée
             let credited = recorded.isEmpty ? min(todayReps, plannedToday)
                 : work.reduce(0) { $0 + min($1.reps, $1.target ?? $1.reps) }
-            let percent = min(99, Int((Double(credited) / Double(max(plannedToday, 1)) * 100).rounded(.down)))
+            // Rapportée aux cibles affichées par le compteur, plus celles des séries prévues non faites
+            let plannedTargets: [Int] = {
+                switch today {
+                case .session(let s), .light(let s), .deload(let s), .reprise(let s): return s.targets
+                case .test, .comeback: return []
+                }
+            }()
+            let base = recorded.isEmpty ? plannedToday
+                : work.enumerated().reduce(0) { $0 + ($1.element.target ?? (($1.offset < plannedTargets.count) ? plannedTargets[$1.offset] : $1.element.reps)) }
+                    + plannedTargets.dropFirst(work.count).reduce(0, +)
+            let percent = min(99, Int((Double(credited) / Double(max(base, 1)) * 100).rounded(.down)))
             let missed: Int? = status == .done && today != .test && short ? percent : nil
             let tomorrow = restReason(on: dayOffset(1, from: today0), testDate: testDate)
             return (status, status == .rest ? reason : nil, nextDay(testDate: testDate), below, missed, tomorrow)
