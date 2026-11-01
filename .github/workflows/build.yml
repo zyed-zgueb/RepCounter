@@ -85,7 +85,7 @@ jobs:
           # capture <nom> <écran> <situation> : l'app relancée dans cette situation
           capture() {
             xcrun simctl launch --terminate-running-process "$UDID" com.zgueb.RepCounter \
-              -captureDemo YES -captureScreen "$2" -captureScenario "$3"
+              -captureDemo YES -captureScreen "$2" -captureScenario "$3" -captureBottom "${4:-NO}"
             sleep 8
             xcrun simctl io "$UDID" screenshot "captures/$1.png"
           }
@@ -97,6 +97,9 @@ jobs:
           done
           xcrun simctl ui "$UDID" appearance light
           capture semaines planWeeks progression
+          # Le bas des pages longues (cycle 4)
+          capture coaching-bas coaching progression YES
+          capture history-bas history progression YES
           capture repos-conseille coaching restDay
           capture seance-faite coaching done
           capture jour-de-test coaching testDay
@@ -105,6 +108,19 @@ jobs:
           capture serie serie progression
           capture recuperation repos progression
           capture fin-de-seance fin progression
+          # Vidéos des écrans animés (rétrospective du cycle 3) : le tunnel qui avance, la fin du repos
+          video() {
+            xcrun simctl launch --terminate-running-process "$UDID" com.zgueb.RepCounter \
+              -captureDemo YES -captureScreen "$2" -captureScenario progression
+            sleep 1
+            xcrun simctl io "$UDID" recordVideo --codec=h264 --force "captures/$1.mp4" &
+            REC=$!
+            sleep "$3"
+            kill -INT $REC
+            wait $REC || true
+          }
+          video tunnel serieVideo 16
+          video fin-du-repos reposVideo 12
           # Grand texte (Dynamic Type, taille d'accessibilité) : les débordements se voient ici
           xcrun simctl ui "$UDID" content_size accessibility-large
           capture grand-texte-coaching coaching progression

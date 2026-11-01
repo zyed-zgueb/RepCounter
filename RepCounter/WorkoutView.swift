@@ -217,7 +217,7 @@ struct WorkoutView: View {
             switch Capture.screen {
             case "coaching", "planWeeks": showsCoaching = true
             case "history": showsHistory = true
-            case "serie", "repos", "fin":
+            case "serie", "repos", "fin", "serieVideo", "reposVideo":
                 // Pendant la série, pendant le repos, fin de séance : sans capteur
                 try? await Task.sleep(for: .seconds(1))
                 model.showCaptureState(Capture.screen ?? "")

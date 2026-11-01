@@ -111,6 +111,8 @@ enum Capture {
     /// La situation à montrer : `progression` (par défaut, semaine 2 du bloc 1), `restDay` (repos
     /// conseillé après une séance très difficile hier), `done` (séance du jour faite),
     /// `testDay` (test de fin de bloc à faire).
+    /// Le bas de la page plutôt que le haut (`-captureBottom YES`).
+    static var showsBottom: Bool { isActive && UserDefaults.standard.bool(forKey: "captureBottom") }
     static var scenario: String { UserDefaults.standard.string(forKey: "captureScenario") ?? "progression" }
 
     private static var calendar: Calendar { .current }

@@ -89,6 +89,23 @@ Remplace « un segment par répétition jusqu'à 40 ».
   fondent dans le fond du tunnel. Le nombre et « sur N » restent au centre, en grand ; la
   profondeur est limitée pour ne pas les gêner.
 
+## Cycle 4 : le Coaching et l'Historique allégés
+
+**Statut** : lancé le 01/11 (accord de Vincent).
+
+**Objectif (vérifiable)** : sur les captures du haut et du bas du Coaching et de l'Historique (et
+de leurs pages de détail), plus aucun texte lu à 13 pt (13 seulement pour les libellés de
+graphique), plus aucune abréviation ni symbole seul, une idée par carte, et les longues
+explications dans des « En savoir plus ».
+
+**Ce que Vincent vivra** : des textes plus grands et plus simples sur le Coaching et l'Historique ;
+les explications au bon endroit, sur demande.
+
+**Outillage** : captures du bas des pages ; vidéos des écrans animés (tunnel, fin du repos) jointes
+aux Nouveautés (rétrospective du cycle 3).
+
+**Dehors** : compteur et écrans à chaud (faits au cycle 3), nouvel écran.
+
 ## Feuille de route (décidée par le Builder le 01/11)
 
 Chaque cycle : **maquette visuelle** au cadrage (si un écran change) → construction → relecture
