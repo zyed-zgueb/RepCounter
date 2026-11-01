@@ -99,10 +99,11 @@ extension TrainingPlan.Today {
 enum TargetShare {
     static let nearly = 90
 
-    /// « Cible atteinte ✓ », « Cible presque atteinte : 94 % », « Cible atteinte à 62 % ».
+    /// Sous l'étiquette « Cible » (le mot n'est pas répété) : « Atteinte ✓ »,
+    /// « Presque atteinte : 94 % », « Atteinte à 62 % ».
     static func title(_ percent: Int?) -> String {
-        guard let percent else { return "Cible atteinte ✓" }
-        return percent >= nearly ? "Cible presque atteinte : \(percent) %" : "Cible atteinte à \(percent) %"
+        guard let percent else { return "Atteinte ✓" }
+        return percent >= nearly ? "Presque atteinte : \(percent) %" : "Atteinte à \(percent) %"
     }
 
     /// Sous le cadran et dans le Coaching : « fait ✓ », « fait · presque (94 %) », « fait · 62 % de la cible ».
