@@ -954,20 +954,20 @@ struct WorkoutView: View {
     private var signalStrip: some View {
         VStack(spacing: 4) {
             // Le voyant est collé au capteur qu'il décrit ; ses mots ne servent qu'à VoiceOver
-            HStack(spacing: 6) {
-                StatusLED(color: presenceColor)
-                // Le nom du capteur n'est utile qu'en mode analyse : sous la question de fatigue,
-                // « caméra » prêtait à confusion (recette du cycle 2)
-                if analysisMode {
+            // Le voyant et le nom du capteur ne servent qu'en mode analyse : sous la question de
+            // fatigue, « caméra » et un point seul prêtaient à confusion (recette du cycle 2)
+            if analysisMode {
+                HStack(spacing: 6) {
+                    StatusLED(color: presenceColor)
                     MonitorLabel("Mouvement · \(model.source?.code ?? model.exercise.sensorTag)")
+                    Spacer()
                 }
-                Spacer()
             }
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("Mouvement capté")
-            .accessibilityValue(presenceText)
             SignalTrace(live: model.live)
                 .frame(height: 46)
+                .accessibilityElement()
+                .accessibilityLabel("Mouvement capté")
+                .accessibilityValue(presenceText)
         }
     }
 
