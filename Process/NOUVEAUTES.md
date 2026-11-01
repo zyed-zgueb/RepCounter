@@ -14,6 +14,13 @@ les lit au début de chaque cycle et à chaque livraison ; un « À revoir » es
 Les captures complètes de chaque version sont archivées par la CI sur la branche `ci-captures`
 (un dossier par version : date et commit ; `latest/` pour la dernière).
 
+## 01/11 (nuit, fin) : tes 2 derniers « À revoir » du cycle 3
+
+| # | Écran | Ce qui change | Extraits |
+|---|---|---|---|
+| 25 | Fin de séance | Chaque série face à sa cible (✓ ou −1) ; pourcentage sur les cibles affichées | `2026-11-01e/25-series` |
+| 26 | Historique | Plus de losanges sur la courbe | `2026-11-01e/26-courbe` |
+
 ## 01/11 (nuit, suite) : tes 4 « À revoir » du cycle 3
 
 | # | Écran | Ce qui change | Extraits |
