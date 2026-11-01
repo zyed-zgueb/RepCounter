@@ -14,6 +14,15 @@ les lit au début de chaque cycle et à chaque livraison ; un « À revoir » es
 Les captures complètes de chaque version sont archivées par la CI sur la branche `ci-captures`
 (un dossier par version : date et commit ; `latest/` pour la dernière).
 
+## 01/11 (soir) : corrections de la recette du cycle 2
+
+| # | Écran | Ce qui change | Extraits |
+|---|---|---|---|
+| 9 | Coaching, Aujourd'hui | Séance terminée sous la cible : « fait · cible non atteinte », prochaine séance et ses cibles | `2026-11-01b/09-seance-faite` |
+| 10 | Coaching, jour de test | « Série max », dernier résultat, et pourquoi le test est attendu | `2026-11-01b/10-jour-de-test` |
+| 11 | Cadran, repos conseillé | La raison ne commence plus par un point isolé | `2026-11-01b/11-repos` |
+| 12 | Coaching, grand texte | Plus rien de coupé ; la frise dit « Cette semaine : progrès » | `2026-11-01b/12-grand-texte-plan` |
+
 ## 01/11 : revue de design sur les premières captures
 
 | # | Écran | Ce qui change | Extraits |
