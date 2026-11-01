@@ -355,7 +355,7 @@ extension TrainingPlan {
             }
             if testOverdue {
                 let limit = Calendar.current.date(byAdding: .day, value: Int(Self.repriseDays), to: testDate) ?? testDate
-                return "Test à faire avant \(Format.dayDate(limit)) : le bloc suivant l'attend."
+                return "À faire avant \(Format.dayDate(limit)) : le bloc suivant l'attend."
             }
             return "Fin du bloc : mesure ton progrès."
         case .light:

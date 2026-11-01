@@ -171,8 +171,8 @@ enum CoachAdvice {
                       let rest = record.rest(before: index),
                       rest < Double(planned) - restMargin else { continue }
                 let number = sets[...index].filter { !$0.isWarmup }.count
-                return "Série \(number) : \(set.reps) sur \(target), après \(Format.clock(rest)) de repos au lieu de \(Format.clock(Double(planned))). "
-                    + "La prochaine fois, attends la fin du compte à rebours : un repos complet permet plus de répétitions."
+                return "Série \(number) : \(set.reps) sur \(target), après \(Format.clock(rest)) de repos sur \(Format.clock(Double(planned))). "
+                    + "Attends la fin du compte à rebours."
             }
         }
         return nil

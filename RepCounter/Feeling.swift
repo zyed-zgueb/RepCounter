@@ -134,6 +134,11 @@ struct FeelingScale: View {
                         Text("\(value)")
                             .font(theme.font(13, .bold))
                             .monospacedDigit()
+                            // 11 cases sur une ligne : le chiffre grandit jusqu'à une limite, puis
+                            // se réduit au lieu d'être coupé (« 9 … » en grand texte)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
                             .foregroundStyle(chosen ? theme.background : theme.text)
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)

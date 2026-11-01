@@ -80,6 +80,8 @@ private struct SegmentRing: View {
     var drawn: Int? = nil
     /// Épaisseur de l'anneau, en part du rayon.
     var thickness: CGFloat = 0.105
+    /// Couleur des segments éteints (nil : le filet du thème).
+    var unlit: Color? = nil
 
     var body: some View {
         Canvas { context, size in
@@ -94,7 +96,7 @@ private struct SegmentRing: View {
                 path.addArc(center: center, radius: outer, startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
                 path.addArc(center: center, radius: inner, startAngle: .radians(end), endAngle: .radians(start), clockwise: true)
                 path.closeSubpath()
-                context.fill(path, with: .color(i < lit ? color : theme.line))
+                context.fill(path, with: .color(i < lit ? color : (unlit ?? theme.line)))
                 if i == goalSegment, i >= lit {
                     context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
                 }
@@ -172,7 +174,7 @@ struct TunnelFace: View {
     /// Anneaux visibles au plus (cible jusqu'à 40) ; les plus lointains se fondent au fond.
     static let depth = 4
     /// Écart entre deux anneaux du tunnel, en part du rayon : faible (Vincent).
-    static let step: CGFloat = 0.1
+    static let step: CGFloat = 0.14
 
     var body: some View {
         let per = CounterDial.segmentsPerLap
@@ -186,10 +188,13 @@ struct TunnelFace: View {
                 let rank = lap - current
                 let lapDone = min(max(done - lap * per, 0), per)
                 let segments = beyond || lap < laps - 1 ? per : target - (laps - 1) * per
-                SegmentRing(lit: lapDone, segments: per, color: done >= target ? theme.ok : color,
+                let ringColor = done >= target ? theme.ok : color
+                // Ce qui reste à faire, dans la couleur du comptage, pâle : on voit la cible entière
+                SegmentRing(lit: lapDone, segments: per, color: ringColor,
                             goalSegment: nil, drawn: segments,
-                            thickness: rank == 0 ? 0.105 : 0.07)
-                    .opacity(rank == 0 ? 1 : (pale ? 0.35 : 0.75) - Double(rank) * 0.12)
+                            thickness: rank == 0 ? 0.105 : 0.08,
+                            unlit: ringColor.opacity(rank == 0 ? 0.22 : 0.45))
+                    .opacity(rank == 0 ? 1 : (pale ? 0.5 : 1) - Double(rank) * 0.15)
                     .scaleEffect(1 - CGFloat(rank) * Self.step)
                     .transition(reduceMotion ? .opacity : .scale(scale: 1.25).combined(with: .opacity))
             }

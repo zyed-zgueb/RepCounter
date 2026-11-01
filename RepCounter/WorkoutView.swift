@@ -1178,6 +1178,10 @@ private struct HoldButton: View {
                 .tracking(1.5)
                 .opacity(0.75)
         }
+        // Hauteur fixe de 50 : en grand texte, les mots se réduisent au lieu d'être coupés
+        .lineLimit(1)
+        .minimumScaleFactor(0.5)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .foregroundStyle(color)
         .frame(maxWidth: .infinity)
         .frame(height: 50)
