@@ -97,6 +97,10 @@ dans le dépôt.
    remplie : 5 à 10 vérifications sur l'iPhone).
 6. **Recette** : Vincent coche ; ses retours ouvrent le cycle suivant (ou un correctif dans le
    même cycle s'il s'agit d'un défaut).
+7. **Rétrospective** (le Builder, seul, à chaque fin de cycle et à chaque défaut trouvé par
+   Vincent) : ce qui a échappé, pourquoi ma pratique l'a laissé passer, et la pratique que je
+   change, écrite dans `Process/RETRO.md` et appliquée dès le cycle suivant. Je cherche aussi les
+   angles morts avant qu'un défaut les révèle : qu'est-ce que je ne vérifie pas encore ?
 
 ## Les règles
 - **Rien n'est livré sans compiler.** La CI (`.github/workflows/build.yml`) compile l'app et
