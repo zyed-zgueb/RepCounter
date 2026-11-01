@@ -216,6 +216,7 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
     while True:
         # Bloc 1 : 2 tests sur 2 jours de la première semaine, le meilleur sert de départ
         calibration_days = 0
+        kept_days = []
         if block == 1:
             calibration = [s for s in sessions if block_start <= s.day < block_start + 7 and s.test_best]
             kept_days = sorted({int(s.day) for s in calibration})[:2]
@@ -351,6 +352,16 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
         current = next((w for w in reversed(weeks) if w[3]), None)
         today_sessions = [s for s in sessions if int(s.day) == int(now)]
         test_step = None
+        # Les 2 tests de départ (bloc 1, 1re semaine) : le 1er au plus tard le vendredi, le 2e
+        # 2 jours après le 1er, dans la même semaine ; sinon la semaine calibre sur les séances
+        calib_next = None
+        if block == 1 and current and current[0] == "P1" and calibration_days < 2:
+            week_end = block_start + 7
+            if calibration_days == 0:
+                calib_next = max(int(now), first_day) if int(now) <= week_end - 3 else None
+            else:
+                second = kept_days[0] + 2
+                calib_next = second if second < week_end else None
         if reprise_today or (current and current[0] == "Reprise"):
             today = ("reprise", deload)
         elif now >= test_day:
@@ -358,7 +369,8 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
         elif current and current[0] == "Allégée":
             today = ("deload", deload)
         elif (block == 1 and current and current[0] == "P1" and calibration_days < 2
-              and (any(s.test_best for s in today_sessions) if today_sessions else True)):
+              and (any(s.test_best for s in today_sessions)
+                   or (not today_sessions and calib_next is not None and calib_next <= int(now)))):
             today = ("test", None)
             test_step = (calibration_days + (0 if any(s.test_best for s in today_sessions) else 1), 2)
         elif low_form or persistent_fatigue:
@@ -371,6 +383,7 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
         return dict(block=block, weeks=weeks, test_day=test_day, tests=[t[:2] for t in tests], shift=shift, today=today,
                     ratios=ratios, overdue=overdue, test_step=test_step,
                     missed_tests=missed_tests, current_max=current_max, max_raise=last_raise,
+                    calib_next=calib_next, calib_done=calibration_days if block == 1 else None,
                     fallback=(deload if test_step is None else session_now) if today[0] == "test" else None,
                     **today_of(today, test_day))
 
@@ -509,8 +522,8 @@ def main():
     ok &= check("jour de test après une séance très difficile : test", make(0, s5, 28.3),
                 dict(today=("test", None), status="due"))
     cal = history + [Session(test_session(0.75, attempts=(30,)).day, [30], roles=["test"], effort=10)]
-    p = make(0, cal, 1.5)
-    ok &= check("calibrage : test 2 / 2 le lendemain d'un test noté 10", dict(t=p["today"][0], st=p["status"], step=p["test_step"]),
+    p = make(0, cal, 2.5)
+    ok &= check("calibrage : test 2 / 2 deux jours après un test noté 10", dict(t=p["today"][0], st=p["status"], step=p["test_step"]),
                 dict(t="test", st="due", step=(2, 2)))
     # Après le test, jusqu'au bloc suivant : une séance chaque jour, de son nouveau max
     s4 = history + schedule(0, 28) + [test_session(28.75, attempts=(32,))]
@@ -617,8 +630,18 @@ def main():
     s = history + [test_session(0.75, attempts=(30,))]
     p = make(0, s, 1.5)
     ok &= check("bloc 1 : test 1 / 2 fait, le 2e reste à faire", p, dict(tests=[(0.75, 30)]))
+    p = make(0, s, 1.5)
+    ok &= check("bloc 1 : pas de 2e test le lendemain du 1er", dict(today=p["today"][0], nxt=p["calib_next"]), dict(today="session", nxt=2))
     p = make(0, s, 2.5)
-    ok &= check("bloc 1 : 2e test proposé", dict(today=p["today"][0], step=p["test_step"]), dict(today="test", step=(2, 2)))
+    ok &= check("bloc 1 : 2e test proposé 2 jours après", dict(today=p["today"][0], step=p["test_step"]), dict(today="test", step=(2, 2)))
+    # Pas de test de départ commencé le samedi : il n'y aurait pas la place du 2e dans la semaine
+    ok &= check("bloc 1 : pas de 1er test après le vendredi", dict(t=make(0, history, 5.5)["today"][0],
+                n=make(0, history, 5.5)["calib_next"]), dict(t="session", n=None))
+    ok &= check("bloc 1 : 1er test proposé le vendredi", dict(t=make(0, history, 4.5)["today"][0]), dict(t="test"))
+    # 1er test le samedi quand même : le 2e n'a plus la place cette semaine
+    s6 = history + [test_session(5.75, attempts=(30,))]
+    ok &= check("bloc 1 : 1er test le samedi, pas de 2e", dict(n=make(0, s6, 6.5)["calib_next"], t=make(0, s6, 6.5)["today"][0]),
+                dict(n=None, t="session"))
     s2 = s + [test_session(2.75, attempts=(34,))]
     p = make(0, s2, 7.5)
     ok &= check("bloc 1 : le meilleur des 2 tests sert de départ", dict(tests=p["tests"], first=p["today"][1][0][0]),

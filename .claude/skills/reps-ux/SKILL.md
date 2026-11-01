@@ -33,7 +33,7 @@ Plus une donnée est vue souvent, plus elle est réduite et proche du compteur. 
 
 ## 3. Rassembler ce qui se ressemble ou se complète
 
-- **Où je vais** (Coaching, un exercice en titre, glissement pour passer à un autre) : d'abord la séance du jour (carte Aujourd'hui : cibles en barres, repos, intensité, Démarrer ; ou « repos conseillé » et sa raison en quelques mots, avec la prochaine séance et « Démarrer quand même » ; la ligne sous le cadran en est le résumé ; aucun réglage de jours : le coach décide chaque jour, Science/METHODE-JOURS.md), puis l'objectif et où j'en suis (ou, sans objectif, une invitation avec une proposition), le chemin (seulement avec un objectif), le bloc sur sa frise, prévu face au fait. Le plan et sa vérification restent ensemble. Sans objectif, le plan tourne quand même : l'écran ne se vide jamais.
+- **Où je vais** (Coaching, un exercice en titre, glissement pour passer à un autre) : d'abord la séance du jour (carte Aujourd'hui : la raison du jour en une ou deux phrases de tous les jours, puis cibles en barres, repos, intensité, Démarrer ; ou « repos conseillé » et sa raison, avec la prochaine séance et « Démarrer quand même » ; la ligne sous le cadran en est le résumé ; aucun réglage de jours : le coach décide chaque jour, Science/METHODE-JOURS.md), puis **Ton plan** (le bloc en frise verticale datée : une ligne par semaine avec son but en mots, « tu es ici », puis le test daté avec sa raison ; c'est la carte qui donne le contrôle), puis l'objectif et où j'en suis (ou, sans objectif, une invitation avec une proposition), le chemin (seulement avec un objectif). Sans objectif, le plan tourne quand même : l'écran ne se vide jamais.
 - **Comment je suis** (carte État, dans le Coaching) : phase, Forme mesurée, ressenti (fatigue, effort). Une seule carte, jamais dispersée.
 - **D'où je viens** (Historique) : deux cartes. Strictement deux cartes. « 12 semaines » : la meilleure série en courbe (★ records) et le volume en barres, sur le même axe ; en tête le verdict de progression du score d'endurance (« ▲ en progrès », « = stable », « ▼ en recul », rien tant qu'il n'est pas établi) ; la tendance du volume étiquette les barres (« reps / sem. · ▲ 4 % »). Le score d'endurance n'a pas sa propre carte : il dit comment la performance évolue, comme « 12 semaines » ; son détail ouvre la page **Progrès** (score d'endurance, volume détaillé, régularité) en touchant la carte. « Journal » : les jours sur une frise horaire. La semaine en cours se lit dans le journal ; le suivi du plan (fait face au prévu) reste dans le Coaching.
 
@@ -86,7 +86,7 @@ Des événements datés (séances, séries, tests) se placent sur un axe de temp
 - **Gestes** : la ligne du jour (44 pt) se touche en entière : une séance, on pousse son détail ; plusieurs, un menu les liste (heure et total) ; appui long, supprimer une séance.
 - **Accessibilité** : une étiquette par jour qui résume ses séances et son total.
 
-La même logique vaut ailleurs : une frise pour un bloc (semaines), une frise horaire pour la journée. Chaque échelle de temps a sa frise, et chacune apparaît là où l'on regarde à cette fréquence (voir section 1).
+La même logique vaut ailleurs : une frise verticale datée pour le plan (une ligne par semaine, son but, ses dates), une frise horaire pour la journée. Chaque échelle de temps a sa frise, et chacune apparaît là où l'on regarde à cette fréquence (voir section 1).
 
 ## 11. Conformité Apple (HIG)
 

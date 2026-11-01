@@ -1318,7 +1318,7 @@ private struct SessionSummary: View {
                     // L'écart est une tendance (couleur de texte) ; le vert seulement si l'objectif
                     // est atteint (skill reps-ux, § 5)
                     let reached = plan.goal.map { tested >= $0.target } ?? false
-                    planRow(plan.testStep.map { "◆ Test \($0.number) / \($0.of)" } ?? "◆ Test · bloc \(plan.block)",
+                    planRow(plan.testStep.map { "◆ Test \($0.number) sur \($0.of)" } ?? "◆ Test de fin de bloc \(plan.block)",
                             "\(tested) d'affilée" + (reached ? " ✓" : ""), color: reached ? theme.ok : theme.text)
                     if let gap = TestReading.gap(tested, previous: plan.tests.last?.value) {
                         planRow("Écart", gap, color: theme.text)

@@ -262,6 +262,13 @@ enum Format {
         Calendar.current.isDateInToday(date) ? "aujourd'hui" : date.formatted(.dateTime.weekday(.wide).day())
     }
 
+    /// « aujourd'hui », « demain », sinon « lundi 30 nov. ».
+    static func dayDate(_ date: Date, calendar: Calendar = .current) -> String {
+        if calendar.isDateInToday(date) { return "aujourd'hui" }
+        if calendar.isDateInTomorrow(date) { return "demain" }
+        return date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated))
+    }
+
     /// « Lun. 26 oct. », première lettre en capitale.
     static func shortDay(_ date: Date) -> String {
         let text = date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))

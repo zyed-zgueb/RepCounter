@@ -131,6 +131,8 @@ struct TrainingPlan {
     var testOverdue = false
     /// Bloc 1 : « test 1 / 2 », les 2 tests de calibrage de la première semaine.
     var testStep: TestStep? = nil
+    /// Bloc 1, première semaine : les 2 tests de départ (nil ailleurs, ou une fois faits).
+    var startTests: StartTests? = nil
     /// Les jours de test passés sans test (le bloc suivant est reparti du dernier max).
     var missedTests: [Date] = []
     /// Un jour de test : la séance proposée si l'on ne lance pas le test (allégée en attendant).
@@ -143,6 +145,13 @@ struct TrainingPlan {
     struct TestStep: Equatable {
         let number: Int
         let of: Int
+    }
+
+    /// Les 2 tests de départ du bloc 1, pendant sa première semaine : combien sont faits, et le jour
+    /// où le suivant est proposé (nil : plus de place cette semaine, les séances calent les cibles).
+    struct StartTests: Equatable {
+        let done: Int
+        let next: Date?
     }
 
     /// Le test annoncé est entré dans l'app au premier lancement de cette version : les séances
@@ -306,11 +315,13 @@ struct TrainingPlan {
             // Bloc 1 (et nouveau bloc 1 après une longue absence) : 2 tests sur 2 jours de la
             // première semaine, le meilleur sert de départ (choix de l'app, METHODE-TEST.md, règle 7)
             var calibrationDays = 0
+            var calibrationDates: [Date] = []
             if block == 1 {
                 let calibration = inWeek(blockStart).filter { testValue($0) != nil }
                 let days = Array(Set(calibration.map { calendar.startOfDay(for: $0.start) })).sorted().prefix(2)
                 let kept = calibration.filter { days.contains(calendar.startOfDay(for: $0.start)) }
                 calibrationDays = days.count
+                calibrationDates = Array(days)
                 kept.forEach { excluded.insert($0.persistentModelID) }
                 if let best = kept.compactMap(testValue).max(), let first = kept.first {
                     tests.append(Test(date: first.start, value: best, block: 0))
@@ -476,17 +487,33 @@ struct TrainingPlan {
             let today: Today
             var testStep: TestStep?
             let todaySessions = sorted.filter { calendar.isDate($0.start, inSameDayAs: now) }
+            let testedToday = todaySessions.contains { testValue($0) != nil }
+            // Les 2 tests de départ (bloc 1, 1re semaine) : le 1er au plus tard le vendredi, le 2e
+            // 2 jours après le 1er, dans la même semaine ; sinon la semaine calibre sur les séances
+            // (choix de l'app : jamais de test de départ en fin de semaine, sans annonce)
+            var startTests: StartTests?
+            if block == 1, current?.kind == .progression(0, redo: false), calibrationDays < 2 {
+                let weekEnd = dayOffset(7, from: blockStart)
+                var next: Date?
+                if calibrationDays == 0 {
+                    next = today0 <= dayOffset(-3, from: weekEnd) ? max(today0, firstDay) : nil
+                } else if let first = calibrationDates.first {
+                    let second = dayOffset(2, from: first)
+                    next = second < weekEnd ? second : nil
+                }
+                startTests = StartTests(done: calibrationDays, next: next)
+            }
+            let calibrationToday = testedToday || (todaySessions.isEmpty && (startTests?.next.map { $0 <= today0 } ?? false))
             if repriseToday || current?.kind == .reprise {
                 today = .reprise(deload)
             } else if now >= testDate {
                 today = .test
             } else if current?.kind == .deload {
                 today = .deload(deload)
-            } else if block == 1, current?.kind == .progression(0, redo: false), calibrationDays < 2,
-                      todaySessions.isEmpty || todaySessions.contains(where: { testValue($0) != nil }) {
-                // Bloc 1, première semaine : les 2 tests de calibrage
+            } else if startTests != nil, calibrationToday {
+                // Bloc 1, première semaine : les 2 tests de départ
                 today = .test
-                testStep = TestStep(number: calibrationDays + (todaySessions.contains { testValue($0) != nil } ? 0 : 1), of: 2)
+                testStep = TestStep(number: calibrationDays + (testedToday ? 0 : 1), of: 2)
             } else if lowForm || persistentFatigue, current != nil {
                 // Forme basse, ou fatigue persistante si l'on s'entraîne quand même : séance légère
                 today = .light(Prescription.lighter(sessionNow))
@@ -499,7 +526,7 @@ struct TrainingPlan {
             return TrainingPlan(goal: goal, anchor: weekStart(start0), firstDay: firstDay, blocks: blocks, block: block, weeks: weeks,
                                 testDate: testDate, tests: tests, shiftWeeks: shift, today: today, status: d.status, next: d.next,
                                 ratios: habit.ratios, restReason: d.rest, belowMinimum: d.belowMinimum, targetMissed: d.targetMissed,
-                                testOverdue: overdue, testStep: testStep, missedTests: missedTests,
+                                testOverdue: overdue, testStep: testStep, startTests: startTests, missedTests: missedTests,
                                 fallback: today == .test ? (testStep == nil ? deload : sessionNow) : nil,
                                 currentMax: currentMax, maxRaise: lastRaise)
         }

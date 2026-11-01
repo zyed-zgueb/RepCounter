@@ -151,6 +151,11 @@ struct CoachingView: View {
                             if let plan {
                                 TodayCard(plan: plan, todaySets: todaySets(stats), onStart: { onStart(exercise) },
                                           onStartTest: { onStartTest(exercise) })
+                                // Le plan, daté et en mots, juste sous le jour : il donne le contrôle
+                                // (reprise après une longue absence : pas encore de bloc ni de test)
+                                if plan.hasTest {
+                                    PlanCard(plan: plan)
+                                }
                             }
                             // Où je vais : l'objectif, le chemin, le bloc
                             if goal != nil {
@@ -165,10 +170,6 @@ struct CoachingView: View {
                             if let plan {
                                 if goal != nil {
                                     PathCard(plan: plan, exercise: exercise, sessions: stats.sessions)
-                                }
-                                // Reprise après une longue absence : pas encore de bloc ni de test
-                                if plan.hasTest {
-                                    BlockCard(plan: plan)
                                 }
                             }
                         }
@@ -316,6 +317,7 @@ private struct TodayCard: View {
             case .due where plan.today == .test:
                 // Jour de test (ou test « à faire ») : la personne le lance ; la séance allégée reste possible
                 MonitorLabel(testMark, color: plan.testOverdue ? theme.text : theme.max)
+                reasonText
                 Text(symbols: "◆ série max" + (plan.tests.last.map { " · dernier test \($0.value)" } ?? ""))
                     .font(theme.font(15, .bold))
                     .foregroundStyle(theme.text)
@@ -334,6 +336,7 @@ private struct TodayCard: View {
                 if let mark = mark(plan.today) {
                     MonitorLabel(mark, color: theme.text)
                 }
+                reasonText
                 session(plan.today, done: todaySets.isEmpty ? nil : todaySets)
                 Button("Démarrer", action: onStart)
                     .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 48, fontSize: 13))
@@ -353,11 +356,7 @@ private struct TodayCard: View {
                         .foregroundStyle(theme.dim)
                     Spacer()
                 }
-                if let reason = plan.restReason {
-                    Text(reason.short)
-                        .font(theme.font(12))
-                        .foregroundStyle(theme.text)
-                }
+                reasonText
                 upcoming
             }
             // Moins de 2 séances sur 7 jours : le minimum, une ligne discrète (METHODE-JOURS.md, règle 6)
@@ -368,11 +367,22 @@ private struct TodayCard: View {
         .coachingCard(theme)
     }
 
-    /// « ! ◆ test à faire », « ◆ test 1 / 2 » (bloc 1) ou « ◆ jour de test ».
+    /// Pourquoi l'app propose ce qu'elle propose aujourd'hui (une ou deux phrases).
+    @ViewBuilder
+    private var reasonText: some View {
+        if let reason = plan.todayReason {
+            Text(reason)
+                .font(theme.font(13))
+                .foregroundStyle(theme.text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// « ! ◆ test à faire », « ◆ test 1 sur 2 » (bloc 1) ou « ◆ test de fin de bloc ».
     private var testMark: String {
         if plan.testOverdue { return "! ◆ test à faire" }
-        if let step = plan.testStep { return "◆ test \(step.number) / \(step.of)" }
-        return "◆ jour de test"
+        if let step = plan.testStep { return "◆ test \(step.number) sur \(step.of)" }
+        return "◆ test de fin de bloc"
     }
 
     /// « Aujourd'hui · ! léger » à gauche, l'intensité (pastille et mot) à droite.

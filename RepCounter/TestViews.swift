@@ -83,7 +83,7 @@ struct TestResultPanel: View {
                 if let step {
                     // Bloc 1 : 2 tests, le meilleur fixe le départ
                     if step.number < step.of {
-                        row("Test \(step.number) / \(step.of)", "le meilleur des deux fixe ton départ")
+                        row("Test \(step.number) sur \(step.of)", "le meilleur des deux fixe ton départ")
                     } else {
                         row("Départ", "\(max(best, previous ?? 0)) (meilleur des deux) → cibles calculées")
                     }
