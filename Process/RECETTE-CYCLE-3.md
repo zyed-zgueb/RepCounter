@@ -7,14 +7,15 @@
 - Pendant le repos, un compte à rebours ; en fin de séance, trois blocs (cible, la suite, le coach).
 - Tes 7 « À revoir » des Nouveautés corrigés.
 
-## À vérifier sur l'iPhone (ce que les captures ne montrent pas : le mouvement)
-- [ ] Une série de pompes : à chaque répétition, un segment s'allume ; à 10, l'anneau passe derrière toi et le suivant vient devant.
-- [ ] À la cible, le cadran passe au vert ; les répétitions en plus ajoutent un anneau vert.
-- [ ] Fin de série : le compte à rebours démarre, les segments s'éteignent ; à zéro, « Prêt » en vert.
-- [ ] Pendant le repos : « Ensuite : série 2 sur 3 » et la cible en grand ; si ta série était sous sa cible, la phrase qui dit pourquoi la cible a baissé.
-- [ ] Fin de séance : « Cible atteinte ✓ » ou « Cible non atteinte », la prochaine séance, et « Le coach » seulement si tu as écourté un repos avant une série manquée (ou battu ton max).
-- [ ] « Détail de la séance » : le total, et une touche sur une barre corrige le compte d'une série.
-- [ ] Un jour de test : le chiffre à battre en grand, « En savoir plus » s'ouvre sur l'explication du test.
+## À vérifier sur l'iPhone (ce que les captures ne montrent pas : le mouvement et le son)
+- [ ] Une série : à chaque répétition, une tuile du tunnel s'allume (uniforme, avec un halo) ; à 10, le tunnel avance d'un cran.
+- [ ] La cible se voit en entier dès le départ (les anneaux du fond) ; à la cible, tout passe au vert.
+- [ ] Fin de série : une lumière par seconde s'éteint ; à 3 secondes de la fin, 3, 2, 1 au son, puis le signal de départ ; « Prêt » en vert.
+- [ ] Pendant le repos : « Ensuite : série 2 sur 3 » et la cible en grand ; si ta série était sous sa cible, la phrase qui dit pourquoi elle a baissé.
+- [ ] Fin de séance : « Atteinte ✓ », « Presque atteinte : 94 % » ou « Atteinte à 62 % », et chaque série avec « ✓ » ou « −1 ».
+- [ ] « Le coach » n'apparaît que si tu as écourté un repos avant une série manquée, ou battu ton max.
+- [ ] « Détail de la séance » : une touche sur une barre corrige le compte d'une série.
+- [ ] Un jour de test : le chiffre à battre en grand ; « En savoir plus » explique le test.
 
 ## Décisions prises en route
 - Tunnel de comptage (ton idée), compte à rebours, fin de séance en trois blocs.
