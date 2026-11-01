@@ -103,13 +103,13 @@ enum TargetShare {
     /// « Presque atteinte : 94 % », « Atteinte à 62 % ».
     static func title(_ percent: Int?) -> String {
         guard let percent else { return "Atteinte ✓" }
-        return percent >= nearly ? "Presque atteinte : \(percent) %" : "Atteinte à \(percent) %"
+        return percent >= nearly ? "Presque atteinte\u{00A0}: \(percent)\u{00A0}%" : "Atteinte à \(percent)\u{00A0}%"
     }
 
     /// Sous le cadran et dans le Coaching : « fait ✓ », « fait · presque (94 %) », « fait · 62 % de la cible ».
     static func done(_ percent: Int?) -> String {
         guard let percent else { return "fait ✓" }
-        return percent >= nearly ? "fait · presque (\(percent) %)" : "fait · \(percent) % de la cible"
+        return percent >= nearly ? "fait · presque (\(percent)\u{00A0}%)" : "fait · \(percent)\u{00A0}% de la cible"
     }
 }
 
