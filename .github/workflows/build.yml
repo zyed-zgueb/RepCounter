@@ -65,12 +65,12 @@ jobs:
         if: github.event_name == 'push'
         run: |
           set -e
-          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          # L'iPhone de Vincent : un iPhone 14 (6,1 pouces), sur le dernier iOS du simulateur
+          RUNTIME=$(xcrun simctl list runtimes available -j | python3 -c "
           import json, sys
-          devices = json.load(sys.stdin)['devices']
-          phones = [d for runtime, ds in devices.items() if 'iOS' in runtime for d in ds
-                    if d['name'].startswith('iPhone') and 'Pro' in d['name'] and 'Max' not in d['name']]
-          print(phones[-1]['udid'])")
+          ios = [r for r in json.load(sys.stdin)['runtimes'] if r['platform'] == 'iOS']
+          print(ios[-1]['identifier'])")
+          UDID=$(xcrun simctl create "iPhone 14 (captures)" com.apple.CoreSimulator.SimDeviceType.iPhone-14 "$RUNTIME")
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
           xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100
