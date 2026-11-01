@@ -109,14 +109,35 @@ struct TodayLine: View {
     var body: some View {
         // En grandes tailles de texte : la version courte (sans le repos), puis sur deux lignes,
         // plutôt qu'un texte tronqué ou rétréci
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 4) { lead(plan.today.label); trail }
-            HStack(spacing: 4) { lead(plan.today.short); trail }
-            VStack(spacing: 2) { lead(plan.today.label); trail }
+        Group {
+            if plan.status == .due {
+                // Une ligne si elle tient ; sinon « aujourd'hui » au-dessus des cibles, jamais un
+                // mot coupé
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 4) { dueLead; dueLabel(plan.today.label) }
+                    HStack(spacing: 4) { dueLead; dueLabel(plan.today.short) }
+                    VStack(spacing: 2) {
+                        Text("aujourd'hui").foregroundStyle(theme.dim)
+                        dueLabel(plan.today.short)
+                    }
+                }
+            } else {
+                // Fait ou repos : le statut, puis la suite sur sa propre ligne
+                VStack(spacing: 4) {
+                    lead(plan.today.label)
+                    if let line = plan.weekLine { Text(symbols: line).foregroundStyle(theme.text) }
+                }
+            }
         }
         .font(theme.font(13))
         .multilineTextAlignment(.center)
         .accessibilityElement(children: .combine)
+    }
+
+    private var dueLead: some View { Text("aujourd'hui ·").foregroundStyle(theme.dim) }
+
+    private func dueLabel(_ label: String) -> some View {
+        Text(symbols: label).fontWeight(.bold).foregroundStyle(plan.today.color(theme))
     }
 
     /// « aujourd'hui · 29 · 25 · 22 », « fait ✓ », « fait · cible non atteinte » ou « repos conseillé ».
@@ -140,13 +161,6 @@ struct TodayLine: View {
         }
     }
 
-    /// La suite : « · test demain · prochaine lundi », « · prochaine demain ».
-    @ViewBuilder
-    private var trail: some View {
-        if plan.status != .due, let line = plan.weekLine {
-            Text("· " + line).foregroundStyle(theme.text)
-        }
-    }
 }
 
 /// La ligne sous le cadran un jour de test (le cadran reste neutre) : « ◆ jour de test · série max ·
@@ -422,7 +436,7 @@ struct PlanTimeline: View {
                 }
             }
             .frame(height: 14)
-            label(word, current: current)
+            if !typeSize.isAccessibilitySize || current { label(word, current: current) }
         }
         .frame(maxWidth: .infinity)
     }

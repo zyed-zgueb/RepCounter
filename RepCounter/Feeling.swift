@@ -104,16 +104,26 @@ struct FeelingScale: View {
     let caption: String
     let onSelect: (Int?) -> Void
 
+    private var captionText: some View {
+        Text(caption)
+            .font(theme.font(13))
+            .foregroundStyle(selection == nil ? theme.dim : theme.text)
+            .contentTransition(.opacity)
+    }
+
     var body: some View {
         VStack(spacing: 6) {
-            HStack {
-                MonitorLabel(title)
-                Spacer(minLength: 8)
-                Text(caption)
-                    .font(theme.font(13))
-                    .foregroundStyle(selection == nil ? theme.dim : theme.text)
-                    .lineLimit(1)
-                    .contentTransition(.opacity)
+            // Sur une ligne si elle tient, sinon la légende sous la question : jamais coupée
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    MonitorLabel(title)
+                    Spacer(minLength: 8)
+                    captionText.lineLimit(1)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    MonitorLabel(title)
+                    captionText
+                }
             }
             HStack(spacing: 4) {
                 ForEach(Array(values), id: \.self) { value in

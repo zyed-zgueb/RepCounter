@@ -484,10 +484,13 @@ private struct TodayCard: View {
     private var upcoming: some View {
         if let next = plan.next {
             VStack(alignment: .leading, spacing: 4) {
-                Text(symbols: "Prochaine séance : \(Format.dayDate(next)) · \(plan.upcoming.short)")
+                Text("Prochaine séance : \(Format.dayDate(next))")
                     .font(theme.font(17, .semibold))
                     .foregroundStyle(theme.text)
                     .fixedSize(horizontal: false, vertical: true)
+                Text(symbols: plan.upcoming.short)
+                    .font(theme.font(15))
+                    .foregroundStyle(theme.dim)
                 if let rest = plan.tomorrowRest, !Calendar.current.isDateInTomorrow(next) {
                     Text("Demain, repos conseillé : \(rest.tomorrowExplanation).")
                         .font(theme.font(15))

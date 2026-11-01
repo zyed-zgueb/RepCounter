@@ -131,6 +131,9 @@ enum Capture {
         let defaults = UserDefaults.standard
         defaults.set(true, forKey: WelcomeView.key)
         defaults.set(Coach.steps + 1, forKey: Coach.key)
+        // Les séances d'exemple suivent la règle actuelle du test (pas l'ancienne, réservée aux
+        // séances enregistrées avant le test annoncé)
+        defaults.set(Date.distantPast, forKey: "test.announcedSince")
         Goal.save(Goal(target: 40, date: day(70, hour: 0), start: 30, created: day(planStart, hour: 8)), for: .pushups)
     }
 
@@ -149,8 +152,9 @@ enum Capture {
     /// 4 semaines d'habitude avant le plan (3 séances par semaine), les 2 tests de départ, puis
     /// une séance tous les 2 jours, aux cibles du plan.
     private static func seed(_ context: ModelContext) {
-        func session(_ offset: Int, _ reps: [Int], targets: [Int?]? = nil, roles: [SetRole?]? = nil, effort: Int? = nil) {
-            let start = day(offset)
+        func session(_ offset: Int, _ reps: [Int], targets: [Int?]? = nil, roles: [SetRole?]? = nil, effort: Int? = nil,
+                     at time: Date? = nil) {
+            let start = time ?? day(offset)
             let record = SessionRecord(exercise: .pushups, start: start, end: start.addingTimeInterval(Double(reps.count) * 120))
             record.effort = effort
             record.sensing = "motion"
@@ -179,7 +183,7 @@ enum Capture {
             session(-1, [28, 24, 21], targets: [28, 24, 21], effort: 8)
         }
         if scenario == "done" {
-            session(0, [28, 22, 21], targets: [28, 24, 21], effort: 6)
+            session(0, [28, 22, 21], targets: [28, 24, 21], effort: 6, at: Date().addingTimeInterval(-3_600))
         }
         try? context.save()
     }
