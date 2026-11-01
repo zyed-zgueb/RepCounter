@@ -29,7 +29,7 @@ struct HistoryView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 VerticalScroll {
-                    VStack(spacing: 14) {
+                    VStack(spacing: 20) {
                         if !practiced.isEmpty {
                             ExerciseFilter(exercises: practiced, selection: $exercise)
                         }
@@ -134,7 +134,7 @@ private struct HistoryPanel<Accessory: View, Content: View>: View {
             }
             content()
         }
-        .padding(14)
+        .padding(20)
         .cardBackground(theme)
     }
 }
@@ -160,7 +160,7 @@ struct HistoryDetailView<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             VerticalScroll {
-                VStack(spacing: 14) { content() }
+                VStack(spacing: 20) { content() }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 24)
             }

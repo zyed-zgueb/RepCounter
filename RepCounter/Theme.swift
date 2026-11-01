@@ -100,18 +100,17 @@ struct AppTheme: Decodable, Identifiable, Equatable {
     }
 
     /// Le style Dynamic Type d'une taille de maquette.
+    /// L'échelle typographique de l'app : 5 tailles, pas une de plus, et jamais sous 13 pt
+    /// (skill reps-ux, « Typographie et espace »). Une taille demandée est rangée dans l'une des
+    /// 5 : chiffre clé (34), titre (22), texte (17), secondaire (15), note (13). Toutes suivent
+    /// Dynamic Type.
     static func textStyle(_ size: CGFloat) -> Font.TextStyle {
         switch size {
         case 30...: return .largeTitle
-        case 26..<30: return .title
-        case 21..<26: return .title2
-        case 19..<21: return .title3
-        case 17..<19: return .body
-        case 16..<17: return .callout
-        case 14..<16: return .subheadline
-        case 12.5..<14: return .footnote
-        case 11.5..<12.5: return .caption
-        default: return .caption2
+        case 20..<30: return .title2
+        case 16..<20: return .body
+        case 13.5..<16: return .subheadline
+        default: return .footnote
         }
     }
 
@@ -323,7 +322,7 @@ struct MonitorLabel: View {
         if theme.isSystem {
             // Hors compteur : une étiquette en casse normale, comme Santé
             Text(symbols: text)
-                .font(theme.font(13, .medium))
+                .font(theme.font(15, .medium))
                 .foregroundStyle(color ?? theme.dim)
                 .lineLimit(1)
         } else {

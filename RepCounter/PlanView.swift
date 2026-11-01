@@ -224,10 +224,10 @@ extension TrainingPlan.RestReason {
     /// La raison du repos conseillé, en une phrase (carte Aujourd'hui).
     var explanation: String {
         switch self {
-        case .beforeTest: return "Demain, c'est le test : tu y arriveras plus frais."
-        case .persistentFatigue: return "Ta fatigue dure depuis plusieurs semaines. Si tu t'entraînes quand même, ce sera une séance légère."
-        case .hardYesterday: return "Ta séance d'hier était très difficile (effort 7 ou plus) : ton corps récupère."
-        case .weeklyVolume: return "\(TrainingPlan.weeklySetCap) séries ces 7 derniers jours : au-delà, les gains diminuent."
+        case .beforeTest: return "Test demain : arrive frais."
+        case .persistentFatigue: return "Ta fatigue dure : récupère."
+        case .hardYesterday: return "Séance d'hier très difficile : récupère."
+        case .weeklyVolume: return "\(TrainingPlan.weeklySetCap) séries en 7 jours : récupère."
         }
     }
 
@@ -275,19 +275,17 @@ extension TrainingPlan {
     /// phrases de tous les jours (CLAUDE.md, « L'expérience » : comprendre, sans surprise). Les
     /// changements du plan sont dits ici, le jour même.
     var todayReason: String? {
-        let testDay = Format.dayDate(testDate)
         if status == .rest, let restReason { return restReason.explanation }
         // Séance du jour faite : seulement ce qui change pour la suite
         if status == .done {
             if let step = testStep {
                 if step.number == 1 {
-                    return startNext.map { "Test 1 sur 2 fait. Le 2e : \($0)." }
-                        ?? "Test 1 sur 2 fait. Plus de place pour le 2e cette semaine : tes cibles partent de celui-ci."
+                    return startNext.map { "Test 1 fait. Le 2e : \($0)." } ?? "Test 1 fait : il fixe tes cibles."
                 }
-                return "Tes 2 tests de départ sont faits : tes cibles partent du meilleur."
+                return "Tests faits : tes cibles en partent."
             }
             if let done = blockTestDone, let start = nextBlockStart {
-                return "Test fait : \(done.value) d'affilée. Le bloc suivant commence \(Format.dayDate(start)), à partir de ce niveau."
+                return "Test fait : \(done.value). Bloc \(block + 1) \(Format.dayDate(start))."
             }
             return nil
         }
@@ -298,56 +296,71 @@ extension TrainingPlan {
             if let step = testStep {
                 if step.number == 1 {
                     let lastDay = startTests?.next.map { Schedule.isoWeekday($0, calendar: .current) == 5 } ?? false
-                    return "Test 1 sur 2 : il mesure ton niveau de départ ; le 2e suivra 2 jours après. Tes cibles des prochaines semaines en partiront."
-                        + (lastDay ? " Dernier jour pour le commencer cette semaine." : "")
+                    return lastDay ? "Test 1 sur 2 : ton niveau de départ. Dernier jour cette semaine."
+                        : "Test 1 sur 2 : ton niveau de départ."
                 }
-                return "Test 2 sur 2 : le meilleur des deux fixe ton niveau de départ."
+                return "Test 2 sur 2 : le meilleur compte."
             }
             if testOverdue {
                 let limit = Calendar.current.date(byAdding: .day, value: Int(Self.repriseDays), to: testDate) ?? testDate
-                return "Le test de fin de bloc n'est pas encore fait : le bloc suivant l'attend. Sans test d'ici \(Format.dayDate(limit)), il repartira de ton dernier niveau."
+                return "Test à faire avant \(Format.dayDate(limit)) : le bloc suivant l'attend."
             }
-            return "Fin du bloc : ce test mesure ton progrès. Les cibles du bloc suivant en partiront."
+            return "Fin du bloc : mesure ton progrès."
         case .light:
-            return lightBecause ?? "Séance légère, la moitié des séries : ta forme est en baisse."
+            return lightBecause ?? "Forme en baisse : séance légère."
         case .deload:
-            return "Semaine de récupération, la moitié des séries : pour arriver frais au test, \(testDay)."
+            return "Récupération : la moitié des séries avant le test."
         case .reprise:
-            return "Reprise après une pause : séances allégées, puis le test, \(testDay)."
+            return "Reprise après une pause : séance allégée."
         case .session:
             if let done = blockTestDone, let start = nextBlockStart {
-                return "Test fait : \(done.value) d'affilée. Le bloc suivant commence \(Format.dayDate(start)) ; d'ici là, séances à tes nouvelles cibles."
+                return "Test fait : \(done.value). Bloc \(block + 1) \(Format.dayDate(start))."
             }
             if let because = redoneBecause {
-                return "Semaine refaite : la précédente a eu \(because). Le test est décalé : \(testDay)."
+                return "Semaine refaite : \(because) la semaine dernière."
             }
             guard case .progression(let index, _) = currentWeek?.kind else { return nil }
             if block == 1, index == 0 {
                 if let start = startTests, start.done < 2 {
-                    return start.done == 0
-                        ? "Pas de test de départ : plus le temps cette semaine. Tes séances calent tes cibles."
-                        : "Un seul test de départ cette semaine : tes cibles partent de lui."
+                    return start.done == 0 ? "Pas de test cette semaine : tes séances calent tes cibles."
+                        : "1 test fait : tes cibles en partent."
                 }
-                return "Tes cibles partent de tes tests de départ."
+                return "Tes cibles partent de tes tests."
             }
             if block > 1, firstWeekOfBlock {
                 if let previous = tests.last, previous.block == block - 1 {
-                    return "Nouveau bloc : tes cibles partent de ton test du \(previous.date.formatted(.dateTime.day().month(.abbreviated))), \(previous.value) d'affilée."
+                    return "Nouveau bloc : cibles depuis ton test (\(previous.value))."
                 }
                 if !missedTests.isEmpty, let level = currentMax {
-                    return "Nouveau bloc sans test : le précédent n'a pas été fait. Tes cibles partent de ton dernier niveau, \(level)."
+                    return "Nouveau bloc sans test : cibles depuis ton niveau (\(level))."
                 }
             }
-            let number = (weeks.firstIndex { $0.isCurrent } ?? 0) + 1
-            if let raise = maxRaise {
-                return "Semaine \(number) sur \(weeks.count), pour progresser. Tes cibles ont monté : tu as fait \(raise), au-dessus de ton max."
-            }
-            return "Semaine \(number) sur \(weeks.count), pour progresser : cibles fixes jusqu'au test de fin de bloc, \(testDay), sauf si tu dépasses ton max."
+            if let raise = maxRaise { return "Cibles relevées : tu as fait \(raise)." }
+            return nil
         }
     }
 }
 
 extension TrainingPlan {
+    /// En gros : « Semaine 2 sur 4 », « Test aujourd'hui », « Bloc 2 terminé ».
+    var whereAmITitle: String {
+        if nextBlockStart != nil { return "Bloc \(block) terminé" }
+        if testOverdue { return "Test à faire" }
+        if today == .test, testStep == nil { return "Test aujourd'hui" }
+        if let index = weeks.firstIndex(where: { $0.isCurrent }) { return "Semaine \(index + 1) sur \(weeks.count)" }
+        return "Bloc \(block)"
+    }
+
+    /// Dessous : « Bloc 2 · test de fin de bloc dans 16 jours », « Bloc 3 lundi 9 nov. ».
+    var whereAmISubtitle: String {
+        let calendar = Calendar.current
+        if let start = nextBlockStart { return "Bloc \(block + 1) \(Format.dayDate(start))" }
+        if testOverdue || (today == .test && testStep == nil) { return "Bloc \(block) · test de fin de bloc" }
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()), to: calendar.startOfDay(for: testDate)).day ?? 0
+        let when = days <= 1 ? Format.dayDate(testDate) : "dans \(days) jours"
+        return "Bloc \(block) · test de fin de bloc \(when)"
+    }
+
     /// « Bloc 2 · semaine 2 sur 4 · test dans 16 jours », « Bloc 2 · test aujourd'hui »,
     /// « Bloc 2 terminé · le bloc 3 commence lundi 9 nov. ».
     var whereAmI: String {
@@ -408,19 +421,18 @@ struct PlanTimeline: View {
                     }
                 }
             }
-            .frame(height: 12)
-            label((current ? "▲ " : "") + word, current: current)
+            .frame(height: 14)
+            label(word, current: current)
         }
         .frame(maxWidth: .infinity)
     }
 
     private func label(_ text: String, current: Bool) -> some View {
         Text(symbols: text)
-            .font(theme.font(10, current ? .bold : .regular))
+            .font(theme.font(13, current ? .bold : .regular))
             .foregroundStyle(current ? theme.text : theme.dim)
-            .lineLimit(2)
-            .minimumScaleFactor(0.8)
-            .multilineTextAlignment(.center)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
     }
 
     /// Le but de la semaine en un mot.
@@ -442,10 +454,49 @@ struct PlanTimeline: View {
     }
 }
 
-/// Le plan en tête du Coaching, en mots et daté : chaque semaine du bloc avec son but, où l'on
-/// est, et le test qui le clôt, avec sa raison. C'est lui qui donne le contrôle (CLAUDE.md) : ce
-/// qui vient, quand, pourquoi.
+/// « Ton plan », en tête du Coaching : où j'en suis en gros (« Semaine 2 sur 4 »), le test qui
+/// vient, la frise, et le détail des semaines sur demande. Une idée, peu de texte (skill reps-ux,
+/// « Typographie et espace »).
 struct PlanCard: View {
+    @Environment(\.theme) private var theme
+    let plan: TrainingPlan
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            CardHeader(symbol: "calendar", title: "Ton plan")
+            VStack(alignment: .leading, spacing: 4) {
+                Text(plan.whereAmITitle)
+                    .font(theme.font(22, .bold))
+                    .foregroundStyle(theme.text)
+                Text(plan.whereAmISubtitle)
+                    .font(theme.font(15))
+                    .foregroundStyle(theme.dim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .accessibilityElement(children: .combine)
+            PlanTimeline(plan: plan)
+            NavigationLink(value: CoachingPage.plan) {
+                HStack {
+                    Text("Voir les semaines")
+                        .font(theme.font(17))
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(theme.font(15, .semibold))
+                        .foregroundStyle(theme.dim)
+                }
+                .foregroundStyle(theme.primary)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .coachingCard(theme)
+    }
+}
+
+/// Le détail du plan (page poussée depuis « Ton plan ») : le but du bloc, chaque semaine avec son
+/// but et ses dates, « tu es ici », le test et sa raison.
+struct PlanWeeksList: View {
     @Environment(\.theme) private var theme
     @Environment(\.dynamicTypeSize) private var typeSize
     let plan: TrainingPlan
@@ -462,26 +513,19 @@ struct PlanCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            CardHeader(symbol: "calendar", title: "Ton plan")
-            // D'un coup d'œil : où j'en suis dans le bloc, et quand vient le test
-            Text(plan.whereAmI)
-                .font(theme.font(15, .bold))
+        VStack(alignment: .leading, spacing: 16) {
+            Text(headline)
+                .font(theme.font(17))
                 .foregroundStyle(theme.text)
                 .fixedSize(horizontal: false, vertical: true)
-            PlanTimeline(plan: plan)
-            Text(headline)
-                .font(theme.font(12))
-                .foregroundStyle(theme.dim)
-                .fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
                 ForEach(rows) { row in
                     rowView(row)
                 }
             }
             if plan.nextBlockStart == nil {
                 Text("Après le test, un nouveau bloc repart de ton nouveau niveau.")
-                    .font(theme.font(12))
+                    .font(theme.font(15))
                     .foregroundStyle(theme.dim)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -563,16 +607,16 @@ struct PlanCard: View {
         let current = row.moment == .current
         let titleView = HStack(alignment: .firstTextBaseline, spacing: 6) {
             Text(row.title)
-                .font(theme.font(14, current ? .bold : .semibold))
+                .font(theme.font(17, current ? .bold : .semibold))
                 .foregroundStyle(row.moment == .past ? theme.dim : theme.text)
             if current {
                 Text("tu es ici")
-                    .font(theme.font(11, .bold))
+                    .font(theme.font(13, .bold))
                     .foregroundStyle(theme.primary)
             }
         }
         let whenView = Text(row.when)
-            .font(theme.font(12))
+            .font(theme.font(15))
             .foregroundStyle(theme.dim)
         return HStack(alignment: .top, spacing: 10) {
             marker(row)
@@ -592,15 +636,15 @@ struct PlanCard: View {
                 }
                 if !row.detail.isEmpty {
                     Text(row.detail)
-                        .font(theme.font(12))
+                        .font(theme.font(15))
                         .foregroundStyle(row.moment == .past ? theme.dim : theme.text)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 8)
-        .background(current ? theme.primary.opacity(0.10) : .clear, in: RoundedRectangle(cornerRadius: 8))
+        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .background(current ? theme.primary.opacity(0.10) : .clear, in: RoundedRectangle(cornerRadius: 10))
         .accessibilityElement(children: .combine)
     }
 
@@ -924,7 +968,7 @@ private struct PathChart: View {
 extension View {
     /// Le cadre commun des cartes du Coaching.
     func coachingCard(_ theme: AppTheme) -> some View {
-        padding(14)
+        padding(20)
             .cardBackground(theme)
     }
 }

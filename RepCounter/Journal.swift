@@ -149,7 +149,7 @@ struct JournalCard: View {
                     .padding(.top, 6)
             }
         }
-        .padding(14)
+        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
         .overlay {

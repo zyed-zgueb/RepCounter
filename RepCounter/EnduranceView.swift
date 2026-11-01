@@ -168,7 +168,7 @@ struct EndurancePanel: View {
                 .foregroundStyle(theme.dim)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(14)
+        .padding(20)
         .cardBackground(theme)
         .sheet(isPresented: $showsInfo) {
             EnduranceInfoView(exercise: exercise)

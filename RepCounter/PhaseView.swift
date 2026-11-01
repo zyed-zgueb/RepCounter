@@ -65,7 +65,7 @@ struct PhasePanel: View {
     var body: some View {
         let phase = stats.phase(all: all, deloads: deloads)
         let loads = stats.weeklyLoads(all: all)
-        VStack(spacing: 14) {
+        VStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     MonitorLabel("Phase")
@@ -105,7 +105,7 @@ struct PhasePanel: View {
                     .padding(.top, 4)
                 }
             }
-            .padding(14)
+            .padding(20)
             .cardBackground(theme)
 
             VStack(alignment: .leading, spacing: 12) {
@@ -119,7 +119,7 @@ struct PhasePanel: View {
                 .font(theme.font(11))
                 .foregroundStyle(theme.dim)
             }
-            .padding(14)
+            .padding(20)
             .cardBackground(theme)
         }
         .sheet(isPresented: $showsInfo) {

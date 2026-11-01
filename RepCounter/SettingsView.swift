@@ -38,7 +38,7 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             // Liste de réglages : défile seulement si l'écran est trop petit
             VerticalScroll {
-                VStack(spacing: 14) {
+                VStack(spacing: 20) {
                     MonitorPanel("Mes exercices") {
                         VStack(alignment: .leading, spacing: 8) {
                             Button { showsExercises = true } label: {

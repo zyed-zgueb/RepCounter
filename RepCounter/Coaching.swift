@@ -128,7 +128,7 @@ struct CoachingView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 VerticalScroll {
-                    VStack(spacing: 14) {
+                    VStack(spacing: 20) {
                         if exercise == .auto {
                             // « Autre exercice » mêle des mouvements : ni plan ni objectif
                             Text("Le coaching suit un exercice précis.")
@@ -216,6 +216,10 @@ struct CoachingView: View {
                         PhasePanel(stats: stats, all: sessions)
                         FormPanel(stats: stats)
                     }
+                case .plan:
+                    HistoryDetailView(title: "Ton plan") {
+                        if let plan { PlanWeeksList(plan: plan) }
+                    }
                 }
             }
         }
@@ -295,6 +299,8 @@ struct CoachingView: View {
 
 enum CoachingPage: Hashable {
     case state
+    /// Le détail du plan : les semaines du bloc.
+    case plan
 }
 
 /// La séance du jour, en tête du Coaching (la ligne sous le cadran en est le résumé) :
@@ -315,7 +321,7 @@ private struct TodayCard: View {
     var onStartTest: () -> Void = {}
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             CardHeader(symbol: "calendar", title: "Aujourd'hui") {
                 if plan.status == .due { intensity(plan.today) }
             }
@@ -323,13 +329,13 @@ private struct TodayCard: View {
             case .due where plan.today == .test:
                 // Jour de test (ou test « à faire ») : la personne le lance ; la séance allégée reste possible
                 MonitorLabel(testMark, color: plan.testOverdue ? theme.text : theme.max)
-                reasonText
                 Text(symbols: "◆ série max" + (plan.tests.last.map { " · dernier test \($0.value)" } ?? ""))
-                    .font(theme.font(15, .bold))
+                    .font(theme.font(22, .bold))
                     .foregroundStyle(theme.text)
+                reasonText
                 if plan.testOverdue, let fallback = plan.fallback {
                     Text("En attendant : séance allégée · \(fallback.sets) série\(fallback.sets > 1 ? "s" : "")")
-                        .font(theme.font(12))
+                        .font(theme.font(15))
                         .foregroundStyle(theme.dim)
                 }
                 Button(action: onStartTest) { Text(symbols: "◆ Lancer le test") }
@@ -349,7 +355,7 @@ private struct TodayCard: View {
             case .done:
                 HStack {
                     Text(symbols: plan.targetMissed ? "fait · cible non atteinte" : "✓ fait")
-                        .font(theme.font(15, .bold))
+                        .font(theme.font(22, .bold))
                         .foregroundStyle(plan.targetMissed ? theme.text : theme.ok)
                     Spacer()
                 }
@@ -360,7 +366,7 @@ private struct TodayCard: View {
             case .rest:
                 HStack {
                     Text("repos conseillé")
-                        .font(theme.font(15, .bold))
+                        .font(theme.font(22, .bold))
                         .foregroundStyle(theme.dim)
                     Spacer()
                 }
@@ -380,7 +386,7 @@ private struct TodayCard: View {
     private var reasonText: some View {
         if let reason = plan.todayReason {
             Text(reason)
-                .font(theme.font(13))
+                .font(theme.font(17))
                 .foregroundStyle(theme.text)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -463,12 +469,12 @@ private struct TodayCard: View {
         if let next = plan.next {
             VStack(alignment: .leading, spacing: 4) {
                 Text(symbols: "Prochaine séance : \(Format.dayDate(next)) · \(plan.upcoming.short)")
-                    .font(theme.font(13, .semibold))
+                    .font(theme.font(17, .semibold))
                     .foregroundStyle(theme.text)
                     .fixedSize(horizontal: false, vertical: true)
                 if let rest = plan.tomorrowRest, !Calendar.current.isDateInTomorrow(next) {
                     Text("Demain, repos conseillé : \(rest.tomorrowExplanation).")
-                        .font(theme.font(12))
+                        .font(theme.font(15))
                         .foregroundStyle(theme.dim)
                         .fixedSize(horizontal: false, vertical: true)
                 }

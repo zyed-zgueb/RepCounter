@@ -81,7 +81,7 @@ struct FormPanel: View {
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(14)
+        .padding(20)
         .cardBackground(theme)
     }
 

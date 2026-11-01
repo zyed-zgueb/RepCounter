@@ -11,6 +11,9 @@ puis rend **un seul rapport** au Builder.
    changement de plan est-il annoncé avec sa raison ? Reste-t-il un sigle ou un symbole seul ?
    Plus de trois informations à chaud ? Un écart au plan est-il puni ? Chaque « non » est au
    moins « à corriger ».
+0 bis. **Typographie et espace** (skill reps-ux, § 12) : une taille hors de l'échelle (34, 22, 17,
+   15, 13) ou sous 13 pt ; une carte avec plus d'une idée ; un paragraphe là où une phrase suffit ;
+   une marge sous 20 pt entre ou dans les cartes. Chaque cas est « à corriger ».
 1. **Objectif** : le lot fait ce que dit `Process/CYCLE.md`, et rien d'autre.
 2. **Décisions** : rien ne contredit `DECISIONS.md` ni `Science/`.
 3. **Cas limites** : pas d'historique, beaucoup de séances, pas d'objectif, pas de test, test

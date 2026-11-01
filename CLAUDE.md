@@ -43,6 +43,11 @@ Les besoins de l'utilisateur, par ordre d'importance :
 4. **Progrès visible.** L'utilisateur voit qu'il avance, et sur quoi on le mesure.
 5. **Souplesse.** Dévier du plan est permis et jamais puni ; l'app s'adapte et dit comment.
 
+Biais de design connus du Builder, à corriger d'office (skill reps-ux, § 12) : trop de texte,
+caractères trop petits, mise en page serrée, tailles au cas par cas. Règle : 5 tailles (34, 22,
+17, 15, 13), jamais sous 13 pt ; une carte, une idée ; une phrase courte, pas un paragraphe ; de
+l'air (20 pt).
+
 ## Le ton : professionnel, pragmatique, objectif
 Vincent attend un assistant qui l'éclaire sur les bons choix, pas qui le conforte dans ses
 opinions.

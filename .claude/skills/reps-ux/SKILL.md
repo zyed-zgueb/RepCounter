@@ -147,3 +147,23 @@ L'échelle d'intensité (§ 5) et le vert « atteint » existent en version clai
 - Chaque élément porte un libellé VoiceOver qui dit la valeur, pas le symbole.
 - Les animations respectent « Réduire les animations ».
 - Les retours haptiques passent par `.sensoryFeedback`.
+
+## 12. Typographie et espace
+
+Les biais de design d'un assistant IA sont connus : trop de texte, des caractères trop petits, une
+mise en page serrée, des tailles choisies au cas par cas. Ces règles les corrigent ; elles priment
+sur l'habitude.
+
+- **5 tailles, pas une de plus** (`AppTheme.textStyle`, toutes en Dynamic Type) : chiffre clé
+  34 (`largeTitle`), titre 22 (`title2`), texte 17 (`body`), secondaire 15 (`subheadline`),
+  note 13 (`footnote`). **Jamais sous 13 pt.** Le texte qu'on lit est à 17 ; 13 ne sert qu'aux
+  libellés d'un graphique ou d'une frise.
+- **Une carte, une idée** : en tête, l'information principale en titre (22) ; dessous, une phrase
+  au plus en texte (17) ; le reste se lit sur une page de détail, en touchant la carte.
+- **Une phrase, pas un paragraphe** : une raison tient en moins de dix mots (« Test 1 sur 2 : ton
+  niveau de départ. »). Si elle n'apporte rien de neuf, on ne l'écrit pas.
+- **De l'air** : marge intérieure des cartes 20 pt, 20 pt entre les cartes, 16 pt entre les
+  éléments d'une carte ; une ligne touchable fait 44 pt au moins.
+- **Le chiffre avant les mots** : quand une donnée se montre (frise, barre, chiffre), on ne la
+  répète pas en phrase.
+

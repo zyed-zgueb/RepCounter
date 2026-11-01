@@ -394,8 +394,7 @@ struct TrainingPlan {
                     let tiredCount = done.filter { tired.contains($0.persistentModelID) }.count
                     let needed = required(inWeek: start)
                     if count < needed {
-                        reason = count == 0 ? "aucune séance, il en faut \(needed) au moins"
-                            : "\(count) séance seulement, il en faut \(needed) au moins"
+                        reason = count == 0 ? "aucune séance" : "\(count) séance sur \(needed) minimum"
                     } else if tiredCount >= 2 { reason = "forme basse à \(tiredCount) séances" }
                 }
                 weeks.append(Week(start: start, kind: .progression(progression, redo: redo), planned: planned,
@@ -668,9 +667,9 @@ extension HistoryStats {
                                      persistentFatigue: kind == .persistentFatigue,
                                      legacyBefore: TrainingPlan.announcedTestSince, now: now, calendar: calendar)
         if kind == .deload {
-            plan?.lightBecause = "Décharge en cours, que tu as commencée : la moitié des séries pendant 7 jours."
+            plan?.lightBecause = "Décharge en cours : séance légère."
         } else if kind == .deloadAdvised {
-            plan?.lightBecause = "Séance légère, la moitié des séries : ta forme baisse depuis 2 semaines, une décharge est conseillée (carte État)."
+            plan?.lightBecause = "Décharge conseillée : séance légère."
         }
         return plan
     }
