@@ -56,8 +56,8 @@ quel jour de la première semaine, sans prévenir.
 
 ## Cycle 3 : à chaud, comme un coach
 
-**Statut** : en construction depuis le 01/11 au soir (avis de Vincent sur la maquette et sur les
-Nouveautés, `DECISIONS.md`).
+**Statut** : recette acceptée le 01/11 (« je ne suis pas certain mais c'est ok ») ; fusionné dans
+`main`. Ce qui n'a pu être jugé qu'en image (le tunnel qui avance, le 3-2-1) reste à surveiller.
 
 **Objectif (vérifiable)** : sur les captures de la CI (série, repos, fin de séance, en grand texte
 aussi), trois informations au plus pendant la série et le repos, et une fin de séance en trois
@@ -108,6 +108,7 @@ L'ordre suit les besoins de l'utilisateur (contrôle, compréhension, charge men
 Vincent à la recette peut l'avancer ou le changer.
 
 ## Backlog
+- Vidéos courtes des écrans animés (tunnel, repos) produites par la CI et jointes aux Nouveautés (rétrospective du cycle 3).
 - **Cycle 3 proposé : la fin de séance, comme un coach.** Recette du cycle 1 : « grosse
   densité d'infos, surcharge cognitive ». Ce que Vincent veut y voir (31/10) :
   1. objectif atteint ou pas ;

@@ -50,3 +50,21 @@ utile ? ». Et ma grille ne demandait pas ce que l'écran actuel fait de bien, �
 2. Dans la revue de design, pour chaque symbole, puce ou mot : « que perd-on si on l'enlève ? » ;
    si rien, on l'enlève (skill reps-ux § 12, règles ajoutées).
 3. Un sigle se remplace par le mot le plus court que tout le monde comprend, pas par une phrase.
+
+## 01/11 (nuit) : fin du cycle 3
+
+**Ce qui s'est passé** : 3 tours d'avis sur les captures avant la recette (7, puis 4, puis 2
+« À revoir »), tous sur le design ; aucun défaut de fonctionnement. Recette acceptée avec un
+doute (« je ne suis pas certain »).
+
+**Ce qui a échappé** : un pourcentage incohérent avec les séries affichées (97 % avec deux séries
+manquées) : je l'ai vu sur la capture, pas en relisant le code. Un « % » seul à la ligne.
+
+**Angle mort** : le mouvement et le son. Vincent juge sur des images fixes ; le tunnel qui avance,
+le 3-2-1 et les animations ne se voient qu'en séance réelle, d'où son doute.
+
+**Ce que je change** :
+1. Pour tout écran animé, la CI produit une courte vidéo (le simulateur l'enregistre) jointe aux
+   Nouveautés, à la place de la seule image (cycle 4).
+2. Un chiffre affiché et le détail qui le justifie se vérifient ensemble, sur la même capture.
+3. Espaces insécables avant « % » et « : » dans tout texte qui peut passer à la ligne.
