@@ -120,7 +120,7 @@ jobs:
             wait $REC || true
           }
           video tunnel serieVideo 16
-          video fin-du-repos reposVideo 12
+          video fin-du-repos reposVideo 14
           # Grand texte (Dynamic Type, taille d'accessibilité) : les débordements se voient ici
           xcrun simctl ui "$UDID" content_size accessibility-large
           capture grand-texte-coaching coaching progression

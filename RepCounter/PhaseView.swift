@@ -198,10 +198,10 @@ struct PhaseInfoView: View {
                         ForEach(Self.phases, id: \.0) { title, rule in
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(title)
-                                    .font(theme.font(13, .bold))
+                                    .font(theme.font(15, .bold))
                                     .foregroundStyle(theme.text)
                                 Text(rule)
-                                    .font(theme.font(13))
+                                    .font(theme.font(15))
                                     .foregroundStyle(theme.dim)
                                     .lineSpacing(3)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -219,7 +219,7 @@ struct PhaseInfoView: View {
                         MonitorLabel("Références")
                         ForEach(Self.references, id: \.self) { reference in
                             Text(reference)
-                                .font(theme.font(13))
+                                .font(theme.font(15))
                                 .foregroundStyle(theme.dim)
                                 .lineSpacing(3)
                                 .fixedSize(horizontal: false, vertical: true)

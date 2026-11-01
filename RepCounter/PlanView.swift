@@ -187,7 +187,7 @@ struct TodayLine: View {
                 }
             }
         }
-        .font(theme.font(13))
+        .font(theme.font(15))
         .multilineTextAlignment(.center)
         .accessibilityElement(children: .combine)
     }
@@ -230,7 +230,7 @@ struct TestDayLine: View {
 
     var body: some View {
         Text(symbols: text)
-            .font(theme.font(13, .bold))
+            .font(theme.font(15, .bold))
             .foregroundStyle(plan.testOverdue ? theme.text : theme.max)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
@@ -779,15 +779,14 @@ struct PathCard: View {
     /// Les entrées de la légende, seulement pour ce que le chemin dessine.
     private var legend: [(symbol: String, spoken: String)] {
         var items: [(symbol: String, spoken: String)] = []
-        if plan.goal != nil { items.append(("● départ", "rond plein : départ")) }
+        if plan.goal != nil || !plan.tests.isEmpty { items.append(("● départ et tests", "gros points : départ et tests")) }
         // Les points dessinés : les séances depuis le début, hors séances de test
         let start = plan.goal?.created ?? plan.anchor
         let tests = Set(plan.tests.map(\.date))
         if sessions.contains(where: { $0.start >= start && !tests.contains($0.start) && !$0.isTest && $0.bestSet > 0 }) {
             items.append(("• séances", "petits points : séances"))
         }
-        if plan.tests.contains(where: { $0.date >= start }) || plan.hasTest { items.append(("◆ test", "losange : test")) }
-        if plan.shiftedGoalDate != nil { items.append(("┄ attendu", "pointillés : attendu")) }
+        if plan.shiftedGoalDate != nil { items.append(("┄ chemin prévu", "pointillés : chemin prévu jusqu'à l'objectif")) }
         return items
     }
 
@@ -923,7 +922,7 @@ private struct PathChart: View {
             RuleMark(y: .value("Répétitions", Double(goal.target)))
                 .foregroundStyle(theme.ok)
                 .annotation(position: .top, alignment: .trailing) {
-                    Text(symbols: "⚑ \(goal.target)")
+                    Text("objectif \(goal.target)")
                         .font(theme.font(13, .bold))
                         .foregroundStyle(theme.ok)
                 }
@@ -955,22 +954,8 @@ private struct PathChart: View {
                 .foregroundStyle(theme.primary.opacity(0.8))
                 .symbolSize(14)
         }
-        ForEach(upcoming, id: \.self) { test in
-            PointMark(x: .value("Date", test), y: .value("Répétitions", level(test)))
-                .symbol {
-                    Image(systemName: "diamond")
-                        .font(theme.font(13))
-                        .foregroundStyle(theme.dim)
-                }
-                .annotation(position: .top, spacing: 0) {
-                    // Test pas fait (manqué, ou en retard) : « ! »
-                    if alerts.contains(test) {
-                        Text(symbols: "!")
-                            .font(theme.font(13, .bold))
-                            .foregroundStyle(theme.text)
-                    }
-                }
-        }
+        // Plus de losange pour les tests à venir (peu compréhensible, avis de Vincent) : le prochain
+        // test, daté, est dans « Ton plan »
     }
 
     /// Les tests faits depuis le début de l'axe (◆ pleins, chiffrés) et le départ ●.
@@ -978,11 +963,9 @@ private struct PathChart: View {
     private func testMarks(from start: Date) -> some ChartContent {
         ForEach(plan.tests.filter { $0.date >= start }, id: \.date) { test in
             PointMark(x: .value("Date", test.date), y: .value("Répétitions", Double(test.value)))
-                .symbol {
-                    Image(systemName: "diamond.fill")
-                        .font(theme.font(13))
-                        .foregroundStyle(theme.text)
-                }
+                // Un gros point plein, comme le départ : ce sont tes mesures
+                .foregroundStyle(theme.text)
+                .symbolSize(60)
                 .annotation(position: .topTrailing, spacing: 0) {
                     Text("\(test.value)")
                         .font(theme.font(13, .bold))
@@ -1002,8 +985,8 @@ private struct PathChart: View {
         RuleMark(x: .value("Date", Date()))
             .foregroundStyle(theme.primary)
             .lineStyle(StrokeStyle(lineWidth: 1.2))
-            .annotation(position: .top, spacing: 0) {
-                Image(systemName: "arrowtriangle.down.fill")
+            .annotation(position: .top, spacing: 2) {
+                Text("aujourd'hui")
                     .font(theme.font(13))
                     .foregroundStyle(theme.primary)
             }

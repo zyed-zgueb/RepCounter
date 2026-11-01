@@ -496,7 +496,9 @@ struct WorkoutView: View {
                 // (après l'échauffement d'un test, jamais vert : rien n'est atteint, § 5)
                 Dial(face: RestLedFace(remaining: remaining, total: planned, color: color)) { side in
                     VStack(spacing: side * 0.03) {
-                        Text(done && !warmupRest ? "Prêt" : Format.clock(remaining))
+                        // Secondes arrondies au-dessus : « 0:01 » jusqu'au bout, puis « Prêt » (jamais « 0:00 »
+                        // avec une lumière encore allumée) ; le 3-2-1 sonore tombe sur 0:03, 0:02, 0:01
+                        Text(done && !warmupRest ? "Prêt" : Format.clock(remaining.rounded(.up)))
                             .font(theme.dialFont(side * 0.24, .bold))
                             .foregroundStyle(color)
                             .monospacedDigit()
@@ -1585,7 +1587,7 @@ private struct SessionSummary: View {
             return summaryStat("Forme", "séries courtes", pending: true)
         }
         let collected = min(earlier(record).filter { $0.formMeasure != nil }.count + 1, FormResult.baselineSessions)
-        return summaryStat("Forme", "réf. \(collected) / \(FormResult.baselineSessions)", pending: true)
+        return summaryStat("Forme", "en calcul : \(collected) sur \(FormResult.baselineSessions)", pending: true)
     }
 
     /// Séances précédentes du même exercice.
@@ -1607,7 +1609,7 @@ private struct SessionSummary: View {
         HStack(spacing: 10) {
             if let previous = before.first {
                 let delta = record.totalReps - previous.totalReps
-                pill("\(Format.trend(Double(delta))) vs \(Format.dayName(previous.start))",
+                pill("\(Format.trend(Double(delta))) depuis \(Format.dayName(previous.start))",
                      color: theme.text)
             } else {
                 pill("Première séance", color: theme.primary)

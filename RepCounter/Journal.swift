@@ -43,7 +43,7 @@ struct JournalHoursSettings: View {
                 .frame(height: 32)
                 .accessibilityLabel("Journée affichée de \(JournalHours.spoken(start)) à \(JournalHours.spoken(end))")
             Text(symbols: "Hors de ces heures, une séance se place au bord, marquée ‹ ou ›.")
-                .font(theme.font(13))
+                .font(theme.font(15))
                 .foregroundStyle(theme.dim)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -52,7 +52,7 @@ struct JournalHoursSettings: View {
     private func stepper(_ label: String, value: Int, minus: @escaping () -> Void, plus: @escaping () -> Void) -> some View {
         HStack {
             Text(label.uppercased())
-                .font(theme.font(13, .bold))
+                .font(theme.font(15, .bold))
                 .foregroundStyle(theme.text)
             Spacer()
             Button(action: minus) { Text(symbols: "‹").font(theme.font(17, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
@@ -144,7 +144,7 @@ struct JournalCard: View {
             }
             if let first = stats.sessions.last, let oldest = days.last, stats.calendar.startOfDay(for: first.start) < oldest {
                 Button("+ 28 jours") { withAnimation { shownDays += 28 } }
-                    .font(theme.font(13, .bold))
+                    .font(theme.font(15, .bold))
                     .foregroundStyle(theme.primary)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .contentShape(Rectangle())
