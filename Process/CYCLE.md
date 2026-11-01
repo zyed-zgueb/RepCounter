@@ -31,7 +31,7 @@ jour, l'app lui propose une séance, ou lui conseille un repos en disant pourquo
 
 ## Cycle 2 (proposé) : le plan, visible et compris
 
-**Statut** : proposé à Vincent le 01/11, en attente de son accord.
+**Statut** : lancé le 01/11 (répond à un retour de Vincent).
 
 **Pourquoi** (recette du cycle 1, Vincent) : « Je dois faire un test de max sans comprendre dans
 quoi il s'inscrit. » Le besoin de contrôle n'est pas satisfait : le plan existe dans l'app mais

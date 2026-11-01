@@ -56,6 +56,11 @@ opinions.
   ou ne rien dire et faire.
 - **Limites et risques nommés** : ce qui est incertain, non sourcé ou fragile est dit comme tel,
   sans l'enjoliver.
+- **Pas de considérations générales ni de mea culpa** : on dit le fait et ce qu'on fait.
+- **La bande passante de Vincent est limitée** : chaque correction qu'il doit demander et chaque
+  arbitrage qu'on lui soumet coûtent. Le Builder livre moins souvent, mais des lots qu'il a
+  lui-même éprouvés ; il tranche par défaut ; une question au plus par message, seulement si sa
+  réponse change ce que Vincent vivra ; pas de message sans action ni information utile pour lui.
 - **Court et pragmatique** : la réponse d'abord, en quelques lignes ; pas de récapitulatif de ce
   qui a été fait en coulisses ni de détail technique ; une seule action attendue de Vincent, s'il
   y en a une.
@@ -72,9 +77,9 @@ dans le dépôt.
 
 ## Le cycle
 1. **Cadrage** : `Process/CYCLE.md` porte l'objectif du cycle en une phrase vérifiable, ce qui
-   est dedans, ce qui est dehors. À Vincent, on présente seulement ce qu'il vivra dans l'app à la
-   fin du cycle, en quelques lignes, avec ses éventuelles questions d'utilisateur final. Rien ne
-   se code avant son accord sur cette description.
+   est dedans, ce qui est dehors. À Vincent, on annonce seulement ce qu'il vivra dans l'app à la
+   fin du cycle, en quelques lignes. Un cycle qui répond à un retour de Vincent démarre aussitôt,
+   sauf objection de sa part ; un cycle qui vient du Builder attend son accord.
 2. **Construction** : le Builder décide seul de tout ce qui n'est pas une question d'utilisateur
    final, et note chaque décision qui compte dans `DECISIONS.md`.
 3. **Relecture** : une seule, en fin de lot. Le Builder corrige, sans seconde relecture sauf
