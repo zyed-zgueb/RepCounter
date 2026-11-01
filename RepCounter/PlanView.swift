@@ -227,16 +227,23 @@ extension TrainingPlan.RestReason {
 }
 
 extension TrainingPlan {
-    /// Le lundi où commence le bloc suivant, une fois le test fait (ou abandonné) ; nil sinon.
-    var nextBlockStart: Date? {
-        let calendar = Calendar.current
-        let week = Schedule.weekStart(testDate, calendar: calendar)
-        if let last = tests.last, last.date >= testDate {
-            return calendar.date(byAdding: .day, value: 7, to: Schedule.weekStart(last.date, calendar: calendar))
-        }
-        if missedTests.last == testDate { return calendar.date(byAdding: .day, value: 14, to: week) }
-        return nil
+    /// Le test de fin de bloc fait (le bloc suivant n'a pas encore commencé) ; nil sinon.
+    var blockTestDone: Test? {
+        tests.last.flatMap { $0.block == block && $0.date >= testDate ? $0 : nil }
     }
+
+    /// Le lundi où commence le bloc suivant, une fois le test fait ; nil sinon.
+    var nextBlockStart: Date? {
+        guard let done = blockTestDone else { return nil }
+        let calendar = Calendar.current
+        return calendar.date(byAdding: .day, value: 7, to: Schedule.weekStart(done.date, calendar: calendar))
+    }
+
+    /// Bloc 1 : la première semaine sert à mesurer le niveau ; il reste 2 semaines de progression.
+    var progressionWeeksShown: Int { block == 1 ? Prescription.progressionWeeks - 1 : Prescription.progressionWeeks }
+
+    /// La semaine en cours est la première du bloc.
+    private var firstWeekOfBlock: Bool { weeks.first?.isCurrent ?? false }
 
     /// La semaine refaite en cours : la raison, lue sur la semaine qu'elle refait.
     private var redoneBecause: String? {
@@ -245,19 +252,40 @@ extension TrainingPlan {
         return weeks[index - 1].redoReason
     }
 
+    /// Les 2 tests de départ, en mots : « le 2e mercredi », « plus de place cette semaine ».
+    private var startNext: String? { startTests?.next.map { Format.dayDate($0) } }
+
     /// Pourquoi l'app propose ce qu'elle propose aujourd'hui, et ce qui suit, en une ou deux
-    /// phrases de tous les jours (CLAUDE.md, « L'expérience » : comprendre, sans surprise).
+    /// phrases de tous les jours (CLAUDE.md, « L'expérience » : comprendre, sans surprise). Les
+    /// changements du plan sont dits ici, le jour même.
     var todayReason: String? {
         let testDay = Format.dayDate(testDate)
         if status == .rest, let restReason { return restReason.explanation }
+        // Séance du jour faite : seulement ce qui change pour la suite
+        if status == .done {
+            if let step = testStep {
+                if step.number == 1 {
+                    return startNext.map { "Test 1 sur 2 fait. Le 2e : \($0)." }
+                        ?? "Test 1 sur 2 fait. Plus de place pour le 2e cette semaine : tes cibles partent de celui-ci."
+                }
+                return "Tes 2 tests de départ sont faits : tes cibles partent du meilleur."
+            }
+            if let done = blockTestDone, let start = nextBlockStart {
+                return "Test fait : \(done.value) d'affilée. Le bloc suivant commence \(Format.dayDate(start)), à partir de ce niveau."
+            }
+            return nil
+        }
         switch today {
         case .comeback:
             return nil
         case .test:
             if let step = testStep {
-                return step.number == 1
-                    ? "Test 1 sur 2 : il mesure ton niveau de départ. Tes cibles des prochaines semaines en partiront."
-                    : "Test 2 sur 2 : le meilleur des deux fixe ton niveau de départ."
+                if step.number == 1 {
+                    let lastDay = startTests?.next.map { Schedule.isoWeekday($0, calendar: .current) == 5 } ?? false
+                    return "Test 1 sur 2 : il mesure ton niveau de départ ; le 2e suivra 2 jours après. Tes cibles des prochaines semaines en partiront."
+                        + (lastDay ? " Dernier jour pour le commencer cette semaine." : "")
+                }
+                return "Test 2 sur 2 : le meilleur des deux fixe ton niveau de départ."
             }
             if testOverdue {
                 let limit = Calendar.current.date(byAdding: .day, value: Int(Self.repriseDays), to: testDate) ?? testDate
@@ -271,21 +299,34 @@ extension TrainingPlan {
         case .reprise:
             return "Reprise après une pause : séances allégées, puis le test, \(testDay)."
         case .session:
-            if let start = nextBlockStart {
-                return tests.last.map { $0.date >= testDate } ?? false
-                    ? "Test fait. Le bloc suivant commence \(Format.dayDate(start)) ; d'ici là, séances à tes nouvelles cibles."
-                    : "Test non fait : le bloc suivant commence \(Format.dayDate(start)), à partir de ton dernier niveau."
+            if let done = blockTestDone, let start = nextBlockStart {
+                return "Test fait : \(done.value) d'affilée. Le bloc suivant commence \(Format.dayDate(start)) ; d'ici là, séances à tes nouvelles cibles."
             }
             if let because = redoneBecause {
-                return "Semaine refaite (la précédente : \(because)). Le test est décalé : \(testDay)."
+                return "Semaine refaite : la précédente a eu \(because). Le test est décalé : \(testDay)."
             }
-            if case .progression(let index, _) = currentWeek?.kind {
-                if block == 1, index == 0, startTests != nil {
-                    return "Première semaine : tes séances calent tes cibles."
+            guard case .progression(let index, _) = currentWeek?.kind else { return nil }
+            if block == 1, index == 0 {
+                if let start = startTests, start.done < 2 {
+                    return start.done == 0
+                        ? "Pas de test de départ : plus le temps cette semaine. Tes séances calent tes cibles."
+                        : "Un seul test de départ cette semaine : tes cibles partent de lui."
                 }
-                return "Progression, semaine \(index + 1) sur \(Prescription.progressionWeeks) : les mêmes cibles à chaque séance, jusqu'au test, \(testDay)."
+                return "Tes cibles partent de tes tests de départ."
             }
-            return nil
+            if block > 1, firstWeekOfBlock {
+                if let previous = tests.last, previous.block == block - 1 {
+                    return "Nouveau bloc : tes cibles partent de ton test du \(previous.date.formatted(.dateTime.day().month(.abbreviated))), \(previous.value) d'affilée."
+                }
+                if !missedTests.isEmpty, let level = currentMax {
+                    return "Nouveau bloc sans test : le précédent n'a pas été fait. Tes cibles partent de ton dernier niveau, \(level)."
+                }
+            }
+            let number = block == 1 ? index : index + 1
+            if let raise = maxRaise {
+                return "Progression, semaine \(number) sur \(progressionWeeksShown). Tes cibles ont monté : tu as fait \(raise), au-dessus de ton max."
+            }
+            return "Progression, semaine \(number) sur \(progressionWeeksShown) : cibles fixes jusqu'au test, \(testDay), sauf si tu dépasses ton max."
         }
     }
 }
@@ -295,6 +336,7 @@ extension TrainingPlan {
 /// qui vient, quand, pourquoi.
 struct PlanCard: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
     let plan: TrainingPlan
 
     private enum Moment { case past, current, future }
@@ -320,17 +362,21 @@ struct PlanCard: View {
                     rowView(row)
                 }
             }
-            Text("Après le test, un nouveau bloc repart de ton nouveau niveau.")
-                .font(theme.font(12))
-                .foregroundStyle(theme.dim)
-                .fixedSize(horizontal: false, vertical: true)
+            if plan.nextBlockStart == nil {
+                Text("Après le test, un nouveau bloc repart de ton nouveau niveau.")
+                    .font(theme.font(12))
+                    .foregroundStyle(theme.dim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .coachingCard(theme)
     }
 
-    /// « Bloc 2 : 3 semaines pour progresser, 1 pour récupérer, puis un test. »
+    /// « Bloc 2 : 3 semaines pour progresser, 1 pour récupérer, puis un test… »
     private var headline: String {
-        "Bloc \(plan.block) : \(Prescription.progressionWeeks) semaines pour progresser, 1 pour récupérer, puis un test qui mesure ton progrès."
+        plan.block == 1
+            ? "Bloc 1 : 1 semaine pour mesurer ton niveau, \(plan.progressionWeeksShown) pour progresser, 1 pour récupérer, puis un test qui mesure ton progrès."
+            : "Bloc \(plan.block) : \(plan.progressionWeeksShown) semaines pour progresser, 1 pour récupérer, puis un test qui mesure ton progrès."
     }
 
     private var rows: [Row] {
@@ -350,7 +396,6 @@ struct PlanCard: View {
                     title = redo ? "Progresser (semaine refaite)" : "Progresser"
                     detail = "cibles \(week.planned.label)"
                 }
-                if let reason = week.redoReason, week.isPast { detail = "à refaire : \(reason)" }
             case .deload:
                 title = "Récupérer"
                 detail = "la moitié des séries, pour arriver frais au test"
@@ -358,11 +403,13 @@ struct PlanCard: View {
                 title = "Reprendre après une pause"
                 detail = "séances allégées avant le test"
             }
-            if moment == .past, week.redoReason == nil { detail = doneText }
+            if moment == .past {
+                detail = week.redoReason.map { "\(doneText) · refaite : \($0)" } ?? doneText
+            }
             list.append(Row(id: index, title: title, detail: detail, when: when, moment: moment, isTest: false))
         }
         // Le test qui clôt le bloc
-        let tested = plan.tests.last.flatMap { $0.date >= plan.testDate ? $0 : nil }
+        let tested = plan.blockTestDone
         let testMoment: Moment = tested != nil ? .past : (plan.today == .test && plan.testStep == nil ? .current : .future)
         let testDetail: String
         if let tested {
@@ -374,45 +421,57 @@ struct PlanCard: View {
         }
         list.append(Row(id: plan.weeks.count, title: "Test", detail: testDetail,
                         when: Format.dayDate(plan.testDate), moment: testMoment, isTest: true))
+        // Test fait : le bloc suivant, daté
+        if let start = plan.nextBlockStart {
+            list.append(Row(id: plan.weeks.count + 1, title: "Bloc \(plan.block + 1)",
+                            detail: "il part de ton test ; d'ici là, séances à tes nouvelles cibles",
+                            when: Format.dayDate(start), moment: .current, isTest: false))
+        }
         return list
     }
 
     /// La première semaine du bloc 1 : les 2 tests de départ, annoncés avec leur jour.
     private func startDetail(_ week: TrainingPlan.Week) -> String {
-        guard let start = plan.startTests else {
-            return week.isPast ? "" : "tes séances calent tes cibles"
-        }
+        guard let start = plan.startTests else { return "tes cibles partent de tes tests de départ" }
         switch (start.done, start.next) {
-        case (0, let next?):
-            return "2 tests max à 2 jours d'écart ; le 1er \(Format.weekdayOrDate(next))"
-        case (1, let next?):
-            return "test 1 fait ; le 2e \(Format.weekdayOrDate(next))"
-        default:
-            return "tes séances calent tes cibles"
+        case (0, let next?): return "2 tests max à 2 jours d'écart ; le 1er \(Format.dayDate(next))"
+        case (0, nil): return "pas de test de départ (plus le temps cette semaine) : tes séances calent tes cibles"
+        case (1, let next?): return "test 1 fait ; le 2e \(Format.dayDate(next))"
+        case (1, nil): return "1 test fait ; plus de place pour le 2e : tes cibles partent de lui"
+        default: return "2 tests faits : tes cibles partent du meilleur"
         }
     }
 
     private func rowView(_ row: Row) -> some View {
         let current = row.moment == .current
+        let titleView = HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(row.title)
+                .font(theme.font(14, current ? .bold : .semibold))
+                .foregroundStyle(row.moment == .past ? theme.dim : theme.text)
+            if current {
+                Text("tu es ici")
+                    .font(theme.font(11, .bold))
+                    .foregroundStyle(theme.primary)
+            }
+        }
+        let whenView = Text(row.when)
+            .font(theme.font(12))
+            .foregroundStyle(theme.dim)
         return HStack(alignment: .top, spacing: 10) {
             marker(row)
                 .frame(width: 14, height: 14)
                 .padding(.top, 3)
             VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(row.title)
-                        .font(theme.font(14, current ? .bold : .semibold))
-                        .foregroundStyle(row.moment == .past ? theme.dim : theme.text)
-                    if current {
-                        Text("tu es ici")
-                            .font(theme.font(11, .bold))
-                            .foregroundStyle(theme.primary)
+                // En tailles d'accessibilité, la date sous le titre plutôt qu'à côté
+                if typeSize.isAccessibilitySize {
+                    titleView
+                    whenView
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        titleView
+                        Spacer(minLength: 6)
+                        whenView
                     }
-                    Spacer(minLength: 6)
-                    Text(row.when)
-                        .font(theme.font(12))
-                        .foregroundStyle(theme.dim)
-                        .multilineTextAlignment(.trailing)
                 }
                 if !row.detail.isEmpty {
                     Text(row.detail)
@@ -431,11 +490,10 @@ struct PlanCard: View {
     /// Fait : disque plein ; en cours : anneau épais ; à venir : anneau fin ; test : losange.
     @ViewBuilder
     private func marker(_ row: Row) -> some View {
-        let color = row.isTest ? theme.max : theme.text
         if row.isTest {
             Rectangle()
-                .fill(row.moment == .past ? color : .clear)
-                .overlay(Rectangle().stroke(color, lineWidth: 1.5))
+                .fill(row.moment == .past ? theme.max : .clear)
+                .overlay(Rectangle().stroke(theme.max, lineWidth: 1.5))
                 .frame(width: 9, height: 9)
                 .rotationEffect(.degrees(45))
         } else {
@@ -776,7 +834,7 @@ struct PlanInfoView: View {
                     section("Les jours",
                             "Pas de jours à choisir : une séance est courte et se glisse n'importe quand dans la journée. Chaque jour, l'app propose une séance, ou conseille un repos dans quatre cas : la veille du test ; en fatigue persistante (Meeusen et al. 2013) ; le lendemain d'une séance notée « Très difficile » (effort 7 ou plus) ; après 20 séries sur les 7 derniers jours (au-delà d'environ 18 à 20 séries par semaine, les gains décroissent, ACSM 2026, établi pour le volume musculaire). Un repos est une proposition : une séance faite ce jour-là compte. À volume égal, la fréquence change peu le résultat (Grgic et al. 2018, résumé). Moins de 2 séances en 7 jours : l'app rappelle le minimum (ACSM 2026 : « at least twice weekly »). La veille du test et les seuils de 7 et de 20 sont des choix de l'app.")
                     section("Le test",
-                            "Sourcé : le test recale ton niveau, et les cibles du bloc suivant en partent (ACSM 2026, p. 863 : « regular strength testing »). Le reste est un choix de l'app. Le jour de test est le lundi qui suit la semaine allégée ; c'est toi qui le lances (« ◆ Lancer le test »), et seules les séries faites en mode test comptent. Un échauffement facile est conseillé, jamais compté : environ un tiers de ton dernier max, puis 2 minutes de repos. Le résultat est ta meilleure série en mode test ; une 2e tentative est possible après au moins 3 minutes, le meilleur des deux compte. La série s'arrête quand le compteur détecte la fin. Au bloc 1 (et à un nouveau bloc 1 après plus de 28 jours sans séance), 2 tests sur 2 jours de la première semaine, et le meilleur sert de départ. Un test lancé en semaine allégée compte et clôt le bloc ; lancé en semaine de progression, il ne clôt pas le bloc mais relève le max s'il le dépasse. Plusieurs tests : le meilleur, du premier test au début du bloc suivant. Lancé puis abandonné sans série : il reste à faire. Pas lancé : « à faire » les jours suivants, avec une séance allégée en attendant (elle compte comme séance, pas comme test) ; 7 jours après le jour prévu, le bloc suivant repart de ton dernier max, sans recalage. Plus de 7 jours sans séance : une semaine de reprise avant le test. Entre deux tests, un écart de moins d'environ 10 % se lit « dans la variation » (seuil provisoire ; principe : Hopkins). Entre deux tests, une série qui dépasse ton max le relève : le nouveau max est le nombre de répétitions faites (on ne suppose pas de réserve : on se trompe d'environ 1 répétition en l'estimant, Halperin et al. 2022 ; le test de fin de bloc mesure le reste), et les cibles suivent dès la séance suivante. Pas de mode test pour « Autre exercice ».")
+                            "Sourcé : le test recale ton niveau, et les cibles du bloc suivant en partent (ACSM 2026, p. 863 : « regular strength testing »). Le reste est un choix de l'app. Le jour de test est le lundi qui suit la semaine allégée ; c'est toi qui le lances (« ◆ Lancer le test »), et seules les séries faites en mode test comptent. Un échauffement facile est conseillé, jamais compté : environ un tiers de ton dernier max, puis 2 minutes de repos. Le résultat est ta meilleure série en mode test ; une 2e tentative est possible après au moins 3 minutes, le meilleur des deux compte. La série s'arrête quand le compteur détecte la fin. Au bloc 1 (et à un nouveau bloc 1 après plus de 28 jours sans séance), la première semaine mesure ton niveau : 2 tests à 2 jours d'écart, le 1er au plus tard le vendredi pour laisser la place au 2e ; le meilleur sert de départ. Sans test cette semaine-là, tes séances calent tes cibles (choix de l'app). Un test lancé en semaine allégée compte et clôt le bloc ; lancé en semaine de progression, il ne clôt pas le bloc mais relève le max s'il le dépasse. Plusieurs tests : le meilleur, du premier test au début du bloc suivant. Lancé puis abandonné sans série : il reste à faire. Pas lancé : « à faire » les jours suivants, avec une séance allégée en attendant (elle compte comme séance, pas comme test) ; 7 jours après le jour prévu, le bloc suivant repart de ton dernier max, sans recalage. Plus de 7 jours sans séance : une semaine de reprise avant le test. Entre deux tests, un écart de moins d'environ 10 % se lit « dans la variation » (seuil provisoire ; principe : Hopkins). Entre deux tests, une série qui dépasse ton max le relève : le nouveau max est le nombre de répétitions faites (on ne suppose pas de réserve : on se trompe d'environ 1 répétition en l'estimant, Halperin et al. 2022 ; le test de fin de bloc mesure le reste), et les cibles suivent dès la séance suivante. Pas de mode test pour « Autre exercice ».")
                     section("Après une longue absence",
                             "Après plus de 28 jours sans séance, le plan ne propose qu'une séance de reprise, libre : elle ouvre un nouveau bloc 1, ancré sur elle. Ce bloc commence, comme le tout premier, par 2 tests dans la première semaine ; sans ces tests, la semaine 1 calibre (les cibles suivent chaque séance), puis les cibles restent fixes jusqu'au test, sauf si une série relève le max. Le seuil de 28 jours et ce calibrage sont des choix de l'app.")
                     section("La progression",

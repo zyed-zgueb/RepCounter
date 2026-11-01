@@ -371,8 +371,11 @@ struct TrainingPlan {
                 if isPast, repeats < Prescription.maxRepeats {
                     let count = trainingDays(done)
                     let tiredCount = done.filter { tired.contains($0.persistentModelID) }.count
-                    if count < required(inWeek: start) { reason = count == 0 ? "aucune séance" : count == 1 ? "1 séance" : "\(count) séances" }
-                    else if tiredCount >= 2 { reason = "Forme basse × \(tiredCount)" }
+                    let needed = required(inWeek: start)
+                    if count < needed {
+                        reason = count == 0 ? "aucune séance, il en faut \(needed) au moins"
+                            : "\(count) séance seulement, il en faut \(needed) au moins"
+                    } else if tiredCount >= 2 { reason = "forme basse à \(tiredCount) séances" }
                 }
                 weeks.append(Week(start: start, kind: .progression(progression, redo: redo), planned: planned,
                                   done: trainingDays(done),
@@ -492,13 +495,15 @@ struct TrainingPlan {
             // 2 jours après le 1er, dans la même semaine ; sinon la semaine calibre sur les séances
             // (choix de l'app : jamais de test de départ en fin de semaine, sans annonce)
             var startTests: StartTests?
-            if block == 1, current?.kind == .progression(0, redo: false), calibrationDays < 2 {
+            if block == 1, current?.kind == .progression(0, redo: false) {
                 let weekEnd = dayOffset(7, from: blockStart)
+                // Le premier jour encore libre : aujourd'hui sans séance, sinon demain
+                let free = todaySessions.isEmpty ? max(today0, firstDay) : dayOffset(1, from: today0)
                 var next: Date?
                 if calibrationDays == 0 {
-                    next = today0 <= dayOffset(-3, from: weekEnd) ? max(today0, firstDay) : nil
-                } else if let first = calibrationDates.first {
-                    let second = dayOffset(2, from: first)
+                    next = free <= dayOffset(-3, from: weekEnd) ? free : nil
+                } else if calibrationDays == 1, let first = calibrationDates.first {
+                    let second = max(dayOffset(2, from: first), free)
                     next = second < weekEnd ? second : nil
                 }
                 startTests = StartTests(done: calibrationDays, next: next)
@@ -510,7 +515,7 @@ struct TrainingPlan {
                 today = .test
             } else if current?.kind == .deload {
                 today = .deload(deload)
-            } else if startTests != nil, calibrationToday {
+            } else if let start = startTests, start.done < 2 || testedToday, calibrationToday {
                 // Bloc 1, première semaine : les 2 tests de départ
                 today = .test
                 testStep = TestStep(number: calibrationDays + (testedToday ? 0 : 1), of: 2)

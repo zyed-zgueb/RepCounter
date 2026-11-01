@@ -174,8 +174,10 @@ qui suit la semaine allégée ; la personne le **lance** (« ◆ Lancer le test 
 seules les séries faites **en mode test** comptent (rôle `SetRecord.role` : échauffement, test).
 **Échauffement** conseillé, jamais compté (~⅓ du dernier max, puis 2:00) ; **résultat** = la
 meilleure série en mode test, **2e tentative** possible après 3:00 ; fin de série détectée par le
-compteur. **Bloc 1** (et nouveau bloc 1 après plus de 28 jours) : 2 tests sur 2 jours de la
-première semaine, le meilleur sert de départ. Test lancé en **semaine allégée** : il clôt le bloc ;
+compteur. **Bloc 1** (et nouveau bloc 1 après plus de 28 jours) : 2 tests à 2 jours d'écart la
+première semaine, le 1er au plus tard le vendredi, le meilleur sert de départ ; sans test, les
+séances calent les cibles. La carte « Ton plan » du Coaching montre le bloc semaine par semaine,
+daté et en mots, et la carte Aujourd'hui dit la raison du jour (cycle 2). Test lancé en **semaine allégée** : il clôt le bloc ;
 en **progression** : il relève seulement le max s'il le dépasse ; plusieurs tests : le meilleur
 jusqu'au bloc suivant ; abandonné sans série : il reste à faire. **Pas lancé** : « ! ◆ test à
 faire » les jours suivants, séance allégée en attendant (comptée comme séance, ni test

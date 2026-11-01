@@ -355,12 +355,16 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
         # Les 2 tests de départ (bloc 1, 1re semaine) : le 1er au plus tard le vendredi, le 2e
         # 2 jours après le 1er, dans la même semaine ; sinon la semaine calibre sur les séances
         calib_next = None
-        if block == 1 and current and current[0] == "P1" and calibration_days < 2:
+        calib_on = block == 1 and current is not None and current[0] == "P1"
+        tested_today = any(s.test_best for s in today_sessions)
+        if calib_on:
             week_end = block_start + 7
+            # Le premier jour encore libre : aujourd'hui sans séance, sinon demain
+            free = max(int(now), first_day) if not today_sessions else int(now) + 1
             if calibration_days == 0:
-                calib_next = max(int(now), first_day) if int(now) <= week_end - 3 else None
-            else:
-                second = kept_days[0] + 2
+                calib_next = free if free <= week_end - 3 else None
+            elif calibration_days == 1:
+                second = max(kept_days[0] + 2, free)
                 calib_next = second if second < week_end else None
         if reprise_today or (current and current[0] == "Reprise"):
             today = ("reprise", deload)
@@ -368,9 +372,8 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
             today = ("test", None)
         elif current and current[0] == "Allégée":
             today = ("deload", deload)
-        elif (block == 1 and current and current[0] == "P1" and calibration_days < 2
-              and (any(s.test_best for s in today_sessions)
-                   or (not today_sessions and calib_next is not None and calib_next <= int(now)))):
+        elif (calib_on and (calibration_days < 2 or tested_today)
+              and (tested_today or (not today_sessions and calib_next is not None and calib_next <= int(now)))):
             today = ("test", None)
             test_step = (calibration_days + (0 if any(s.test_best for s in today_sessions) else 1), 2)
         elif low_form or persistent_fatigue:
@@ -383,7 +386,7 @@ def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, lega
         return dict(block=block, weeks=weeks, test_day=test_day, tests=[t[:2] for t in tests], shift=shift, today=today,
                     ratios=ratios, overdue=overdue, test_step=test_step,
                     missed_tests=missed_tests, current_max=current_max, max_raise=last_raise,
-                    calib_next=calib_next, calib_done=calibration_days if block == 1 else None,
+                    calib_next=calib_next, calib_done=calibration_days if calib_on else None,
                     fallback=(deload if test_step is None else session_now) if today[0] == "test" else None,
                     **today_of(today, test_day))
 
@@ -634,6 +637,19 @@ def main():
     ok &= check("bloc 1 : pas de 2e test le lendemain du 1er", dict(today=p["today"][0], nxt=p["calib_next"]), dict(today="session", nxt=2))
     p = make(0, s, 2.5)
     ok &= check("bloc 1 : 2e test proposé 2 jours après", dict(today=p["today"][0], step=p["test_step"]), dict(today="test", step=(2, 2)))
+    # 1er test refusé (séance normale le lundi) : reproposé le mardi, annoncé pour le mardi
+    s7 = history + [Session(0.5, [12, 12, 12])]
+    ok &= check("bloc 1 : 1er test refusé, annoncé pour demain", dict(n=make(0, s7, 0.7)["calib_next"]), dict(n=1))
+    ok &= check("bloc 1 : 1er test reproposé le lendemain", dict(t=make(0, s7, 1.5)["today"][0]), dict(t="test"))
+    # 2e test manqué le mercredi : reproposé le jeudi, et annoncé pour le jeudi
+    s8 = history + [test_session(0.75, attempts=(30,)), Session(2.5, [24, 24, 24])]
+    ok &= check("bloc 1 : 2e test manqué, annoncé pour le lendemain", dict(n=make(0, s8, 2.7)["calib_next"]), dict(n=3))
+    ok &= check("bloc 1 : 2e test reproposé le lendemain", dict(t=make(0, s8, 3.5)["today"][0]), dict(t="test"))
+    # Les 2 tests faits : la semaine le sait (2 faits, plus de prochain)
+    s9 = history + [test_session(0.75, attempts=(30,)), test_session(2.75, attempts=(31,))]
+    ok &= check("bloc 1 : 2 tests faits", dict(d=make(0, s9, 3.5)["calib_done"], n=make(0, s9, 3.5)["calib_next"]), dict(d=2, n=None))
+    ok &= check("bloc 1 : test 2 sur 2 fait aujourd'hui", dict(t=make(0, s9, 2.9)["today"][0], st=make(0, s9, 2.9)["status"],
+                step=make(0, s9, 2.9)["test_step"]), dict(t="test", st="done", step=(2, 2)))
     # Pas de test de départ commencé le samedi : il n'y aurait pas la place du 2e dans la semaine
     ok &= check("bloc 1 : pas de 1er test après le vendredi", dict(t=make(0, history, 5.5)["today"][0],
                 n=make(0, history, 5.5)["calib_next"]), dict(t="session", n=None))
