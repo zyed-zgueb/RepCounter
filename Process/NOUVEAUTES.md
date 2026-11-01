@@ -14,6 +14,19 @@ les lit au début de chaque cycle et à chaque livraison ; un « À revoir » es
 Les captures complètes de chaque version sont archivées par la CI sur la branche `ci-captures`
 (un dossier par version : date et commit ; `latest/` pour la dernière).
 
+## 01/11 (nuit) : cycle 3, pendant et après l'effort
+
+| # | Écran | Ce qui change | Extraits |
+|---|---|---|---|
+| 18 | Série | Tunnel de comptage (un anneau de 10 par dizaine, cible entière visible), « sur 23 », « Série 2 sur 3 » ; plus de chronomètre ni de rangée des séries | `2026-11-01c/18-serie` (nouveau) |
+| 19 | Repos | Compte à rebours, « Prêt » à zéro ; série suivante et sa cible en grand | `2026-11-01c/19-repos` (nouveau) |
+| 20 | Fin de séance | Trois blocs (cible, la suite, le coach) ; détail à part ; « Terminé » | `2026-11-01c/20-fin` (nouveau) |
+| 13 | Coaching, Aujourd'hui | « effort normal » et jauge à 3 crans ; plus de puce | `2026-11-01c/13-effort` |
+| 14 | Coaching, jour de test | Sans pictogrammes ; chiffre à battre en grand ; « En savoir plus » | `2026-11-01c/14-jour-de-test` |
+| 15 | Historique, 12 semaines | Plus d'étoiles ; « record : N » de toujours ; « reps par semaine » | `2026-11-01c/15-record` |
+| 16 | Historique, Journal | « total » devient « reps » | `2026-11-01c/16-journal` |
+| 17 | Cadran | Plus de « caméra » ni de point seul sous la fatigue | `2026-11-01c/17-fatigue` |
+
 ## 01/11 (soir) : corrections de la recette du cycle 2
 
 | # | Écran | Ce qui change | Extraits |
