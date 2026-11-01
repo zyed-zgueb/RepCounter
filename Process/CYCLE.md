@@ -63,7 +63,7 @@ Chaque cycle : construction → relecture fonctionnelle → **revue de design** 
 |---|---|---|
 | **2** (en cours) | Le plan visible et compris ; textes plus grands, cartes aérées. | Écrans du Coaching ; puis **revue de toute l'app** (après la recette). |
 | **3** | **Pendant et juste après l'effort, comme un coach** : 3 informations au plus pendant la série et la récupération ; fin de séance = cible atteinte ou pas, la suite de la journée, un conseil concret quand les mesures le justifient (« En savoir plus » pour le détail). | Cadran, récupération, fin de séance. Premières **captures d'écran automatiques** par la CI, pour relire le design sur de vraies images. |
-| **4** | **Le Coaching et l'Historique allégés** : objectif, chemin, état, 12 semaines, journal, une idée par carte ; plus d'abréviations ni de légendes manquantes ; les longues explications du (i) deviennent des « En savoir plus » au bon endroit. | Coaching et Historique ; puis **revue de toute l'app**. |
+| **4** | **Le Coaching et l'Historique allégés** (dont ~60 textes encore lus à 13 pt, à passer à 15 ou 17 ; 13 réservé aux libellés de graphique) : objectif, chemin, état, 12 semaines, journal, une idée par carte ; plus d'abréviations ni de légendes manquantes ; les longues explications du (i) deviennent des « En savoir plus » au bon endroit. | Coaching et Historique ; puis **revue de toute l'app**. |
 | **5** | **Un compteur toujours juste** : nouveaux enregistrements réels, profils non validés (Développé épaules), ligne du jour qui change à minuit. | Écrans de mise en place et de comptage. |
 | **6** | **Prêt pour l'App Store** : fiche, captures, premier lancement. | Revue de toute l'app, en conditions de première ouverture. |
 

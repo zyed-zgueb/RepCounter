@@ -110,7 +110,7 @@ struct FeelingScale: View {
                 MonitorLabel(title)
                 Spacer(minLength: 8)
                 Text(caption)
-                    .font(theme.font(11))
+                    .font(theme.font(13))
                     .foregroundStyle(selection == nil ? theme.dim : theme.text)
                     .lineLimit(1)
                     .contentTransition(.opacity)
@@ -122,7 +122,7 @@ struct FeelingScale: View {
                         withAnimation(.snappy(duration: 0.15)) { onSelect(chosen ? nil : value) }
                     } label: {
                         Text("\(value)")
-                            .font(theme.font(12, .bold))
+                            .font(theme.font(13, .bold))
                             .monospacedDigit()
                             .foregroundStyle(chosen ? theme.background : theme.text)
                             .frame(maxWidth: .infinity)

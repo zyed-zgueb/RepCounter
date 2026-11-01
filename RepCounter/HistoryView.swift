@@ -99,7 +99,7 @@ struct HistoryView: View {
                 .foregroundStyle(theme.line)
             MonitorLabel("Aucune séance")
             Text("Tes séances s'afficheront ici.")
-                .font(theme.font(12))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 280)
@@ -122,7 +122,7 @@ private struct HistoryPanel<Accessory: View, Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             if let symbol {
                 CardHeader(symbol: symbol, title: title, opens: opens, trailing: accessory)
             } else {
@@ -182,7 +182,7 @@ private struct ExerciseFilter: View {
             // Σ et les exercices : une grille de 6 colonnes, sans défilement
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                 item(nil) {
-                    Text("Σ").font(theme.font(18, .bold))
+                    Text("Σ").font(theme.font(17, .bold))
                 }
                 ForEach(exercises) { exercise in
                     item(exercise) { ExerciseIcon(exercise: exercise, size: 22) }
@@ -353,14 +353,14 @@ private struct WeeksChart: View {
                                 ZStack {
                                     if point.test {
                                         Image(systemName: "diamond.fill")
-                                            .font(theme.font(10))
+                                            .font(theme.font(13))
                                             .foregroundStyle(theme.max)
                                     }
                                     if point.record {
                                         Image(systemName: "star.fill")
-                                            .font(theme.font(11))
+                                            .font(theme.font(13))
                                             .foregroundStyle(theme.text)
-                                            .offset(y: point.test ? -12 : 0)
+                                            .offset(y: point.test ? -16 : 0)
                                     }
                                 }
                             }
@@ -370,7 +370,7 @@ private struct WeeksChart: View {
                             .symbolSize(0)
                             .annotation(position: .top, spacing: 6) {
                                 Text(symbols: "★ \(record)")
-                                    .font(theme.font(11, .bold))
+                                    .font(theme.font(13, .bold))
                                     .foregroundStyle(theme.text)
                             }
                     }
@@ -392,7 +392,7 @@ private struct WeeksChart: View {
                         .annotation(position: .top) {
                             if index == current, value > 0 {
                                 Text("\(value)")
-                                    .font(theme.font(11, .bold))
+                                    .font(theme.font(13, .bold))
                                     .foregroundStyle(theme.text)
                             }
                         }
@@ -450,7 +450,7 @@ private struct VolumeBars: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                     .annotation(position: .top, alignment: .leading) {
                         Text("moy. \(Int(mean.rounded()))")
-                            .font(theme.font(11))
+                            .font(theme.font(13))
                             .foregroundStyle(theme.dim)
                     }
             }
@@ -548,12 +548,12 @@ private struct RegularityCalendar: View {
         let today = stats.calendar.startOfDay(for: stats.now)
         let most = max(daily.values.max() ?? 1, 1)
         let activeDays = daily.keys.filter { $0 >= firstWeek }.count
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             VStack(spacing: 4) {
                 ForEach(0..<7, id: \.self) { day in
                     HStack(spacing: 0) {
                         Text(dayLetter(day, from: firstWeek))
-                            .font(theme.font(9))
+                            .font(theme.font(13))
                             .foregroundStyle(theme.dim)
                             .frame(width: letterWidth, alignment: .leading)
                         ForEach(0..<Self.weeks, id: \.self) { week in
@@ -566,9 +566,11 @@ private struct RegularityCalendar: View {
                     }
                 }
             }
-            HStack {
-                Text("\(activeDays) jour\(activeDays > 1 ? "s" : "") actif\(activeDays > 1 ? "s" : "") en \(Self.weeks) sem.")
-                Spacer()
+            // Le compte sur sa ligne, la légende dessous : rien ne se coupe
+            Text("\(activeDays) jour\(activeDays > 1 ? "s" : "") actif\(activeDays > 1 ? "s" : "") en \(Self.weeks) semaines")
+                .font(theme.font(15))
+                .foregroundStyle(theme.dim)
+            HStack(spacing: 6) {
                 Text("moins")
                 ForEach(0..<4, id: \.self) { level in
                     RoundedRectangle(cornerRadius: 2)
@@ -577,7 +579,7 @@ private struct RegularityCalendar: View {
                 }
                 Text("plus")
             }
-            .font(theme.font(11))
+            .font(theme.font(13))
             .foregroundStyle(theme.dim)
         }
     }
@@ -610,7 +612,7 @@ struct SessionDetailView: View {
         let sets = session.orderedSets
         VStack(spacing: 0) {
             VerticalScroll {
-                VStack(spacing: 14) {
+                VStack(spacing: 20) {
                     overview
                     HistoryPanel(title: "Séries", symbol: "chart.bar.xaxis", accessory: { seriesAccessory(sets) }) {
                         SetBarsChart(session: session)
@@ -619,7 +621,7 @@ struct SessionDetailView: View {
                         HistoryPanel(title: "Rythme", symbol: "metronome", accessory: { MonitorLabel("s / rep") }) {
                             RhythmChart(sets: sets)
                             Text("Durée de chaque répétition")
-                                .font(theme.font(11))
+                                .font(theme.font(13))
                                 .foregroundStyle(theme.dim)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -642,7 +644,7 @@ struct SessionDetailView: View {
         if !targeted.isEmpty {
             let reached = targeted.filter { $0.reps >= ($0.target ?? .max) }.count
             Text(symbols: "\(reached) / \(targeted.count) ✓")
-                .font(theme.font(12, .bold))
+                .font(theme.font(13, .bold))
                 .foregroundStyle(reached == targeted.count ? theme.ok : theme.text)
         }
     }
@@ -755,7 +757,7 @@ private struct SetBarsChart: View {
                     .cornerRadius(2)
                     .annotation(position: .top) {
                         Text(symbols: "\(bar.reps)\(bar.reached ? " ✓" : "")")
-                            .font(theme.font(11, .bold))
+                            .font(theme.font(13, .bold))
                             .foregroundStyle(bar.reached ? theme.ok : theme.text)
                     }
             }

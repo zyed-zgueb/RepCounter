@@ -74,7 +74,7 @@ struct TestResultPanel: View {
                     .foregroundStyle(theme.text)
                     .monospacedDigit()
                 Text("\(exercise.shortTitle.lowercased()) d'affilée")
-                    .font(theme.font(12, .semibold))
+                    .font(theme.font(13, .semibold))
                     .foregroundStyle(theme.dim)
                     .lineLimit(2)
             }
@@ -139,7 +139,7 @@ struct TestResultPanel: View {
                 }
             }
             Text("Le meilleur des deux compte.")
-                .font(theme.font(11))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
             if remaining == 0 {
                 Button { model.startSecondAttempt() } label: { Text(symbols: "◆ Lancer la 2e tentative") }
@@ -153,7 +153,7 @@ struct TestResultPanel: View {
     private func row(_ label: String, _ value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
-                .font(theme.font(12, .semibold))
+                .font(theme.font(13, .semibold))
                 .foregroundStyle(theme.dim)
                 .lineLimit(2)
             Spacer(minLength: 8)

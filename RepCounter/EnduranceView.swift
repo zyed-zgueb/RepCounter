@@ -121,20 +121,20 @@ struct EndurancePanel: View {
                             // Assez d'historique : évolution sur 4 semaines
                             let change = (score - previous) / previous * 100
                             Text(symbols: Format.trend(change, unit: " %"))
-                                .font(theme.font(20, .bold))
+                                .font(theme.font(22, .bold))
                                 .foregroundStyle(theme.text)
                             Text("en 4 semaines")
-                                .font(theme.font(11))
+                                .font(theme.font(13))
                                 .foregroundStyle(theme.dim)
                                 .padding(.top, -6)
                         } else if let first, curve.points.count >= 2 {
                             // Au début : évolution depuis la première séance notée
                             let change = Int(score.rounded()) - Int(first.value.rounded())
                             Text(symbols: Format.trend(Double(change)))
-                                .font(theme.font(20, .bold))
+                                .font(theme.font(22, .bold))
                                 .foregroundStyle(theme.text)
                             Text("depuis le \(Format.shortDate(first.date))")
-                                .font(theme.font(11))
+                                .font(theme.font(13))
                                 .foregroundStyle(theme.dim)
                                 .padding(.top, -6)
                         }
@@ -146,7 +146,7 @@ struct EndurancePanel: View {
                                 MonitorLabel("Record")
                                 Spacer()
                                 Text("\(Int(record.rounded()))")
-                                    .font(theme.font(14, .bold))
+                                    .font(theme.font(15, .bold))
                                     .foregroundStyle(theme.text)
                             }
                         }
@@ -164,7 +164,7 @@ struct EndurancePanel: View {
                 }
             }
             Text(caption(score: score, assessment: assessment))
-                .font(theme.font(11))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -247,7 +247,7 @@ struct EnduranceInfoView: View {
             Text("k(R) = (60 s ÷ R)^0,2")
                 .foregroundStyle(theme.dim)
         }
-        .font(theme.font(16, .bold))
+        .font(theme.font(17, .bold))
         .foregroundStyle(theme.text)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
@@ -261,10 +261,10 @@ struct EnduranceInfoView: View {
             ForEach([(15.0, "15 s"), (30.0, "30 s"), (60.0, "1 min"), (120.0, "2 min"), (180.0, "3 min")], id: \.1) { rest, label in
                 VStack(spacing: 4) {
                     Text(label)
-                        .font(theme.font(10))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.dim)
                     Text("×\(Format.decimal(pow(60 / rest, 0.2)))")
-                        .font(theme.font(14, .bold))
+                        .font(theme.font(15, .bold))
                         .foregroundStyle(rest == 60 ? theme.text : (rest < 60 ? theme.ok : theme.dim))
                 }
                 .frame(maxWidth: .infinity)
@@ -274,14 +274,16 @@ struct EnduranceInfoView: View {
 
     private func section(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            MonitorLabel(title)
+            Text(title)
+                .font(theme.font(17, .bold))
+                .foregroundStyle(theme.text)
             paragraph(text)
         }
     }
 
     private func paragraph(_ text: String) -> some View {
         Text(text)
-            .font(theme.font(13))
+            .font(theme.font(17))
             .foregroundStyle(theme.text)
             .lineSpacing(4)
             .fixedSize(horizontal: false, vertical: true)

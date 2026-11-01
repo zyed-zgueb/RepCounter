@@ -60,7 +60,7 @@ struct FormPanel: View {
                         .minimumScaleFactor(0.7)
                     Spacer(minLength: 4)
                     Text(Format.dayName(last.session.start))
-                        .font(theme.font(11))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.dim)
                 }
                 if results.count >= 2 {
@@ -71,12 +71,12 @@ struct FormPanel: View {
                         Spacer()
                         Text("bande : ta variation normale")
                     }
-                    .font(theme.font(11))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
                 }
             }
             Text(caption(hasResult: !results.isEmpty))
-                .font(theme.font(11))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)

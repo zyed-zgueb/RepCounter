@@ -325,12 +325,14 @@ struct MonitorLabel: View {
                 .font(theme.font(15, .medium))
                 .foregroundStyle(color ?? theme.dim)
                 .lineLimit(1)
+                .minimumScaleFactor(0.75)
         } else {
             Text(symbols: text.uppercased())
-                .font(theme.font(10, .semibold))
+                .font(theme.font(13, .semibold))
                 .tracking(1.5)
                 .foregroundStyle(color ?? theme.dim)
                 .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
     }
 }
@@ -372,7 +374,7 @@ struct MonitorPanel<Content: View, Accessory: View>: View {
             }
             content
         }
-        .padding(12)
+        .padding(20)
         .cardBackground(theme)
     }
 }
@@ -396,13 +398,13 @@ struct MetricTile: View {
             MonitorLabel(label)
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(value)
-                    .font(theme.font(20, .semibold))
+                    .font(theme.font(22, .semibold))
                     .foregroundStyle(color ?? theme.text)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 if let unit {
                     Text(unit)
-                        .font(theme.font(10))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.dim)
                 }
             }

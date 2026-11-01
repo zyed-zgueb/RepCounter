@@ -66,7 +66,7 @@ struct PhasePanel: View {
         let phase = stats.phase(all: all, deloads: deloads)
         let loads = stats.weeklyLoads(all: all)
         VStack(spacing: 20) {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     MonitorLabel("Phase")
                     Spacer()
@@ -86,7 +86,7 @@ struct PhasePanel: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text(phase.action())
-                    .font(theme.font(13))
+                    .font(theme.font(17))
                     .foregroundStyle(theme.text)
                 if phase.kind == .deloadAdvised {
                     Button("Commencer la décharge") {
@@ -108,16 +108,16 @@ struct PhasePanel: View {
             .padding(20)
             .cardBackground(theme)
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 16) {
                 MonitorLabel("Charge · 12 semaines")
                 LoadBars(loads: loads.map(\.load), deloadWeeks: deloadWeeks(loads.map(\.week)))
-                HStack {
-                    Text("effort × minutes, toutes séances")
-                    Spacer()
-                    if loads.contains(where: { $0.load > 0 && !$0.answered }) { Text("sans effort noté : ton habituel") }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Effort × minutes, toutes séances.")
+                    if loads.contains(where: { $0.load > 0 && !$0.answered }) { Text("Sans effort noté : ton effort habituel.") }
                 }
-                .font(theme.font(11))
+                .font(theme.font(15))
                 .foregroundStyle(theme.dim)
+                .fixedSize(horizontal: false, vertical: true)
             }
             .padding(20)
             .cardBackground(theme)
@@ -201,7 +201,7 @@ struct PhaseInfoView: View {
                                     .font(theme.font(13, .bold))
                                     .foregroundStyle(theme.text)
                                 Text(rule)
-                                    .font(theme.font(12))
+                                    .font(theme.font(13))
                                     .foregroundStyle(theme.dim)
                                     .lineSpacing(3)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -219,7 +219,7 @@ struct PhaseInfoView: View {
                         MonitorLabel("Références")
                         ForEach(Self.references, id: \.self) { reference in
                             Text(reference)
-                                .font(theme.font(11))
+                                .font(theme.font(13))
                                 .foregroundStyle(theme.dim)
                                 .lineSpacing(3)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -258,9 +258,11 @@ struct PhaseInfoView: View {
 
     private func section(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            MonitorLabel(title)
+            Text(title)
+                .font(theme.font(17, .bold))
+                .foregroundStyle(theme.text)
             Text(text)
-                .font(theme.font(13))
+                .font(theme.font(17))
                 .foregroundStyle(theme.text)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)

@@ -114,7 +114,7 @@ struct TodayLine: View {
             HStack(spacing: 4) { lead(plan.today.short); trail }
             VStack(spacing: 2) { lead(plan.today.label); trail }
         }
-        .font(theme.font(12))
+        .font(theme.font(13))
         .multilineTextAlignment(.center)
         .accessibilityElement(children: .combine)
     }
@@ -158,7 +158,7 @@ struct TestDayLine: View {
 
     var body: some View {
         Text(symbols: text)
-            .font(theme.font(12, .bold))
+            .font(theme.font(13, .bold))
             .foregroundStyle(plan.testOverdue ? theme.text : theme.max)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
@@ -192,7 +192,7 @@ struct SetRow: View {
                 cell(index, all: all, next: next)
             }
         }
-        .font(theme.font(14, .bold))
+        .font(theme.font(15, .bold))
         .monospacedDigit()
         .lineLimit(1)
         .minimumScaleFactor(0.7)
@@ -285,7 +285,7 @@ extension TrainingPlan {
                 return "Tests faits : tes cibles en partent."
             }
             if let done = blockTestDone, let start = nextBlockStart {
-                return "Test fait : \(done.value). Bloc \(block + 1) \(Format.dayDate(start))."
+                return "Test : \(done.value) d'affilée. Bloc \(block + 1) dès \(Format.dayDate(start))."
             }
             return nil
         }
@@ -314,10 +314,10 @@ extension TrainingPlan {
             return "Reprise après une pause : séance allégée."
         case .session:
             if let done = blockTestDone, let start = nextBlockStart {
-                return "Test fait : \(done.value). Bloc \(block + 1) \(Format.dayDate(start))."
+                return "Test : \(done.value) d'affilée. Bloc \(block + 1) dès \(Format.dayDate(start))."
             }
             if let because = redoneBecause {
-                return "Semaine refaite : \(because) la semaine dernière."
+                return "Semaine refaite : test décalé au \(Format.dayDate(testDate))."
             }
             guard case .progression(let index, _) = currentWeek?.kind else { return nil }
             if block == 1, index == 0 {
@@ -354,7 +354,7 @@ extension TrainingPlan {
     /// Dessous : « Bloc 2 · test de fin de bloc dans 16 jours », « Bloc 3 lundi 9 nov. ».
     var whereAmISubtitle: String {
         let calendar = Calendar.current
-        if let start = nextBlockStart { return "Bloc \(block + 1) \(Format.dayDate(start))" }
+        if let start = nextBlockStart { return "Bloc \(block + 1) dès \(Format.dayDate(start))" }
         if testOverdue || (today == .test && testStep == nil) { return "Bloc \(block) · test de fin de bloc" }
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()), to: calendar.startOfDay(for: testDate)).day ?? 0
         let when = days <= 1 ? Format.dayDate(testDate) : "dans \(days) jours"
@@ -404,7 +404,7 @@ struct PlanTimeline: View {
                     .frame(height: 12)
                 label("Test", current: plan.today == .test && plan.testStep == nil)
             }
-            .frame(width: typeSize.isAccessibilitySize ? 64 : 44)
+            .frame(width: typeSize.isAccessibilitySize ? 56 : 32)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(plan.whereAmI)
@@ -432,17 +432,17 @@ struct PlanTimeline: View {
             .font(theme.font(13, current ? .bold : .regular))
             .foregroundStyle(current ? theme.text : theme.dim)
             .lineLimit(1)
-            .minimumScaleFactor(0.75)
+            .minimumScaleFactor(0.6)
     }
 
     /// Le but de la semaine en un mot.
     private func word(_ week: TrainingPlan.Week, index: Int) -> String {
         switch week.kind {
         case .progression(let step, let redo):
-            if plan.block == 1, step == 0, !redo { return "Mesurer" }
-            return redo ? "Refaire" : "Progresser"
-        case .deload: return "Récupérer"
-        case .reprise: return "Reprendre"
+            if plan.block == 1, step == 0, !redo { return "Mesure" }
+            return redo ? "Refaite" : "Progrès"
+        case .deload: return "Repos"
+        case .reprise: return "Reprise"
         }
     }
 
@@ -463,7 +463,7 @@ struct PlanCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            CardHeader(symbol: "calendar", title: "Ton plan")
+            CardHeader(symbol: "calendar", title: "Ton plan", opens: true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(plan.whereAmITitle)
                     .font(theme.font(22, .bold))
@@ -475,22 +475,10 @@ struct PlanCard: View {
             }
             .accessibilityElement(children: .combine)
             PlanTimeline(plan: plan)
-            NavigationLink(value: CoachingPage.plan) {
-                HStack {
-                    Text("Voir les semaines")
-                        .font(theme.font(17))
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(theme.font(15, .semibold))
-                        .foregroundStyle(theme.dim)
-                }
-                .foregroundStyle(theme.primary)
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
         }
         .coachingCard(theme)
+        .contentShape(Rectangle())
+        .accessibilityHint("Ouvre les semaines du bloc")
     }
 }
 
@@ -565,7 +553,7 @@ struct PlanWeeksList: View {
                 detail = "séances allégées avant le test"
             }
             if moment == .past {
-                detail = week.redoReason.map { "\(doneText) · refaite : \($0)" } ?? doneText
+                detail = week.redoReason.map { "refaite : \($0)" } ?? doneText
             }
             list.append(Row(id: index, title: title, detail: detail, when: when, moment: moment, isTest: false))
         }
@@ -605,16 +593,10 @@ struct PlanWeeksList: View {
 
     private func rowView(_ row: Row) -> some View {
         let current = row.moment == .current
-        let titleView = HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Text(row.title)
-                .font(theme.font(17, current ? .bold : .semibold))
-                .foregroundStyle(row.moment == .past ? theme.dim : theme.text)
-            if current {
-                Text("tu es ici")
-                    .font(theme.font(13, .bold))
-                    .foregroundStyle(theme.primary)
-            }
-        }
+        // La semaine en cours se voit au fond teinté et à l'anneau ; la date sous le titre
+        let titleView = Text(row.title)
+            .font(theme.font(17, current ? .bold : .semibold))
+            .foregroundStyle(row.moment == .past ? theme.dim : theme.text)
         let whenView = Text(row.when)
             .font(theme.font(15))
             .foregroundStyle(theme.dim)
@@ -623,17 +605,8 @@ struct PlanWeeksList: View {
                 .frame(width: 14, height: 14)
                 .padding(.top, 3)
             VStack(alignment: .leading, spacing: 2) {
-                // En tailles d'accessibilité, la date sous le titre plutôt qu'à côté
-                if typeSize.isAccessibilitySize {
-                    titleView
-                    whenView
-                } else {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        titleView
-                        Spacer(minLength: 6)
-                        whenView
-                    }
-                }
+                titleView
+                whenView
                 if !row.detail.isEmpty {
                     Text(row.detail)
                         .font(theme.font(15))
@@ -646,6 +619,7 @@ struct PlanWeeksList: View {
         .padding(.horizontal, 12)
         .background(current ? theme.primary.opacity(0.10) : .clear, in: RoundedRectangle(cornerRadius: 10))
         .accessibilityElement(children: .combine)
+        .accessibilityValue(current ? "en cours" : "")
     }
 
     /// Fait : disque plein ; en cours : anneau épais ; à venir : anneau fin ; test : losange.
@@ -682,30 +656,25 @@ struct PathCard: View {
     let sessions: [SessionRecord]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 16) {
             CardHeader(symbol: "chart.line.uptrend.xyaxis", title: "Chemin")
             PathChart(plan: plan, exercise: exercise, sessions: sessions)
             // Une légende ne montre que ce qui est dessiné (skill reps-ux, § 9)
             let legend = self.legend
             Text(symbols: legend.map(\.symbol).joined(separator: " · "))
-                .font(theme.font(10))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .accessibilityLabel("Légende : " + legend.map(\.spoken).joined(separator: " ; "))
-            if plan.hasTest {
-                HStack {
-                    MonitorLabel(plan.testOverdue ? "! ◆ test à faire" : (plan.today == .test ? "◆ test aujourd'hui" : "◆ prochain test"))
-                    Spacer()
-                    MonitorLabel(Format.shortDate(plan.testDate))
-                }
-            }
+            // Le prochain test est dans « Ton plan » : une carte, une idée
             if let verdict = settledVerdict {
-                HStack {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(symbols: verdictSymbol(verdict))
-                        .font(theme.font(13, .bold))
+                        .font(theme.font(17, .bold))
                         .foregroundStyle(theme.text)
-                    Spacer()
                     if let projection = plan.projection, let goal = plan.goal {
-                        MonitorLabel("à ce rythme, \(goal.target) vers le \(Format.shortDate(projection))")
+                        Text("À ce rythme, \(goal.target) vers le \(Format.shortDate(projection)).")
+                            .font(theme.font(15))
+                            .foregroundStyle(theme.dim)
                     }
                 }
             }
@@ -846,7 +815,7 @@ private struct PathChart: View {
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .annotation(position: .bottom, alignment: .leading) {
                     Text("bloc \(index + 1)")
-                        .font(theme.font(11, index == plan.blocks.count - 1 ? .bold : .regular))
+                        .font(theme.font(13, index == plan.blocks.count - 1 ? .bold : .regular))
                         .foregroundStyle(index == plan.blocks.count - 1 ? theme.text : theme.dim)
                 }
         }
@@ -860,7 +829,7 @@ private struct PathChart: View {
                 .foregroundStyle(theme.ok)
                 .annotation(position: .top, alignment: .trailing) {
                     Text(symbols: "⚑ \(goal.target)")
-                        .font(theme.font(11, .bold))
+                        .font(theme.font(13, .bold))
                         .foregroundStyle(theme.ok)
                 }
             if let goalDate = plan.shiftedGoalDate {
@@ -895,14 +864,14 @@ private struct PathChart: View {
             PointMark(x: .value("Date", test), y: .value("Répétitions", level(test)))
                 .symbol {
                     Image(systemName: "diamond")
-                        .font(theme.font(11))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.dim)
                 }
                 .annotation(position: .top, spacing: 0) {
                     // Test pas fait (manqué, ou en retard) : « ! »
                     if alerts.contains(test) {
                         Text(symbols: "!")
-                            .font(theme.font(10, .bold))
+                            .font(theme.font(13, .bold))
                             .foregroundStyle(theme.text)
                     }
                 }
@@ -916,12 +885,12 @@ private struct PathChart: View {
             PointMark(x: .value("Date", test.date), y: .value("Répétitions", Double(test.value)))
                 .symbol {
                     Image(systemName: "diamond.fill")
-                        .font(theme.font(12))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.text)
                 }
                 .annotation(position: .topTrailing, spacing: 0) {
                     Text("\(test.value)")
-                        .font(theme.font(11, .bold))
+                        .font(theme.font(13, .bold))
                         .foregroundStyle(theme.text)
                 }
         }
@@ -940,7 +909,7 @@ private struct PathChart: View {
             .lineStyle(StrokeStyle(lineWidth: 1.2))
             .annotation(position: .top, spacing: 0) {
                 Image(systemName: "arrowtriangle.down.fill")
-                    .font(theme.font(9))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.primary)
             }
         if let chosen {
@@ -1024,9 +993,11 @@ struct PlanInfoView: View {
 
     private func section(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            MonitorLabel(title)
+            Text(title)
+                .font(theme.font(17, .bold))
+                .foregroundStyle(theme.text)
             Text(text)
-                .font(theme.font(13))
+                .font(theme.font(17))
                 .foregroundStyle(theme.text)
                 .lineSpacing(4)
                 .fixedSize(horizontal: false, vertical: true)

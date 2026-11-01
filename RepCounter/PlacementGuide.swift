@@ -89,7 +89,7 @@ struct PlacementGuideView: View {
                         ForEach(Array(guide.points.enumerated()), id: \.offset) { index, point in
                             HStack(alignment: .top, spacing: 14) {
                                 Text("\(index + 1)")
-                                    .font(theme.font(12, .bold))
+                                    .font(theme.font(13, .bold))
                                     .foregroundStyle(theme.primary)
                                     .frame(width: 24, height: 24)
                                     .overlay(Circle().stroke(theme.primary, lineWidth: 1.5))

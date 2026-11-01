@@ -534,7 +534,7 @@ struct WorkoutView: View {
             } label: {
                 HStack(spacing: 4) {
                     Text(loadKind.title.uppercased())
-                        .font(theme.font(11, .bold))
+                        .font(theme.font(13, .bold))
                         .tracking(1)
                         .lineLimit(1)
                     Image(systemName: "chevron.up.chevron.down")
@@ -653,14 +653,17 @@ struct WorkoutView: View {
         let index = planDay.earlierToday.count + model.sets.count
         if let target = model.currentTarget, index < planDay.session.sets {
             let last = index == planDay.session.sets - 1
-            HStack(spacing: 6) {
-                MonitorLabel(last ? "Dernière série" : "Ensuite · série \(index + 1)")
-                Text("\(target)")
-                    .font(theme.font(14, .bold))
-                    .foregroundStyle(theme.text)
-                    .monospacedDigit()
+            // La cible réajustée sur sa propre ligne : elle n'est jamais coupée
+            VStack(spacing: 4) {
+                HStack(spacing: 6) {
+                    MonitorLabel(last ? "Dernière série" : "Ensuite · série \(index + 1)")
+                    Text("\(target)")
+                        .font(theme.font(15, .bold))
+                        .foregroundStyle(theme.text)
+                        .monospacedDigit()
+                }
                 if target < planDay.session.targets[index] {
-                    MonitorLabel("· ! cible réajustée", color: theme.text)
+                    MonitorLabel("! cible réajustée", color: theme.text)
                 }
             }
         } else {
@@ -765,7 +768,7 @@ struct WorkoutView: View {
     private func stat(_ label: String, _ value: String, unit: String? = nil) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
             Text(label.uppercased())
-                .font(theme.font(12))
+                .font(theme.font(13))
                 .tracking(1)
                 .foregroundStyle(theme.dim)
             Text(value)
@@ -774,7 +777,7 @@ struct WorkoutView: View {
                 .monospacedDigit()
             if let unit {
                 Text(unit)
-                    .font(theme.font(12))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
             }
         }
@@ -799,7 +802,7 @@ struct WorkoutView: View {
             Text(label).foregroundStyle(theme.dim)
             if let value { Text(value).foregroundStyle(theme.text) }
         }
-        .font(theme.font(12, .bold))
+        .font(theme.font(13, .bold))
         .lineLimit(1)
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -956,7 +959,7 @@ struct WorkoutView: View {
                         Text(String(format: "rég %.2f", item.regularity))
                             .foregroundStyle(item.regularity >= 0.6 ? theme.ok : theme.dim)
                     }
-                    .font(theme.font(11))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.text)
                 }
                 if model.diagnostics.isEmpty {
@@ -976,7 +979,7 @@ struct WorkoutView: View {
             }
             Text(model.exercise.isArmExercise ? "Rien n'est filmé. Ou passe au brassard (Réglages)."
                                               : "Rien n'est filmé, rien n'est enregistré.")
-                .font(theme.font(12))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1110,10 +1113,10 @@ private struct HoldButton: View {
     var body: some View {
         VStack(spacing: 3) {
             Text(title.uppercased())
-                .font(theme.font(12, .bold))
+                .font(theme.font(13, .bold))
                 .tracking(1.5)
             Text("MAINTENIR")
-                .font(theme.font(8, .semibold))
+                .font(theme.font(13, .semibold))
                 .tracking(1.5)
                 .opacity(0.75)
         }
@@ -1236,7 +1239,7 @@ private struct SessionSummary: View {
                 SetBars(sets: record.orderedSets.map(\.reps), recordIndex: recordSetIndex(record), editing: editing) { index in
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { editing = editing == index ? nil : index }
                 }
-                .frame(height: 100)
+                .frame(height: 112)
                 corrector(record)
             } else {
                 MonitorLabel("Aucune série comptée")
@@ -1350,14 +1353,14 @@ private struct SessionSummary: View {
                             color: done ? theme.ok : theme.text)
                     if let week = plan.currentWeek {
                         Text("séance \(week.done + (earlierToday.isEmpty ? 1 : 0)) de la semaine")
-                            .font(theme.font(11))
+                            .font(theme.font(13))
                             .foregroundStyle(theme.dim)
                     }
                     // Une série qui dépasse le max le relève : les cibles suivent dès la séance
                     // suivante (choix de l'app, METHODE-TEST.md)
                     if let currentMax = plan.currentMax, let raised = Self.raisedMax(record, from: currentMax) {
                         Text(symbols: "▲ max relevé à \(raised) · cibles mises à jour")
-                            .font(theme.font(12, .bold))
+                            .font(theme.font(13, .bold))
                             .foregroundStyle(theme.text)
                     }
                 }
@@ -1408,7 +1411,7 @@ private struct SessionSummary: View {
                     .font(theme.font(13, .bold))
                     .foregroundStyle(theme.text)
                 Text(phase.action())
-                    .font(theme.font(12))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -1489,7 +1492,7 @@ private struct SessionSummary: View {
             if star { Image(systemName: "star.fill").font(.system(size: 10, weight: .bold)) }
             Text(symbols: text)
         }
-        .font(theme.font(12, .bold))
+        .font(theme.font(13, .bold))
         .foregroundStyle(color)
         .lineLimit(1)
         .minimumScaleFactor(0.8)
@@ -1515,7 +1518,7 @@ private struct SessionSummary: View {
                     .frame(minWidth: 34)
                 stepButton("plus") { set.reps += 1 }
                 Text("compté : \(set.countedReps)")
-                    .font(theme.font(11))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
             }
             .padding(.horizontal, 12)
@@ -1527,7 +1530,7 @@ private struct SessionSummary: View {
             // Un compte corrigé : proposer de le signaler, pour améliorer le compteur
             Button { report(record) } label: {
                 Text("Le compte était faux ? **Signale-le**")
-                    .font(theme.font(11))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
             }
             .buttonStyle(.plain)
@@ -1535,7 +1538,7 @@ private struct SessionSummary: View {
         } else if history.count <= 3 {
             // Montrée aux premières séances seulement : ensuite, on sait
             Text("Touche une série pour la corriger")
-                .font(theme.font(11))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .transition(.opacity)
         }
@@ -1569,7 +1572,7 @@ private struct SessionSummary: View {
                     .monospacedDigit()
                 if let unit {
                     Text(unit)
-                        .font(theme.font(10))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.dim)
                 }
             }
@@ -1611,11 +1614,12 @@ struct SetBars: View {
                         .frame(maxWidth: 38)
                         .frame(height: max(2, 64 * CGFloat(reps) / CGFloat(most)))
                         .shadow(color: theme.primary.opacity(0.3 * min(theme.glow, 1)), radius: 8)
-                    if sets.count <= 10 {
-                        Text("série \(index + 1)")
-                            .font(theme.font(10))
+                    // Le numéro seul sous la barre (l'axe est celui des séries) ; au-delà de 6
+                    // séries, pas de libellé : il ne tiendrait pas
+                    if sets.count <= 6 {
+                        Text("\(index + 1)")
+                            .font(theme.font(13))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.6)
                             .foregroundStyle(selected ? theme.text : theme.dim)
                     }
                 }
@@ -1669,7 +1673,7 @@ private struct RecordingSheet: View {
                 .padding(.top, 10)
             MonitorLabel("Enregistrement terminé", color: theme.alarm)
             Text("Compté par l'app : \(finished.countedReps)")
-                .font(theme.font(14))
+                .font(theme.font(15))
                 .foregroundStyle(theme.dim)
 
             MonitorPanel("Répétitions réellement faites") {
@@ -1691,7 +1695,7 @@ private struct RecordingSheet: View {
                 }
                 .buttonStyle(MonitorButtonStyle(color: theme.primary))
                 Text("Aussi dans Fichiers › Sur mon iPhone › Reps › Recordings.")
-                    .font(theme.font(11))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
                 Button("Fermer") { dismiss() }
                     .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false))
