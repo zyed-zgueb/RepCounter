@@ -5,6 +5,7 @@ name: Build
 
 on:
   push:
+    branches-ignore: [ci-captures]
   pull_request:
   workflow_dispatch:
 
@@ -29,8 +30,10 @@ jobs:
         run: python3 Simulation/plan.py
 
   xcode:
-    name: Compilation iOS
+    name: Compilation iOS et captures d'écran
     runs-on: macos-26
+    permissions:
+      contents: write # publier les captures sur la branche ci-captures
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,3 +58,45 @@ jobs:
         with:
           name: build-log
           path: build.log
+      # Captures d'écran de l'app réelle, dans le simulateur, avec des séances d'exemple (mode
+      # capture, RepCounterApp.swift) : clair et sombre. Publiées sur la branche ci-captures,
+      # pour les revues de design et pour montrer les écrans à valider.
+      - name: Captures d'écran (simulateur)
+        if: github.event_name == 'push'
+        run: |
+          set -e
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          devices = json.load(sys.stdin)['devices']
+          phones = [d for runtime, ds in devices.items() if 'iOS' in runtime for d in ds
+                    if d['name'].startswith('iPhone') and 'Pro' in d['name'] and 'Max' not in d['name']]
+          print(phones[-1]['udid'])")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100
+          xcrun simctl install "$UDID" build/Debug-iphonesimulator/RepCounter.app
+          mkdir -p captures
+          for appearance in light dark; do
+            xcrun simctl ui "$UDID" appearance $appearance
+            for screen in counter coaching history; do
+              xcrun simctl launch --terminate-running-process "$UDID" com.zgueb.RepCounter -captureDemo YES -captureScreen $screen
+              sleep 8
+              xcrun simctl io "$UDID" screenshot "captures/$screen-$appearance.png"
+            done
+          done
+          echo "${GITHUB_SHA::7}" > captures/COMMIT
+      - name: Publier les captures
+        if: github.event_name == 'push'
+        run: |
+          cd captures
+          git init -q
+          git checkout -q -b ci-captures
+          git add .
+          git -c user.name="CI Reps" -c user.email="ci@users.noreply.github.com" commit -qm "Captures de ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-captures
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: captures
+          path: captures
+
