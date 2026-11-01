@@ -94,7 +94,11 @@ dans le dépôt.
    skill reps-ux § 12), sur des captures d'écran dès que la CI les produit. Le Builder corrige
    avant de livrer. Tous les deux cycles, une revue de design de toute l'app.
 5. **Livraison** : CI verte, puis une seule réponse à Vincent avec la recette (`Process/RECETTE.md`
-   remplie : 5 à 10 vérifications sur l'iPhone).
+   remplie : 5 à 10 vérifications sur l'iPhone). Chaque changement visible est d'abord noté
+   dans `Process/NOUVEAUTES.md` (en mots de l'utilisateur, avec un extrait avant / après tiré
+   des captures archivées) ; à la livraison, Vincent reçoit ces paires : on juge plus facilement
+   ce qui change qu'un écran entier. Ce qui se valide à l'œil se valide sur ces images, sans
+   installation.
 6. **Recette** : Vincent coche ; ses retours ouvrent le cycle suivant (ou un correctif dans le
    même cycle s'il s'agit d'un défaut).
 7. **Rétrospective** (le Builder, seul, à chaque fin de cycle et à chaque défaut trouvé par

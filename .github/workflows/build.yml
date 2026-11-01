@@ -85,15 +85,22 @@ jobs:
             done
           done
           echo "${GITHUB_SHA::7}" > captures/COMMIT
-      - name: Publier les captures
+      # Archive : un dossier par version (date et commit), jamais effacé, et latest/ pour la
+      # dernière ; sert aux revues de design et aux « Nouveautés » (Process/NOUVEAUTES.md)
+      - name: Archiver les captures
         if: github.event_name == 'push'
         run: |
-          cd captures
-          git init -q
-          git checkout -q -b ci-captures
-          git add .
+          REMOTE="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git clone -q --depth 1 --branch ci-captures "$REMOTE" archive 2>/dev/null || {
+            mkdir archive && git -C archive init -q && git -C archive checkout -q -b ci-captures; }
+          cd archive
+          git rm -q --ignore-unmatch ./*.png COMMIT
+          DIR="$(date -u +%Y-%m-%d_%H%M)_${GITHUB_SHA::7}"
+          mkdir -p "$DIR" && cp ../captures/* "$DIR/"
+          rm -rf latest && mkdir latest && cp ../captures/* latest/
+          git add -A
           git -c user.name="CI Reps" -c user.email="ci@users.noreply.github.com" commit -qm "Captures de ${GITHUB_SHA::7}"
-          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-captures
+          git push -q "$REMOTE" ci-captures
       - uses: actions/upload-artifact@v4
         if: github.event_name == 'push'
         with:

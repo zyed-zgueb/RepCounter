@@ -1,0 +1,104 @@
+<title>Nouveautés Reps</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Une colonne : chaque version, puis chaque changement avec ses deux extraits côte à côte (empilés sur téléphone). */
+:root {
+  --bg: #f2f2f7; --surface: #ffffff; --fg: #111418; --dim: #5d6670; --line: #d8dde3;
+  --accent: #007aff; --before: #8e8e93; --after: #248a3d;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #000000; --surface: #1c1c1e; --fg: #f2f2f7; --dim: #9a9aa1; --line: #38383a;
+    --accent: #0a84ff; --before: #8e8e93; --after: #30d158; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #000000; --surface: #1c1c1e; --fg: #f2f2f7; --dim: #9a9aa1; --line: #38383a;
+  --accent: #0a84ff; --before: #8e8e93; --after: #30d158; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 17px; line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 760px; margin: 0 auto; padding-block: 24px 48px; display: grid; gap: 32px; }
+h1 { font-size: 34px; margin: 0; text-wrap: balance; }
+h2 { font-size: 22px; margin: 0; }
+h3 { font-size: 17px; margin: 0; font-weight: 600; text-wrap: balance; }
+p { margin: 0; }
+.lead { color: var(--dim); font-size: 17px; max-width: 60ch; }
+.version { display: grid; gap: 20px; }
+.version > p { color: var(--dim); font-size: 15px; }
+.change { background: var(--surface); border-radius: 14px; padding: 20px; display: grid; gap: 16px; }
+.where { color: var(--dim); font-size: 15px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 560px) { .pair { grid-template-columns: 1fr; } }
+figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+figcaption { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--before); }
+.after figcaption { color: var(--after); }
+img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+</style>
+
+<main>
+  <header style="display:grid;gap:8px">
+    <h1>Nouveautés</h1>
+    <p class="lead">Ce qui change à l'écran, version après version : un extrait avant, un extrait après. Captures de l'app réelle sur iPhone 14, avec des séances d'exemple.</p>
+  </header>
+
+  <section class="version" aria-labelledby="v-2026-11-01">
+    <div style="display:grid;gap:4px">
+      <h2 id="v-2026-11-01">1er novembre</h2>
+      <p>Revue de design sur les premières captures : 8 corrections.</p>
+    </div>
+      <article class="change">
+        <header><p class="where">Coaching · carte Aujourd'hui</p><h3>« soutenue » devient « intensité soutenue ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/01-intensite-avant.png" alt="Avant : « soutenue » devient « intensité soutenue »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/01-intensite-apres.png" alt="Après : « soutenue » devient « intensité soutenue »." loading="lazy"></figure>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Coaching · Chemin</p><h3>Le repère d'aujourd'hui ne masque plus « pompes d'affilée ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/02-chemin-avant.png" alt="Avant : Le repère d'aujourd'hui ne masque plus « pompes d'affilée »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/02-chemin-apres.png" alt="Après : Le repère d'aujourd'hui ne masque plus « pompes d'affilée »." loading="lazy"></figure>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · filtre</p><h3>« Σ » devient « Tous ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/03-tous-avant.png" alt="Avant : « Σ » devient « Tous »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/03-tous-apres.png" alt="Après : « Σ » devient « Tous »." loading="lazy"></figure>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · 12 semaines</p><h3>« cette semaine » n'est plus coupé.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/04-cette-semaine-avant.png" alt="Avant : « cette semaine » n'est plus coupé." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/04-cette-semaine-apres.png" alt="Après : « cette semaine » n'est plus coupé." loading="lazy"></figure>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · 12 semaines</p><h3>Plus d'étoiles empilées sur les semaines de test.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/05-etoiles-avant.png" alt="Avant : Plus d'étoiles empilées sur les semaines de test." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/05-etoiles-apres.png" alt="Après : Plus d'étoiles empilées sur les semaines de test." loading="lazy"></figure>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · 12 semaines</p><h3>« reps / sem. » devient « répétitions par semaine ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/06-repetitions-avant.png" alt="Avant : « reps / sem. » devient « répétitions par semaine »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/06-repetitions-apres.png" alt="Après : « reps / sem. » devient « répétitions par semaine »." loading="lazy"></figure>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · Journal</p><h3>« Σ » devient « total » ; « auj. » devient la date du jour.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/07-journal-avant.png" alt="Avant : « Σ » devient « total » ; « auj. » devient la date du jour." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/07-journal-apres.png" alt="Après : « Σ » devient « total » ; « auj. » devient la date du jour." loading="lazy"></figure>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Cadran</p><h3>« Fatigue ? » n'est plus coupé ; « CAM 3D » devient « caméra ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/08-fatigue-avant.png" alt="Avant : « Fatigue ? » n'est plus coupé ; « CAM 3D » devient « caméra »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/08-fatigue-apres.png" alt="Après : « Fatigue ? » n'est plus coupé ; « CAM 3D » devient « caméra »." loading="lazy"></figure>
+        </div>
+      </article>
+  </section>
+</main>
