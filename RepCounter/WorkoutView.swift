@@ -1291,7 +1291,10 @@ private struct SessionSummary: View {
                                 .font(theme.font(22, .bold))
                                 .foregroundStyle(result.reached ? theme.ok : theme.text)
                                 .fixedSize(horizontal: false, vertical: true)
-                            if let detail = result.detail {
+                            if !result.sets.isEmpty {
+                                SetVerdicts(sets: result.sets)
+                                    .padding(.top, 8)
+                            } else if let detail = result.detail {
                                 Text(symbols: detail)
                                     .font(theme.font(15))
                                     .foregroundStyle(theme.dim)
@@ -1468,16 +1471,17 @@ private struct SessionSummary: View {
 
     /// Le bloc « Cible » : atteinte ou pas, et le fait face aux cibles ; un test, son résultat ;
     /// sans plan, le total.
-    private func outcome(_ record: SessionRecord) -> (title: String, detail: String?, reached: Bool) {
+    private func outcome(_ record: SessionRecord) -> (title: String, detail: String?, reached: Bool, sets: [(reps: Int, target: Int)]) {
         let sets = record.workSets.map(\.reps)
-        let plain = ("\(record.totalReps) répétitions", sets.count > 1 ? sets.map(String.init).joined(separator: " · ") : nil, false)
+        let plain: (String, String?, Bool, [(reps: Int, target: Int)]) =
+            ("\(record.totalReps) répétitions", sets.count > 1 ? sets.map(String.init).joined(separator: " · ") : nil, false, [])
         guard let plan = plan(before: record) else { return plain }
         if let tested = record.testBest {
             // L'écart est une tendance (couleur de texte) ; le vert seulement si l'objectif est
             // atteint (skill reps-ux, § 5)
             let reached = plan.goal.map { tested >= $0.target } ?? false
             let gap = TestReading.gap(tested, previous: plan.tests.last?.value).map { "Depuis ton dernier test : \($0)" }
-            return ("Test : \(tested) d'affilée" + (reached ? " ✓" : ""), gap, reached)
+            return ("Test : \(tested) d'affilée" + (reached ? " ✓" : ""), gap, reached, [])
         }
         guard let planned = plan.todaySession ?? plan.fallback else { return plain }
         // Séries espacées dans la journée : elles comptent toutes. Jugée comme au compteur et au
@@ -1499,7 +1503,11 @@ private struct SessionSummary: View {
         let credited = recorded.count == daySets.count && !recorded.isEmpty
             ? daySets.reduce(0) { $0 + min($1.reps, $1.target ?? $1.reps) } : min(dayReps, planned.total)
         let percent = min(99, Int((Double(credited) / Double(max(planned.total, 1)) * 100).rounded(.down)))
-        return (TargetShare.title(reached ? nil : percent), detail, reached)
+        // Chaque série face à sa cible, pour voir d'un coup d'œil laquelle manque et de combien
+        let pairs = daySets.enumerated().map { index, set in
+            (reps: set.reps, target: set.target ?? (index < planned.targets.count ? planned.targets[index] : set.reps))
+        }
+        return (TargetShare.title(reached ? nil : percent), detail, reached, pairs)
     }
 
     /// Le bloc « La suite » : la prochaine séance (date et cibles), et le repos de demain s'il est conseillé.
@@ -1861,5 +1869,35 @@ extension View {
         } else {
             self
         }
+    }
+}
+
+/// Fin de séance : chaque série face à sa cible, d'un coup d'œil (avis de Vincent) : le nombre
+/// fait en grand ; dessous, « ✓ » en vert si la cible est atteinte, sinon ce qui manque (« −1 »).
+private struct SetVerdicts: View {
+    @Environment(\.theme) private var theme
+    let sets: [(reps: Int, target: Int)]
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(Array(sets.enumerated()), id: \.offset) { _, set in
+                let missing = set.target - set.reps
+                VStack(spacing: 2) {
+                    Text("\(set.reps)")
+                        .font(theme.font(22, .bold))
+                        .foregroundStyle(missing <= 0 ? theme.ok : theme.text)
+                        .monospacedDigit()
+                    Text(missing <= 0 ? "✓" : "−\(missing)")
+                        .font(theme.font(15, .semibold))
+                        .foregroundStyle(missing <= 0 ? theme.ok : theme.text)
+                        .monospacedDigit()
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(missing <= 0 ? "\(set.reps), cible atteinte" : "\(set.reps) sur \(set.target), il en manque \(missing)")
+            }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
     }
 }

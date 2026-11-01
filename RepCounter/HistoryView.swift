@@ -349,16 +349,9 @@ private struct WeeksChart: View {
                             .foregroundStyle(theme.primary)
                         PointMark(x: .value("Semaine", Double(point.id)), y: .value("Série max", Double(point.value)))
                             .foregroundStyle(theme.primary)
-                            .symbolSize(point.test ? 0 : 24)
-                            .annotation(position: .overlay) {
-                                // ◆ semaine de test. Pas d'étoile : le sommet de la courbe se voit,
-                                // et le record de toujours est écrit au-dessus (recette du cycle 2)
-                                if point.test {
-                                    Image(systemName: "diamond.fill")
-                                        .font(theme.font(13))
-                                        .foregroundStyle(theme.max)
-                                }
-                            }
+                            .symbolSize(24)
+                            // Plus de losange sur les semaines de test : peu compréhensible et trop
+                            // gros (avis de Vincent) ; la courbe suffit
                     }
                     // Le record de toujours : une ligne fine, son chiffre en petit au-dessus (avis de Vincent)
                     if let record {
