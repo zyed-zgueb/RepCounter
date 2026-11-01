@@ -82,6 +82,9 @@ private struct SegmentRing: View {
     var thickness: CGFloat = 0.105
     /// Couleur des segments éteints (nil : le filet du thème).
     var unlit: Color? = nil
+    /// Ombré de paroi : chaque segment s'assombrit vers l'intérieur, comme une tuile vue en
+    /// perspective sur la paroi d'un tunnel.
+    var shaded = false
 
     var body: some View {
         Canvas { context, size in
@@ -96,7 +99,13 @@ private struct SegmentRing: View {
                 path.addArc(center: center, radius: outer, startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
                 path.addArc(center: center, radius: inner, startAngle: .radians(end), endAngle: .radians(start), clockwise: true)
                 path.closeSubpath()
-                context.fill(path, with: .color(i < lit ? color : (unlit ?? theme.line)))
+                let fill = i < lit ? color : (unlit ?? theme.line)
+                if shaded {
+                    context.fill(path, with: .radialGradient(Gradient(colors: [fill.opacity(0.35), fill]),
+                                                             center: center, startRadius: inner, endRadius: outer))
+                } else {
+                    context.fill(path, with: .color(fill))
+                }
                 if i == goalSegment, i >= lit {
                     context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
                 }
@@ -174,7 +183,7 @@ struct TunnelFace: View {
     /// Anneaux visibles au plus (cible jusqu'à 40) ; les plus lointains se fondent au fond.
     static let depth = 4
     /// Profondeur entre deux anneaux : l'anneau k est à l'échelle 1 / (1 + k × step).
-    static let step: CGFloat = 0.2
+    static let step: CGFloat = 0.3
     /// Petit vide entre deux anneaux, en part du rayon de l'anneau.
     static let seam: CGFloat = 0.02
 
@@ -200,9 +209,9 @@ struct TunnelFace: View {
                 let thickness = 1 - Self.scale(rank + 1) / Self.scale(rank) - Self.seam
                 SegmentRing(lit: lapDone, segments: per, color: ringColor,
                             goalSegment: nil, drawn: segments, thickness: thickness,
-                            unlit: ringColor.opacity(0.22))
-                    .brightness(-0.12 * Double(rank))
-                    .opacity((pale ? 0.5 : 1) * (1 - 0.18 * Double(rank)))
+                            unlit: ringColor.opacity(0.3), shaded: true)
+                    .brightness(-0.06 * Double(rank))
+                    .opacity((pale ? 0.5 : 1) * (1 - 0.12 * Double(rank)))
                     .scaleEffect(Self.scale(rank))
                     .transition(reduceMotion ? .opacity : .scale(scale: 1.25).combined(with: .opacity))
             }
