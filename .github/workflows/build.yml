@@ -6,6 +6,8 @@ name: Build
 on:
   push:
     branches-ignore: [ci-captures]
+    # Les minutes macOS comptent 10 fois : un commit qui ne touche que des documents ne recompile pas
+    paths-ignore: ["**.md", "Design/**", "Science/**", "Process/**"]
   pull_request:
   workflow_dispatch:
 
