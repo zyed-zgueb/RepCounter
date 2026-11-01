@@ -74,6 +74,21 @@ blocs ; les 7 « À revoir » des Nouveautés corrigés.
   grand, « En savoir plus ») ; « record : N » de toujours ; « reps » ; plus de puce ni de nom de
   capteur sous la question de fatigue.
 
+### Le tunnel de comptage (idée de Vincent, 01/11 au soir)
+
+Remplace « un segment par répétition jusqu'à 40 ».
+- **Un anneau = 10 répétitions**, 10 segments larges. L'anneau du tour en cours est devant
+  (le plus grand) ; les tours suivants sont derrière, dans un tunnel en perspective : des
+  anneaux concentriques plus petits, très peu espacés.
+- **La cible se voit en entier** : autant d'anneaux que de dizaines de la cible ; le dernier
+  n'a que ses segments utiles (cible 28 : deux anneaux pleins et un de 8 segments).
+- **À chaque dizaine faite, on avance d'un cran** : l'anneau terminé passe derrière soi (il
+  grandit et s'efface), le suivant vient devant. « Réduire les animations » : un fondu.
+- **Au-delà de la cible** : un anneau vert de 10 à la fois.
+- **Limites** : 4 anneaux visibles au plus (cible jusqu'à 40) ; au-delà, les plus lointains se
+  fondent dans le fond du tunnel. Le nombre et « sur N » restent au centre, en grand ; la
+  profondeur est limitée pour ne pas les gêner.
+
 ## Feuille de route (décidée par le Builder le 01/11)
 
 Chaque cycle : **maquette visuelle** au cadrage (si un écran change) → construction → relecture
