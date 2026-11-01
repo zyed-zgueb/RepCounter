@@ -14,6 +14,15 @@ les lit au début de chaque cycle et à chaque livraison ; un « À revoir » es
 Les captures complètes de chaque version sont archivées par la CI sur la branche `ci-captures`
 (un dossier par version : date et commit ; `latest/` pour la dernière).
 
+## 01/11 (nuit, suite) : tes 4 « À revoir » du cycle 3
+
+| # | Écran | Ce qui change | Extraits |
+|---|---|---|---|
+| 21 | Série | Tunnel en perspective (tuiles ombrées, bords qui fuient vers le centre) | `2026-11-01d/21-tunnel` |
+| 22 | Repos | Une lumière par seconde ; 3, 2, 1 au son | `2026-11-01d/22-repos` |
+| 23 | Fin de séance | Part de la cible faite (« Presque atteinte : 97 % ») | `2026-11-01d/23-fin` |
+| 24 | Historique | Ligne fine du record, chiffre en petit | `2026-11-01d/24-record` |
+
 ## 01/11 (nuit) : cycle 3, pendant et après l'effort
 
 | # | Écran | Ce qui change | Extraits |
