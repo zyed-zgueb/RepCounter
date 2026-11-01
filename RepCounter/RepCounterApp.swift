@@ -296,6 +296,7 @@ enum PlanSelfTest {
         let s8 = schedule(-28, 0, days: [0, 3])
         check("cible réajustée atteinte : fait", plan(s8 + [session(8.5, [97, 78, 62], targets: [97, 78, 62])], 8.7)?.targetMissed == false)
         check("une série sous sa cible : cible manquée", plan(s8 + [session(8.5, [97, 70, 62], targets: [97, 78, 64])], 8.7)?.targetMissed == true)
+        check("cible manquée : part faite sous 100 %", (plan(s8 + [session(8.5, [97, 70, 62], targets: [97, 78, 64])], 8.7)?.targetPercent ?? 100) < 100)
         check("une série prévue non faite : cible manquée", plan(s8 + [session(8.5, [97, 78], targets: [97, 78])], 8.7)?.targetMissed == true)
 
         // Longue absence : reprise

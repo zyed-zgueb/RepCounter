@@ -173,8 +173,13 @@ struct TunnelFace: View {
 
     /// Anneaux visibles au plus (cible jusqu'à 40) ; les plus lointains se fondent au fond.
     static let depth = 4
-    /// Écart entre deux anneaux du tunnel, en part du rayon : faible (Vincent).
-    static let step: CGFloat = 0.14
+    /// Profondeur entre deux anneaux : l'anneau k est à l'échelle 1 / (1 + k × step).
+    static let step: CGFloat = 0.2
+    /// Petit vide entre deux anneaux, en part du rayon de l'anneau.
+    static let seam: CGFloat = 0.02
+
+    /// Échelle de l'anneau de rang k (0 : devant).
+    static func scale(_ rank: Int) -> CGFloat { 1 / (1 + CGFloat(rank) * step) }
 
     var body: some View {
         let per = CounterDial.segmentsPerLap
@@ -189,18 +194,53 @@ struct TunnelFace: View {
                 let lapDone = min(max(done - lap * per, 0), per)
                 let segments = beyond || lap < laps - 1 ? per : target - (laps - 1) * per
                 let ringColor = done >= target ? theme.ok : color
-                // Ce qui reste à faire, dans la couleur du comptage, pâle : on voit la cible entière
+                // Les segments sont plaqués sur la paroi du tunnel (avis de Vincent) : chaque anneau
+                // est une bande qui va jusqu'au suivant, plus étroite et plus sombre en profondeur ;
+                // ce qui reste à faire est pâle, dans la couleur du comptage
+                let thickness = 1 - Self.scale(rank + 1) / Self.scale(rank) - Self.seam
                 SegmentRing(lit: lapDone, segments: per, color: ringColor,
-                            goalSegment: nil, drawn: segments,
-                            thickness: rank == 0 ? 0.105 : 0.08,
-                            unlit: ringColor.opacity(rank == 0 ? 0.22 : 0.45))
-                    .opacity(rank == 0 ? 1 : (pale ? 0.5 : 1) - Double(rank) * 0.15)
-                    .scaleEffect(1 - CGFloat(rank) * Self.step)
+                            goalSegment: nil, drawn: segments, thickness: thickness,
+                            unlit: ringColor.opacity(0.22))
+                    .brightness(-0.12 * Double(rank))
+                    .opacity((pale ? 0.5 : 1) * (1 - 0.18 * Double(rank)))
+                    .scaleEffect(Self.scale(rank))
                     .transition(reduceMotion ? .opacity : .scale(scale: 1.25).combined(with: .opacity))
             }
         }
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.85), value: current)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(done) sur \(target)")
+    }
+}
+
+/// Le repos (avis de Vincent sur le cycle 3) : une petite lumière par seconde du repos prévu,
+/// qui s'éteint seconde après seconde ; à zéro, toutes vertes. Au-delà de 180 s, une lumière
+/// pour 2 s (elles restent lisibles).
+struct RestLedFace: View {
+    @Environment(\.theme) private var theme
+    /// Secondes qui restent (0 : repos fait).
+    let remaining: Double
+    /// Repos prévu (s).
+    let total: Int
+    let color: Color
+
+    var body: some View {
+        let perLed = total > 180 ? 2 : 1
+        let count = max(1, total / perLed)
+        let lit = remaining <= 0 ? count : min(count, Int((remaining / Double(perLed)).rounded(.up)))
+        Canvas { context, size in
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let radius = min(size.width, size.height) / 2 - 8
+            let dot = min(5, .pi * radius / Double(count) * 0.55)
+            for i in 0..<count {
+                let angle = Double(i) / Double(count) * 2 * .pi - .pi / 2
+                let point = CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
+                let rect = CGRect(x: point.x - dot, y: point.y - dot, width: dot * 2, height: dot * 2)
+                context.fill(Path(ellipseIn: rect), with: .color(i < lit ? color : theme.line))
+            }
+        }
+        .shadow(color: color.opacity(0.35 * min(theme.glow, 1)), radius: 6)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(remaining <= 0 ? "Repos fait" : "Repos : \(Int(remaining.rounded(.up))) secondes restantes")
     }
 }

@@ -143,6 +143,7 @@ struct WorkoutView: View {
                         WorkoutModel.PlanDay(session: $0, ratios: dayPlan?.ratios, earlierToday: earlier,
                                              earlierTargets: earlierTargets)
                     }
+                    model.plannedRest = model.testStage != nil ? nil : plannedRest
                 }
             }
         }
@@ -487,15 +488,13 @@ struct WorkoutView: View {
                 // tentative) : le cadran du test, pas celui du repos
                 let warmupRest = model.testStage == .warmupRest
                 let planned = warmupRest ? Int(WorkoutModel.warmupRest) : plannedRest
-                let slices = max(1, planned / Self.restSlice)
                 let remaining = max(Double(planned) - model.restDuration, 0)
                 let done = remaining <= 0
                 let color = warmupRest ? theme.calm : (done ? theme.ok : theme.warn)
-                // Compte à rebours (recette de la maquette du cycle 3) : le temps qui reste, et un
-                // segment par tranche de 15 s qui s'éteint ; à zéro, l'anneau passe au vert, « Prêt »
+                // Compte à rebours (avis sur le cycle 3) : le temps qui reste, une petite lumière par
+                // seconde qui s'éteint, 3-2-1 au son ; à zéro, toutes vertes, « Prêt »
                 // (après l'échauffement d'un test, jamais vert : rien n'est atteint, § 5)
-                let left = done ? slices : Int((remaining / Double(Self.restSlice)).rounded(.up))
-                Dial(face: CounterDialFace(lit: min(left, slices), segments: slices, color: color, rest: true)) { side in
+                Dial(face: RestLedFace(remaining: remaining, total: planned, color: color)) { side in
                     VStack(spacing: side * 0.03) {
                         Text(done && !warmupRest ? "Prêt" : Format.clock(remaining))
                             .font(theme.dialFont(side * 0.24, .bold))
@@ -1495,7 +1494,12 @@ private struct SessionSummary: View {
         let targets = recorded.count == daySets.count && !recorded.isEmpty ? recorded : planned.targets
         let done = daySets.map { String($0.reps) }.joined(separator: " · ")
         let detail = "\(done) pour \(targets.map(String.init).joined(separator: " · "))"
-        return (reached ? "Cible atteinte ✓" : "Cible non atteinte", detail, reached)
+        // Rater de peu n'est pas rater de beaucoup : la part faite, chaque série comptant jusqu'à
+        // sa cible (même règle que le plan, Plan.swift)
+        let credited = recorded.count == daySets.count && !recorded.isEmpty
+            ? daySets.reduce(0) { $0 + min($1.reps, $1.target ?? $1.reps) } : min(dayReps, planned.total)
+        let percent = min(99, Int((Double(credited) / Double(max(planned.total, 1)) * 100).rounded(.down)))
+        return (TargetShare.title(reached ? nil : percent), detail, reached)
     }
 
     /// Le bloc « La suite » : la prochaine séance (date et cibles), et le repos de demain s'il est conseillé.

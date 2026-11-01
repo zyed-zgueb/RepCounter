@@ -389,7 +389,7 @@ private struct TodayCard: View {
                     .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 48, fontSize: 13))
             case .done:
                 HStack {
-                    Text(symbols: plan.targetMissed ? "fait · cible non atteinte" : "✓ fait")
+                    Text(symbols: plan.targetMissed ? TargetShare.done(plan.targetPercent ?? 0) : "✓ fait")
                         .font(theme.font(22, .bold))
                         .foregroundStyle(plan.targetMissed ? theme.text : theme.ok)
                     Spacer()

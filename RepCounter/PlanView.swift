@@ -93,6 +93,25 @@ extension TrainingPlan.Today {
     }
 }
 
+/// Une cible manquée se dit avec la part faite (avis de Vincent sur le cycle 3) : à 90 % ou
+/// plus, « presque » (l'écart est dans la variation normale d'un jour à l'autre,
+/// METHODE-TEST.md règle 10) ; en dessous, le pourcentage seul. Jamais en vert (§ 5).
+enum TargetShare {
+    static let nearly = 90
+
+    /// « Cible atteinte ✓ », « Cible presque atteinte : 94 % », « Cible atteinte à 62 % ».
+    static func title(_ percent: Int?) -> String {
+        guard let percent else { return "Cible atteinte ✓" }
+        return percent >= nearly ? "Cible presque atteinte : \(percent) %" : "Cible atteinte à \(percent) %"
+    }
+
+    /// Sous le cadran et dans le Coaching : « fait ✓ », « fait · presque (94 %) », « fait · 62 % de la cible ».
+    static func done(_ percent: Int?) -> String {
+        guard let percent else { return "fait ✓" }
+        return percent >= nearly ? "fait · presque (\(percent) %)" : "fait · \(percent) % de la cible"
+    }
+}
+
 extension TrainingPlan.Week {
     /// « P1 », « P2 bis », « A ».
     var short: String {
@@ -190,7 +209,7 @@ struct TodayLine: View {
         case .done:
             if plan.targetMissed {
                 // Pas de vert ni de ✓ : la cible n'est pas atteinte (skill reps-ux § 5)
-                Text("fait · cible non atteinte").fontWeight(.bold).foregroundStyle(theme.text)
+                Text(TargetShare.done(plan.targetPercent ?? 0)).fontWeight(.bold).foregroundStyle(theme.text)
             } else {
                 Text(symbols: "fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
             }
@@ -1055,7 +1074,7 @@ struct PlanInfoView: View {
                     section("Références",
                             "Currier et al. (2026). Resistance training prescription for muscle function, hypertrophy and physical performance in healthy adults: an overview of reviews. Med Sci Sports Exerc 58(4):851–872. Bell et al. (2023), Sports Med Open 9:87. Rogerson et al. (2024), Sports Med Open 10:26. Meeusen et al. (2013), Med Sci Sports Exerc 45(1):186–205. Hopkins (2000), Sports Med 30(1):1–15. Sen (1968), J Am Stat Assoc 63:1379–1389. Halperin et al. (2022), Sports Med 52:377–390 (résumé). Grgic et al. (2018), Sports Med 48(5):1207–1220 (résumé).")
                     section("Séance faite",
-                            "Une séance terminée compte comme faite. Chaque série est jugée sur la cible que le compteur affichait, réajustée si la série d'avant était sous la sienne : « fait ✓ » si toutes sont atteintes, sinon « fait · cible non atteinte » (choix de l'app).")
+                            "Une séance terminée compte comme faite. Chaque série est jugée sur la cible que le compteur affichait, réajustée si la série d'avant était sous la sienne : « fait ✓ » si toutes sont atteintes, sinon la part de la cible faite, chaque série comptant jusqu'à sa cible : « fait · presque (94 %) » à 90 % ou plus, sinon « fait · 62 % de la cible » (choix de l'app).")
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)

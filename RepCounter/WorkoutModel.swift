@@ -138,6 +138,11 @@ final class WorkoutModel: ObservableObject {
 
     /// Le plan du jour, fixé au départ de la séance (nil : pas de plan, ou jour de test).
     @Published var planDay: PlanDay?
+    /// Repos prévu entre deux séries (s), fixé au départ de la séance : le compte à rebours sonore
+    /// (3, 2, 1, puis l'accord du départ) s'y cale. Nil : pas de compte à rebours sonore (test).
+    var plannedRest: Int?
+    /// Dernier bip du compte à rebours joué pendant ce repos (3, 2, 1, 0).
+    private var restCountdown = Int.max
 
     /// La cible de la série en cours (ou de la prochaine, pendant la récupération) : réajustée
     /// d'après la série précédente (`Prescription.nextTarget`). Nil sans plan, ou toutes les séries
@@ -545,7 +550,23 @@ final class WorkoutModel: ObservableObject {
         // Récupération marquée toutes les 15 s : on sait où on en est dans la minute sans
         // regarder l'écran
         guard isResting else { return }
-        let marks = Int(restDuration) / Self.restAnnouncementInterval
+        // Fin du repos prévu : 3, 2, 1 (une note courte), puis l'accord du départ, comme au
+        // départ de la séance (avis de Vincent sur le cycle 3)
+        let elapsed = Int(restDuration)
+        if let planned = plannedRest, testStage == nil {
+            let left = planned - elapsed
+            if left >= 0, left <= 3, left < restCountdown {
+                restCountdown = left
+                announcer.play(left == 0 ? .go : .count)
+                if left == 0 { lightHaptic.impactOccurred() }
+            }
+            // Les battements des 15 s se taisent pendant le compte à rebours
+            if left >= 0, left <= 3 {
+                restAnnouncements = elapsed / Self.restAnnouncementInterval
+                return
+            }
+        }
+        let marks = elapsed / Self.restAnnouncementInterval
         if marks > restAnnouncements {
             restAnnouncements = marks
             let cues: [Cue] = [.restMinute, .rest, .rest2, .rest3]
@@ -724,6 +745,7 @@ final class WorkoutModel: ObservableObject {
                 setStart = start
                 setRepDates = (0..<reps).map { start.addingTimeInterval(Double($0) * cadence) }
                 restAnnouncements = 0
+                restCountdown = Int.max
             } else {
                 while setRepDates.count < reps { setRepDates.append(repDate(output)) }
             }

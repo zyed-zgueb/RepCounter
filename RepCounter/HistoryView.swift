@@ -334,17 +334,7 @@ private struct WeeksChart: View {
     var body: some View {
         let points = self.points
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
-                MonitorLabel("série max")
-                Spacer(minLength: 8)
-                // Le record de toujours (pas seulement des 12 semaines)
-                if let record {
-                    Text("record : \(record)")
-                        .font(theme.font(15, .semibold))
-                        .foregroundStyle(theme.text)
-                        .accessibilityLabel("Record de toujours : \(record)")
-                }
-            }
+            MonitorLabel("série max")
             if points.count < 2 {
                 // Une courbe demande deux semaines : en attendant, un état en cours
                 Text("\(points.count) / 2 semaines")
@@ -369,6 +359,19 @@ private struct WeeksChart: View {
                                         .foregroundStyle(theme.max)
                                 }
                             }
+                    }
+                    // Le record de toujours : une ligne fine, son chiffre en petit au-dessus (avis de Vincent)
+                    if let record {
+                        RuleMark(y: .value("Record", Double(record)))
+                            .foregroundStyle(theme.dim)
+                            .lineStyle(StrokeStyle(lineWidth: 1))
+                            .annotation(position: .top, alignment: .leading, spacing: 2) {
+                                Text("record \(record)")
+                                    .font(theme.font(13))
+                                    .foregroundStyle(theme.dim)
+                            }
+                            .accessibilityLabel("Record de toujours")
+                            .accessibilityValue("\(record)")
                     }
                 }
                 .chartXScale(domain: domain)
