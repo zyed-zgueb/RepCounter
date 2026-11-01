@@ -403,6 +403,28 @@ struct PlanTimeline: View {
     let plan: TrainingPlan
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            bars
+            // En tailles d'accessibilité, les colonnes sont trop étroites pour un mot : seul le
+            // but de la semaine en cours est écrit, sur toute la largeur
+            if typeSize.isAccessibilitySize, let current = currentWord {
+                Text("Cette semaine : \(current.lowercased())")
+                    .font(theme.font(15, .semibold))
+                    .foregroundStyle(theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(plan.whereAmI)
+    }
+
+    private var currentWord: String? {
+        if plan.today == .test && plan.testStep == nil { return "Test" }
+        guard let index = plan.weeks.firstIndex(where: \.isCurrent) else { return nil }
+        return word(plan.weeks[index], index: index)
+    }
+
+    private var bars: some View {
         HStack(alignment: .top, spacing: 4) {
             ForEach(Array(plan.weeks.enumerated()), id: \.offset) { index, week in
                 column(word(week, index: index), fill: fill(week), color: theme.intensity(week.intensity),
@@ -416,12 +438,12 @@ struct PlanTimeline: View {
                     .frame(width: 10, height: 10)
                     .rotationEffect(.degrees(45))
                     .frame(height: 12)
-                label("Test", current: plan.today == .test && plan.testStep == nil)
+                if !typeSize.isAccessibilitySize {
+                    label("Test", current: plan.today == .test && plan.testStep == nil)
+                }
             }
-            .frame(width: typeSize.isAccessibilitySize ? 56 : 32)
+            .frame(width: 32)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(plan.whereAmI)
     }
 
     private func column(_ word: String, fill: Double, color: Color, current: Bool) -> some View {
@@ -436,7 +458,7 @@ struct PlanTimeline: View {
                 }
             }
             .frame(height: 14)
-            if !typeSize.isAccessibilitySize || current { label(word, current: current) }
+            if !typeSize.isAccessibilitySize { label(word, current: current) }
         }
         .frame(maxWidth: .infinity)
     }

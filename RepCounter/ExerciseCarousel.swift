@@ -74,8 +74,11 @@ struct ExerciseCarousel: View {
                 .tracking(2)
                 .foregroundStyle(theme.text)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(width: side * 0.5)
+                .minimumScaleFactor(0.5)
+                // Le cadran a une taille fixe : le nom grandit jusqu'à une limite, puis se
+                // réduit au lieu d'être coupé (« POMP… » en grand texte)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)
+                .frame(width: side * 0.62)
         }
     }
 

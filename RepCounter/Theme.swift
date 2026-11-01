@@ -580,29 +580,47 @@ struct CardHeader<Trailing: View>: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        // En tailles d'accessibilité, ce qui suit le titre passe dessous : rien n'est coupé
-        let layout = typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
-            : AnyLayout(HStackLayout(spacing: 6))
-        layout {
-            Label {
-                Text(title)
-            } icon: {
-                Image(systemName: symbol)
-            }
-            .font(theme.font(15, .semibold))
-            .foregroundStyle(color ?? theme.primary)
-            .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
-            if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
-            trailing()
-            if opens {
-                Image(systemName: "chevron.right")
-                    .font(theme.font(13, .semibold))
-                    .foregroundStyle(Color(uiColor: .tertiaryLabel))
+        Group {
+            if typeSize.isAccessibilitySize {
+                // En tailles d'accessibilité, ce qui suit le titre passe dessous (rien n'est
+                // coupé) ; le chevron reste au bout du titre
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        titleLabel.lineLimit(2)
+                        Spacer(minLength: 8)
+                        chevron
+                    }
+                    trailing()
+                }
+            } else {
+                HStack(spacing: 6) {
+                    titleLabel.lineLimit(1)
+                    Spacer(minLength: 8)
+                    trailing()
+                    chevron
+                }
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+
+    private var titleLabel: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: symbol)
+        }
+        .font(theme.font(15, .semibold))
+        .foregroundStyle(color ?? theme.primary)
+    }
+
+    @ViewBuilder private var chevron: some View {
+        if opens {
+            Image(systemName: "chevron.right")
+                .font(theme.font(13, .semibold))
+                .foregroundStyle(Color(uiColor: .tertiaryLabel))
+        }
     }
 }
 
