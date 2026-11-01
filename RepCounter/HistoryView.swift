@@ -310,7 +310,7 @@ private struct WeeksChart: View {
     @ScaledMetric(relativeTo: .body) private var barHeight: CGFloat = 64
     let volumes: [Int]
     let best: [(value: Int?, record: Bool, test: Bool)]
-    /// Le record actuel (un exercice), étiqueté « ★ 32 ».
+    /// Le record de toujours (un exercice), écrit « record : 32 » au-dessus de la courbe.
     let record: Int?
     /// Le volume de la semaine face à la moyenne des précédentes, en % (nil : pas assez d'historique).
     let trend: Double?
@@ -334,7 +334,17 @@ private struct WeeksChart: View {
     var body: some View {
         let points = self.points
         VStack(alignment: .leading, spacing: 6) {
-            MonitorLabel("série max")
+            HStack(alignment: .firstTextBaseline) {
+                MonitorLabel("série max")
+                Spacer(minLength: 8)
+                // Le record de toujours (pas seulement des 12 semaines)
+                if let record {
+                    Text("record : \(record)")
+                        .font(theme.font(15, .semibold))
+                        .foregroundStyle(theme.text)
+                        .accessibilityLabel("Record de toujours : \(record)")
+                }
+            }
             if points.count < 2 {
                 // Une courbe demande deux semaines : en attendant, un état en cours
                 Text("\(points.count) / 2 semaines")
@@ -349,32 +359,15 @@ private struct WeeksChart: View {
                             .foregroundStyle(theme.primary)
                         PointMark(x: .value("Semaine", Double(point.id)), y: .value("Série max", Double(point.value)))
                             .foregroundStyle(theme.primary)
-                            .symbolSize(point.record || point.test ? 0 : 24)
+                            .symbolSize(point.test ? 0 : 24)
                             .annotation(position: .overlay) {
-                                // ★ record ; ◆ semaine de test ; les deux : ◆ sur le point, ★ juste au-dessus
-                                ZStack {
-                                    if point.test {
-                                        Image(systemName: "diamond.fill")
-                                            .font(theme.font(13))
-                                            .foregroundStyle(theme.max)
-                                    }
-                                    // Semaine de test : le ◆ seul (le test est la mesure) ; ★ sinon
-                                    if point.record && !point.test {
-                                        Image(systemName: "star.fill")
-                                            .font(theme.font(13))
-                                            .foregroundStyle(theme.text)
-                                            .offset(y: point.test ? -16 : 0)
-                                    }
+                                // ◆ semaine de test. Pas d'étoile : le sommet de la courbe se voit,
+                                // et le record de toujours est écrit au-dessus (recette du cycle 2)
+                                if point.test {
+                                    Image(systemName: "diamond.fill")
+                                        .font(theme.font(13))
+                                        .foregroundStyle(theme.max)
                                 }
-                            }
-                    }
-                    if let record, let last = points.last(where: { $0.value == record }) {
-                        PointMark(x: .value("Semaine", Double(last.id)), y: .value("Série max", Double(last.value)))
-                            .symbolSize(0)
-                            .annotation(position: .top, spacing: 6) {
-                                Text(symbols: "★ \(record)")
-                                    .font(theme.font(13, .bold))
-                                    .foregroundStyle(theme.text)
                             }
                     }
                 }
@@ -386,7 +379,7 @@ private struct WeeksChart: View {
                 }
                 .frame(height: lineHeight)
             }
-            MonitorLabel(trend.map { "répétitions par semaine · " + Format.trend($0, unit: " %") } ?? "répétitions par semaine")
+            MonitorLabel(trend.map { "reps par semaine · " + Format.trend($0, unit: " %") } ?? "reps par semaine")
             Chart {
                 ForEach(Array(volumes.enumerated()), id: \.offset) { index, value in
                     BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", Double(value)), width: .fixed(12))

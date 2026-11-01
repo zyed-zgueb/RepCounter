@@ -60,6 +60,12 @@ enum CounterDial {
         done <= 0 ? 0 : (done % segmentsPerLap == 0 ? segmentsPerLap : done % segmentsPerLap)
     }
 
+    /// Plus de segments que cela, un segment par répétition ne se lit plus : on revient aux tours de 10.
+    static let maxPerRep = 40
+
+    /// Un segment par répétition jusqu'à la cible (cible de 1 à 40).
+    static func perRep(_ target: Int) -> Bool { target >= 1 && target <= maxPerRep }
+
     /// Case de l'objectif, cerclée sur le tour où il tombe (nil s'il tombe sur une dizaine).
     static func goalSegment(done: Int, target: Int?) -> Int? {
         guard let target, target > 0, target % segmentsPerLap != 0 else { return nil }
@@ -82,7 +88,8 @@ private struct SegmentRing: View {
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             let outer = min(size.width, size.height) / 2 - 3
             let inner = outer * 0.895
-            let gap = 0.07
+            // L'écart suit le nombre de segments : 10 (tours) ou un par répétition (jusqu'à 40)
+            let gap = min(0.07, .pi / Double(max(segments, 1)) * 0.3)
             for i in 0..<segments {
                 let start = Double(i) / Double(segments) * 2 * .pi - .pi / 2 + gap
                 let end = Double(i + 1) / Double(segments) * 2 * .pi - .pi / 2 - gap

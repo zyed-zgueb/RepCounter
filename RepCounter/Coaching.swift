@@ -338,23 +338,42 @@ private struct TodayCard: View {
             case .due where plan.today == .test:
                 // Jour de test (ou test « à faire ») : la personne le lance ; la séance allégée reste possible
                 // Le titre dit ce qu'on fait ; la raison dit lequel des tests c'est
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(symbols: plan.testOverdue ? "! ◆ Série max" : "◆ Série max")
-                        .font(theme.font(22, .bold))
-                        .foregroundStyle(plan.testOverdue ? theme.text : theme.max)
-                    if let last = plan.tests.last {
-                        Text("Dernier test : \(last.value) d'affilée")
+                // Ce qu'on fait, en mots (« Série max » n'était pas clair) ; le chiffre à battre en
+                // grand ; le pourquoi en une phrase ; le détail dans « En savoir plus »
+                Text(plan.testOverdue ? "Test à faire" : "Jour de test")
+                    .font(theme.font(22, .bold))
+                    .foregroundStyle(theme.text)
+                Text("Le plus de répétitions d'affilée, en une seule série.")
+                    .font(theme.font(17))
+                    .foregroundStyle(theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let last = plan.tests.last {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text("\(last.value)")
+                            .font(theme.font(34, .bold))
+                            .foregroundStyle(theme.max)
+                            .monospacedDigit()
+                        Text("à battre : ton dernier test")
                             .font(theme.font(15))
                             .foregroundStyle(theme.dim)
                     }
+                    .accessibilityElement(children: .combine)
                 }
                 reasonText
+                NavigationLink {
+                    TestInfoView(plan: plan)
+                } label: {
+                    Text("En savoir plus")
+                        .font(theme.font(15, .semibold))
+                        .foregroundStyle(theme.primary)
+                        .frame(minHeight: 44)
+                }
                 if plan.testOverdue, let fallback = plan.fallback {
                     Text("En attendant : séance allégée · \(fallback.sets) série\(fallback.sets > 1 ? "s" : "")")
                         .font(theme.font(15))
                         .foregroundStyle(theme.dim)
                 }
-                Button(action: onStartTest) { Text(symbols: "◆ Lancer le test") }
+                Button("Lancer le test", action: onStartTest)
                     .buttonStyle(MonitorButtonStyle(color: theme.max, height: 48, fontSize: 13))
                 // Bloc 1 : la séance de calibrage (normale) ; sinon la séance allégée
                 Button(plan.testStep != nil ? "Séance normale à la place"
@@ -428,12 +447,9 @@ private struct TodayCard: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// L'intensité du jour : une pastille et son mot, dans sa couleur.
+    /// L'effort demandé aujourd'hui : une petite jauge à 3 crans et son mot (« effort normal »).
     private func intensity(_ day: TrainingPlan.Today) -> some View {
-        HStack(spacing: 6) {
-            Circle().fill(day.color(theme)).frame(width: 8, height: 8)
-            MonitorLabel("intensité \(Intensity.word(day.intensity))", color: day.color(theme))
-        }
+        EffortGauge(level: day.intensity, color: day.color(theme))
     }
 
     private func mark(_ day: TrainingPlan.Today) -> String? {
@@ -852,7 +868,6 @@ private struct StateCard: View {
         let last = stats.sessions.first
         VStack(alignment: .leading, spacing: 16) {
             CardHeader(symbol: "waveform.path.ecg", title: "État", opens: true) {
-                Circle().fill(phase.stateColor(theme) ?? theme.dim).frame(width: 8, height: 8)
                 Text(symbols: (phase.isAlert ? "! " : "") + phase.title)
                     .font(theme.font(13, .bold))
                     .foregroundStyle(theme.text)

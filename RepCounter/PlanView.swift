@@ -14,6 +14,44 @@ enum Intensity {
     static func word(_ level: Double) -> String {
         level < 0.3 ? "calme" : (level < 0.85 ? "soutenue" : "maximale")
     }
+
+    /// L'effort demandé, en mot de tous les jours : facile, normal, maximal.
+    static func effort(_ level: Double) -> String {
+        level < 0.3 ? "facile" : (level < 0.85 ? "normal" : "maximal")
+    }
+
+    /// Crans de la jauge d'effort (1 à 3).
+    static func notches(_ level: Double) -> Int {
+        level < 0.3 ? 1 : (level < 0.85 ? 2 : 3)
+    }
+}
+
+/// La jauge d'effort du jour : 3 crans (facile, normal, maximal) et le mot, « effort normal ».
+/// Une jauge seule ne dirait pas à quoi elle se rapporte : le mot est toujours là.
+struct EffortGauge: View {
+    @Environment(\.theme) private var theme
+    let level: Double
+    let color: Color
+
+    var body: some View {
+        let on = Intensity.notches(level)
+        HStack(spacing: 8) {
+            HStack(alignment: .bottom, spacing: 2) {
+                ForEach(0..<3, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(index < on ? color : theme.line)
+                        .frame(width: 5, height: CGFloat(7 + index * 4))
+                }
+            }
+            Text("effort \(Intensity.effort(level))")
+                .font(theme.font(15, .medium))
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Effort \(Intensity.effort(level)), \(on) sur 3")
+    }
 }
 
 extension TrainingPlan.Today {
@@ -179,9 +217,9 @@ struct TestDayLine: View {
     }
 
     private var text: String {
-        if let step = plan.testStep { return "◆ test \(step.number) sur \(step.of) · ton niveau de départ" }
-        let last = plan.tests.last.map { " · dernier test \($0.value)" } ?? ""
-        return plan.testOverdue ? "! ◆ test de fin de bloc à faire" + last : "◆ test de fin de bloc · série max" + last
+        if let step = plan.testStep { return "Test \(step.number) sur \(step.of) : ton niveau de départ" }
+        let last = plan.tests.last.map { " · à battre : \($0.value)" } ?? ""
+        return (plan.testOverdue ? "Test à faire" : "Jour de test") + last
     }
 }
 
@@ -1037,6 +1075,50 @@ struct PlanInfoView: View {
                 .font(theme.font(17))
                 .foregroundStyle(theme.text)
                 .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+/// « En savoir plus » du jour de test : à quoi sert le test, comment le faire, ce qui suit.
+/// Texte long permis ici : c'est une vue optionnelle (skill reps-ux, § 12). Sources :
+/// `Science/METHODE-TEST.md`, règles 1, 4, 5 et 10.
+struct TestInfoView: View {
+    @Environment(\.theme) private var theme
+    let plan: TrainingPlan
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                section("À quoi il sert",
+                        plan.testStep != nil
+                        ? "Il mesure ton niveau de départ. Tes cibles des 3 prochaines semaines en partiront : ni trop faciles, ni hors de portée."
+                        : "Il mesure ce que tu as gagné pendant le bloc. Tes cibles du bloc suivant en partiront : elles montent avec toi.")
+                section("Comment le faire",
+                        "Échauffe-toi avec une série facile, puis repose-toi 2 minutes ; l'app te le propose. Lance ensuite le test et fais le plus de répétitions possible, en une seule série, sans pause. Tu peux faire une 2e tentative après 3 minutes de repos : la meilleure compte.")
+                section("Comment lire le résultat",
+                        "D'un jour à l'autre, ton max varie naturellement d'environ 10 %. Un écart plus petit n'est ni un progrès ni un recul ; tes cibles suivent quand même ton résultat.")
+                if plan.testStep == nil {
+                    section("Si tu ne peux pas aujourd'hui",
+                            "Le test reste à faire les jours suivants. En attendant, une séance allégée t'est proposée.")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
+        }
+        .background(theme.background.ignoresSafeArea())
+        .navigationTitle("Le test")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func section(_ title: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(theme.font(17, .semibold))
+                .foregroundStyle(theme.text)
+            Text(text)
+                .font(theme.font(17))
+                .foregroundStyle(theme.text)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

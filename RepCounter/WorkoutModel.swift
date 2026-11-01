@@ -759,3 +759,47 @@ extension WorkoutModel.Phase {
         return false
     }
 }
+
+// MARK: - Mode capture (CI)
+
+extension WorkoutModel {
+    /// Met l'écran dans un état à photographier, sans capteur : `serie` (17 répétitions de la
+    /// série 2, cible 24), `repos` (45 s après la série 1), `fin` (séance de 3 séries terminée).
+    /// Ne sert qu'au mode capture (`-captureDemo YES`, RepCounterApp.swift).
+    func showCaptureState(_ name: String) {
+        sensors.stop()
+        clock?.invalidate()
+        let start = Date().addingTimeInterval(-300)
+        func set(_ number: Int, _ reps: Int, target: Int, at offset: TimeInterval) -> WorkoutSet {
+            WorkoutSet(number: number, reps: reps, duration: Double(reps) * 1.6, cadence: 1.6,
+                       start: start.addingTimeInterval(offset),
+                       repTimes: (0..<reps).map { Double($0) * 1.6 }, target: target)
+        }
+        sessionStart = start
+        now = Date()
+        switch name {
+        case "serie":
+            phase = .active
+            sets = [set(1, 28, target: 28, at: 0)]
+            state = .counting
+            setReps = 17
+            lastRepDate = Date()
+        case "repos":
+            phase = .active
+            sets = [set(1, 28, target: 28, at: 0)]
+            state = .searching
+            setReps = 0
+            lastRepDate = Date().addingTimeInterval(-45)
+        case "fin":
+            phase = .active
+            sets = [set(1, 28, target: 28, at: 0), set(2, 23, target: 24, at: 100), set(3, 18, target: 21, at: 160)]
+            state = .searching
+            setReps = 0
+            lastRepDate = Date()
+            sessionEnd = Date()
+            phase = .finished
+        default:
+            break
+        }
+    }
+}

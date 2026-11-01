@@ -130,8 +130,8 @@ struct JournalCard: View {
             CardHeader(symbol: "calendar.day.timeline.left", title: "Journal") {
                 MonitorLabel("\(JournalHours.label(start)) → \(JournalHours.label(end))")
                     .accessibilityLabel("de \(JournalHours.spoken(start)) à \(JournalHours.spoken(end))")
-                MonitorLabel("total")
-                    .accessibilityLabel("total du jour")
+                MonitorLabel("reps")
+                    .accessibilityLabel("répétitions du jour")
                     .frame(width: totalWidth, alignment: .trailing)
             }
             hourAxis

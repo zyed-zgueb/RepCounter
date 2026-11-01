@@ -101,10 +101,16 @@ jobs:
           capture seance-faite coaching done
           capture jour-de-test coaching testDay
           capture cadran-repos counter restDay
+          # À chaud (cycle 3) : pendant la série, pendant le repos, fin de séance
+          capture serie serie progression
+          capture recuperation repos progression
+          capture fin-de-seance fin progression
           # Grand texte (Dynamic Type, taille d'accessibilité) : les débordements se voient ici
           xcrun simctl ui "$UDID" content_size accessibility-large
           capture grand-texte-coaching coaching progression
           capture grand-texte-cadran counter progression
+          capture grand-texte-serie serie progression
+          capture grand-texte-fin fin progression
           xcrun simctl ui "$UDID" content_size large
           echo "${GITHUB_SHA::7}" > captures/COMMIT
       # Archive : un dossier par version (date et commit), jamais effacé, et latest/ pour la

@@ -216,6 +216,10 @@ struct WorkoutView: View {
             switch Capture.screen {
             case "coaching", "planWeeks": showsCoaching = true
             case "history": showsHistory = true
+            case "serie", "repos", "fin":
+                // Pendant la série, pendant le repos, fin de séance : sans capteur
+                try? await Task.sleep(for: .seconds(1))
+                model.showCaptureState(Capture.screen ?? "")
             default: break
             }
         }
@@ -329,19 +333,14 @@ struct WorkoutView: View {
             if model.phase == .ready || model.phase == .finished {
                 IconButton(systemImage: "chart.bar.fill", color: theme.dim) { showsHistory = true }
             }
-            if model.phase == .ready {
-                Spacer()
-            } else {
+            if showsStatus {
                 StatusLED(color: statusColor)
                 MonitorLabel(statusText, color: statusColor)
                 Spacer(minLength: 4)
-                if model.phase == .active || model.phase == .finished {
-                    Text("T+ \(Format.clock(model.sessionDuration))")
-                        .font(theme.font(13, .semibold))
-                        .tracking(1)
-                        .foregroundStyle(theme.dim)
-                        .monospacedDigit()
-                }
+            } else {
+                // Pendant la séance, rien en haut : la série et le repos se lisent sur le cadran
+                // (cycle 3 : trois informations au plus, à chaud)
+                Spacer()
             }
             // Outils d'analyse : visibles seulement si le mode analyse est activé dans les Réglages
             if analysisMode, model.phase != .finished {
@@ -367,6 +366,23 @@ struct WorkoutView: View {
             }
         }
         .frame(height: 44)
+    }
+
+    /// L'état en haut de l'écran : seulement pendant la mise en place et le test.
+    private var showsStatus: Bool {
+        switch model.phase {
+        case .positioning, .countdown: return true
+        case .active: return model.testStage != nil
+        case .ready, .finished: return false
+        }
+    }
+
+    /// « Série 2 sur 3 » (séries faites plus tôt dans la journée comprises), « Série 4 · en plus »,
+    /// ou « Série 2 » sans plan.
+    private var setTitle: String {
+        let number = (model.planDay?.earlierToday.count ?? 0) + model.sets.count + 1
+        guard let planned = model.planDay?.session.sets else { return "Série \(number)" }
+        return number <= planned ? "Série \(number) sur \(planned)" : "Série \(number) · en plus"
     }
 
     private var statusText: String {
@@ -472,18 +488,24 @@ struct WorkoutView: View {
                 let warmupRest = model.testStage == .warmupRest
                 let planned = warmupRest ? Int(WorkoutModel.warmupRest) : plannedRest
                 let slices = max(1, planned / Self.restSlice)
-                let done = model.restDuration >= Double(planned)
+                let remaining = max(Double(planned) - model.restDuration, 0)
+                let done = remaining <= 0
                 let color = warmupRest ? theme.calm : (done ? theme.ok : theme.warn)
-                Dial(face: CounterDialFace(lit: min(Int(model.restDuration) / Self.restSlice, slices), segments: slices, color: color, rest: true)) { side in
+                // Compte à rebours (recette de la maquette du cycle 3) : le temps qui reste, et un
+                // segment par tranche de 15 s qui s'éteint ; à zéro, l'anneau passe au vert, « Prêt »
+                // (après l'échauffement d'un test, jamais vert : rien n'est atteint, § 5)
+                let left = done ? slices : Int((remaining / Double(Self.restSlice)).rounded(.up))
+                Dial(face: CounterDialFace(lit: min(left, slices), segments: slices, color: color, rest: true)) { side in
                     VStack(spacing: side * 0.03) {
-                        Text(Format.clock(model.restDuration))
+                        Text(done && !warmupRest ? "Prêt" : Format.clock(remaining))
                             .font(theme.dialFont(side * 0.24, .bold))
                             .foregroundStyle(color)
                             .monospacedDigit()
                             .lineLimit(1)
                             .minimumScaleFactor(0.5)
-                        MonitorLabel(model.testStage == .warmupRest ? "◆ test au signal" : "sur \(Format.clock(Double(planned)))",
-                                     color: model.testStage == .warmupRest ? theme.max : nil)
+                            .contentTransition(.numericText(countsDown: true))
+                        MonitorLabel(warmupRest ? "test au signal" : (done ? "repos fait" : "repos restant"),
+                                     color: warmupRest ? theme.max : nil)
                     }
                     .padding(side * 0.2)
                 }
@@ -491,7 +513,6 @@ struct WorkoutView: View {
                 if let step = coachCard { CoachCard(step: step) }
                 if let planDay = model.planDay {
                     nextSetLine(planDay)
-                    SetRow(planDay: planDay, done: model.sets.map(\.reps), doneTargets: model.sets.map(\.target), current: nil)
                 } else {
                     setsLog
                 }
@@ -502,18 +523,21 @@ struct WorkoutView: View {
                 let reached = target.map { done >= $0 } ?? false
                 // Test : en rouge (intensité maximale), sans cible ; échauffement : calme, sans jauge
                 let base = model.testStage == .warmup ? theme.calm : (model.testStage == .test ? theme.max : theme.primary)
-                Dial(face: CounterDialFace(lit: CounterDial.lit(done),
+                // Avec une cible : un segment par répétition, qui s'allume jusqu'à la cible (on voit
+                // où on en est et ce qui reste) ; sans cible, des tours de 10
+                let perRep = target.map { CounterDial.perRep($0) } ?? false
+                Dial(face: CounterDialFace(lit: perRep ? min(done, target ?? 0) : CounterDial.lit(done),
+                                           segments: perRep ? (target ?? CounterDial.segmentsPerLap) : CounterDial.segmentsPerLap,
                                            color: reached ? theme.ok : (counting ? base : base.opacity(0.42)),
-                                           goalSegment: CounterDial.goalSegment(done: done, target: target),
-                                           live: model.testStage == .warmup ? nil : model.live, palePulse: !counting),
+                                           goalSegment: perRep ? nil : CounterDial.goalSegment(done: done, target: target),
+                                           live: counting || model.testStage == .warmup ? nil : model.live, palePulse: !counting),
                      pulse: counting ? nil : model.tentativePulse) { side in
                     dialCount(side: side, counting: counting)
                 }
-                if let planDay = model.planDay {
-                    SetRow(planDay: planDay, done: model.sets.map(\.reps), doneTargets: model.sets.map(\.target),
-                           current: counting ? model.setReps : nil)
-                } else if counting || model.totalReps > 0 {
-                    statsLine
+                if model.testStage == nil {
+                    Text(setTitle)
+                        .font(theme.font(22, .bold))
+                        .foregroundStyle(theme.text)
                 }
                 if !counting, let step = coachCard { CoachCard(step: step) }
             case .finished:
@@ -608,11 +632,12 @@ struct WorkoutView: View {
                 .scaleEffect(bump && !reduceMotion ? 1.08 : 1)
                 .opacity(bump && reduceMotion ? 0.75 : 1)
             if counting, let target = seriesTarget {
-                MonitorLabel("sur \(target)", color: model.setReps >= target ? theme.ok : theme.dim)
-                LapDots(target: target, done: model.setReps)
-                    .padding(.top, 2)
+                Text("sur \(target)")
+                    .font(theme.font(22, .semibold))
+                    .foregroundStyle(model.setReps >= target ? theme.ok : theme.dim)
+                    .monospacedDigit()
             } else if counting, model.testStage == .test {
-                MonitorLabel("◆ test", color: theme.max)
+                MonitorLabel("test", color: theme.max)
             } else if counting, model.testStage == .warmup {
                 MonitorLabel("échauffement", color: theme.calm)
             } else if counting {
@@ -660,22 +685,35 @@ struct WorkoutView: View {
     private func nextSetLine(_ planDay: WorkoutModel.PlanDay) -> some View {
         let index = planDay.earlierToday.count + model.sets.count
         if let target = model.currentTarget, index < planDay.session.sets {
-            let last = index == planDay.session.sets - 1
-            // La cible réajustée sur sa propre ligne : elle n'est jamais coupée
             VStack(spacing: 4) {
-                HStack(spacing: 6) {
-                    MonitorLabel(last ? "Dernière série" : "Ensuite · série \(index + 1)")
-                    Text("\(target)")
-                        .font(theme.font(15, .bold))
-                        .foregroundStyle(theme.text)
-                        .monospacedDigit()
-                }
+                Text("Ensuite : série \(index + 1) sur \(planDay.session.sets)")
+                    .font(theme.font(17))
+                    .foregroundStyle(theme.dim)
+                Text("\(target)")
+                    .font(theme.font(34, .bold))
+                    .foregroundStyle(theme.text)
+                    .monospacedDigit()
                 if target < planDay.session.targets[index] {
-                    MonitorLabel("! cible réajustée", color: theme.text)
+                    // Pourquoi la cible a baissé, en une phrase (Prescription : réajustée d'après la série précédente)
+                    Text("Cible baissée : ta série précédente était sous sa cible.")
+                        .font(theme.font(15))
+                        .foregroundStyle(theme.dim)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .accessibilityElement(children: .combine)
         } else {
-            MonitorLabel("Séance faite ✓", color: theme.ok)
+            VStack(spacing: 4) {
+                Text("Toutes les séries sont faites")
+                    .font(theme.font(22, .bold))
+                    .foregroundStyle(theme.ok)
+                Text("Maintiens « Terminer » pour finir.")
+                    .font(theme.font(15))
+                    .foregroundStyle(theme.dim)
+            }
+            .multilineTextAlignment(.center)
+            .accessibilityElement(children: .combine)
         }
     }
 
@@ -841,7 +879,7 @@ struct WorkoutView: View {
                         }
                     } else if let testPlan = testDayPlan {
                         // Jour de test : la personne lance le test elle-même ; l'autre séance reste possible
-                        Button { launchTest() } label: { Text(symbols: "◆ Lancer le test") }
+                        Button("Lancer le test") { launchTest() }
                             .buttonStyle(MonitorButtonStyle(color: theme.max, height: 64, wraps: true))
                             .conditionalPopoverTip(TestTip(), shown: !stateTipShown)
                         // Bloc 1 : la séance de calibrage ; sinon la séance allégée
@@ -911,10 +949,15 @@ struct WorkoutView: View {
             // Le voyant est collé au capteur qu'il décrit ; ses mots ne servent qu'à VoiceOver
             HStack(spacing: 6) {
                 StatusLED(color: presenceColor)
-                MonitorLabel("Mouvement · \(model.source?.code ?? model.exercise.sensorTag)")
+                // Le nom du capteur n'est utile qu'en mode analyse : sous la question de fatigue,
+                // « caméra » prêtait à confusion (recette du cycle 2)
+                if analysisMode {
+                    MonitorLabel("Mouvement · \(model.source?.code ?? model.exercise.sensorTag)")
+                }
                 Spacer()
             }
             .accessibilityElement(children: .combine)
+            .accessibilityLabel("Mouvement capté")
             .accessibilityValue(presenceText)
             SignalTrace(live: model.live)
                 .frame(height: 46)
@@ -1222,49 +1265,66 @@ private struct SessionSummary: View {
     @State private var showsTipPrompt = false
     @State private var showsSupport = false
 
+    /// Le détail (total, séries à corriger, mesures), sur une page à part.
+    @State private var showsDetail = false
+
     var body: some View {
-        VStack(spacing: 14) {
-            Spacer(minLength: 0)
-            Dial(face: DialFace(lit: DialFace.tickCount, palette: .gradient)) { side in
-                VStack(spacing: 6) {
-                    Text("\(total)")
-                        .font(theme.dialFont(side * 0.4, .bold))
-                        .tracking(-side * 0.01)
-                        .foregroundStyle(LinearGradient(colors: [theme.secondary, theme.primary],
-                                                        startPoint: .leading, endPoint: .trailing))
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.4)
-                        .contentTransition(.numericText())
-                    MonitorLabel("\(model.exercise.shortTitle) · répétitions")
+        VStack(spacing: 16) {
+            ScrollView {
+                VStack(spacing: 16) {
+                    if let record {
+                        // Trois blocs (recette du cycle 1, maquette du cycle 3) : la cible, la suite,
+                        // le coach quand une mesure le justifie ; le reste dans le détail
+                        let result = outcome(record)
+                        block("Cible") {
+                            Text(symbols: result.title)
+                                .font(theme.font(22, .bold))
+                                .foregroundStyle(result.reached ? theme.ok : theme.text)
+                                .fixedSize(horizontal: false, vertical: true)
+                            if let detail = result.detail {
+                                Text(symbols: detail)
+                                    .font(theme.font(15))
+                                    .foregroundStyle(theme.dim)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        if let next = upcoming(record) {
+                            block("La suite") {
+                                Text(next.title)
+                                    .font(theme.font(17, .semibold))
+                                    .foregroundStyle(theme.text)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if let detail = next.detail {
+                                    Text(symbols: detail)
+                                        .font(theme.font(15))
+                                        .foregroundStyle(theme.dim)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
+                        }
+                        if let advice = CoachAdvice.after(record, plan: plan(before: record)) {
+                            block("Le coach") {
+                                Text(advice)
+                                    .font(theme.font(17))
+                                    .foregroundStyle(theme.text)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                        Button("Détail de la séance") { showsDetail = true }
+                            .font(theme.font(17, .semibold))
+                            .foregroundStyle(theme.primary)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    } else {
+                        block("Séance") {
+                            Text("Aucune série comptée")
+                                .font(theme.font(17, .semibold))
+                                .foregroundStyle(theme.text)
+                        }
+                    }
                 }
-                .padding(side * 0.14)
+                .padding(.top, 8)
             }
-            .frame(maxWidth: 236)
-
-            if let record {
-                highlights(record)
-                SetBars(sets: record.orderedSets.map(\.reps), recordIndex: recordSetIndex(record), editing: editing) { index in
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { editing = editing == index ? nil : index }
-                }
-                .frame(height: 112)
-                corrector(record)
-            } else {
-                MonitorLabel("Aucune série comptée")
-            }
-
-            if let record {
-                HStack {
-                    enduranceStat(record)
-                    if record.exercise != .auto { formStat(record) }
-                    summaryStat("Durée", Format.clock(record.duration))
-                }
-                .padding(.top, 12)
-                .overlay(alignment: .top) { Rectangle().fill(theme.line).frame(height: 1) }
-                planResult(record)
-                phaseLine(record)
-            }
-            Spacer(minLength: 0)
+            .scrollBounceBehavior(.basedOnSize)
 
             if let record, asksFeeling(record) {
                 EffortQuestion(record: record)
@@ -1274,7 +1334,7 @@ private struct SessionSummary: View {
                           onDismiss: { withAnimation { showsTipPrompt = false } })
                     .transition(.opacity)
             }
-            Button("Nouvelle séance") { model.newSession() }
+            Button("Terminé") { model.newSession() }
                 .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 58))
         }
         .task(id: record?.persistentModelID) { await askIfDue() }
@@ -1289,8 +1349,74 @@ private struct SessionSummary: View {
                 .environmentObject(tipJar)
                 .systemSheet()
         }
+        .sheet(isPresented: $showsDetail) {
+            if let record { detail(record) }
+        }
         .sensoryFeedback(.selection, trigger: editing)
         .sensoryFeedback(.impact(weight: .light), trigger: corrections)
+    }
+
+    /// Un bloc de la fin de séance : son étiquette (« Cible », « La suite », « Le coach ») et son contenu.
+    private func block<Content: View>(_ tag: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(tag.uppercased())
+                .font(theme.font(13, .semibold))
+                .tracking(1)
+                .foregroundStyle(theme.dim)
+                .accessibilityAddTraits(.isHeader)
+            content()
+        }
+        .padding(20)
+        .cardBackground(theme)
+    }
+
+    /// Le détail de la séance : le total, les séries (une touche pour corriger un compte), les
+    /// mesures. Ce qui chargeait la fin de séance, rangé ici.
+    private func detail(_ record: SessionRecord) -> some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    Dial(face: DialFace(lit: DialFace.tickCount, palette: .gradient)) { side in
+                        VStack(spacing: 6) {
+                            Text("\(record.totalReps)")
+                                .font(theme.dialFont(side * 0.4, .bold))
+                                .foregroundStyle(LinearGradient(colors: [theme.secondary, theme.primary],
+                                                                startPoint: .leading, endPoint: .trailing))
+                                .monospacedDigit()
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.4)
+                            MonitorLabel("répétitions")
+                        }
+                        .padding(side * 0.14)
+                    }
+                    .frame(maxWidth: 200)
+                    highlights(record)
+                    SetBars(sets: record.orderedSets.map(\.reps), recordIndex: recordSetIndex(record), editing: editing) { index in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { editing = editing == index ? nil : index }
+                    }
+                    .frame(height: 112)
+                    corrector(record)
+                    HStack {
+                        enduranceStat(record)
+                        if record.exercise != .auto { formStat(record) }
+                        summaryStat("Durée", Format.clock(record.duration))
+                    }
+                    .padding(.top, 12)
+                    .overlay(alignment: .top) { Rectangle().fill(theme.line).frame(height: 1) }
+                    phaseLine(record)
+                }
+                .padding(20)
+            }
+            .background(theme.background.ignoresSafeArea())
+            .navigationTitle("Détail de la séance")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("OK") { showsDetail = false }
+                }
+            }
+        }
+        .environment(\.theme, theme)
     }
 
     /// Après un record : la note App Store (dès la 5e séance), puis, à un record suivant, le don
@@ -1318,63 +1444,60 @@ private struct SessionSummary: View {
         Feeling.asks(after: history.filter { $0.start < record.start }.count)
     }
 
-    /// Le plan, s'il y a un objectif : prévu face au fait série par série, et la place de la
-    /// séance dans la semaine ; jour de test, le résultat (mesuré, attendu, gain depuis le départ).
-    @ViewBuilder
-    private func planResult(_ record: SessionRecord) -> some View {
-        let before = history.filter { $0.start < record.start }
-        let plan = Goal.load(record.exercise) == nil && PlanAnchor.load(record.exercise) == nil ? nil
-            : HistoryStats(sessions: before, exercise: record.exercise, now: record.start).plan(all: before)
-        if let plan {
-            let sets = record.orderedSets.map(\.reps)
-            VStack(spacing: 6) {
-                if let tested = record.testBest {
-                    // Le test (mode test) : la meilleure série de test, lue face au dernier test.
-                    // L'écart est une tendance (couleur de texte) ; le vert seulement si l'objectif
-                    // est atteint (skill reps-ux, § 5)
-                    let reached = plan.goal.map { tested >= $0.target } ?? false
-                    planRow(plan.testStep.map { "◆ Test \($0.number) sur \($0.of)" } ?? "◆ Test de fin de bloc \(plan.block)",
-                            "\(tested) d'affilée" + (reached ? " ✓" : ""), color: reached ? theme.ok : theme.text)
-                    if let gap = TestReading.gap(tested, previous: plan.tests.last?.value) {
-                        planRow("Écart", gap, color: theme.text)
-                    }
-                    if let expected = plan.expected(at: record.start) {
-                        planRow("Attendu", "\(Int(expected.rounded()))", color: theme.text)
-                    }
-                } else if let planned = plan.todaySession ?? plan.fallback {
-                    // Séries espacées dans la journée : elles comptent toutes dans le fait du jour
-                    let earlierToday = before.filter { $0.exercise == record.exercise && Calendar.current.isDate($0.start, inSameDayAs: record.start) }
-                    let dayReps = earlierToday.reduce(record.totalReps) { $0 + $1.totalReps }
-                    // Jugée comme au compteur et au Coaching : chaque série face à la cible affichée
-                    // (réajustée en séance) ; une série prévue non faite manque
-                    let daySets = earlierToday.sorted { $0.start < $1.start }.flatMap(\.workSets) + record.workSets
-                    let recorded = daySets.compactMap(\.target)
-                    let done = recorded.count < daySets.count || recorded.isEmpty
-                        ? dayReps >= planned.total
-                        : !daySets.contains { $0.reps < ($0.target ?? 0) } && daySets.count >= planned.sets
-                    let shown = recorded.count == daySets.count && !recorded.isEmpty && recorded != Array(planned.targets.prefix(recorded.count))
-                        ? recorded.map(String.init).joined(separator: " · ") + " (réajustées)"
-                        : planned.label
-                    planRow("Cibles", shown, color: theme.text)
-                    planRow(earlierToday.isEmpty ? "Fait" : "Fait · séries espacées",
-                            sets.map(String.init).joined(separator: " · ") + (done ? " ✓" : ""),
-                            color: done ? theme.ok : theme.text)
-                    if let week = plan.currentWeek {
-                        Text("séance \(week.done + (earlierToday.isEmpty ? 1 : 0)) de la semaine")
-                            .font(theme.font(13))
-                            .foregroundStyle(theme.dim)
-                    }
-                    // Une série qui dépasse le max le relève : les cibles suivent dès la séance
-                    // suivante (choix de l'app, METHODE-TEST.md)
-                    if let currentMax = plan.currentMax, let raised = Self.raisedMax(record, from: currentMax) {
-                        Text(symbols: "▲ max relevé à \(raised) · cibles mises à jour")
-                            .font(theme.font(13, .bold))
-                            .foregroundStyle(theme.text)
-                    }
-                }
-                nextSession(record)
-            }
+    /// Les séances enregistrées avant celle-ci (tous exercices : le plan en a besoin).
+    private func earlierAll(_ record: SessionRecord) -> [SessionRecord] {
+        history.filter { $0.start < record.start }
+    }
+
+    /// Le plan tel qu'il était au départ de la séance (nil sans objectif ni plan).
+    private func plan(before record: SessionRecord) -> TrainingPlan? {
+        guard Goal.load(record.exercise) != nil || PlanAnchor.load(record.exercise) != nil else { return nil }
+        let before = earlierAll(record)
+        return HistoryStats(sessions: before, exercise: record.exercise, now: record.start).plan(all: before)
+    }
+
+    /// Le bloc « Cible » : atteinte ou pas, et le fait face aux cibles ; un test, son résultat ;
+    /// sans plan, le total.
+    private func outcome(_ record: SessionRecord) -> (title: String, detail: String?, reached: Bool) {
+        let sets = record.workSets.map(\.reps)
+        let plain = ("\(record.totalReps) répétitions", sets.count > 1 ? sets.map(String.init).joined(separator: " · ") : nil, false)
+        guard let plan = plan(before: record) else { return plain }
+        if let tested = record.testBest {
+            // L'écart est une tendance (couleur de texte) ; le vert seulement si l'objectif est
+            // atteint (skill reps-ux, § 5)
+            let reached = plan.goal.map { tested >= $0.target } ?? false
+            let gap = TestReading.gap(tested, previous: plan.tests.last?.value).map { "Depuis ton dernier test : \($0)" }
+            return ("Test : \(tested) d'affilée" + (reached ? " ✓" : ""), gap, reached)
         }
+        guard let planned = plan.todaySession ?? plan.fallback else { return plain }
+        // Séries espacées dans la journée : elles comptent toutes. Jugée comme au compteur et au
+        // Coaching : chaque série face à la cible affichée (réajustée en séance)
+        let earlierToday = earlierAll(record).filter {
+            $0.exercise == record.exercise && Calendar.current.isDate($0.start, inSameDayAs: record.start)
+        }
+        let daySets = earlierToday.sorted { $0.start < $1.start }.flatMap(\.workSets) + record.workSets
+        let dayReps = daySets.reduce(0) { $0 + $1.reps }
+        let recorded = daySets.compactMap(\.target)
+        let reached = recorded.count < daySets.count || recorded.isEmpty
+            ? dayReps >= planned.total
+            : !daySets.contains { $0.reps < ($0.target ?? 0) } && daySets.count >= planned.sets
+        let targets = recorded.count == daySets.count && !recorded.isEmpty ? recorded : planned.targets
+        let done = daySets.map { String($0.reps) }.joined(separator: " · ")
+        let detail = "\(done) pour \(targets.map(String.init).joined(separator: " · "))"
+        return (reached ? "Cible atteinte ✓" : "Cible non atteinte", detail, reached)
+    }
+
+    /// Le bloc « La suite » : la prochaine séance (date et cibles), et le repos de demain s'il est conseillé.
+    private func upcoming(_ record: SessionRecord) -> (title: String, detail: String?)? {
+        guard Goal.load(record.exercise) != nil || PlanAnchor.load(record.exercise) != nil else { return nil }
+        let upTo = history.filter { $0.start <= record.start }
+        guard let plan = HistoryStats(sessions: upTo, exercise: record.exercise, now: record.end.addingTimeInterval(1)).plan(all: upTo),
+              let next = plan.next else { return nil }
+        var detail = plan.upcoming.short
+        if let rest = plan.tomorrowRest, !Calendar.current.isDateInTomorrow(next) {
+            detail += "\nDemain, repos conseillé : \(rest.tomorrowExplanation)."
+        }
+        return ("Prochaine séance : \(Format.dayDate(next))", detail)
     }
 
     /// Le max relevé par une séance : sa meilleure série (échauffement exclu), si elle dépasse le
@@ -1385,28 +1508,6 @@ private struct SessionSummary: View {
         return best > max ? best : nil
     }
 
-    /// La prochaine séance prévue, après celle-ci : « Prochaine · vendredi · 29 · 25 · 22 ».
-    @ViewBuilder
-    private func nextSession(_ record: SessionRecord) -> some View {
-        let upTo = history.filter { $0.start <= record.start }
-        if let plan = HistoryStats(sessions: upTo, exercise: record.exercise, now: record.end.addingTimeInterval(1)).plan(all: upTo),
-           let next = plan.next {
-            planRow("Prochaine séance · \(Format.dayDate(next))", plan.upcoming.short, color: theme.dim)
-        }
-    }
-
-    private func planRow(_ label: String, _ value: String, color: Color) -> some View {
-        HStack {
-            MonitorLabel(label)
-            Spacer(minLength: 8)
-            Text(symbols: value)
-                .font(theme.font(13, .bold))
-                .foregroundStyle(color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-        }
-    }
-
     /// La phase, seulement quand elle appelle une action : rebond (prêt pour un record) ou
     /// décharge conseillée.
     @ViewBuilder
@@ -1414,7 +1515,6 @@ private struct SessionSummary: View {
         let phase = HistoryStats(sessions: history, exercise: record.exercise).phase(all: history)
         if record.exercise != .auto, phase.kind == .rebound || phase.kind == .deloadAdvised {
             HStack(spacing: 8) {
-                Circle().fill(phase.color(theme)).frame(width: 8, height: 8)
                 Text(symbols: phase.marked)
                     .font(theme.font(13, .bold))
                     .foregroundStyle(theme.text)
