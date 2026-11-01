@@ -86,7 +86,8 @@ extension TrainingPlan {
     /// La suite, en une ligne : « test demain · prochaine lun. » un jour de repos (la raison du
     /// repos d'abord), « prochaine demain » une fois la séance faite.
     var weekLine: String? {
-        let nextText = next.map { "prochaine \(Format.weekdayOrDate($0))" }
+        if restReason == .beforeTest { return restReason?.short }
+        let nextText = next.map { "prochaine séance \(Format.dayDate($0))" }
         return [restReason?.short, nextText].compactMap { $0 }.joined(separator: " · ")
     }
 
@@ -177,6 +178,8 @@ struct SetRow: View {
     let planDay: WorkoutModel.PlanDay
     /// Séries faites dans cette séance.
     let done: [Int]
+    /// La cible affichée pour chaque série faite dans cette séance (réajustée).
+    var doneTargets: [Int?] = []
     /// Répétitions de la série en cours (nil pendant la récupération).
     let current: Int?
 
@@ -200,8 +203,11 @@ struct SetRow: View {
     private func cell(_ index: Int, all: [Int], next: Int?) -> some View {
         let planned = index < planDay.session.sets ? planDay.session.targets[index] : nil
         if index < all.count {
-            // Sans cible (série au-delà du prévu) : ni ✓ ni vert
-            let reached = planned.map { all[index] >= $0 } ?? false
+            // Jugée sur la cible que le compteur affichait (réajustée) ; sans cible (série au-delà
+            // du prévu) : ni ✓ ni vert
+            let targets = planDay.earlierTargets + doneTargets
+            let shownTarget = (index < targets.count ? targets[index] : nil) ?? planned
+            let reached = shownTarget.map { all[index] >= $0 } ?? false
             Text(symbols: "\(all[index])\(reached ? " ✓" : "")").foregroundStyle(reached ? theme.ok : theme.text)
         } else if index == all.count {
             // La série en cours (ou la prochaine) : sa cible, réajustée
@@ -303,7 +309,7 @@ extension TrainingPlan {
             }
             return "Fin du bloc : ce test mesure ton progrès. Les cibles du bloc suivant en partiront."
         case .light:
-            return "Séance légère, la moitié des séries : ta forme est en baisse."
+            return lightBecause ?? "Séance légère, la moitié des séries : ta forme est en baisse."
         case .deload:
             return "Semaine de récupération, la moitié des séries : pour arriver frais au test, \(testDay)."
         case .reprise:
@@ -332,11 +338,11 @@ extension TrainingPlan {
                     return "Nouveau bloc sans test : le précédent n'a pas été fait. Tes cibles partent de ton dernier niveau, \(level)."
                 }
             }
-            let number = block == 1 ? index : index + 1
+            let number = (weeks.firstIndex { $0.isCurrent } ?? 0) + 1
             if let raise = maxRaise {
-                return "Progression, semaine \(number) sur \(progressionWeeksShown). Tes cibles ont monté : tu as fait \(raise), au-dessus de ton max."
+                return "Semaine \(number) sur \(weeks.count), pour progresser. Tes cibles ont monté : tu as fait \(raise), au-dessus de ton max."
             }
-            return "Progression, semaine \(number) sur \(progressionWeeksShown) : cibles fixes jusqu'au test, \(testDay), sauf si tu dépasses ton max."
+            return "Semaine \(number) sur \(weeks.count), pour progresser : cibles fixes jusqu'au test de fin de bloc, \(testDay), sauf si tu dépasses ton max."
         }
     }
 }
@@ -349,10 +355,11 @@ extension TrainingPlan {
         if let start = nextBlockStart {
             return "Bloc \(block) terminé · le bloc \(block + 1) commence \(Format.dayDate(start))"
         }
-        if testOverdue { return "Bloc \(block) · test à faire" }
-        if today == .test, testStep == nil { return "Bloc \(block) · test aujourd'hui" }
+        if testOverdue { return "Bloc \(block) · test de fin de bloc à faire" }
+        if today == .test, testStep == nil { return "Bloc \(block) · test de fin de bloc aujourd'hui" }
         let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()), to: calendar.startOfDay(for: testDate)).day ?? 0
-        let testText = days <= 0 ? "test aujourd'hui" : (days == 1 ? "test demain" : "test dans \(days) jours")
+        let testText = days <= 0 ? "test de fin de bloc aujourd'hui"
+            : (days == 1 ? "test de fin de bloc demain" : "test de fin de bloc dans \(days) jours")
         if let index = weeks.firstIndex(where: { $0.isCurrent }) {
             return "Bloc \(block) · semaine \(index + 1) sur \(weeks.count) · \(testText)"
         }
@@ -654,7 +661,7 @@ struct PathCard: View {
                         .foregroundStyle(theme.text)
                     Spacer()
                     if let projection = plan.projection, let goal = plan.goal {
-                        MonitorLabel("⌖ \(goal.target) vers le \(Format.shortDate(projection))")
+                        MonitorLabel("à ce rythme, \(goal.target) vers le \(Format.shortDate(projection))")
                     }
                 }
             }
@@ -960,7 +967,7 @@ struct PlanInfoView: View {
                     section("Références",
                             "Currier et al. (2026). Resistance training prescription for muscle function, hypertrophy and physical performance in healthy adults: an overview of reviews. Med Sci Sports Exerc 58(4):851–872. Bell et al. (2023), Sports Med Open 9:87. Rogerson et al. (2024), Sports Med Open 10:26. Meeusen et al. (2013), Med Sci Sports Exerc 45(1):186–205. Hopkins (2000), Sports Med 30(1):1–15. Sen (1968), J Am Stat Assoc 63:1379–1389. Halperin et al. (2022), Sports Med 52:377–390 (résumé). Grgic et al. (2018), Sports Med 48(5):1207–1220 (résumé).")
                     section("Séance faite",
-                            "Une séance compte comme faite dès que le total prévu est atteint, même si les séries diffèrent un peu (choix de l'app).")
+                            "Une séance terminée compte comme faite. Chaque série est jugée sur la cible que le compteur affichait, réajustée si la série d'avant était sous la sienne : « fait ✓ » si toutes sont atteintes, sinon « fait · cible non atteinte » (choix de l'app).")
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)

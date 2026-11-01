@@ -643,8 +643,9 @@ private struct GoalHeader: View {
             VStack(alignment: .leading, spacing: 4) {
                 CardHeader(symbol: "scope", title: "Objectif") {
                     if let date = shiftedDate ?? goal.date {
-                        // Décalée des semaines refaites et de l'attente du test : « +n sem. »
-                        MonitorLabel("pour le \(Format.shortDate(date))" + (shiftWeeks > 0 ? " · +\(shiftWeeks) sem." : ""))
+                        // Décalée des semaines refaites et de l'attente du test : on le dit en clair
+                        MonitorLabel("pour le \(Format.shortDate(date))"
+                                     + (shiftWeeks > 0 ? " · décalé de \(shiftWeeks) semaine\(shiftWeeks > 1 ? "s" : "")" : ""))
                     }
                 }
                 HStack(alignment: .bottom) {
@@ -753,7 +754,7 @@ private struct GoalMenu: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            MonitorLabel("⌖ \(goal.target)\(goal.date.map { " · \(Format.shortDate($0))" } ?? "")", color: theme.text)
+            MonitorLabel("Objectif \(goal.target)\(goal.date.map { " · date choisie : \(Format.shortDate($0))" } ?? "")", color: theme.text)
                 .padding(.bottom, 8)
             if confirming {
                 Text(symbols: "✕ Retirer ⌖ \(goal.target) ?")
@@ -986,7 +987,7 @@ private struct GoalEditor: View {
                 }
                 if mode != .target {
                     Toggle(isOn: $hasDate.animation()) {
-                        Text(symbols: "◷ DATE")
+                        Text("Date")
                             .font(theme.font(13, .bold))
                             .foregroundStyle(theme.text)
                     }

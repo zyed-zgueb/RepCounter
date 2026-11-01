@@ -144,6 +144,9 @@ struct TrainingPlan {
     var currentMax: Int? = nil
     /// Le max relevé en cours de bloc (nil : pas relevé).
     var maxRaise: Int? = nil
+    /// Pourquoi la séance du jour est légère, quand ce n'est pas la forme du jour (une décharge
+    /// commencée depuis la carte État).
+    var lightBecause: String? = nil
 
     struct TestStep: Equatable {
         let number: Int
@@ -658,10 +661,18 @@ extension HistoryStats {
         let tired = countingIsReliable
             ? Set(formResults.filter { $0.result.zone == .tired }.map { $0.session.persistentModelID }) : []
         let kind = phase(all: all).kind
-        let lowForm = [.lowForm, .overreaching, .deloadAdvised].contains(kind)
-        return TrainingPlan.make(goal: goal, anchor: anchor, sessions: sessions, tired: tired, lowForm: lowForm,
-                                 persistentFatigue: kind == .persistentFatigue,
-                                 legacyBefore: TrainingPlan.announcedTestSince, now: now, calendar: calendar)
+        // Une décharge commencée (carte État) allège aussi les séances du plan : les deux écrans
+        // disent la même chose
+        let lowForm = [.lowForm, .overreaching, .deloadAdvised, .deload].contains(kind)
+        var plan = TrainingPlan.make(goal: goal, anchor: anchor, sessions: sessions, tired: tired, lowForm: lowForm,
+                                     persistentFatigue: kind == .persistentFatigue,
+                                     legacyBefore: TrainingPlan.announcedTestSince, now: now, calendar: calendar)
+        if kind == .deload {
+            plan?.lightBecause = "Décharge en cours, que tu as commencée : la moitié des séries pendant 7 jours."
+        } else if kind == .deloadAdvised {
+            plan?.lightBecause = "Séance légère, la moitié des séries : ta forme baisse depuis 2 semaines, une décharge est conseillée (carte État)."
+        }
+        return plan
     }
 }
 

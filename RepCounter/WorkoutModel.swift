@@ -132,6 +132,8 @@ final class WorkoutModel: ObservableObject {
         let session: Prescription.Session
         let ratios: [Double]?
         let earlierToday: [Int]
+        /// La cible affichée pour chaque série déjà faite aujourd'hui (réajustée en séance).
+        var earlierTargets: [Int?] = []
     }
 
     /// Le plan du jour, fixé au départ de la séance (nil : pas de plan, ou jour de test).

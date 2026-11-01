@@ -61,10 +61,18 @@ quel jour de la première semaine, sans prévenir.
   2. la suite pour la journée ;
   3. un conseil concret quand les mesures le justifient (« cette série montre que tu es
      fatigué, je te conseille de… »), comme le ferait un coach.
+  Le cycle couvre tout ce qui se voit à chaud, relevé par l'audit UX du 01/11 : pendant la série
+  (« Série 02 », « T+ 03:12 », compteur, « sur 25 », cases des séries : plus de 3 informations),
+  pendant la récupération (« 0:45 sur 1:30 », « Ensuite · série 2 · ! cible réajustée »), la fin
+  de séance (une dizaine d'informations), et la numérotation des séries quand des séries ont déjà
+  été faites plus tôt dans la journée (« Série 01 » puis « Ensuite · série 3 »).
   Tout le reste quitte cet écran (il reste disponible dans l'historique). Conseils : seulement
   sur ce que l'app mesure vraiment (répétitions face aux cibles, ralentissement des
   répétitions, repos, « Effort ? », Forme) et avec une base (source ou choix de l'app
   assumé) ; pas de conseil quand la mesure est douteuse.
+- Abréviations restantes (audit UX du 01/11) : « réf. 2 / 3 », « +3 vs mardi 27 », « reps / sem. »,
+  « moy. 64 » ; légende du chemin sans « ⚑ », « ▼ », « ! » ; formules de la page Endurance.
+- Le point de couleur sur l'icône Coaching garde « séance prévue » un jour de repos conseillé.
 - Journal : les pointillés des jours sans séance sont trop pâles pour être vus (recette du cycle 1).
 - Rafraîchir la ligne du jour au passage de minuit, app ouverte (aucun observateur aujourd'hui ;
   relecture du cycle 1).

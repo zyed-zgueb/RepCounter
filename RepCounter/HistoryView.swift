@@ -404,7 +404,7 @@ private struct WeeksChart: View {
                     AxisValueLabel {
                         if let position = value.as(Double.self) {
                             let index = Int(position.rounded())
-                            Text(index == current ? "cette sem." : "S−\(current)")
+                            Text(index == current ? "cette semaine" : "il y a \(current) semaines")
                         }
                     }
                 }
@@ -469,7 +469,7 @@ private struct VolumeBars: View {
                 AxisValueLabel {
                     if let position = value.as(Double.self) {
                             let index = Int(position.rounded())
-                        Text(index == current ? "cette sem." : "S−\(current)")
+                        Text(index == current ? "cette semaine" : "il y a \(current) semaines")
                     }
                 }
             }
@@ -815,12 +815,12 @@ private struct RhythmChart: View {
         for (index, set) in sets.enumerated() {
             for duration in set.repDurations {
                 points.append(Point(id: points.count, position: position, duration: duration,
-                                    series: String(format: "S%02d", index + 1)))
+                                    series: "série \(index + 1)"))
                 position += 1
             }
             position += 1
         }
-        let names = (0..<sets.count).map { String(format: "S%02d", $0 + 1) }
+        let names = (0..<sets.count).map { "série \($0 + 1)" }
         let colors = (0..<sets.count).map { index in
             theme.secondary.mixed(with: theme.primary, by: Double(index) / Double(max(sets.count - 1, 1)))
         }

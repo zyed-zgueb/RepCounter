@@ -132,13 +132,16 @@ struct WorkoutView: View {
                     cachedPlan = dayPlan
                     planComputed = true
                     // Les cibles du jour, et les séries déjà faites aujourd'hui (séries espacées)
-                    let earlier = sessions
+                    let earlierSets = sessions
                         .filter { $0.exercise == model.exercise && Calendar.current.isDateInToday($0.start) }
                         .sorted { $0.start < $1.start }
-                        .flatMap { $0.orderedSets.map(\.reps) }
+                        .flatMap(\.orderedSets)
+                    let earlier = earlierSets.map(\.reps)
+                    let earlierTargets = earlierSets.map(\.target)
                     // En mode test, aucune cible ; un jour de test sans test, la séance de repli (allégée)
                     model.planDay = model.testStage != nil ? nil : (dayPlan?.todaySession ?? dayPlan?.fallback).map {
-                        WorkoutModel.PlanDay(session: $0, ratios: dayPlan?.ratios, earlierToday: earlier)
+                        WorkoutModel.PlanDay(session: $0, ratios: dayPlan?.ratios, earlierToday: earlier,
+                                             earlierTargets: earlierTargets)
                     }
                 }
             }
@@ -480,7 +483,7 @@ struct WorkoutView: View {
                 if let step = coachCard { CoachCard(step: step) }
                 if let planDay = model.planDay {
                     nextSetLine(planDay)
-                    SetRow(planDay: planDay, done: model.sets.map(\.reps), current: nil)
+                    SetRow(planDay: planDay, done: model.sets.map(\.reps), doneTargets: model.sets.map(\.target), current: nil)
                 } else {
                     setsLog
                 }
@@ -499,7 +502,8 @@ struct WorkoutView: View {
                     dialCount(side: side, counting: counting)
                 }
                 if let planDay = model.planDay {
-                    SetRow(planDay: planDay, done: model.sets.map(\.reps), current: counting ? model.setReps : nil)
+                    SetRow(planDay: planDay, done: model.sets.map(\.reps), doneTargets: model.sets.map(\.target),
+                           current: counting ? model.setReps : nil)
                 } else if counting || model.totalReps > 0 {
                     statsLine
                 }
@@ -783,7 +787,7 @@ struct WorkoutView: View {
         return HStack(spacing: 6) {
             if hidden > 0 { setChip(label: "+\(hidden)", value: nil, latest: false) }
             ForEach(shown) { set in
-                setChip(label: String(format: "S%02d", set.number), value: "\(set.reps)", latest: set.id == model.sets.last?.id)
+                setChip(label: "série \(set.number)", value: "\(set.reps)", latest: set.id == model.sets.last?.id)
             }
         }
     }
@@ -1330,8 +1334,17 @@ private struct SessionSummary: View {
                     // Séries espacées dans la journée : elles comptent toutes dans le fait du jour
                     let earlierToday = before.filter { $0.exercise == record.exercise && Calendar.current.isDate($0.start, inSameDayAs: record.start) }
                     let dayReps = earlierToday.reduce(record.totalReps) { $0 + $1.totalReps }
-                    let done = dayReps >= planned.total
-                    planRow("Prévu", "\(planned.label) = \(planned.total)", color: theme.text)
+                    // Jugée comme au compteur et au Coaching : chaque série face à la cible affichée
+                    // (réajustée en séance) ; une série prévue non faite manque
+                    let daySets = earlierToday.sorted { $0.start < $1.start }.flatMap(\.workSets) + record.workSets
+                    let recorded = daySets.compactMap(\.target)
+                    let done = recorded.count < daySets.count || recorded.isEmpty
+                        ? dayReps >= planned.total
+                        : !daySets.contains { $0.reps < ($0.target ?? 0) } && daySets.count >= planned.sets
+                    let shown = recorded.count == daySets.count && !recorded.isEmpty && recorded != Array(planned.targets.prefix(recorded.count))
+                        ? recorded.map(String.init).joined(separator: " · ") + " (réajustées)"
+                        : planned.label
+                    planRow("Cibles", shown, color: theme.text)
                     planRow(earlierToday.isEmpty ? "Fait" : "Fait · séries espacées",
                             sets.map(String.init).joined(separator: " · ") + (done ? " ✓" : ""),
                             color: done ? theme.ok : theme.text)
@@ -1599,8 +1612,10 @@ struct SetBars: View {
                         .frame(height: max(2, 64 * CGFloat(reps) / CGFloat(most)))
                         .shadow(color: theme.primary.opacity(0.3 * min(theme.glow, 1)), radius: 8)
                     if sets.count <= 10 {
-                        Text(String(format: "S%02d", index + 1))
+                        Text("série \(index + 1)")
                             .font(theme.font(10))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
                             .foregroundStyle(selected ? theme.text : theme.dim)
                     }
                 }
