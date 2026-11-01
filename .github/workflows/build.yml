@@ -1,0 +1,137 @@
+name: Build
+
+# Compile l'app et rejoue la simulation du compteur à chaque push et pull request.
+# Un lot n'est proposé à Vincent que si ce workflow est vert (CLAUDE.md).
+
+on:
+  push:
+    branches-ignore: [ci-captures]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulation:
+    name: Simulations (compteur et plan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install numpy
+      - name: simulate_counter.py (doit rester exacte)
+        working-directory: Simulation
+        run: python3 simulate_counter.py --seeds 5
+      - name: plan.py (miroir du plan)
+        run: python3 Simulation/plan.py
+
+  xcode:
+    name: Compilation iOS et captures d'écran
+    runs-on: macos-26
+    permissions:
+      contents: write # publier les captures sur la branche ci-captures
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Tools/build_number.sh compte les commits
+      - name: Version de Xcode
+        run: xcodebuild -version
+      - name: Compiler pour le simulateur, sans signature
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project RepCounter.xcodeproj \
+            -target RepCounter \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            CODE_SIGNING_ALLOWED=NO \
+            DEVELOPMENT_TEAM= \
+            | tee build.log | grep -E "error:|warning:|BUILD (SUCCEEDED|FAILED)" || true
+          grep -q "BUILD SUCCEEDED" build.log
+      - name: Journal complet en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+      # Captures d'écran de l'app réelle, dans le simulateur, avec des séances d'exemple (mode
+      # capture, RepCounterApp.swift) : clair et sombre. Publiées sur la branche ci-captures,
+      # pour les revues de design et pour montrer les écrans à valider.
+      - name: Tests du plan (Swift) et captures d'écran (simulateur)
+        if: github.event_name == 'push'
+        run: |
+          set -e
+          # L'iPhone de Vincent : un iPhone 14 (6,1 pouces), sur le dernier iOS du simulateur
+          RUNTIME=$(xcrun simctl list runtimes available -j | python3 -c "
+          import json, sys
+          ios = [r for r in json.load(sys.stdin)['runtimes'] if r['platform'] == 'iOS']
+          print(ios[-1]['identifier'])")
+          UDID=$(xcrun simctl create "iPhone 14 (captures)" com.apple.CoreSimulator.SimDeviceType.iPhone-14 "$RUNTIME")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl status_bar "$UDID" override --time 9:41 --batteryState charged --batteryLevel 100
+          xcrun simctl install "$UDID" build/Debug-iphonesimulator/RepCounter.app
+          # Tests du plan sur le vrai code Swift (PlanSelfTest, RepCounterApp.swift)
+          OUT=$(xcrun simctl launch --console "$UDID" com.zgueb.RepCounter -planSelfTest YES 2>&1 || true)
+          echo "$OUT" | grep "PLAN SELFTEST" || echo "$OUT" | tail -20
+          echo "$OUT" | grep -q "PLAN SELFTEST OK"
+          # Les bannières du premier démarrage du simulateur passent avant les captures
+          sleep 60
+          mkdir -p captures
+          # capture <nom> <écran> <situation> : l'app relancée dans cette situation
+          capture() {
+            xcrun simctl launch --terminate-running-process "$UDID" com.zgueb.RepCounter \
+              -captureDemo YES -captureScreen "$2" -captureScenario "$3"
+            sleep 8
+            xcrun simctl io "$UDID" screenshot "captures/$1.png"
+          }
+          for appearance in light dark; do
+            xcrun simctl ui "$UDID" appearance $appearance
+            capture "coaching-$appearance" coaching progression
+            capture "history-$appearance" history progression
+            capture "counter-$appearance" counter progression
+          done
+          xcrun simctl ui "$UDID" appearance light
+          capture semaines planWeeks progression
+          capture repos-conseille coaching restDay
+          capture seance-faite coaching done
+          capture jour-de-test coaching testDay
+          capture cadran-repos counter restDay
+          # À chaud (cycle 3) : pendant la série, pendant le repos, fin de séance
+          capture serie serie progression
+          capture recuperation repos progression
+          capture fin-de-seance fin progression
+          # Grand texte (Dynamic Type, taille d'accessibilité) : les débordements se voient ici
+          xcrun simctl ui "$UDID" content_size accessibility-large
+          capture grand-texte-coaching coaching progression
+          capture grand-texte-cadran counter progression
+          capture grand-texte-serie serie progression
+          capture grand-texte-fin fin progression
+          xcrun simctl ui "$UDID" content_size large
+          echo "${GITHUB_SHA::7}" > captures/COMMIT
+      # Archive : un dossier par version (date et commit), jamais effacé, et latest/ pour la
+      # dernière ; sert aux revues de design et aux « Nouveautés » (Process/NOUVEAUTES.md)
+      - name: Archiver les captures
+        if: github.event_name == 'push'
+        run: |
+          REMOTE="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git clone -q --depth 1 --branch ci-captures "$REMOTE" archive 2>/dev/null || {
+            mkdir archive && git -C archive init -q && git -C archive checkout -q -b ci-captures; }
+          cd archive
+          git rm -q --ignore-unmatch ./*.png COMMIT
+          DIR="$(date -u +%Y-%m-%d_%H%M)_${GITHUB_SHA::7}"
+          mkdir -p "$DIR" && cp ../captures/* "$DIR/"
+          rm -rf latest && mkdir latest && cp ../captures/* latest/
+          git add -A
+          git -c user.name="CI Reps" -c user.email="ci@users.noreply.github.com" commit -qm "Captures de ${GITHUB_SHA::7}"
+          git push -q "$REMOTE" ci-captures
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: captures
+          path: captures
+

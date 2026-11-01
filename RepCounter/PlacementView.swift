@@ -41,7 +41,7 @@ struct PlacementView: View {
                             .font(.system(size: 16, weight: .bold))
                     }
                     Text(placement.instruction.isEmpty ? "Mise en place" : placement.instruction)
-                        .font(theme.font(19, .bold))
+                        .font(theme.font(17, .bold))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
@@ -75,7 +75,7 @@ struct PlacementView: View {
                         }
                         .frame(width: 16, height: 16)
                         Text(check.title)
-                            .font(theme.font(12))
+                            .font(theme.font(13))
                             .foregroundStyle(check.done ? theme.text : theme.dim)
                     }
                     .animation(.easeInOut(duration: 0.2), value: check.done)

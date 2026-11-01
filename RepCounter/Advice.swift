@@ -60,7 +60,7 @@ struct FormPanel: View {
                         .minimumScaleFactor(0.7)
                     Spacer(minLength: 4)
                     Text(Format.dayName(last.session.start))
-                        .font(theme.font(11))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.dim)
                 }
                 if results.count >= 2 {
@@ -71,17 +71,17 @@ struct FormPanel: View {
                         Spacer()
                         Text("bande : ta variation normale")
                     }
-                    .font(theme.font(11))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
                 }
             }
             Text(caption(hasResult: !results.isEmpty))
-                .font(theme.font(11))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(14)
+        .padding(20)
         .cardBackground(theme)
     }
 
@@ -141,5 +141,40 @@ private struct FormChart: View {
                              with: .color(color))
             }
         }
+    }
+}
+
+// MARK: - Le coach, en fin de séance
+
+/// Le conseil du coach en fin de séance : seulement quand une mesure le justifie, en une ou deux
+/// phrases concrètes ; sinon rien (recette du cycle 1 : « du concret, comme un coach »).
+/// Règles et sources : `Science/CONSEILS.md`.
+enum CoachAdvice {
+    /// Marge sous le repos prévu avant de parler d'un repos écourté (une tranche du compte à rebours).
+    static let restMargin: TimeInterval = 15
+
+    static func after(_ record: SessionRecord, plan: TrainingPlan?) -> String? {
+        guard let plan, record.exercise != .auto, !record.isTest else { return nil }
+        // 1. Max relevé : une série au-dessus du max en cours le relève (METHODE-TEST.md)
+        if let max = plan.currentMax {
+            let best = record.workSets.map(\.reps).max() ?? 0
+            if best > max {
+                return "Ta série de \(best) dépasse ton max (\(max)) : tes cibles montent dès la prochaine séance."
+            }
+        }
+        // 2. Cible manquée après un repos écourté : la cause probable, et quoi faire
+        if let planned = (plan.todaySession ?? plan.fallback)?.rest {
+            let sets = record.orderedSets
+            for index in sets.indices where index > 0 {
+                let set = sets[index]
+                guard !set.isWarmup, let target = set.target, set.reps < target,
+                      let rest = record.rest(before: index),
+                      rest < Double(planned) - restMargin else { continue }
+                let number = sets[...index].filter { !$0.isWarmup }.count
+                return "Série \(number) : \(set.reps) sur \(target), après \(Format.clock(rest)) de repos sur \(Format.clock(Double(planned))). "
+                    + "Attends la fin du compte à rebours."
+            }
+        }
+        return nil
     }
 }

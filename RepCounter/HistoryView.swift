@@ -29,7 +29,7 @@ struct HistoryView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 VerticalScroll {
-                    VStack(spacing: 14) {
+                    VStack(spacing: 20) {
                         if !practiced.isEmpty {
                             ExerciseFilter(exercises: practiced, selection: $exercise)
                         }
@@ -43,7 +43,7 @@ struct HistoryView: View {
                                 WeeksCard(stats: stats, planned: exercise != nil)
                             }
                             .buttonStyle(.plain)
-                            JournalCard(stats: stats, missed: missedDays(stats)) { session in
+                            JournalCard(stats: stats) { session in
                                 withAnimation { modelContext.delete(session) }
                             }
                         }
@@ -69,38 +69,6 @@ struct HistoryView: View {
         .tint(theme.primary)
         .onAppear { showAllIfAbsent(practiced) }
         .onChange(of: practiced) { _, new in showAllIfAbsent(new) }
-    }
-
-    /// Les jours où une séance prévue par le plan a été manquée (un exercice avec un plan), sur
-    /// les 20 dernières semaines.
-    private func missedDays(_ stats: HistoryStats) -> Set<Date> {
-        guard exercise != nil, let plan = stats.plan(all: sessions) else { return [] }
-        let weekdays = Schedule.days(Schedule.saved(exercise ?? .auto) ?? Schedule.defaultWeekdays(plan.perWeek))
-        // Pas de séance prévue pendant les pauses, comme dans le Coaching : de la fin de la semaine
-        // allégée à la semaine de reprise, s'il y en a une ; du jour du test au bloc suivant (le
-        // lundi après le test fait)
-        let pauses = plan.blocks.enumerated().flatMap { index, block -> [Range<Date>] in
-            let deloadEnd = block.deload.addingTimeInterval(7 * 86_400)
-            let done = plan.tests.first { $0.block == index + 1 }
-            // Test fait : jusqu'au lundi suivant ; test manqué : jusqu'au bloc suivant ; en attente : sans fin
-            let next = index + 1 < plan.blocks.count ? plan.blocks[index + 1].start : Date.distantFuture
-            let end = done.map { Schedule.weekStart($0.date, calendar: stats.calendar).addingTimeInterval(7 * 86_400) } ?? next
-            var ranges = [block.test..<max(end, block.test)]
-            if let reprise = block.reprise, reprise > deloadEnd { ranges.append(deloadEnd..<reprise) }
-            return ranges
-        }
-        var missed = Set<Date>()
-        var week = Schedule.weekStart(stats.now, calendar: stats.calendar)
-        for _ in 0..<20 where week >= plan.anchor {
-            let end = week.addingTimeInterval(7 * 86_400)
-            let inWeek = stats.sessions.filter { $0.start >= week && $0.start < end }
-            for day in Schedule.week(weekdays, start: week, sessions: inWeek, now: stats.now, calendar: stats.calendar).days
-                where day.missed && day.date >= plan.firstDay && !pauses.contains(where: { $0.contains(day.date) }) {
-                missed.insert(day.date)
-            }
-            week = week.addingTimeInterval(-7 * 86_400)
-        }
-        return missed
     }
 
     /// Un exercice jamais pratiqué (ou dont on a supprimé les séances) n'est pas dans le filtre :
@@ -131,7 +99,7 @@ struct HistoryView: View {
                 .foregroundStyle(theme.line)
             MonitorLabel("Aucune séance")
             Text("Tes séances s'afficheront ici.")
-                .font(theme.font(12))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 280)
@@ -154,7 +122,7 @@ private struct HistoryPanel<Accessory: View, Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             if let symbol {
                 CardHeader(symbol: symbol, title: title, opens: opens, trailing: accessory)
             } else {
@@ -166,7 +134,7 @@ private struct HistoryPanel<Accessory: View, Content: View>: View {
             }
             content()
         }
-        .padding(14)
+        .padding(20)
         .cardBackground(theme)
     }
 }
@@ -192,7 +160,7 @@ struct HistoryDetailView<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             VerticalScroll {
-                VStack(spacing: 14) { content() }
+                VStack(spacing: 20) { content() }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 24)
             }
@@ -214,7 +182,9 @@ private struct ExerciseFilter: View {
             // Σ et les exercices : une grille de 6 colonnes, sans défilement
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 6), spacing: 6) {
                 item(nil) {
-                    Text("Σ").font(theme.font(18, .bold))
+                    Text("Tous").font(theme.font(15, .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                 }
                 ForEach(exercises) { exercise in
                     item(exercise) { ExerciseIcon(exercise: exercise, size: 22) }
@@ -340,7 +310,7 @@ private struct WeeksChart: View {
     @ScaledMetric(relativeTo: .body) private var barHeight: CGFloat = 64
     let volumes: [Int]
     let best: [(value: Int?, record: Bool, test: Bool)]
-    /// Le record actuel (un exercice), étiqueté « ★ 32 ».
+    /// Le record de toujours (un exercice), écrit « record : 32 » au-dessus de la courbe.
     let record: Int?
     /// Le volume de la semaine face à la moyenne des précédentes, en % (nil : pas assez d'historique).
     let trend: Double?
@@ -379,32 +349,22 @@ private struct WeeksChart: View {
                             .foregroundStyle(theme.primary)
                         PointMark(x: .value("Semaine", Double(point.id)), y: .value("Série max", Double(point.value)))
                             .foregroundStyle(theme.primary)
-                            .symbolSize(point.record || point.test ? 0 : 24)
-                            .annotation(position: .overlay) {
-                                // ★ record ; ◆ semaine de test ; les deux : ◆ sur le point, ★ juste au-dessus
-                                ZStack {
-                                    if point.test {
-                                        Image(systemName: "diamond.fill")
-                                            .font(theme.font(10))
-                                            .foregroundStyle(theme.max)
-                                    }
-                                    if point.record {
-                                        Image(systemName: "star.fill")
-                                            .font(theme.font(11))
-                                            .foregroundStyle(theme.text)
-                                            .offset(y: point.test ? -12 : 0)
-                                    }
-                                }
-                            }
+                            .symbolSize(24)
+                            // Plus de losange sur les semaines de test : peu compréhensible et trop
+                            // gros (avis de Vincent) ; la courbe suffit
                     }
-                    if let record, let last = points.last(where: { $0.value == record }) {
-                        PointMark(x: .value("Semaine", Double(last.id)), y: .value("Série max", Double(last.value)))
-                            .symbolSize(0)
-                            .annotation(position: .top, spacing: 6) {
-                                Text(symbols: "★ \(record)")
-                                    .font(theme.font(11, .bold))
-                                    .foregroundStyle(theme.text)
+                    // Le record de toujours : une ligne fine, son chiffre en petit au-dessus (avis de Vincent)
+                    if let record {
+                        RuleMark(y: .value("Record", Double(record)))
+                            .foregroundStyle(theme.dim)
+                            .lineStyle(StrokeStyle(lineWidth: 1))
+                            .annotation(position: .top, alignment: .leading, spacing: 2) {
+                                Text("record \(record)")
+                                    .font(theme.font(13))
+                                    .foregroundStyle(theme.dim)
                             }
+                            .accessibilityLabel("Record de toujours")
+                            .accessibilityValue("\(record)")
                     }
                 }
                 .chartXScale(domain: domain)
@@ -415,7 +375,7 @@ private struct WeeksChart: View {
                 }
                 .frame(height: lineHeight)
             }
-            MonitorLabel(trend.map { "reps / sem. · " + Format.trend($0, unit: " %") } ?? "reps / sem.")
+            MonitorLabel(trend.map { "reps par semaine · " + Format.trend($0, unit: " %") } ?? "reps par semaine")
             Chart {
                 ForEach(Array(volumes.enumerated()), id: \.offset) { index, value in
                     BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", Double(value)), width: .fixed(12))
@@ -424,7 +384,7 @@ private struct WeeksChart: View {
                         .annotation(position: .top) {
                             if index == current, value > 0 {
                                 Text("\(value)")
-                                    .font(theme.font(11, .bold))
+                                    .font(theme.font(13, .bold))
                                     .foregroundStyle(theme.text)
                             }
                         }
@@ -433,11 +393,10 @@ private struct WeeksChart: View {
             .chartXScale(domain: domain)
             .chartXAxis {
                 AxisMarks(values: [0.0, Double(current)]) { value in
-                    AxisValueLabel {
-                        if let position = value.as(Double.self) {
-                            let index = Int(position.rounded())
-                            Text(index == current ? "cette sem." : "S−\(current)")
-                        }
+                    // Les libellés des bords rentrent vers l'intérieur : jamais coupés
+                    let last = Int((value.as(Double.self) ?? 0).rounded()) == current
+                    AxisValueLabel(anchor: last ? .topTrailing : .topLeading) {
+                        Text(last ? "cette semaine" : "il y a \(current) semaines")
                     }
                 }
             }
@@ -482,7 +441,7 @@ private struct VolumeBars: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                     .annotation(position: .top, alignment: .leading) {
                         Text("moy. \(Int(mean.rounded()))")
-                            .font(theme.font(11))
+                            .font(theme.font(13))
                             .foregroundStyle(theme.dim)
                     }
             }
@@ -491,18 +450,16 @@ private struct VolumeBars: View {
                     .foregroundStyle(theme.dim.opacity(0.5))
                     .annotation(position: .top, spacing: 2, overflowResolution: ChartKit.overflow) {
                         SelectionLabel(title: "\(volumes[selected]) reps",
-                                       detail: selected == current ? "cette semaine" : "il y a \(current - selected) sem.")
+                                       detail: selected == current ? "cette semaine" : "il y a \(current - selected) semaines")
                     }
             }
         }
         .chartXScale(domain: -0.5...(Double(volumes.count) - 0.5))
         .chartXAxis {
             AxisMarks(values: [0.0, Double(current)]) { value in
-                AxisValueLabel {
-                    if let position = value.as(Double.self) {
-                            let index = Int(position.rounded())
-                        Text(index == current ? "cette sem." : "S−\(current)")
-                    }
+                let last = Int((value.as(Double.self) ?? 0).rounded()) == current
+                AxisValueLabel(anchor: last ? .topTrailing : .topLeading) {
+                    Text(last ? "cette semaine" : "il y a \(current) semaines")
                 }
             }
         }
@@ -580,12 +537,12 @@ private struct RegularityCalendar: View {
         let today = stats.calendar.startOfDay(for: stats.now)
         let most = max(daily.values.max() ?? 1, 1)
         let activeDays = daily.keys.filter { $0 >= firstWeek }.count
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             VStack(spacing: 4) {
                 ForEach(0..<7, id: \.self) { day in
                     HStack(spacing: 0) {
                         Text(dayLetter(day, from: firstWeek))
-                            .font(theme.font(9))
+                            .font(theme.font(13))
                             .foregroundStyle(theme.dim)
                             .frame(width: letterWidth, alignment: .leading)
                         ForEach(0..<Self.weeks, id: \.self) { week in
@@ -598,9 +555,11 @@ private struct RegularityCalendar: View {
                     }
                 }
             }
-            HStack {
-                Text("\(activeDays) jour\(activeDays > 1 ? "s" : "") actif\(activeDays > 1 ? "s" : "") en \(Self.weeks) sem.")
-                Spacer()
+            // Le compte sur sa ligne, la légende dessous : rien ne se coupe
+            Text("\(activeDays) jour\(activeDays > 1 ? "s" : "") actif\(activeDays > 1 ? "s" : "") en \(Self.weeks) semaines")
+                .font(theme.font(15))
+                .foregroundStyle(theme.dim)
+            HStack(spacing: 6) {
                 Text("moins")
                 ForEach(0..<4, id: \.self) { level in
                     RoundedRectangle(cornerRadius: 2)
@@ -609,7 +568,7 @@ private struct RegularityCalendar: View {
                 }
                 Text("plus")
             }
-            .font(theme.font(11))
+            .font(theme.font(13))
             .foregroundStyle(theme.dim)
         }
     }
@@ -642,7 +601,7 @@ struct SessionDetailView: View {
         let sets = session.orderedSets
         VStack(spacing: 0) {
             VerticalScroll {
-                VStack(spacing: 14) {
+                VStack(spacing: 20) {
                     overview
                     HistoryPanel(title: "Séries", symbol: "chart.bar.xaxis", accessory: { seriesAccessory(sets) }) {
                         SetBarsChart(session: session)
@@ -651,7 +610,7 @@ struct SessionDetailView: View {
                         HistoryPanel(title: "Rythme", symbol: "metronome", accessory: { MonitorLabel("s / rep") }) {
                             RhythmChart(sets: sets)
                             Text("Durée de chaque répétition")
-                                .font(theme.font(11))
+                                .font(theme.font(13))
                                 .foregroundStyle(theme.dim)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -674,7 +633,7 @@ struct SessionDetailView: View {
         if !targeted.isEmpty {
             let reached = targeted.filter { $0.reps >= ($0.target ?? .max) }.count
             Text(symbols: "\(reached) / \(targeted.count) ✓")
-                .font(theme.font(12, .bold))
+                .font(theme.font(13, .bold))
                 .foregroundStyle(reached == targeted.count ? theme.ok : theme.text)
         }
     }
@@ -766,7 +725,7 @@ private struct SetBarsChart: View {
         let bars = session.orderedSets.enumerated().map { index, set in
             Bar(id: index,
                 name: set.isWarmup ? "échauffement" : (set.isTest ? "test, série \(index + 1)" : "série \(index + 1)"),
-                label: set.isWarmup ? "échauf." : (set.isTest ? "◆ S\(index + 1)" : "S\(index + 1)"),
+                label: set.isWarmup ? "échauf." : (set.isTest ? "◆ série \(index + 1)" : "série \(index + 1)"),
                 reps: set.reps, target: set.target, rest: index > 0 ? session.rest(before: index) : nil,
                 role: set.role.flatMap(SetRole.init))
         }
@@ -787,7 +746,7 @@ private struct SetBarsChart: View {
                     .cornerRadius(2)
                     .annotation(position: .top) {
                         Text(symbols: "\(bar.reps)\(bar.reached ? " ✓" : "")")
-                            .font(theme.font(11, .bold))
+                            .font(theme.font(13, .bold))
                             .foregroundStyle(bar.reached ? theme.ok : theme.text)
                     }
             }
@@ -847,12 +806,12 @@ private struct RhythmChart: View {
         for (index, set) in sets.enumerated() {
             for duration in set.repDurations {
                 points.append(Point(id: points.count, position: position, duration: duration,
-                                    series: String(format: "S%02d", index + 1)))
+                                    series: "série \(index + 1)"))
                 position += 1
             }
             position += 1
         }
-        let names = (0..<sets.count).map { String(format: "S%02d", $0 + 1) }
+        let names = (0..<sets.count).map { "série \($0 + 1)" }
         let colors = (0..<sets.count).map { index in
             theme.secondary.mixed(with: theme.primary, by: Double(index) / Double(max(sets.count - 1, 1)))
         }

@@ -5,7 +5,7 @@ description: Règles d'organisation des écrans de Reps (compteur, fin de séanc
 
 # Reps : où va chaque donnée
 
-Ce skill est modifié par la session de dev seulement, après validation de Vincent.
+Ce skill est modifié par le Builder seulement, après validation de Vincent (CLAUDE.md).
 
 Beaucoup de données, mais séparées et structurées. Ce qu'on voit tout le temps n'est pas traité comme ce qu'on voit de temps en temps. On rassemble ce qui se ressemble ou se complète.
 
@@ -33,21 +33,21 @@ Plus une donnée est vue souvent, plus elle est réduite et proche du compteur. 
 
 ## 3. Rassembler ce qui se ressemble ou se complète
 
-- **Où je vais** (Coaching, un exercice en titre, glissement pour passer à un autre) : d'abord la séance du jour (carte Aujourd'hui : cibles en barres, repos, intensité, Démarrer ; la ligne sous le cadran en est le résumé), puis l'objectif et où j'en suis (ou, sans objectif, une invitation avec une proposition), le chemin (seulement avec un objectif), le bloc sur sa frise, prévu face au fait. Le plan et sa vérification restent ensemble. Sans objectif, le plan tourne quand même : l'écran ne se vide jamais.
+- **Où je vais** (Coaching, un exercice en titre, glissement pour passer à un autre) : d'abord la séance du jour (carte Aujourd'hui : la raison du jour en une ou deux phrases de tous les jours, puis cibles en barres, repos, intensité, Démarrer ; ou « repos conseillé » et sa raison, avec la prochaine séance et « Démarrer quand même » ; la ligne sous le cadran en est le résumé ; aucun réglage de jours : le coach décide chaque jour, Science/METHODE-JOURS.md), puis **Ton plan** (le bloc en frise verticale datée : une ligne par semaine avec son but en mots, « tu es ici », puis le test daté avec sa raison ; c'est la carte qui donne le contrôle), puis l'objectif et où j'en suis (ou, sans objectif, une invitation avec une proposition), le chemin (seulement avec un objectif). Sans objectif, le plan tourne quand même : l'écran ne se vide jamais.
 - **Comment je suis** (carte État, dans le Coaching) : phase, Forme mesurée, ressenti (fatigue, effort). Une seule carte, jamais dispersée.
 - **D'où je viens** (Historique) : deux cartes. Strictement deux cartes. « 12 semaines » : la meilleure série en courbe (★ records) et le volume en barres, sur le même axe ; en tête le verdict de progression du score d'endurance (« ▲ en progrès », « = stable », « ▼ en recul », rien tant qu'il n'est pas établi) ; la tendance du volume étiquette les barres (« reps / sem. · ▲ 4 % »). Le score d'endurance n'a pas sa propre carte : il dit comment la performance évolue, comme « 12 semaines » ; son détail ouvre la page **Progrès** (score d'endurance, volume détaillé, régularité) en touchant la carte. « Journal » : les jours sur une frise horaire. La semaine en cours se lit dans le journal ; le suivi du plan (fait face au prévu) reste dans le Coaching.
 
 ## 4. Le cadran
 
-- Deux anneaux. **Extérieur : il compte.** Toujours 10 segments, un par répétition ; le tour repart à chaque dizaine, avec les trois notes déjà jouées toutes les 10 répétitions.
-- **Objectif de la série** : une pastille par dizaine sous le nombre ; quand l'objectif ne tombe pas sur une dizaine, sa case est cerclée d'un filet de la couleur des segments allumés, intérieur éteint. Objectif atteint : le cadran passe au vert.
-- **Intérieur : la jauge du mouvement capté en direct**, pâle avant la validation (3 répétitions).
-- **Récupération** : un segment par tranche de 15 s (avec le bip), jusqu'au repos prévu, puis vert. Jamais une trotteuse de 60 s : le cadran n'est pas une horloge.
+- **Pendant la série (cycle 3)** : avec une cible, **un segment par répétition**, qui s'allume jusqu'à la cible (on voit où on en est et ce qui reste), vert à la cible ; au-delà de 40, ou sans cible, des tours de 10 segments (les trois notes toutes les 10 restent). Au centre, le nombre et « sur N » en grand ; sous le cadran, « Série 2 sur 3 » (22). Rien d'autre : ni chronomètre, ni rangée des séries, ni nom de capteur.
+- **Intérieur : la jauge du mouvement capté**, seulement avant la validation (3 répétitions) ; pendant la série, le nombre suffit.
+- **Récupération : un compte à rebours.** Le temps qui reste au centre ; un segment par tranche de 15 s (avec le bip), qui s'éteint ; à zéro, l'anneau plein passe au vert et affiche « Prêt ». Dessous : « Ensuite : série 2 sur 3 », sa cible en grand (34), et une phrase si la cible a baissé. Jamais une trotteuse de 60 s.
+- **Fin de séance** : trois blocs, « Cible » (atteinte ou pas, le fait face aux cibles), « La suite » (prochaine séance, repos de demain), « Le coach » (seulement si une mesure le justifie, `Science/CONSEILS.md`) ; le total, les séries à corriger et les mesures dans « Détail de la séance » ; « Effort ? » ; « Terminé ».
 - Un bloc ou des jours ne se représentent jamais sur le cadran : c'est une **frise** (3 semaines de progression, 1 semaine allégée, le test). Une jauge d'intensité en demi-cercle est permise (Coaching) ; elle ne doit pas ressembler au cadran de comptage.
 
 ## 5. L'intensité, une seule échelle de couleur
 
-Bleu (calme) → ambre (soutenu) → rouge (maximal), en dégradé. Calme : semaine allégée, séance légère. Soutenu : progression. Maximal : jour de test. Vert : objectif ou cible atteints (✓, ⚑). Une tendance (▲ = ▼) n'est pas une atteinte : elle reste en couleur de texte. Les alertes (séance manquée, semaine refaite, Forme basse) ne prennent pas de couleur : elles portent le symbole « ! ». L'orange n'est plus une couleur d'alerte.
+Bleu (calme) → ambre (soutenu) → rouge (maximal), en dégradé. En mots pour l'utilisateur : « effort facile / normal / maximal », avec une jauge à 3 crans (jamais « intensité soutenue »). Calme : semaine allégée, séance légère. Soutenu : progression. Maximal : jour de test. Vert : objectif ou cible atteints (✓, ⚑). Une tendance (▲ = ▼) n'est pas une atteinte : elle reste en couleur de texte. Les alertes (semaine refaite, test à faire, Forme basse) ne prennent pas de couleur : elles portent le symbole « ! ». L'orange n'est plus une couleur d'alerte.
 
 ## 6. Expliquer une fois, au moment utile
 
@@ -81,12 +81,12 @@ Des événements datés (séances, séries, tests) se placent sur un axe de temp
 
 - **Deux axes** : une ligne par jour, aujourd'hui en haut, on fait défiler pour remonter ; en abscisse l'heure du jour, le matin à gauche, le soir à droite. La plage (début, fin) se règle dans les Réglages, 06:00 → 23:00 par défaut, 6 h au moins, graduée toutes les 3 h.
 - **Une séance = sa silhouette**, posée à son heure : une barre fine par série, hauteur proportionnelle aux répétitions, verte si la cible de la série est atteinte. Plusieurs séances dans la journée tiennent sur la même ligne : c'est le but.
-- **Symboles** : ★ record ; Σ total du jour à droite ; ligne pointillée = repos ; « ! prévue, manquée » = séance du plan non faite ; < > = séance hors de la plage, posée au bord, jamais masquée.
+- **Symboles** : ★ record ; Σ total du jour à droite ; ligne pointillée = jour sans séance (jamais « manqué » : il n'y a pas de jours prévus) ; < > = séance hors de la plage, posée au bord, jamais masquée.
 - **Lisibilité des lignes** : deux nuances alternées (environ 5 % en thème sombre, 7 % en thème clair) ; aujourd'hui teinté de la couleur principale (environ 12 %) ; un filet plein sous chaque lundi pour séparer les semaines.
 - **Gestes** : la ligne du jour (44 pt) se touche en entière : une séance, on pousse son détail ; plusieurs, un menu les liste (heure et total) ; appui long, supprimer une séance.
 - **Accessibilité** : une étiquette par jour qui résume ses séances et son total.
 
-La même logique vaut ailleurs : une frise pour un bloc (semaines), une rangée L M M J V S D pour la semaine, une frise horaire pour la journée. Chaque échelle de temps a sa frise, et chacune apparaît là où l'on regarde à cette fréquence (voir section 1).
+La même logique vaut ailleurs : une frise verticale datée pour le plan (une ligne par semaine, son but, ses dates), une frise horaire pour la journée. Chaque échelle de temps a sa frise, et chacune apparaît là où l'on regarde à cette fréquence (voir section 1).
 
 ## 11. Conformité Apple (HIG)
 
@@ -147,3 +147,30 @@ L'échelle d'intensité (§ 5) et le vert « atteint » existent en version clai
 - Chaque élément porte un libellé VoiceOver qui dit la valeur, pas le symbole.
 - Les animations respectent « Réduire les animations ».
 - Les retours haptiques passent par `.sensoryFeedback`.
+
+## 12. Typographie et espace
+
+Les biais de design d'un assistant IA sont connus : trop de texte, des caractères trop petits, une
+mise en page serrée, des tailles choisies au cas par cas. Ces règles les corrigent ; elles priment
+sur l'habitude.
+
+- **5 tailles, pas une de plus** (`AppTheme.textStyle`, toutes en Dynamic Type) : chiffre clé
+  34 (`largeTitle`), titre 22 (`title2`), texte 17 (`body`), secondaire 15 (`subheadline`),
+  note 13 (`footnote`). **Jamais sous 13 pt.** Le texte qu'on lit est à 17 ; 13 ne sert qu'aux
+  libellés d'un graphique ou d'une frise.
+- **Une carte, une idée** : en tête, l'information principale en titre (22) ; dessous, une phrase
+  au plus en texte (17) ; le reste se lit sur une page de détail, en touchant la carte.
+- **Une phrase, pas un paragraphe** : une raison tient en moins de dix mots (« Test 1 sur 2 : ton
+  niveau de départ. »). Si elle n'apporte rien de neuf, on ne l'écrit pas.
+- **Le texte long est optionnel** : l'explication complète (le pourquoi, les sources, les règles)
+  est permise, mais seulement dans une vue qu'on ouvre exprès : « En savoir plus » sous la phrase,
+  page de détail, (i). Elle n'est jamais sur l'écran principal.
+- **De l'air** : marge intérieure des cartes 20 pt, 20 pt entre les cartes, 16 pt entre les
+  éléments d'une carte ; une ligne touchable fait 44 pt au moins.
+- **Pas de puce devant un mot seul** : les puces sont pour les listes. Un état se dit par un mot
+  (et, au besoin, une petite jauge qui dit à quoi elle se rapporte : « effort normal »).
+- **Pas de pictogramme décoratif** devant un titre ou dans un bouton (« ◆ Lancer le test » →
+  « Lancer le test ») : un symbole n'est permis que s'il porte une information absente du texte.
+- **Le chiffre avant les mots** : quand une donnée se montre (frise, barre, chiffre), on ne la
+  répète pas en phrase.
+

@@ -4,8 +4,8 @@ validation sur des historiques synthétiques.
 
 Usage : python3 Simulation/plan.py      (code de sortie 1 si un scénario échoue)
 
-Un bloc : 3 semaines de progression, 1 semaine allégée, puis un test (la première séance après la
-semaine allégée). Une semaine de progression finie avec des séances manquées, ou deux séances en
+Un bloc : 3 semaines de progression, 1 semaine allégée, puis un test (le lundi qui suit la
+semaine allégée). Une semaine de progression finie avec moins de 2 séances, ou deux séances en
 Forme basse, est refaite (deux fois au plus par bloc) : le test et la date de l'objectif reculent
 d'autant.
 Séance prévue (ACSM 2026, Currier et al. : au moins 2 séances par semaine, 2–3 séries, 2–3
@@ -16,8 +16,9 @@ prévu, au moins 3), sinon 80 % de la précédente (choix de l'app). En séance,
 cible réajuste la suivante (faite × rapport), sans rattrapage ; une nouvelle séance le même jour
 (séries espacées) repart de la série 1. Pas de hausse hebdomadaire ; allégée et légère : la
 moitié des séries, arrondie au-dessus (choix de l'app).
-Les séances sont placées dans la semaine (2 : lundi, jeudi ; 3 : lundi, mercredi, vendredi) ; les
-jours d'entraînement consomment les jours prévus dans l'ordre.
+Pas de jours prévus (Science/METHODE-JOURS.md, décision de Vincent) : chaque jour, une séance est
+proposée, sauf repos conseillé la veille du test, en fatigue persistante, le lendemain d'une
+séance « Très difficile » (effort ≥ 7), ou après 20 séries sur les 7 derniers jours.
 Jours comptés depuis un lundi (jour 0 = lundi de la semaine où l'objectif est fixé).
 """
 
@@ -28,7 +29,7 @@ from statistics import median
 PROGRESSION_WEEKS, MAX_REPEATS, HABIT_DAYS = 3, 2, 28
 SETS, RESERVE, MIN_PER_WEEK = 3, 3, 2
 DEFAULT_STEP, RATIO_SESSIONS, REST_TOLERANCE = 0.8, 3, 30
-WEEKDAYS = {1: [1], 2: [1, 4], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5], 6: [1, 2, 3, 4, 5, 6]}
+HARD_EFFORT, WEEKLY_SET_CAP = 7, 20   # METHODE-JOURS.md, règle 3 (c) et (d)
 
 
 @dataclass
@@ -39,6 +40,7 @@ class Session:
     rests: list = None    # repos avant les séries 2, 3… (s)
     roles: list = None    # None (normale), "warmup" (échauffement) ou "test", série par série
     targets: list = None  # la cible de chaque série (None sans plan)
+    effort: int = None    # « Effort ? » de fin de séance, 0–10 (None sans réponse)
 
     def __post_init__(self):
         if self.rests is None:
@@ -57,6 +59,11 @@ class Session:
     @property
     def is_test(self):
         return "test" in self.roles
+
+    @property
+    def work_sets(self):
+        """Séries faites, échauffement exclu."""
+        return sum(1 for r, role in zip(self.sets, self.roles) if r > 0 and role != "warmup")
 
     @property
     def total(self):
@@ -107,13 +114,8 @@ def habitual(sessions, before, test_max=None):
     rests = [r for s in recent for r in s.rests]
     rest = median(rests) if len(rests) >= 3 else 60
     rest = min(max(rnd(rest / 15) * 15, 30), 300)
-    # Des jours d'entraînement, pas des séances (séries espacées le même jour : une séance)
-    weeks = {}
-    for s in recent:
-        weeks.setdefault(int(s.day // 7), set()).add(int(s.day))
-    per_week = max(MIN_PER_WEEK, rnd(median([len(d) for d in weeks.values()])))
     ratios = ratios_of(recent, rest)
-    return (targets(max(1, (test_max or best) - RESERVE), ratios), rest), ratios, per_week
+    return (targets(max(1, (test_max or best) - RESERVE), ratios), rest), ratios
 
 
 def lighter(session):
@@ -124,15 +126,24 @@ def training_days(sessions):
     return len({int(s.day) for s in sessions})
 
 
-def week_status(days, start, sessions, now):
-    """Jours prévus, consommés dans l'ordre par les jours d'entraînement : (due, prochaine)."""
-    today = int(now)
-    trained = {int(s.day) for s in sessions}
-    planned = [start + d - 1 for d in days]
-    remaining = planned[len(trained):]
-    due = today not in trained and any(d <= today for d in remaining)
-    later = [d for d in remaining if d > today]
-    return due, (later[0] if later else None)
+def rest_reason(sessions, day, test_day=None):
+    """Le repos conseillé le jour `day` (METHODE-JOURS.md, règle 3), d'après les séances d'avant ce
+    jour ; None : séance. La fatigue persistante, connue pour aujourd'hui seulement, est à part."""
+    if test_day is not None and day + 1 == int(test_day):
+        return "before_test"
+    if any(int(s.day) == day - 1 and (s.effort or 0) >= HARD_EFFORT for s in sessions):
+        return "hard_yesterday"
+    if sum(s.work_sets for s in sessions if day - 7 <= s.day < day) >= WEEKLY_SET_CAP:
+        return "weekly_volume"
+    return None
+
+
+def next_day(sessions, now, test_day=None):
+    """La prochaine séance après aujourd'hui : le premier jour sans repos conseillé."""
+    for d in range(int(now) + 1, int(now) + 8):
+        if rest_reason(sessions, d, test_day) is None:
+            return d
+    return int(now) + 1
 
 
 COMEBACK_DAYS = 28   # choix de l'app : au-delà, le plan repart de zéro (nouveau bloc 1)
@@ -146,7 +157,7 @@ def test_session(day, warmup=None, attempts=(30,)):
     return Session(day, sets, roles=roles)
 
 
-def make(goal_day, sessions, now, low_form=False, weekdays=None, legacy_before=None):
+def make(goal_day, sessions, now, low_form=False, persistent_fatigue=False, legacy_before=None):
     """Miroir de TrainingPlan.make : test annoncé (Science/METHODE-TEST.md). `legacy_before` : les
     séances plus anciennes, sans rôle de série, gardent l'ancienne règle du test."""
     sessions = sorted([s for s in sessions if s.day <= now], key=lambda s: s.day)
@@ -156,7 +167,7 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None, legacy_before=N
     # Plus de 28 jours sans séance : une séance de reprise libre
     if now - last.day > COMEBACK_DAYS:
         return dict(block=1, weeks=[], test_day=now, tests=[], shift=0, today=("comeback", None),
-                    status="due", next=None, per_week=MIN_PER_WEEK, ratios=None, missed_tests=[])
+                    status="due", next=None, ratios=None, missed_tests=[])
     # Une séance après plus de 28 jours sans séance ouvre un nouveau bloc 1, ancré sur elle
     anchor = goal_day
     comeback = None
@@ -168,16 +179,60 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None, legacy_before=N
     first_day = int(anchor)
     block_start = (int(anchor) // 7) * 7
 
-    def planned(days, week_start):
-        # Les jours prévus avant le début du plan ne comptent pas
-        return [d for d in days if week_start + d - 1 >= first_day]
+    def required(week_start):
+        # Au moins 2 séances par semaine (ACSM 2026) ; une seule la semaine où le plan commence
+        # en cours de semaine (choix de l'app : la semaine n'est pas entière)
+        return MIN_PER_WEEK if week_start >= first_day else 1
 
-    def planned_day(on_or_after, days):
-        # Le premier jour de séance prévu à partir de ce jour (même semaine, sinon la suivante)
-        day0 = int(on_or_after)
-        monday = (day0 // 7) * 7
-        same = [monday + d - 1 for d in days if monday + d - 1 >= day0]
-        return same[0] if same else monday + 7 + days[0] - 1
+    def today_of(today, test_day):
+        """Le statut du jour et le repos conseillé (METHODE-JOURS.md)."""
+        today_sessions = [s for s in sessions if int(s.day) == int(now)]
+        planned_today = sum(today[1][0]) if today[1] else 1
+        # Un jour de test, seule la fatigue persistante conseille un repos
+        reason = ("persistent_fatigue" if persistent_fatigue
+                  else None if today[0] == "test" else rest_reason(sessions, int(now), test_day))
+        if today[0] == "test" and any(s.test_best for s in today_sessions):
+            status = "done"
+        elif today[0] != "test" and today_sessions:
+            # Une séance terminée est faite, cible atteinte ou non (décision de Vincent)
+            status = "done"
+        elif today_sessions or reason is None:
+            status = "due"
+        else:
+            status = "rest"
+        recent = {int(s.day) for s in sessions if int(now) - 6 <= s.day < int(now) + 1}
+        below = status == "due" and int(now) - first_day >= 7 and len(recent) < MIN_PER_WEEK
+        # Cible manquée : d'après les cibles affichées par le compteur (réajustées en séance) quand
+        # elles sont enregistrées, sinon d'après le total prévu ; une série prévue non faite manque
+        recorded = [(r, t) for x in today_sessions for r, t, role in zip(x.sets, x.targets, x.roles)
+                    if role != "warmup" and t is not None]
+        work = [r for x in today_sessions for r, role in zip(x.sets, x.roles) if role != "warmup"]
+        planned_sets = len(today[1][0]) if today[1] else 1
+        if recorded:
+            short = any(r < t for r, t in recorded) or len(work) < planned_sets
+        else:
+            short = sum(s.total for s in today_sessions) < planned_today
+        missed = status == "done" and today[0] != "test" and short
+        # La part de la cible faite quand elle est manquée : chaque série compte jusqu'à sa cible,
+        # 99 % au plus (avis de Vincent sur le cycle 3)
+        if recorded:
+            credited = sum(min(r, t) if t is not None else r for x in today_sessions
+                           for r, t, role in zip(x.sets, x.targets, x.roles) if role != "warmup")
+        else:
+            credited = min(sum(s.total for s in today_sessions), planned_today)
+        # Rapportée aux cibles affichées par le compteur, plus celles des séries prévues non faites
+        planned_targets = list(today[1][0]) if today[1] else []
+        if recorded:
+            work_targets = [t for x in today_sessions for t, role in zip(x.targets, x.roles) if role != "warmup"]
+            base = sum(t if t is not None else (planned_targets[i] if i < len(planned_targets) else work[i])
+                       for i, t in enumerate(work_targets)) + sum(planned_targets[len(work):])
+        else:
+            base = planned_today
+        percent = min(99, int(credited / max(base, 1) * 100)) if missed else None
+        tomorrow_rest = rest_reason(sessions, int(now) + 1, test_day)
+        return dict(status=status, rest_reason=reason if status == "rest" else None,
+                    next=next_day(sessions, now, test_day), below_minimum=below, target_missed=missed,
+                    target_percent=percent, tomorrow_rest=tomorrow_rest)
 
     def waiting_weeks(test_day, day):
         late = int(day) - int(test_day)
@@ -185,10 +240,10 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None, legacy_before=N
 
     block, tests, missed_tests, shift, excluded = 1, [], [], 0, set()
     base_max = None
-    days_reset = False
     while True:
         # Bloc 1 : 2 tests sur 2 jours de la première semaine, le meilleur sert de départ
         calibration_days = 0
+        kept_days = []
         if block == 1:
             calibration = [s for s in sessions if block_start <= s.day < block_start + 7 and s.test_best]
             kept_days = sorted({int(s.day) for s in calibration})[:2]
@@ -205,14 +260,7 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None, legacy_before=N
              or habitual(reference, now + 1e-6, base_max))
         if h is None:
             return None
-        habit, ratios, per_week = h
-        # Jours choisis incohérents avec le nombre de séances par semaine : ignorés (jours proposés)
-        chosen = sorted(set(weekdays)) if weekdays else None
-        if chosen is not None and len(chosen) != per_week:
-            days_reset = True
-            chosen = None
-        days = chosen or WEEKDAYS.get(per_week, [1, 2, 3, 4, 5, 6, 7])
-        per_week = len(days)
+        habit, ratios = h
         current_max = base_max if base_max is not None else habit[0][0] + RESERVE
         last_raise = None
 
@@ -225,10 +273,10 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None, legacy_before=N
             past = start + 7 <= now
             reason = None
             if past and repeats < MAX_REPEATS:
-                missed = len(planned(days, start)) - training_days(done)
+                count = training_days(done)
                 tired = sum(s.tired for s in done)
-                if missed > 0:
-                    reason = f"{missed} manquée(s)"
+                if count < required(start):
+                    reason = f"{count} séance(s)"
                 elif tired >= 2:
                     reason = f"Forme basse × {tired}"
             weeks.append((f"P{progression + 1}{' bis' if redo else ''}", start, past, start <= now < start + 7,
@@ -258,8 +306,8 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None, legacy_before=N
         deload_done = [s for s in sessions if deload_start <= s.day < deload_start + 7]
         weeks.append(("Allégée", deload_start, deload_start + 7 <= now, deload_start <= now < deload_start + 7,
                       training_days(deload_done), None))
-        # Jour de test : le premier jour de séance prévu après la semaine allégée
-        test_day = planned_day(deload_start + 7, days)
+        # Jour de test : le lundi qui suit la semaine allégée (METHODE-JOURS.md, règle 7)
+        test_day = deload_start + 7
         def closing(x):
             # Le test annoncé, ou (séance d'avant la mise à jour, sans rôle) l'ancienne règle
             if x.test_best:
@@ -283,13 +331,13 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None, legacy_before=N
             excluded |= {id(s) for s in reprise_done}
             weeks.append(("Reprise", reprise_start, reprise_start + 7 <= now, reprise_start <= now < reprise_start + 7,
                           training_days(reprise_done), None))
-            test_day = planned_day(reprise_start + 7, days)
+            test_day = reprise_start + 7
         elif first_test is None and now >= test_day and now - last.day > REPRISE_DAYS:
             # Plus de 7 jours sans séance, même pendant l'attente du test : la reprise prime
             reprise_today = True
             reprise_start = (int(now) // 7) * 7
             weeks.append(("Reprise", reprise_start, False, True, 0, None))
-            test_day = planned_day(reprise_start + 7, days)
+            test_day = reprise_start + 7
         # En attendant le test : séances comptées, mais ni test ni séance habituelle
         waiting_end = first_test.day if first_test else min(now + 1, test_day + REPRISE_DAYS)
         excluded |= {id(s) for s in sessions if test_day <= s.day < waiting_end and not s.test_best}
@@ -308,9 +356,11 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None, legacy_before=N
                 continue
             reference = [x for x in usable if id(x) not in excluded]
             fresh = habitual(reference, now + 1, test_max=value)
+            # Test fait : jusqu'au bloc suivant (lundi), la séance de son nouveau max, au jour le jour
+            today = ("session", fresh[0] if fresh else habit)
             return dict(block=block - 1, weeks=weeks, test_day=test_day, tests=[t[:2] for t in tests], shift=shift,
-                        today=("session", fresh[0] if fresh else habit), status="rest", next=block_start + days[0] - 1,
-                        per_week=per_week, ratios=ratios, missed_tests=missed_tests, current_max=value, days_reset=days_reset)
+                        today=today, ratios=ratios, missed_tests=missed_tests, current_max=value,
+                        **today_of(today, None))
         # Test pas lancé 7 jours après le jour prévu, en s'entraînant : bloc suivant sur le dernier max
         give_up = test_day + REPRISE_DAYS
         if not reprise_today and now >= give_up:
@@ -322,48 +372,50 @@ def make(goal_day, sessions, now, low_form=False, weekdays=None, legacy_before=N
             block += 1
             if block_start <= now:
                 continue
+            today = ("session", session_now)
             return dict(block=block - 1, weeks=weeks, test_day=test_day, tests=[t[:2] for t in tests], shift=shift,
-                        today=("session", session_now), status="rest", next=block_start + days[0] - 1,
-                        per_week=per_week, ratios=ratios, missed_tests=missed_tests, current_max=current_max, days_reset=days_reset)
+                        today=today, ratios=ratios, missed_tests=missed_tests, current_max=current_max,
+                        **today_of(today, None))
         current = next((w for w in reversed(weeks) if w[3]), None)
-        this_week = (int(now) // 7) * 7
-        week_sessions = [s for s in sessions if this_week <= s.day < this_week + 7]
-        due, nxt = week_status(planned(days, this_week), this_week, week_sessions, now)
         today_sessions = [s for s in sessions if int(s.day) == int(now)]
         test_step = None
+        # Les 2 tests de départ (bloc 1, 1re semaine) : le 1er au plus tard le vendredi, le 2e
+        # 2 jours après le 1er, dans la même semaine ; sinon la semaine calibre sur les séances
+        calib_next = None
+        calib_on = block == 1 and current is not None and current[0] == "P1"
+        tested_today = any(s.test_best for s in today_sessions)
+        if calib_on:
+            week_end = block_start + 7
+            # Le premier jour encore libre : aujourd'hui sans séance, sinon demain
+            free = max(int(now), first_day) if not today_sessions else int(now) + 1
+            if calibration_days == 0:
+                calib_next = free if free <= week_end - 3 else None
+            elif calibration_days == 1:
+                second = max(kept_days[0] + 2, free)
+                calib_next = second if second < week_end else None
         if reprise_today or (current and current[0] == "Reprise"):
             today = ("reprise", deload)
         elif now >= test_day:
             today = ("test", None)
         elif current and current[0] == "Allégée":
             today = ("deload", deload)
-        elif (block == 1 and current and current[0] == "P1" and calibration_days < 2
-              and (any(s.test_best for s in today_sessions) if today_sessions else due)):
+        elif (calib_on and (calibration_days < 2 or tested_today)
+              and (tested_today or (not today_sessions and calib_next is not None and calib_next <= int(now)))):
             today = ("test", None)
             test_step = (calibration_days + (0 if any(s.test_best for s in today_sessions) else 1), 2)
-        elif low_form:
+        elif low_form or persistent_fatigue:
             today = ("light", lighter(session_now))
         else:
             today = ("session", session_now)
-        planned_today = sum(today[1][0]) if today[1] else 1
-        test_done_today = any(s.test_best for s in today_sessions)
         overdue = today[0] == "test" and test_step is None and int(now) > int(test_day)
         if overdue:
             shift += waiting_weeks(test_day, now)
-        if today[0] == "test":
-            status = "done" if test_done_today else ("due" if int(now) == int(test_day) or due or today_sessions else "rest")
-        elif today_sessions and sum(s.total for s in today_sessions) >= planned_today:
-            status = "done"
-        elif reprise_today or today_sessions or due:
-            status = "due"
-        else:
-            status = "rest"
-        if nxt is None:
-            nxt = max(test_day, this_week + 7) if this_week + 7 >= test_day else this_week + 7 + days[0] - 1
         return dict(block=block, weeks=weeks, test_day=test_day, tests=[t[:2] for t in tests], shift=shift, today=today,
-                    status=status, next=nxt, per_week=per_week, ratios=ratios, overdue=overdue, test_step=test_step,
-                    missed_tests=missed_tests, current_max=current_max, max_raise=last_raise, days_reset=days_reset,
-                    fallback=(deload if test_step is None else session_now) if today[0] == "test" else None)
+                    ratios=ratios, overdue=overdue, test_step=test_step,
+                    missed_tests=missed_tests, current_max=current_max, max_raise=last_raise,
+                    calib_next=calib_next, calib_done=calibration_days if calib_on else None,
+                    fallback=(deload if test_step is None else session_now) if today[0] == "test" else None,
+                    **today_of(today, test_day))
 
 
 # --- Scénarios -------------------------------------------------------------------------------
@@ -374,6 +426,11 @@ def schedule(first_day, last_day, sets=(15, 15, 15, 15), skip=(), tired=(), days
         if d % 7 in days and d not in skip:
             out.append(Session(d + 0.75, list(sets), tired=d in tired, rests=rests))
     return out
+
+
+def first_target(p):
+    """La série 1 du jour, ou de la séance proposée à la place d'un test (bloc 1, calibrage)."""
+    return (p["today"][1] or p["fallback"])[0][0]
 
 
 def check(name, got, expect):
@@ -394,9 +451,9 @@ def main():
     #    rapports valent 1 : les séances sont éligibles ; voir le scénario 9 pour le défaut)
     s = history + schedule(0, 10)
     p = make(0, s, 10.5)
-    ok &= check("régulier, jour 10 (jeudi, repos)", p, dict(block=1, test_day=28, shift=0, per_week=3,
-                                                            today=("session", ([12, 12, 12], 60)),
-                                                            status="rest", next=11))
+    ok &= check("régulier, jour 10 (jeudi) : séance proposée", p, dict(block=1, test_day=28, shift=0,
+                                                                       today=("session", ([12, 12, 12], 60)),
+                                                                       status="due", next=11, rest_reason=None))
     ok &= check("régulier, jour 11 (vendredi)", make(0, s, 11.3), dict(status="due"))
     s = history + schedule(0, 22)
     ok &= check("semaine allégée, jour 22", make(0, s, 22.5), dict(today=("deload", ([12, 12], 60))))
@@ -430,10 +487,13 @@ def main():
     s = history + schedule(0, 10)
     ok &= check("séance légère", make(0, s, 11.5, low_form=True), dict(today=("light", ([12, 12], 60))))
 
-    # 7. Une séance par semaine d'habitude : le plan en demande 2, lundi et jeudi
-    s = schedule(-28, 0, days=(0,)) + schedule(0, 3, days=(0,))
-    p = make(0, s, 1.5)
-    ok &= check("au moins 2 séances par semaine", p, dict(per_week=2, status="rest", next=3))
+    # 7. Une séance par semaine (le lundi) : chaque jour une séance est proposée ; au-delà de la
+    #    première semaine, la ligne « au moins 2 séances par semaine » (règle 6)
+    s = schedule(-28, 0, days=(0,)) + schedule(0, 10, days=(0,))
+    ok &= check("1re semaine : pas de rappel", make(0, s, 1.5), dict(status="due", next=2, below_minimum=False))
+    ok &= check("une séance en 7 jours : au moins 2", make(0, s, 8.5), dict(status="due", below_minimum=True))
+    s2 = s + [Session(6.5, [15, 15])]
+    ok &= check("deux séances en 7 jours : pas de rappel", make(0, s2, 8.5), dict(below_minimum=False))
 
     # 8. Baisse habituelle mesurée : 30 · 26 · 23 avec 90 s de repos → 27 · 23 · 21
     h = schedule(-28, 7, sets=(30, 26, 23), rests=[90, 90])
@@ -453,21 +513,66 @@ def main():
     ok &= check("séries espacées : repart de la série 1", dict(n=next_target(session, None, [29], [])), dict(n=29))
     ok &= check("toutes les séries faites", dict(n=next_target(session, None, [29, 23, 19], [29, 23, 19])), dict(n=None))
 
-    # 11. Placement : 2 séances (lundi, jeudi). Mardi sans séance lundi : à rattraper ; prochaine jeudi
-    s = schedule(-28, 0, days=(0, 3)) + []
-    p = make(0, s, 1.5)
-    ok &= check("lundi manqué : séance due mardi", p, dict(status="due", next=3))
-    # Séance faite mercredi (jour non prévu) : elle remplace lundi ; prochaine jeudi
-    s2 = s + [Session(2.5, [15, 12, 10])]
-    p = make(0, s2, 2.7)
-    ok &= check("séance faite un jour non prévu", p, dict(status="done", next=3))
-    # Jeudi, après la séance de lundi : jeudi est dû
-    s3 = s + [Session(0.5, [15, 12, 10])]
-    ok &= check("jeudi prévu", make(0, s3, 3.4), dict(status="due"))
-    ok &= check("mardi : repos, prochaine jeudi", make(0, s3, 1.4), dict(status="rest", next=3))
-    # Jours déplacés : mardi et samedi ; la séance de lundi remplace celle de mardi
-    ok &= check("jours déplacés", make(0, s3, 1.4, weekdays=[2, 6]), dict(status="rest", next=5))
-    ok &= check("jours déplacés, sans séance lundi", make(0, s, 1.4, weekdays=[2, 6]), dict(status="due", next=5))
+    # 11. Le coach au jour le jour (METHODE-JOURS.md) : pas de jours prévus
+    s = schedule(-28, 0, days=(0, 3))
+    ok &= check("sans séance hier : séance proposée", make(0, s, 1.5), dict(status="due", next=2))
+    s2 = s + [Session(1.5, [15, 15, 15])]
+    ok &= check("séance du jour faite", make(0, s2, 1.7), dict(status="done", next=2, target_missed=False))
+    # Séance terminée sous la cible (cibles 12 · 12 · 12, fait 8 · 12 · 12) : faite, cible non atteinte
+    ok &= check("séance sous la cible : faite, cible non atteinte", make(0, s + [Session(8.5, [8, 12, 12])], 8.7),
+                dict(status="done", target_missed=True))
+    # (c) La séance d'hier « Très difficile » (effort ≥ 7) : repos conseillé, prochaine demain
+    #     (semaine 2 : en semaine 1 du bloc 1, chaque jour propose un test de calibrage)
+    w2 = schedule(-28, 8, days=(0, 3))
+    hard = w2 + [Session(8.5, [15, 15, 15], effort=8)]
+    ok &= check("séance d'hier très difficile : repos", make(0, hard, 9.4),
+                dict(status="rest", rest_reason="hard_yesterday", next=10))
+    ok &= check("effort 6 : séance", make(0, w2 + [Session(8.5, [15, 15, 15], effort=6)], 9.4), dict(status="due"))
+    # Un repos est une proposition : une séance faite ce jour-là compte
+    ok &= check("séance faite un jour de repos", make(0, hard + [Session(9.5, [15, 15, 15])], 9.7), dict(status="done"))
+    # (d) 21 séries sur les 7 derniers jours : repos ; le lendemain, 18 : séance
+    daily = s + [Session(d + 0.5, [12, 12, 12]) for d in range(0, 7)]
+    ok &= check("20 séries en 7 jours : repos", make(0, daily, 7.4),
+                dict(status="rest", rest_reason="weekly_volume", next=8))
+    # (a) La veille du test (dimanche de la semaine allégée) : repos, prochaine le jour de test
+    s3 = history + schedule(0, 27)
+    p = make(0, s3, 27.5)
+    ok &= check("veille du test : repos", p, dict(status="rest", rest_reason="before_test", next=28))
+    # (b) Fatigue persistante : repos
+    ok &= check("fatigue persistante : repos", make(0, history + schedule(0, 10), 10.5, persistent_fatigue=True),
+                dict(status="rest", rest_reason="persistent_fatigue"))
+    # Cibles réajustées par le compteur (97 · 78 · 62 au lieu de 68) toutes atteintes : pas de « cible
+    # non atteinte » ; une série sous sa cible réajustée, si
+    adj = s + [Session(8.5, [97, 78, 62], targets=[97, 78, 62])]
+    ok &= check("cibles réajustées atteintes : pas de cible manquée", make(0, adj, 8.7), dict(status="done", target_missed=False))
+    adj2 = s + [Session(8.5, [97, 70, 62], targets=[97, 78, 64])]
+    ok &= check("une série sous sa cible réajustée : cible manquée", make(0, adj2, 8.7), dict(target_missed=True))
+    adj3 = s + [Session(8.5, [97, 78], targets=[97, 78])]
+    ok &= check("une série prévue non faite : cible manquée", make(0, adj3, 8.7), dict(target_missed=True))
+    # Part faite : chaque série jusqu'à sa cible affichée, 97 + 70 + 62 = 229 sur 97 + 78 + 64 = 239
+    ok &= check("cible manquée : part faite, 95 %", make(0, adj2, 8.7), dict(target_percent=95))
+    # Séance très difficile aujourd'hui : demain repos conseillé, la prochaine après-demain, et on le sait
+    hard_today = w2 + [Session(8.5, [15, 15, 15], effort=8)]
+    ok &= check("séance très difficile : demain repos, et pourquoi", make(0, hard_today, 8.7),
+                dict(status="done", next=10, tomorrow_rest="hard_yesterday"))
+    # Fatigue persistante, séance faite quand même : la séance légère
+    ok &= check("fatigue persistante : séance légère si l'on s'entraîne", make(0, history + schedule(0, 10), 10.5, persistent_fatigue=True),
+                dict(today=("light", ([12, 12], 60))))
+    # Un jour de repos conseillé : pas de rappel du minimum (qui contredirait le repos)
+    ok &= check("repos conseillé : pas de rappel du minimum", make(0, s + [Session(d + 0.5, [12, 12, 12]) for d in range(0, 7)], 7.4),
+                dict(status="rest", below_minimum=False))
+    # Jour de test : l'effort d'hier ne repousse pas le test (test du jour, à faire, calibrage 2 / 2)
+    s5 = history + schedule(0, 26) + [Session(27.5, [15, 15, 15], effort=9)]
+    ok &= check("jour de test après une séance très difficile : test", make(0, s5, 28.3),
+                dict(today=("test", None), status="due"))
+    cal = history + [Session(test_session(0.75, attempts=(30,)).day, [30], roles=["test"], effort=10)]
+    p = make(0, cal, 2.5)
+    ok &= check("calibrage : test 2 / 2 deux jours après un test noté 10", dict(t=p["today"][0], st=p["status"], step=p["test_step"]),
+                dict(t="test", st="due", step=(2, 2)))
+    # Après le test, jusqu'au bloc suivant : une séance chaque jour, de son nouveau max
+    s4 = history + schedule(0, 28) + [test_session(28.75, attempts=(32,))]
+    p = make(0, s4, 29.5)
+    ok &= check("après le test : séance du nouveau max", dict(st=p["status"], first=p["today"][1][0][0]), dict(st="due", first=29))
 
     # 12. Séries espacées : deux séances le même jour comptent pour un seul jour d'entraînement
     s4 = s + [Session(0.4, [15]), Session(0.8, [12, 10])]
@@ -494,7 +599,7 @@ def main():
     ok &= check("reprise avant le test", p, dict(test_day=35, tests=[]))
     ok &= check("reprise : séance allégée", dict(kind=p["today"][0], week=p["weeks"][-1][0]), dict(kind="reprise", week="Reprise"))
     s2 = s + [test_session(35.75, attempts=(30,))]
-    ok &= check("test après la reprise", make(0, s2, 36.5), dict(tests=[(35.75, 30)], block=1, status="rest"))
+    ok &= check("test après la reprise", make(0, s2, 36.5), dict(tests=[(35.75, 30)], block=1, status="due"))
     # Pas encore revenu, jour de test atteint après 9 jours sans séance : la reprise, pas le test
     s = history + schedule(0, 19)
     ok &= check("pas de test après 7 jours d'absence", dict(kind=make(0, s, 28.3)["today"][0]), dict(kind="reprise"))
@@ -513,7 +618,7 @@ def main():
     # Semaine 1 : les cibles suivent chaque séance (calibrage) ; semaine 2 : figées
     s3 = s2 + [Session(52.75, [20, 16, 13])]
     p = make(0, s3, 53.5)
-    ok &= check("calibrage : la cible suit la séance", dict(first=p["today"][1][0][0]), dict(first=17))
+    ok &= check("calibrage : la cible suit la séance", dict(first=first_target(p)), dict(first=17))
     s4 = s3 + [Session(57.75, [18, 15, 12])]
     p = make(0, s4, 58.5)
     ok &= check("semaine 2 : cibles figées", dict(first=p["today"][1][0][0]), dict(first=17))
@@ -537,7 +642,7 @@ def main():
     # Après l'absence, la séance d'avant ne sert pas au calibrage (série 1 = 12 − 3, pas 15 − 3)
     s = history + schedule(0, 10) + [Session(38.75, [12, 10, 8])]
     p = make(0, s, 39.5)
-    ok &= check("calibrage sans les séances d'avant l'absence", dict(first=p["today"][1][0][0]), dict(first=9))
+    ok &= check("calibrage sans les séances d'avant l'absence", dict(first=first_target(p)), dict(first=9))
 
     # 18. Test annoncé (METHODE-TEST.md) — 2e tentative : le meilleur des deux compte
     s = history + schedule(0, 28) + [test_session(28.75, warmup=10, attempts=(28, 33))]
@@ -569,8 +674,31 @@ def main():
     s = history + [test_session(0.75, attempts=(30,))]
     p = make(0, s, 1.5)
     ok &= check("bloc 1 : test 1 / 2 fait, le 2e reste à faire", p, dict(tests=[(0.75, 30)]))
+    p = make(0, s, 1.5)
+    ok &= check("bloc 1 : pas de 2e test le lendemain du 1er", dict(today=p["today"][0], nxt=p["calib_next"]), dict(today="session", nxt=2))
     p = make(0, s, 2.5)
-    ok &= check("bloc 1 : 2e test proposé", dict(today=p["today"][0], step=p["test_step"]), dict(today="test", step=(2, 2)))
+    ok &= check("bloc 1 : 2e test proposé 2 jours après", dict(today=p["today"][0], step=p["test_step"]), dict(today="test", step=(2, 2)))
+    # 1er test refusé (séance normale le lundi) : reproposé le mardi, annoncé pour le mardi
+    s7 = history + [Session(0.5, [12, 12, 12])]
+    ok &= check("bloc 1 : 1er test refusé, annoncé pour demain", dict(n=make(0, s7, 0.7)["calib_next"]), dict(n=1))
+    ok &= check("bloc 1 : 1er test reproposé le lendemain", dict(t=make(0, s7, 1.5)["today"][0]), dict(t="test"))
+    # 2e test manqué le mercredi : reproposé le jeudi, et annoncé pour le jeudi
+    s8 = history + [test_session(0.75, attempts=(30,)), Session(2.5, [24, 24, 24])]
+    ok &= check("bloc 1 : 2e test manqué, annoncé pour le lendemain", dict(n=make(0, s8, 2.7)["calib_next"]), dict(n=3))
+    ok &= check("bloc 1 : 2e test reproposé le lendemain", dict(t=make(0, s8, 3.5)["today"][0]), dict(t="test"))
+    # Les 2 tests faits : la semaine le sait (2 faits, plus de prochain)
+    s9 = history + [test_session(0.75, attempts=(30,)), test_session(2.75, attempts=(31,))]
+    ok &= check("bloc 1 : 2 tests faits", dict(d=make(0, s9, 3.5)["calib_done"], n=make(0, s9, 3.5)["calib_next"]), dict(d=2, n=None))
+    ok &= check("bloc 1 : test 2 sur 2 fait aujourd'hui", dict(t=make(0, s9, 2.9)["today"][0], st=make(0, s9, 2.9)["status"],
+                step=make(0, s9, 2.9)["test_step"]), dict(t="test", st="done", step=(2, 2)))
+    # Pas de test de départ commencé le samedi : il n'y aurait pas la place du 2e dans la semaine
+    ok &= check("bloc 1 : pas de 1er test après le vendredi", dict(t=make(0, history, 5.5)["today"][0],
+                n=make(0, history, 5.5)["calib_next"]), dict(t="session", n=None))
+    ok &= check("bloc 1 : 1er test proposé le vendredi", dict(t=make(0, history, 4.5)["today"][0]), dict(t="test"))
+    # 1er test le samedi quand même : le 2e n'a plus la place cette semaine
+    s6 = history + [test_session(5.75, attempts=(30,))]
+    ok &= check("bloc 1 : 1er test le samedi, pas de 2e", dict(n=make(0, s6, 6.5)["calib_next"], t=make(0, s6, 6.5)["today"][0]),
+                dict(n=None, t="session"))
     s2 = s + [test_session(2.75, attempts=(34,))]
     p = make(0, s2, 7.5)
     ok &= check("bloc 1 : le meilleur des 2 tests sert de départ", dict(tests=p["tests"], first=p["today"][1][0][0]),
@@ -598,12 +726,6 @@ def main():
     # Une pause de plus de 7 jours pendant l'attente du test : la reprise prime
     s = history + schedule(0, 31)
     ok &= check("pause pendant l'attente : reprise", dict(kind=make(0, s, 40.5)["today"][0]), dict(kind="reprise"))
-
-    # 19. Jours enregistrés incohérents (2 jours pour 3 séances par semaine) : ignorés, jours proposés
-    s = history + schedule(0, 9)
-    p = make(0, s, 9.5, weekdays=[5, 6])
-    ok &= check("jours incohérents : réinitialisés", p, dict(days_reset=True, per_week=3))
-    ok &= check("jours cohérents : gardés", make(0, s, 9.5, weekdays=[2, 4, 6]), dict(days_reset=False, per_week=3))
 
     print("\nOK" if ok else "\nÉCHEC")
     return 0 if ok else 1

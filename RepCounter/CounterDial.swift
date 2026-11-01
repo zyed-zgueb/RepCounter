@@ -76,27 +76,63 @@ private struct SegmentRing: View {
     let segments: Int
     let color: Color
     let goalSegment: Int?
+    /// Segments dessinés (le dernier anneau du tunnel n'a que ceux de la cible) ; nil : tous.
+    var drawn: Int? = nil
+    /// Épaisseur de l'anneau, en part du rayon.
+    var thickness: CGFloat = 0.105
+    /// Couleur des segments éteints (nil : le filet du thème).
+    var unlit: Color? = nil
+    /// Ombré de paroi : chaque segment s'assombrit vers l'intérieur, comme une tuile vue en
+    /// perspective sur la paroi d'un tunnel.
+    var shaded = false
 
     var body: some View {
         Canvas { context, size in
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let outer = min(size.width, size.height) / 2 - 3
-            let inner = outer * 0.895
+            // Le Canvas déborde de 12 pt (padding négatif) : le halo n'est pas coupé
+            let outer = min(size.width, size.height) / 2 - 15
+            let inner = outer * (1 - thickness)
             let gap = 0.07
-            for i in 0..<segments {
+            let glow = min(theme.glow, 1)
+            func tile(_ i: Int) -> Path {
                 let start = Double(i) / Double(segments) * 2 * .pi - .pi / 2 + gap
                 let end = Double(i + 1) / Double(segments) * 2 * .pi - .pi / 2 - gap
                 var path = Path()
                 path.addArc(center: center, radius: outer, startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
                 path.addArc(center: center, radius: inner, startAngle: .radians(end), endAngle: .radians(start), clockwise: true)
                 path.closeSubpath()
-                context.fill(path, with: .color(i < lit ? color : theme.line))
-                if i == goalSegment, i >= lit {
-                    context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+                return path
+            }
+            let count = min(drawn ?? segments, segments)
+            // Éteint : il ne fait que réfléchir la lumière ambiante. En paroi de tunnel, un dégradé
+            // vers le fond ; jamais de halo (avis de Vincent)
+            for i in 0..<count where i >= lit {
+                let fill = unlit ?? theme.line
+                if shaded {
+                    context.fill(tile(i), with: .radialGradient(Gradient(colors: [fill.opacity(0.35), fill]),
+                                                                center: center, startRadius: inner, endRadius: outer))
+                } else {
+                    context.fill(tile(i), with: .color(fill))
+                }
+                if i == goalSegment {
+                    context.stroke(tile(i), with: .color(color), style: StrokeStyle(lineWidth: 2, lineJoin: .round))
+                }
+            }
+            // Allumé : il émet. Une couleur uniforme, un liseré à peine plus clair, et un halo
+            // autour de lui seul
+            context.drawLayer { layer in
+                if glow > 0 {
+                    layer.addFilter(.shadow(color: color.opacity(0.55 * glow), radius: 9))
+                }
+                for i in 0..<min(lit, count) {
+                    layer.fill(tile(i), with: .color(color))
+                    if shaded {
+                        layer.stroke(tile(i), with: .color(.white.opacity(0.18)), lineWidth: 1)
+                    }
                 }
             }
         }
-        .shadow(color: color.opacity(lit > 0 ? 0.4 * min(theme.glow, 1) : 0), radius: 10)
+        .padding(-12)
         .accessibilityHidden(true)
     }
 }
@@ -148,5 +184,98 @@ struct LapDots: View {
             }
             .accessibilityHidden(true)
         }
+    }
+}
+
+/// Le tunnel de comptage (idée de Vincent, `Process/CYCLE.md`) : un anneau de 10 segments par
+/// dizaine de la cible. Le tour en cours est devant ; les suivants sont derrière, plus petits et
+/// serrés, comme au fond d'un tunnel ; le dernier n'a que les segments de la cible, qui se voit en
+/// entier. À chaque dizaine faite, on avance d'un cran : l'anneau fait passe derrière soi.
+/// Au-delà de la cible, un anneau vert de 10 à la fois.
+struct TunnelFace: View {
+    @Environment(\.theme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let done: Int
+    let target: Int
+    let color: Color
+    /// Pâle avant la validation (répétitions pas encore comptées).
+    var pale = false
+
+    /// Anneaux visibles au plus (cible jusqu'à 40) ; les plus lointains se fondent au fond.
+    static let depth = 4
+    /// Profondeur entre deux anneaux : l'anneau k est à l'échelle 1 / (1 + k × step).
+    static let step: CGFloat = 0.3
+    /// Petit vide entre deux anneaux, en part du rayon de l'anneau.
+    static let seam: CGFloat = 0.02
+
+    /// Échelle de l'anneau de rang k (0 : devant).
+    static func scale(_ rank: Int) -> CGFloat { 1 / (1 + CGFloat(rank) * step) }
+
+    var body: some View {
+        let per = CounterDial.segmentsPerLap
+        let laps = max(1, (target + per - 1) / per)
+        // Le tour en cours : il change à la 11e, 21e… répétition (le tour plein reste affiché à 10, 20…)
+        let current = max(0, done - 1) / per
+        let beyond = done > target || current >= laps
+        let visible = beyond ? [current] : Array(current..<min(laps, current + Self.depth))
+        ZStack {
+            ForEach(visible.reversed(), id: \.self) { lap in
+                let rank = lap - current
+                let lapDone = min(max(done - lap * per, 0), per)
+                let segments = beyond || lap < laps - 1 ? per : target - (laps - 1) * per
+                let ringColor = done >= target ? theme.ok : color
+                // Les segments sont plaqués sur la paroi du tunnel (avis de Vincent) : chaque anneau
+                // est une bande qui va jusqu'au suivant, plus étroite et plus sombre en profondeur ;
+                // ce qui reste à faire est pâle, dans la couleur du comptage
+                let thickness = 1 - Self.scale(rank + 1) / Self.scale(rank) - Self.seam
+                SegmentRing(lit: lapDone, segments: per, color: ringColor,
+                            goalSegment: nil, drawn: segments, thickness: thickness,
+                            unlit: ringColor.opacity(0.3), shaded: true)
+                    .brightness(-0.06 * Double(rank))
+                    .opacity((pale ? 0.5 : 1) * (1 - 0.12 * Double(rank)))
+                    .scaleEffect(Self.scale(rank))
+                    .transition(reduceMotion ? .opacity : .scale(scale: 1.25).combined(with: .opacity))
+            }
+        }
+        .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.85), value: current)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(done) sur \(target)")
+    }
+}
+
+/// Le repos (avis de Vincent sur le cycle 3) : une petite lumière par seconde du repos prévu,
+/// qui s'éteint seconde après seconde ; à zéro, toutes vertes. Au-delà de 180 s, une lumière
+/// pour 2 s (elles restent lisibles).
+struct RestLedFace: View {
+    @Environment(\.theme) private var theme
+    /// Secondes qui restent (0 : repos fait).
+    let remaining: Double
+    /// Repos prévu (s).
+    let total: Int
+    let color: Color
+
+    var body: some View {
+        let perLed = total > 180 ? 2 : 1
+        let count = max(1, total / perLed)
+        let lit = remaining <= 0 ? count : min(count, Int((remaining / Double(perLed)).rounded(.up)))
+        Canvas { context, size in
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let radius = min(size.width, size.height) / 2 - 8
+            let dot = min(5, .pi * radius / Double(count) * 0.55)
+            func led(_ i: Int) -> Path {
+                let angle = Double(i) / Double(count) * 2 * .pi - .pi / 2
+                let point = CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
+                return Path(ellipseIn: CGRect(x: point.x - dot, y: point.y - dot, width: dot * 2, height: dot * 2))
+            }
+            // Éteinte : elle ne fait que réfléchir, sans halo ; allumée, elle émet, avec un halo
+            for i in lit..<count { context.fill(led(i), with: .color(theme.line)) }
+            let glow = min(theme.glow, 1)
+            context.drawLayer { layer in
+                if glow > 0 { layer.addFilter(.shadow(color: color.opacity(0.5 * glow), radius: 5)) }
+                for i in 0..<lit { layer.fill(led(i), with: .color(color)) }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(remaining <= 0 ? "Repos fait" : "Repos : \(Int(remaining.rounded(.up))) secondes restantes")
     }
 }

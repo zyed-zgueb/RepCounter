@@ -111,6 +111,8 @@ struct CoachingView: View {
     @State private var showsInfo = false
     /// Change quand un jour de séance est déplacé ou l'objectif retiré : le plan est recalculé.
     @State private var version = 0
+    /// Les pages poussées (État, Ton plan).
+    @State private var path = NavigationPath()
 
     init(exercise: Exercise, exercises: [Exercise], onStart: @escaping (Exercise) -> Void,
          onStartTest: @escaping (Exercise) -> Void = { _ in }) {
@@ -125,10 +127,10 @@ struct CoachingView: View {
         let stats = HistoryStats(sessions: sessions, exercise: exercise)
         let _ = version
         let plan = stats.plan(all: sessions)
-        NavigationStack {
+        NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 VerticalScroll {
-                    VStack(spacing: 14) {
+                    VStack(spacing: 20) {
                         if exercise == .auto {
                             // « Autre exercice » mêle des mouvements : ni plan ni objectif
                             Text("Le coaching suit un exercice précis.")
@@ -149,8 +151,16 @@ struct CoachingView: View {
                             }
                         } else {
                             if let plan {
-                                TodayCard(plan: plan, todaySets: todaySets(stats), onStart: { onStart(exercise) },
+                                TodayCard(plan: plan, todayRecords: todaySets(stats), onStart: { onStart(exercise) },
                                           onStartTest: { onStartTest(exercise) })
+                                // Le plan, daté et en mots, juste sous le jour : il donne le contrôle
+                                // (reprise après une longue absence : pas encore de bloc ni de test)
+                                if plan.hasTest {
+                                    NavigationLink(value: CoachingPage.plan) {
+                                        PlanCard(plan: plan)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
                             // Où je vais : l'objectif, le chemin, le bloc
                             if goal != nil {
@@ -165,10 +175,6 @@ struct CoachingView: View {
                             if let plan {
                                 if goal != nil {
                                     PathCard(plan: plan, exercise: exercise, sessions: stats.sessions)
-                                }
-                                // Reprise après une longue absence : pas encore de bloc ni de test
-                                if plan.hasTest {
-                                    BlockCard(plan: plan, exercise: exercise) { version += 1 }
                                 }
                             }
                         }
@@ -215,16 +221,17 @@ struct CoachingView: View {
                         PhasePanel(stats: stats, all: sessions)
                         FormPanel(stats: stats)
                     }
+                case .plan:
+                    HistoryDetailView(title: "Ton plan") {
+                        if let plan { PlanWeeksList(plan: plan) }
+                    }
                 }
             }
         }
         .tint(theme.primary)
-        // Jours enregistrés incohérents : le retour aux jours proposés s'enregistre ici, hors du calcul
-        // de la vue (une seule fois : le plan suivant n'a plus de jours à réinitialiser)
-        .task(id: plan?.daysReset == true ? exercise.rawValue : nil) {
-            guard plan?.daysReset == true else { return }
-            Schedule.save(nil, for: exercise)
-            version += 1
+        // Mode capture (CI) : la page des semaines s'ouvre d'elle-même
+        .task {
+            if Capture.screen == "planWeeks" { path.append(CoachingPage.plan) }
         }
         .onChange(of: exercise) { _, exercise in
             goal = Goal.load(exercise)
@@ -289,49 +296,84 @@ struct CoachingView: View {
     }
 
     /// Les séries faites aujourd'hui (séances espacées comprises), dans l'ordre.
-    private func todaySets(_ stats: HistoryStats) -> [Int] {
+    /// Les séries faites aujourd'hui (échauffement exclu), dans l'ordre, avec la cible que le
+    /// compteur affichait (réajustée en séance).
+    private func todaySets(_ stats: HistoryStats) -> [SetRecord] {
         stats.sessions
             .filter { stats.calendar.isDate($0.start, inSameDayAs: stats.now) }
             .sorted { $0.start < $1.start }
-            .flatMap { $0.orderedSets.map(\.reps) }
+            .flatMap(\.workSets)
     }
 }
 
 enum CoachingPage: Hashable {
     case state
+    /// Le détail du plan : les semaines du bloc.
+    case plan
 }
 
 /// La séance du jour, en tête du Coaching (la ligne sous le cadran en est le résumé) :
 /// - à faire : les cibles en barres, ◷ le repos, l'intensité (pastille et mot), Démarrer ;
 /// - faite : « ✓ fait », le fait face aux cibles, puis la prochaine séance ;
-/// - repos : « repos · prochaine vendredi » et ses cibles ;
+/// - repos conseillé : sa raison (« test demain »), puis la prochaine séance et ses cibles ;
 /// - séance légère : « ! léger », barres réduites ; semaine allégée : « allégée ».
 private struct TodayCard: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
-    /// Les séries faites aujourd'hui.
-    let todaySets: [Int]
+    /// Les séries faites aujourd'hui, avec la cible affichée par le compteur.
+    let todayRecords: [SetRecord]
+    private var todaySets: [Int] { todayRecords.map(\.reps) }
+    /// La cible de chaque série faite, telle que le compteur l'affichait (réajustée en séance) :
+    /// le Coaching juge comme le compteur.
+    private var doneTargets: [Int?] { todayRecords.map(\.target) }
     let onStart: () -> Void
     var onStartTest: () -> Void = {}
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             CardHeader(symbol: "calendar", title: "Aujourd'hui") {
                 if plan.status == .due { intensity(plan.today) }
             }
             switch plan.status {
             case .due where plan.today == .test:
                 // Jour de test (ou test « à faire ») : la personne le lance ; la séance allégée reste possible
-                MonitorLabel(testMark, color: plan.testOverdue ? theme.text : theme.max)
-                Text(symbols: "◆ série max" + (plan.tests.last.map { " · dernier test \($0.value)" } ?? ""))
-                    .font(theme.font(15, .bold))
+                // Le titre dit ce qu'on fait ; la raison dit lequel des tests c'est
+                // Ce qu'on fait, en mots (« Série max » n'était pas clair) ; le chiffre à battre en
+                // grand ; le pourquoi en une phrase ; le détail dans « En savoir plus »
+                Text(plan.testOverdue ? "Test à faire" : "Jour de test")
+                    .font(theme.font(22, .bold))
                     .foregroundStyle(theme.text)
+                Text("Le plus de répétitions d'affilée, en une seule série.")
+                    .font(theme.font(17))
+                    .foregroundStyle(theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let last = plan.tests.last {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text("\(last.value)")
+                            .font(theme.font(34, .bold))
+                            .foregroundStyle(theme.max)
+                            .monospacedDigit()
+                        Text("à battre : ton dernier test")
+                            .font(theme.font(15))
+                            .foregroundStyle(theme.dim)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                reasonText
+                NavigationLink {
+                    TestInfoView(plan: plan)
+                } label: {
+                    Text("En savoir plus")
+                        .font(theme.font(15, .semibold))
+                        .foregroundStyle(theme.primary)
+                        .frame(minHeight: 44)
+                }
                 if plan.testOverdue, let fallback = plan.fallback {
                     Text("En attendant : séance allégée · \(fallback.sets) série\(fallback.sets > 1 ? "s" : "")")
-                        .font(theme.font(12))
+                        .font(theme.font(15))
                         .foregroundStyle(theme.dim)
                 }
-                Button(action: onStartTest) { Text(symbols: "◆ Lancer le test") }
+                Button("Lancer le test", action: onStartTest)
                     .buttonStyle(MonitorButtonStyle(color: theme.max, height: 48, fontSize: 13))
                 // Bloc 1 : la séance de calibrage (normale) ; sinon la séance allégée
                 Button(plan.testStep != nil ? "Séance normale à la place"
@@ -341,36 +383,55 @@ private struct TodayCard: View {
                 if let mark = mark(plan.today) {
                     MonitorLabel(mark, color: theme.text)
                 }
+                reasonText
                 session(plan.today, done: todaySets.isEmpty ? nil : todaySets)
                 Button("Démarrer", action: onStart)
                     .buttonStyle(MonitorButtonStyle(color: theme.primary, height: 48, fontSize: 13))
             case .done:
                 HStack {
-                    Text(symbols: "✓ fait")
-                        .font(theme.font(15, .bold))
-                        .foregroundStyle(theme.ok)
+                    Text(symbols: plan.targetMissed ? TargetShare.done(plan.targetPercent ?? 0) : "✓ fait")
+                        .font(theme.font(22, .bold))
+                        .foregroundStyle(plan.targetMissed ? theme.text : theme.ok)
                     Spacer()
                 }
-                TargetBars(targets: plan.todaySession?.targets ?? [], done: todaySets, color: plan.today.color(theme))
+                TargetBars(targets: plan.todaySession?.targets ?? [], done: todaySets, doneTargets: doneTargets,
+                           color: plan.today.color(theme))
+                reasonText
                 upcoming
             case .rest:
                 HStack {
-                    Text("repos")
-                        .font(theme.font(15, .bold))
+                    Text("repos conseillé")
+                        .font(theme.font(22, .bold))
                         .foregroundStyle(theme.dim)
                     Spacer()
                 }
+                reasonText
                 upcoming
+            }
+            // Moins de 2 séances sur 7 jours : le minimum, une ligne discrète (METHODE-JOURS.md, règle 6)
+            if plan.belowMinimum, plan.status != .done {
+                MonitorLabel("au moins 2 séances par semaine")
             }
         }
         .coachingCard(theme)
     }
 
-    /// « ! ◆ test à faire », « ◆ test 1 / 2 » (bloc 1) ou « ◆ jour de test ».
+    /// Pourquoi l'app propose ce qu'elle propose aujourd'hui (une ou deux phrases).
+    @ViewBuilder
+    private var reasonText: some View {
+        if let reason = plan.todayReason {
+            Text(reason)
+                .font(theme.font(17))
+                .foregroundStyle(theme.text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// « ! ◆ test à faire », « ◆ test 1 sur 2 » (bloc 1) ou « ◆ test de fin de bloc ».
     private var testMark: String {
         if plan.testOverdue { return "! ◆ test à faire" }
-        if let step = plan.testStep { return "◆ test \(step.number) / \(step.of)" }
-        return "◆ jour de test"
+        if let step = plan.testStep { return "◆ test \(step.number) sur \(step.of)" }
+        return "◆ test de fin de bloc"
     }
 
     /// « Aujourd'hui · ! léger » à gauche, l'intensité (pastille et mot) à droite.
@@ -386,12 +447,9 @@ private struct TodayCard: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// L'intensité du jour : une pastille et son mot, dans sa couleur.
+    /// L'effort demandé aujourd'hui : une petite jauge à 3 crans et son mot (« effort normal »).
     private func intensity(_ day: TrainingPlan.Today) -> some View {
-        HStack(spacing: 6) {
-            Circle().fill(day.color(theme)).frame(width: 8, height: 8)
-            MonitorLabel(Intensity.word(day.intensity), color: day.color(theme))
-        }
+        EffortGauge(level: day.intensity, color: day.color(theme))
     }
 
     private func mark(_ day: TrainingPlan.Today) -> String? {
@@ -409,7 +467,7 @@ private struct TodayCard: View {
     private func session(_ day: TrainingPlan.Today, done: [Int]?, compact: Bool = false) -> some View {
         if case .test = day {
             Text(symbols: "◆ série max")
-                .font(theme.font(compact ? 14 : 22, .bold))
+                .font(theme.font(compact ? 15 : 22, .bold))
                 .foregroundStyle(day.color(theme))
         } else if case .comeback = day {
             // Plus de 28 jours sans séance : une séance libre, le plan repart de ton niveau
@@ -419,9 +477,10 @@ private struct TodayCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         } else if let s = sessionOf(day) {
             HStack(alignment: .bottom, spacing: 12) {
-                TargetBars(targets: s.targets, done: done, color: day.color(theme), compact: compact)
+                TargetBars(targets: s.targets, done: done, doneTargets: done == nil ? nil : doneTargets,
+                           color: day.color(theme), compact: compact)
                 Text(symbols: "◷ \(Format.clock(Double(s.rest)))")
-                    .font(theme.font(compact ? 11 : 13, .bold))
+                    .font(theme.font(compact ? 13 : 13, .bold))
                     .foregroundStyle(theme.dim)
                     .padding(.bottom, 4)
                     .accessibilityLabel("Repos \(Format.clock(Double(s.rest)))")
@@ -436,15 +495,27 @@ private struct TodayCard: View {
         }
     }
 
-    /// « prochaine · vendredi » et ses cibles, en petit.
+    /// « Prochaine séance : mercredi · 97 · 78 · 68 », et pourquoi pas demain.
     @ViewBuilder
     private var upcoming: some View {
         if let next = plan.next {
-            title("prochaine · \(Format.weekdayOrDate(next))", plan.upcoming)
-            session(plan.upcoming, done: nil, compact: true)
-                .opacity(0.85)
-            Button("Démarrer quand même", action: onStart)
-                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 40, fontSize: 12))
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Prochaine séance : \(Format.dayDate(next))")
+                    .font(theme.font(17, .semibold))
+                    .foregroundStyle(theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(symbols: plan.upcoming.short)
+                    .font(theme.font(15))
+                    .foregroundStyle(theme.dim)
+                if let rest = plan.tomorrowRest, !Calendar.current.isDateInTomorrow(next) {
+                    Text("Demain, repos conseillé : \(rest.tomorrowExplanation).")
+                        .font(theme.font(15))
+                        .foregroundStyle(theme.dim)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Button(plan.status == .done ? "Refaire une séance aujourd'hui" : "Démarrer quand même", action: onStart)
+                .buttonStyle(MonitorButtonStyle(color: theme.dim, filled: false, height: 44, fontSize: 12))
         }
     }
 }
@@ -457,6 +528,8 @@ private struct TargetBars: View {
     @ScaledMetric(relativeTo: .body) private var compactHeight: CGFloat = 52
     let targets: [Int]
     let done: [Int]?
+    /// La cible de chaque série faite, telle que le compteur l'affichait (nil : la cible prévue).
+    var doneTargets: [Int?]? = nil
     let color: Color
     var compact = false
 
@@ -472,7 +545,8 @@ private struct TargetBars: View {
     var body: some View {
         let count = max(targets.count, done?.count ?? 0)
         let bars = (0..<count).map { index in
-            Bar(id: index, target: index < targets.count ? targets[index] : nil,
+            Bar(id: index,
+                target: (doneTargets.flatMap { index < $0.count ? $0[index] : nil }) ?? (index < targets.count ? targets[index] : nil),
                 done: done.flatMap { index < $0.count ? $0[index] : nil })
         }
         Chart(bars) { bar in
@@ -484,7 +558,7 @@ private struct TargetBars: View {
                     .annotation(position: .top) {
                         if bar.done == nil {
                             Text("\(target)")
-                                .font(theme.font(compact ? 11 : 13, .bold))
+                                .font(theme.font(compact ? 13 : 13, .bold))
                                 .foregroundStyle(theme.text)
                         }
                     }
@@ -496,7 +570,7 @@ private struct TargetBars: View {
                     .cornerRadius(2)
                     .annotation(position: .top) {
                         Text(symbols: "\(value)\(bar.reached ? " ✓" : "")")
-                            .font(theme.font(11, .bold))
+                            .font(theme.font(13, .bold))
                             .foregroundStyle(bar.reached ? theme.ok : theme.text)
                     }
             }
@@ -524,10 +598,10 @@ private struct FirstSessionCard: View {
     let onStart: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             CardHeader(symbol: "calendar", title: "Aujourd'hui")
             Text("Fais une première séance : le plan partira de ton niveau.")
-                .font(theme.font(13))
+                .font(theme.font(17))
                 .foregroundStyle(theme.text)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Démarrer", action: onStart)
@@ -553,19 +627,19 @@ private struct GoalInvitation: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 16) {
             CardHeader(symbol: "scope", title: "Objectif")
             MonitorLabel("Fixe un objectif pour voir ton chemin", color: theme.text)
             if let level, let proposal = Self.proposal(level) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("\(level)")
-                        .font(theme.font(28, .bold))
+                        .font(theme.font(22, .bold))
                         .foregroundStyle(theme.text)
                     Text("→")
-                        .font(theme.font(20, .bold))
+                        .font(theme.font(22, .bold))
                         .foregroundStyle(theme.dim)
                     Text("\(proposal) ?")
-                        .font(theme.font(28, .bold))
+                        .font(theme.font(22, .bold))
                         .foregroundStyle(theme.ok)
                     Spacer()
                 }
@@ -608,11 +682,15 @@ private struct GoalHeader: View {
         let _ = typeSize
         if let goal {
             VStack(alignment: .leading, spacing: 4) {
-                CardHeader(symbol: "scope", title: "Objectif") {
-                    if let date = shiftedDate ?? goal.date {
-                        // Décalée des semaines refaites et de l'attente du test : « +n sem. »
-                        MonitorLabel("pour le \(Format.shortDate(date))" + (shiftWeeks > 0 ? " · +\(shiftWeeks) sem." : ""))
-                    }
+                CardHeader(symbol: "scope", title: "Objectif")
+                if let date = shiftedDate ?? goal.date {
+                    // Décalée des semaines refaites et de l'attente du test : on le dit en clair,
+                    // sur sa propre ligne (jamais coupé)
+                    Text("Pour le \(Format.shortDate(date))"
+                         + (shiftWeeks > 0 ? ", décalé de \(shiftWeeks) semaine\(shiftWeeks > 1 ? "s" : "")" : ""))
+                        .font(theme.font(15))
+                        .foregroundStyle(theme.dim)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 0) {
@@ -681,7 +759,7 @@ private struct GoalHeader: View {
     private var levelAge: String? {
         guard let levelDate else { return nil }
         let weeks = Int(now.timeIntervalSince(levelDate) / (7 * 86_400))
-        return "il y a \(max(weeks, 4)) sem."
+        return "il y a \(max(weeks, 4)) semaines"
     }
 
     private func figure(_ label: String, _ value: Int) -> some View {
@@ -720,14 +798,14 @@ private struct GoalMenu: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            MonitorLabel("⌖ \(goal.target)\(goal.date.map { " · \(Format.shortDate($0))" } ?? "")", color: theme.text)
+            MonitorLabel("Objectif \(goal.target)\(goal.date.map { " · date choisie : \(Format.shortDate($0))" } ?? "")", color: theme.text)
                 .padding(.bottom, 8)
             if confirming {
                 Text(symbols: "✕ Retirer ⌖ \(goal.target) ?")
-                    .font(theme.font(14, .bold))
+                    .font(theme.font(15, .bold))
                     .foregroundStyle(theme.text)
                 Text("Le plan s'arrête. Ton historique reste.")
-                    .font(theme.font(12))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
                     .padding(.bottom, 8)
                 HStack(spacing: 8) {
@@ -764,10 +842,10 @@ private struct GoalMenu: View {
     private func row(_ symbol: String, _ title: String, _ consequence: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(symbols: symbol).font(theme.font(14, .bold)).foregroundStyle(theme.text).frame(width: 18)
+                Text(symbols: symbol).font(theme.font(15, .bold)).foregroundStyle(theme.text).frame(width: 18)
                 Text(title).font(theme.font(13, .bold)).foregroundStyle(theme.text)
                 Spacer()
-                Text(consequence).font(theme.font(11)).foregroundStyle(theme.dim)
+                Text(consequence).font(theme.font(13)).foregroundStyle(theme.dim)
             }
             .padding(.vertical, 10)
             .overlay(alignment: .top) { Rectangle().fill(theme.line).frame(height: 1) }
@@ -788,9 +866,8 @@ private struct StateCard: View {
         let phase = stats.phase(all: all)
         let forms = stats.countingIsReliable ? Array(stats.formResults.suffix(8).map(\.result)) : []
         let last = stats.sessions.first
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 16) {
             CardHeader(symbol: "waveform.path.ecg", title: "État", opens: true) {
-                Circle().fill(phase.stateColor(theme) ?? theme.dim).frame(width: 8, height: 8)
                 Text(symbols: (phase.isAlert ? "! " : "") + phase.title)
                     .font(theme.font(13, .bold))
                     .foregroundStyle(theme.text)
@@ -943,17 +1020,21 @@ private struct GoalEditor: View {
                         stepButton("plus", 1)
                     }
                     Text("d'affilée · niveau \(current)")
-                        .font(theme.font(12))
+                        .font(theme.font(15))
                         .foregroundStyle(theme.dim)
                         .frame(maxWidth: .infinity)
                     if mode == .target {
-                        MonitorLabel("recalé au prochain bloc · le bloc en cours continue")
+                        Text("Recalé au prochain bloc ; le bloc en cours continue.")
+                            .font(theme.font(15))
+                            .foregroundStyle(theme.dim)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                             .frame(maxWidth: .infinity)
                     }
                 }
                 if mode != .target {
                     Toggle(isOn: $hasDate.animation()) {
-                        Text(symbols: "◷ DATE")
+                        Text("Date")
                             .font(theme.font(13, .bold))
                             .foregroundStyle(theme.text)
                     }
@@ -994,7 +1075,7 @@ private struct GoalEditor: View {
             withAnimation(.snappy(duration: 0.15)) { target = min(max(target + step, 1), 500) }
         } label: {
             Image(systemName: systemImage)
-                .font(theme.font(16, .bold))
+                .font(theme.font(17, .bold))
                 .foregroundStyle(theme.text)
                 .frame(width: 48, height: 48)
                 .overlay(RoundedRectangle(cornerRadius: theme.radius, style: .continuous).stroke(theme.line, lineWidth: 1))

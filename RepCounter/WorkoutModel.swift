@@ -132,10 +132,17 @@ final class WorkoutModel: ObservableObject {
         let session: Prescription.Session
         let ratios: [Double]?
         let earlierToday: [Int]
+        /// La cible affichée pour chaque série déjà faite aujourd'hui (réajustée en séance).
+        var earlierTargets: [Int?] = []
     }
 
     /// Le plan du jour, fixé au départ de la séance (nil : pas de plan, ou jour de test).
     @Published var planDay: PlanDay?
+    /// Repos prévu entre deux séries (s), fixé au départ de la séance : le compte à rebours sonore
+    /// (3, 2, 1, puis l'accord du départ) s'y cale. Nil : pas de compte à rebours sonore (test).
+    var plannedRest: Int?
+    /// Dernier bip du compte à rebours joué pendant ce repos (3, 2, 1, 0).
+    private var restCountdown = Int.max
 
     /// La cible de la série en cours (ou de la prochaine, pendant la récupération) : réajustée
     /// d'après la série précédente (`Prescription.nextTarget`). Nil sans plan, ou toutes les séries
@@ -543,7 +550,23 @@ final class WorkoutModel: ObservableObject {
         // Récupération marquée toutes les 15 s : on sait où on en est dans la minute sans
         // regarder l'écran
         guard isResting else { return }
-        let marks = Int(restDuration) / Self.restAnnouncementInterval
+        // Fin du repos prévu : 3, 2, 1 (une note courte), puis l'accord du départ, comme au
+        // départ de la séance (avis de Vincent sur le cycle 3)
+        let elapsed = Int(restDuration)
+        if let planned = plannedRest, testStage == nil {
+            let left = planned - elapsed
+            if left >= 0, left <= 3, left < restCountdown {
+                restCountdown = left
+                announcer.play(left == 0 ? .go : .count)
+                if left == 0 { lightHaptic.impactOccurred() }
+            }
+            // Les battements des 15 s se taisent pendant le compte à rebours
+            if left >= 0, left <= 3 {
+                restAnnouncements = elapsed / Self.restAnnouncementInterval
+                return
+            }
+        }
+        let marks = elapsed / Self.restAnnouncementInterval
         if marks > restAnnouncements {
             restAnnouncements = marks
             let cues: [Cue] = [.restMinute, .rest, .rest2, .rest3]
@@ -722,6 +745,7 @@ final class WorkoutModel: ObservableObject {
                 setStart = start
                 setRepDates = (0..<reps).map { start.addingTimeInterval(Double($0) * cadence) }
                 restAnnouncements = 0
+                restCountdown = Int.max
             } else {
                 while setRepDates.count < reps { setRepDates.append(repDate(output)) }
             }
@@ -755,5 +779,49 @@ extension WorkoutModel.Phase {
     var isCountdown: Bool {
         if case .countdown = self { return true }
         return false
+    }
+}
+
+// MARK: - Mode capture (CI)
+
+extension WorkoutModel {
+    /// Met l'écran dans un état à photographier, sans capteur : `serie` (17 répétitions de la
+    /// série 2, cible 24), `repos` (45 s après la série 1), `fin` (séance de 3 séries terminée).
+    /// Ne sert qu'au mode capture (`-captureDemo YES`, RepCounterApp.swift).
+    func showCaptureState(_ name: String) {
+        sensors.stop()
+        clock?.invalidate()
+        let start = Date().addingTimeInterval(-300)
+        func set(_ number: Int, _ reps: Int, target: Int, at offset: TimeInterval) -> WorkoutSet {
+            WorkoutSet(number: number, reps: reps, duration: Double(reps) * 1.6, cadence: 1.6,
+                       start: start.addingTimeInterval(offset),
+                       repTimes: (0..<reps).map { Double($0) * 1.6 }, target: target)
+        }
+        sessionStart = start
+        now = Date()
+        switch name {
+        case "serie":
+            phase = .active
+            sets = [set(1, 28, target: 28, at: 0)]
+            state = .counting
+            setReps = 17
+            lastRepDate = Date()
+        case "repos":
+            phase = .active
+            sets = [set(1, 28, target: 28, at: 0)]
+            state = .searching
+            setReps = 0
+            lastRepDate = Date().addingTimeInterval(-45)
+        case "fin":
+            phase = .active
+            sets = [set(1, 28, target: 28, at: 0), set(2, 23, target: 24, at: 100), set(3, 18, target: 21, at: 160)]
+            state = .searching
+            setReps = 0
+            lastRepDate = Date()
+            sessionEnd = Date()
+            phase = .finished
+        default:
+            break
+        }
     }
 }

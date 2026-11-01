@@ -38,7 +38,7 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             // Liste de réglages : défile seulement si l'écran est trop petit
             VerticalScroll {
-                VStack(spacing: 14) {
+                VStack(spacing: 20) {
                     MonitorPanel("Mes exercices") {
                         VStack(alignment: .leading, spacing: 8) {
                             Button { showsExercises = true } label: {
@@ -49,7 +49,7 @@ struct SettingsView: View {
                                     }
                                     Spacer(minLength: 4)
                                     Image(systemName: "chevron.right")
-                                        .font(theme.font(11, .bold))
+                                        .font(theme.font(13, .bold))
                                         .foregroundStyle(theme.dim)
                                 }
                                 .frame(minHeight: 44)
@@ -61,7 +61,7 @@ struct SettingsView: View {
                                 .padding(.vertical, 4)
                             Toggle(isOn: $hasArmband) {
                                 Text("J'AI UN BRASSARD")
-                                    .font(theme.font(14, .bold))
+                                    .font(theme.font(15, .bold))
                                     .foregroundStyle(theme.text)
                             }
                             .tint(theme.primary)
@@ -86,16 +86,16 @@ struct SettingsView: View {
                             } label: {
                                 HStack {
                                     Text("ANNÉE DE NAISSANCE")
-                                        .font(theme.font(11, .semibold))
+                                        .font(theme.font(13, .semibold))
                                         .tracking(1)
                                         .foregroundStyle(theme.text)
                                     Spacer()
                                     Text(birthYear == 0 ? "—" : String(birthYear))
-                                        .font(theme.font(14, .semibold))
+                                        .font(theme.font(15, .semibold))
                                         .foregroundStyle(theme.primary)
                                         .monospacedDigit()
                                     Image(systemName: "chevron.down")
-                                        .font(theme.font(11, .bold))
+                                        .font(theme.font(13, .bold))
                                         .foregroundStyle(theme.dim)
                                         .rotationEffect(.degrees(showsYearWheel ? 180 : 0))
                                 }
@@ -107,7 +107,7 @@ struct SettingsView: View {
                                 Picker("Année de naissance", selection: $birthYear) {
                                     ForEach(Self.birthYears, id: \.self) { year in
                                         Text(String(year))
-                                            .font(theme.font(18, .semibold))
+                                            .font(theme.font(17, .semibold))
                                             .foregroundStyle(theme.text)
                                             .tag(year)
                                     }
@@ -134,7 +134,7 @@ struct SettingsView: View {
                                 .padding(.vertical, 4)
                             Toggle(isOn: $asksFeeling) {
                                 Text("RESSENTI")
-                                    .font(theme.font(14, .bold))
+                                    .font(theme.font(15, .bold))
                                     .foregroundStyle(theme.text)
                             }
                             .tint(theme.primary)
@@ -176,11 +176,11 @@ struct SettingsView: View {
                                     Image(systemName: "cup.and.saucer.fill")
                                         .foregroundStyle(theme.warn)
                                     Text("SOUTENIR REPS")
-                                        .font(theme.font(14, .bold))
+                                        .font(theme.font(15, .bold))
                                         .foregroundStyle(theme.text)
                                     Spacer()
                                     Image(systemName: "chevron.right")
-                                        .font(theme.font(11, .bold))
+                                        .font(theme.font(13, .bold))
                                         .foregroundStyle(theme.dim)
                                 }
                                 .frame(minHeight: 44)
@@ -194,11 +194,11 @@ struct SettingsView: View {
                                 Link(destination: SourceCode.url) {
                                     HStack {
                                         Text("CODE SOURCE")
-                                            .font(theme.font(14, .bold))
+                                            .font(theme.font(15, .bold))
                                             .foregroundStyle(theme.text)
                                         Spacer()
                                         Image(systemName: "arrow.up.right")
-                                            .font(theme.font(11, .bold))
+                                            .font(theme.font(13, .bold))
                                             .foregroundStyle(theme.dim)
                                     }
                                     .frame(minHeight: 44)
@@ -213,7 +213,7 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Toggle(isOn: $analysisMode) {
                                 Text("MODE ANALYSE")
-                                    .font(theme.font(14, .bold))
+                                    .font(theme.font(15, .bold))
                                     .foregroundStyle(theme.text)
                             }
                             .tint(theme.primary)
@@ -281,7 +281,7 @@ struct SettingsView: View {
 
     private func note(_ text: String) -> some View {
         Text(symbols: text)
-            .font(theme.font(11))
+            .font(theme.font(13))
             .foregroundStyle(theme.dim)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -315,7 +315,7 @@ private struct MyExercisesView: View {
                     MonitorLabel("Dans le cadran")
                 } footer: {
                     Text(symbols: "Glisse ≡ pour changer l'ordre.")
-                        .font(theme.font(11))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.dim)
                 }
                 if !others.isEmpty {
@@ -347,7 +347,7 @@ private struct MyExercisesView: View {
                 }
             } label: {
                 Image(systemName: adding ? "plus.circle.fill" : "minus.circle.fill")
-                    .font(theme.font(20))
+                    .font(theme.font(22))
                     .foregroundStyle(adding ? theme.ok : (locked ? theme.dim.opacity(0.4) : theme.warn))
             }
             .buttonStyle(.plain)
@@ -383,7 +383,7 @@ private struct AccuracyList: View {
             MonitorLabel("Précision du comptage")
             if rows.isEmpty {
                 Text("Aucune séance pour l'instant.")
-                    .font(theme.font(11))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
             }
             ForEach(rows) { row in
@@ -395,7 +395,7 @@ private struct AccuracyList: View {
                             .font(theme.font(13, .bold))
                             .foregroundStyle(theme.text)
                         Text("\(row.exactSets)/\(row.sets) séries exactes · \(row.missedOrExtra) erreur\(row.missedOrExtra > 1 ? "s" : "") sur \(row.reps) reps")
-                            .font(theme.font(11))
+                            .font(theme.font(13))
                             .foregroundStyle(theme.dim)
                     }
                     Spacer(minLength: 4)
@@ -410,12 +410,12 @@ private struct AccuracyList: View {
             if learned > 0 {
                 Text("Geste appris (abdos) : \(learned) répétitions" + (learned < GestureTemplate.minReps
                      ? ", actif dès \(GestureTemplate.minReps)." : ", actif : les séries irrégulières sont comptées."))
-                    .font(theme.font(11))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.text)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Text("Corrige chaque série fausse. Objectif : 95 %.")
-                .font(theme.font(11))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .fixedSize(horizontal: false, vertical: true)
         }

@@ -119,10 +119,10 @@ struct SupportView: View {
                     MonitorPanel {
                         VStack(alignment: .leading, spacing: 8) {
                             Text(SourceCode.isPublic ? "Gratuit, sans pub, open source." : "Gratuit, sans pub.")
-                                .font(theme.font(14, .semibold))
+                                .font(theme.font(15, .semibold))
                                 .foregroundStyle(theme.text)
                             Text("Fait par une seule personne. Un don ne débloque rien : c'est un merci.")
-                                .font(theme.font(12))
+                                .font(theme.font(13))
                                 .foregroundStyle(theme.dim)
                         }
                         .fixedSize(horizontal: false, vertical: true)
@@ -161,10 +161,10 @@ struct SupportView: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(wording.title.uppercased())
-                                    .font(theme.font(14, .bold))
+                                    .font(theme.font(15, .bold))
                                     .foregroundStyle(theme.text)
                                 Text(wording.line)
-                                    .font(theme.font(11))
+                                    .font(theme.font(13))
                                     .foregroundStyle(theme.dim)
                             }
                             Spacer()
@@ -183,7 +183,7 @@ struct SupportView: View {
                 }
                 if tipJar.status == .failed {
                     Text("Le paiement n'a pas abouti. Rien n'a été débité.")
-                        .font(theme.font(11))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.warn)
                 }
             }
@@ -193,13 +193,13 @@ struct SupportView: View {
     private var thanks: some View {
         VStack(spacing: 10) {
             Image(systemName: "heart.fill")
-                .font(theme.font(28))
+                .font(theme.font(22))
                 .foregroundStyle(theme.warn)
             Text("Merci !")
-                .font(theme.font(20, .bold))
+                .font(theme.font(22, .bold))
                 .foregroundStyle(theme.text)
             Text("Ton soutien finance la suite de Reps.")
-                .font(theme.font(12))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
         }
         .padding(.top, 20)
@@ -243,16 +243,16 @@ struct TipPrompt: View {
             Image(systemName: "cup.and.saucer.fill")
                 .foregroundStyle(theme.warn)
             Text("Un café pour le développeur ?")
-                .font(theme.font(11))
+                .font(theme.font(13))
                 .foregroundStyle(theme.text)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
             Button("Soutenir", action: onSupport)
-                .font(theme.font(12, .bold))
+                .font(theme.font(13, .bold))
                 .foregroundStyle(theme.primary)
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .font(theme.font(11, .bold))
+                    .font(theme.font(13, .bold))
                     .foregroundStyle(theme.dim)
             }
             .accessibilityLabel("Non merci")

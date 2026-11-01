@@ -100,18 +100,17 @@ struct AppTheme: Decodable, Identifiable, Equatable {
     }
 
     /// Le style Dynamic Type d'une taille de maquette.
+    /// L'échelle typographique de l'app : 5 tailles, pas une de plus, et jamais sous 13 pt
+    /// (skill reps-ux, « Typographie et espace »). Une taille demandée est rangée dans l'une des
+    /// 5 : chiffre clé (34), titre (22), texte (17), secondaire (15), note (13). Toutes suivent
+    /// Dynamic Type.
     static func textStyle(_ size: CGFloat) -> Font.TextStyle {
         switch size {
         case 30...: return .largeTitle
-        case 26..<30: return .title
-        case 21..<26: return .title2
-        case 19..<21: return .title3
-        case 17..<19: return .body
-        case 16..<17: return .callout
-        case 14..<16: return .subheadline
-        case 12.5..<14: return .footnote
-        case 11.5..<12.5: return .caption
-        default: return .caption2
+        case 20..<30: return .title2
+        case 16..<20: return .body
+        case 13.5..<16: return .subheadline
+        default: return .footnote
         }
     }
 
@@ -262,6 +261,13 @@ enum Format {
         Calendar.current.isDateInToday(date) ? "aujourd'hui" : date.formatted(.dateTime.weekday(.wide).day())
     }
 
+    /// « aujourd'hui », « demain », sinon « lundi 30 nov. ».
+    static func dayDate(_ date: Date, calendar: Calendar = .current) -> String {
+        if calendar.isDateInToday(date) { return "aujourd'hui" }
+        if calendar.isDateInTomorrow(date) { return "demain" }
+        return date.formatted(.dateTime.weekday(.wide).day().month(.abbreviated))
+    }
+
     /// « Lun. 26 oct. », première lettre en capitale.
     static func shortDay(_ date: Date) -> String {
         let text = date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
@@ -316,15 +322,17 @@ struct MonitorLabel: View {
         if theme.isSystem {
             // Hors compteur : une étiquette en casse normale, comme Santé
             Text(symbols: text)
-                .font(theme.font(13, .medium))
+                .font(theme.font(15, .medium))
                 .foregroundStyle(color ?? theme.dim)
                 .lineLimit(1)
+                .minimumScaleFactor(0.75)
         } else {
             Text(symbols: text.uppercased())
-                .font(theme.font(10, .semibold))
+                .font(theme.font(13, .semibold))
                 .tracking(1.5)
                 .foregroundStyle(color ?? theme.dim)
                 .lineLimit(1)
+                .minimumScaleFactor(0.75)
         }
     }
 }
@@ -366,7 +374,7 @@ struct MonitorPanel<Content: View, Accessory: View>: View {
             }
             content
         }
-        .padding(12)
+        .padding(20)
         .cardBackground(theme)
     }
 }
@@ -390,13 +398,13 @@ struct MetricTile: View {
             MonitorLabel(label)
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(value)
-                    .font(theme.font(20, .semibold))
+                    .font(theme.font(22, .semibold))
                     .foregroundStyle(color ?? theme.text)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 if let unit {
                     Text(unit)
-                        .font(theme.font(10))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.dim)
                 }
             }
@@ -569,26 +577,50 @@ struct CardHeader<Trailing: View>: View {
     var opens = false
     @ViewBuilder var trailing: () -> Trailing
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(spacing: 6) {
-            Label {
-                Text(title)
-            } icon: {
-                Image(systemName: symbol)
-            }
-            .font(theme.font(15, .semibold))
-            .foregroundStyle(color ?? theme.primary)
-            .lineLimit(1)
-            Spacer(minLength: 8)
-            trailing()
-            if opens {
-                Image(systemName: "chevron.right")
-                    .font(theme.font(13, .semibold))
-                    .foregroundStyle(Color(uiColor: .tertiaryLabel))
+        Group {
+            if typeSize.isAccessibilitySize {
+                // En tailles d'accessibilité, ce qui suit le titre passe dessous (rien n'est
+                // coupé) ; le chevron reste au bout du titre
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        titleLabel.lineLimit(2)
+                        Spacer(minLength: 8)
+                        chevron
+                    }
+                    trailing()
+                }
+            } else {
+                HStack(spacing: 6) {
+                    titleLabel.lineLimit(1)
+                    Spacer(minLength: 8)
+                    trailing()
+                    chevron
+                }
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+    }
+
+    private var titleLabel: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: symbol)
+        }
+        .font(theme.font(15, .semibold))
+        .foregroundStyle(color ?? theme.primary)
+    }
+
+    @ViewBuilder private var chevron: some View {
+        if opens {
+            Image(systemName: "chevron.right")
+                .font(theme.font(13, .semibold))
+                .foregroundStyle(Color(uiColor: .tertiaryLabel))
+        }
     }
 }
 

@@ -40,10 +40,10 @@ struct JournalHoursSettings: View {
                     minus: { end = max(start + JournalHours.minSpan, end - JournalHours.step) },
                     plus: { end = min(24 * 60, end + JournalHours.step) })
             DayRangeBar(start: start, end: end)
-                .frame(height: 26)
+                .frame(height: 32)
                 .accessibilityLabel("Journée affichée de \(JournalHours.spoken(start)) à \(JournalHours.spoken(end))")
             Text(symbols: "Hors de ces heures, une séance se place au bord, marquée ‹ ou ›.")
-                .font(theme.font(11))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -55,14 +55,14 @@ struct JournalHoursSettings: View {
                 .font(theme.font(13, .bold))
                 .foregroundStyle(theme.text)
             Spacer()
-            Button(action: minus) { Text(symbols: "‹").font(theme.font(18, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
+            Button(action: minus) { Text(symbols: "‹").font(theme.font(17, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
                 .accessibilityLabel("\(label) plus tôt")
             Text(JournalHours.label(value))
                 .font(theme.font(15, .bold))
                 .foregroundStyle(theme.text)
                 .monospacedDigit()
                 .frame(width: 64)
-            Button(action: plus) { Text(symbols: "›").font(theme.font(18, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
+            Button(action: plus) { Text(symbols: "›").font(theme.font(17, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
                 .accessibilityLabel("\(label) plus tard")
         }
         .buttonStyle(.plain)
@@ -82,9 +82,11 @@ private struct DayRangeBar: View {
             context.fill(Path(roundedRect: CGRect(x: 4, y: 6, width: size.width - 8, height: 6), cornerRadius: 3), with: .color(theme.grid))
             context.fill(Path(roundedRect: CGRect(x: x(start), y: 6, width: x(end) - x(start), height: 6), cornerRadius: 3),
                          with: .color(theme.primary))
+            // Les libellés des bords rentrent vers l'intérieur : jamais rognés
             for hour in stride(from: 0, through: 24, by: 6) {
-                context.draw(Text("\(hour)h").font(theme.font(8)).foregroundStyle(theme.dim),
-                             at: CGPoint(x: x(hour * 60), y: size.height - 4))
+                let anchor: UnitPoint = hour == 0 ? .bottomLeading : (hour == 24 ? .bottomTrailing : .bottom)
+                context.draw(Text("\(hour)h").font(theme.font(13)).foregroundStyle(theme.dim),
+                             at: CGPoint(x: x(hour * 60), y: size.height), anchor: anchor)
             }
         }
     }
@@ -95,33 +97,31 @@ private struct DayRangeBar: View {
 /// Le journal de l'historique (skill reps-ux, § 9) : une ligne par jour, aujourd'hui en haut ;
 /// en abscisse l'heure (plage des Réglages, graduée toutes les 3 h). Chaque séance est posée à son
 /// heure en silhouette (une barre fine par série, verte si sa cible est atteinte), ★ si record ;
-/// le total du jour à droite (Σ). Jour de repos : pointillés ; séance prévue manquée :
-/// « ! prévue, manquée ». Lignes alternées, aujourd'hui teinté, un filet sous chaque lundi.
+/// le total du jour à droite (Σ). Jour sans séance : pointillés (jamais « manqué » : pas de jours
+/// prévus, METHODE-JOURS.md). Lignes alternées, aujourd'hui teinté, un filet sous chaque lundi.
 /// Toucher une silhouette ouvre la séance.
 struct JournalCard: View {
     @Environment(\.theme) private var theme
     @AppStorage(JournalHours.startKey) private var start = JournalHours.defaultStart
     @AppStorage(JournalHours.endKey) private var end = JournalHours.defaultEnd
     let stats: HistoryStats
-    /// Jours où une séance prévue par le plan a été manquée (début du jour).
-    let missed: Set<Date>
     let onDelete: (SessionRecord) -> Void
     @State private var shownDays = 28
     /// La séance ouverte (poussée dans l'historique).
     @State private var opened: SessionRecord?
 
     /// Une ligne par jour, touchable en entier : 44 pt (HIG), plus avec un texte plus grand.
-    @ScaledMetric(relativeTo: .caption) private var rowHeight: CGFloat = 44
+    @ScaledMetric(relativeTo: .footnote) private var rowHeight: CGFloat = 44
     /// Hauteur des silhouettes dans la ligne.
     private static let silhouetteHeight: CGFloat = 24
     /// Colonnes du jour et du total : elles suivent la taille du texte.
-    @ScaledMetric(relativeTo: .caption) private var labelWidth: CGFloat = 40
-    @ScaledMetric(relativeTo: .caption) private var totalWidth: CGFloat = 38
+    @ScaledMetric(relativeTo: .footnote) private var labelWidth: CGFloat = 50
+    @ScaledMetric(relativeTo: .footnote) private var totalWidth: CGFloat = 42
     /// Une séance posée au bord de la plage reste à l'intérieur : elle ne recouvre ni le jour ni
     /// le total.
     private static let edgeInset: CGFloat = 16
     /// La largeur d'une marque (★, ‹ ›, +n) au-dessus d'une silhouette, à l'échelle du texte.
-    @ScaledMetric(relativeTo: .caption2) private var markWidth: CGFloat = 10
+    @ScaledMetric(relativeTo: .footnote) private var markWidth: CGFloat = 14
 
     var body: some View {
         let days = self.days
@@ -130,12 +130,12 @@ struct JournalCard: View {
             CardHeader(symbol: "calendar.day.timeline.left", title: "Journal") {
                 MonitorLabel("\(JournalHours.label(start)) → \(JournalHours.label(end))")
                     .accessibilityLabel("de \(JournalHours.spoken(start)) à \(JournalHours.spoken(end))")
-                MonitorLabel("Σ")
-                    .accessibilityLabel("total du jour")
+                MonitorLabel("reps")
+                    .accessibilityLabel("répétitions du jour")
                     .frame(width: totalWidth, alignment: .trailing)
             }
             hourAxis
-                .frame(height: 12)
+                .frame(height: 18)
                 .accessibilityHidden(true)
             VStack(spacing: 0) {
                 ForEach(Array(days.enumerated()), id: \.element) { index, day in
@@ -144,14 +144,14 @@ struct JournalCard: View {
             }
             if let first = stats.sessions.last, let oldest = days.last, stats.calendar.startOfDay(for: first.start) < oldest {
                 Button("+ 28 jours") { withAnimation { shownDays += 28 } }
-                    .font(theme.font(12, .bold))
+                    .font(theme.font(13, .bold))
                     .foregroundStyle(theme.primary)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .contentShape(Rectangle())
                     .padding(.top, 6)
             }
         }
-        .padding(14)
+        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(theme.panel, in: RoundedRectangle(cornerRadius: theme.radius, style: .continuous))
         .overlay {
@@ -193,10 +193,10 @@ struct JournalCard: View {
             let width = geometry.size.width - labelWidth - totalWidth
             ForEach(Array(stride(from: (start + 179) / 180 * 180, through: end, by: 180)), id: \.self) { minutes in
                 Text("\(minutes / 60)h")
-                    .font(theme.font(8))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
                     .fixedSize()
-                    .position(x: labelWidth + width * share(minutes), y: 6)
+                    .position(x: labelWidth + width * share(minutes), y: 9)
             }
         }
     }
@@ -298,12 +298,7 @@ struct JournalCard: View {
                         .position(x: labelWidth + width * share(minutes), y: rowHeight / 2)
                 }
                 if sessions.isEmpty {
-                    if missed.contains(day) {
-                        Text(symbols: "! prévue, manquée")
-                            .font(theme.font(9))
-                            .foregroundStyle(theme.text)
-                            .position(x: labelWidth + width / 2, y: rowHeight / 2)
-                    } else if day < stats.calendar.startOfDay(for: stats.now) {
+                    if day < stats.calendar.startOfDay(for: stats.now) {
                         Path { path in
                             path.move(to: CGPoint(x: labelWidth, y: rowHeight / 2))
                             path.addLine(to: CGPoint(x: labelWidth + width, y: rowHeight / 2))
@@ -322,13 +317,13 @@ struct JournalCard: View {
             }
             HStack {
                 Text(dayLabel(day))
-                    .font(theme.font(9, isToday ? .bold : .regular))
+                    .font(theme.font(13, isToday ? .bold : .regular))
                     .foregroundStyle(isToday ? theme.text : theme.dim)
                     .frame(width: labelWidth, alignment: .leading)
                     .padding(.leading, 2)
                 Spacer()
                 Text(total > 0 ? "\(total)" : "")
-                    .font(theme.font(10, isToday ? .bold : .regular))
+                    .font(theme.font(13, isToday ? .bold : .regular))
                     .foregroundStyle(isToday ? theme.text : theme.dim)
                     .monospacedDigit()
                     .frame(width: totalWidth, alignment: .trailing)
@@ -347,14 +342,13 @@ struct JournalCard: View {
     }
 
     private func dayLabel(_ day: Date) -> String {
-        if stats.calendar.isDateInToday(day) { return "auj." }
         let text = day.formatted(.dateTime.weekday(.abbreviated))
         return text + " " + day.formatted(.dateTime.day())
     }
 
     private func accessibility(_ day: Date, sessions: [SessionRecord], total: Int) -> String {
         let name = Format.dayName(day)
-        guard !sessions.isEmpty else { return missed.contains(day) ? "\(name) : séance prévue, manquée" : "\(name) : repos" }
+        guard !sessions.isEmpty else { return "\(name) : repos" }
         let reached = sessions.filter { session in
             let sets = session.orderedSets.filter { $0.target != nil }
             return !sets.isEmpty && sets.allSatisfy { $0.reps >= ($0.target ?? .max) }
@@ -390,7 +384,7 @@ private struct JournalSilhouette: View {
     static let maxBars = 10
     static let barWidth: CGFloat = 3
     /// Les marques au-dessus des barres : leur décalage suit la taille du texte.
-    @ScaledMetric(relativeTo: .caption2) private var lift: CGFloat = 10
+    @ScaledMetric(relativeTo: .footnote) private var lift: CGFloat = 14
     static let gap: CGFloat = 1
 
     /// Le nombre de marques posées au-dessus (« +n » compte double).
@@ -441,7 +435,7 @@ private struct JournalSilhouette: View {
 
     private func marker(_ symbol: String) -> some View {
         Text(symbols: symbol)
-            .font(theme.font(9, .bold))
+            .font(theme.font(13, .bold))
             .foregroundStyle(theme.text)
     }
 }

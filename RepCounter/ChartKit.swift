@@ -28,7 +28,7 @@ struct SelectionLabel: View {
                 .monospacedDigit()
             if let detail {
                 Text(detail)
-                    .font(theme.font(11))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.dim)
             }
         }

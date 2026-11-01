@@ -1,0 +1,568 @@
+<title>Nouveautés Reps</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Une colonne : chaque version, puis chaque changement avec ses deux extraits côte à côte (empilés sur téléphone). */
+:root {
+  --bg: #f2f2f7; --surface: #ffffff; --fg: #111418; --dim: #5d6670; --line: #d8dde3;
+  --accent: #007aff; --before: #8e8e93; --after: #248a3d; --ko: #c9342b;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #000000; --surface: #1c1c1e; --fg: #f2f2f7; --dim: #9a9aa1; --line: #38383a;
+    --accent: #0a84ff; --before: #8e8e93; --after: #30d158; --ko: #ff6961; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #000000; --surface: #1c1c1e; --fg: #f2f2f7; --dim: #9a9aa1; --line: #38383a;
+  --accent: #0a84ff; --before: #8e8e93; --after: #30d158; --ko: #ff6961; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 17px; line-height: 1.4;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 760px; margin: 0 auto; padding-block: 24px 48px; display: grid; gap: 32px; }
+h1 { font-size: 34px; margin: 0; text-wrap: balance; }
+h2 { font-size: 22px; margin: 0; }
+h3 { font-size: 17px; margin: 0; font-weight: 600; text-wrap: balance; }
+p { margin: 0; }
+.lead { color: var(--dim); font-size: 17px; max-width: 60ch; }
+.version { display: grid; gap: 20px; }
+.version > p { color: var(--dim); font-size: 15px; }
+.change { background: var(--surface); border-radius: 14px; padding: 20px; display: grid; gap: 16px; }
+.where { color: var(--dim); font-size: 15px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 560px) { .pair { grid-template-columns: 1fr; } }
+.pair.single { grid-template-columns: minmax(0, 360px); }
+figure { margin: 0; display: grid; gap: 8px; min-width: 0; }
+figcaption { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--before); }
+.after figcaption { color: var(--after); }
+img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+.avis { display: grid; gap: 12px; padding-top: 4px; border-top: 1px solid var(--line); padding-block-start: 16px; }
+.choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.choices button { flex: 1 1 140px; min-height: 44px; border-radius: 10px; border: 1px solid var(--line);
+  background: transparent; color: var(--fg); font: 600 17px var(--font); cursor: pointer; }
+.choices button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.choices button.ok[aria-pressed="true"] { background: color-mix(in srgb, var(--after) 16%, transparent); border-color: var(--after); color: var(--after); }
+.choices button.ko[aria-pressed="true"] { background: color-mix(in srgb, var(--ko) 16%, transparent); border-color: var(--ko); color: var(--ko); }
+.note { display: grid; gap: 6px; font-size: 15px; color: var(--dim); }
+textarea { width: 100%; box-sizing: border-box; min-height: 44px; resize: vertical; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--fg); font: 400 17px var(--font); padding: 10px 12px; }
+.status { font-size: 15px; color: var(--dim); min-height: 1.3em; }
+.status.warn { color: var(--ko); }
+</style>
+
+<main>
+  <header style="display:grid;gap:8px">
+    <h1>Nouveautés</h1>
+    <p class="lead">Ce qui change à l'écran, version après version : un extrait avant, un extrait après. Dis pour chaque changement s'il te va ; ton avis est enregistré et je le lis.</p>
+    <p class="status" id="status" aria-live="polite">Chargement de tes avis…</p>
+  </header>
+
+  <section class="version" aria-labelledby="v-2026-11-01e">
+    <div style="display:grid;gap:4px">
+      <h2 id="v-2026-11-01e">Cycle 3 : tes 2 derniers « À revoir »</h2>
+      <p>Les séries en fin de séance, la courbe du record.</p>
+    </div>
+      <article class="change">
+        <header><p class="where">Fin de séance</p><h3>Chaque série face à sa cible, d'un coup d'œil : « ✓ » en vert, sinon ce qui manque (« −1 »). Le pourcentage se calcule sur les mêmes cibles.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01e/25-series-avant.png" alt="Avant : Chaque série face à sa cible, d'un coup d'œil : « ✓ » en vert, sinon ce qui manque (« −1 »). Le pourcentage se calcule sur les mêmes cibles." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01e/25-series-apres.png" alt="Après : Chaque série face à sa cible, d'un coup d'œil : « ✓ » en vert, sinon ce qui manque (« −1 »). Le pourcentage se calcule sur les mêmes cibles." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01e-25-series">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01e-25-series"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · 12 semaines</p><h3>Plus de losanges rouges sur la courbe.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01e/26-courbe-avant.png" alt="Avant : Plus de losanges rouges sur la courbe." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01e/26-courbe-apres.png" alt="Après : Plus de losanges rouges sur la courbe." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01e-26-courbe">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01e-26-courbe"></textarea>
+          </label>
+        </div>
+      </article>
+  </section>
+
+  <section class="version" aria-labelledby="v-2026-11-01d">
+    <div style="display:grid;gap:4px">
+      <h2 id="v-2026-11-01d">Cycle 3 : tes 4 « À revoir »</h2>
+      <p>Tunnel, repos, fin de séance, record.</p>
+    </div>
+      <article class="change">
+        <header><p class="where">Pendant la série</p><h3>Le tunnel en perspective : les segments sont des tuiles sur la paroi, leurs bords fuient vers le centre. Allumé, un segment émet (uniforme, avec un halo) ; éteint, il ne fait que réfléchir (dégradé, sans halo).</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01d/21-tunnel-avant.png" alt="Avant : Le tunnel en perspective : les segments sont des tuiles sur la paroi, leurs bords fuient vers le centre. Allumé, un segment émet (uniforme, avec un halo) ; éteint, il ne fait que réfléchir (dégradé, sans halo)." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01d/21-tunnel-apres.png" alt="Après : Le tunnel en perspective : les segments sont des tuiles sur la paroi, leurs bords fuient vers le centre. Allumé, un segment émet (uniforme, avec un halo) ; éteint, il ne fait que réfléchir (dégradé, sans halo)." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01d-21-tunnel">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01d-21-tunnel"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Pendant le repos</p><h3>Une petite lumière par seconde, qui s'éteint ; à la fin, 3, 2, 1 au son puis le signal de départ.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01d/22-repos-avant.png" alt="Avant : Une petite lumière par seconde, qui s'éteint ; à la fin, 3, 2, 1 au son puis le signal de départ." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01d/22-repos-apres.png" alt="Après : Une petite lumière par seconde, qui s'éteint ; à la fin, 3, 2, 1 au son puis le signal de départ." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01d-22-repos">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01d-22-repos"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Fin de séance</p><h3>La part de la cible faite : « Presque atteinte : 97 % » à 90 % ou plus, sinon « Atteinte à 62 % ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01d/23-fin-avant.png" alt="Avant : La part de la cible faite : « Presque atteinte : 97 % » à 90 % ou plus, sinon « Atteinte à 62 % »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01d/23-fin-apres.png" alt="Après : La part de la cible faite : « Presque atteinte : 97 % » à 90 % ou plus, sinon « Atteinte à 62 % »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01d-23-fin">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01d-23-fin"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · 12 semaines</p><h3>Le record de toujours : une ligne fine sur la courbe, le chiffre en petit au-dessus.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01d/24-record-avant.png" alt="Avant : Le record de toujours : une ligne fine sur la courbe, le chiffre en petit au-dessus." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01d/24-record-apres.png" alt="Après : Le record de toujours : une ligne fine sur la courbe, le chiffre en petit au-dessus." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01d-24-record">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01d-24-record"></textarea>
+          </label>
+        </div>
+      </article>
+  </section>
+
+  <section class="version" aria-labelledby="v-2026-11-01c">
+    <div style="display:grid;gap:4px">
+      <h2 id="v-2026-11-01c">Cycle 3 : pendant et après l'effort</h2>
+      <p>Les écrans de série, de repos et de fin de séance, et tes 7 « À revoir » corrigés.</p>
+    </div>
+      <article class="change">
+        <header><p class="where">Pendant la série</p><h3>Le tunnel : un anneau de 10 par dizaine, la cible entière visible ; le nombre et « sur 23 » en grand ; « Série 2 sur 3 ». Plus de chronomètre ni de rangée des séries.</h3></header>
+        <div class="pair single">
+          <figure class="after"><figcaption>Nouveau</figcaption><img src="2026-11-01c/18-serie-apres.png" alt="Pendant la série : Le tunnel : un anneau de 10 par dizaine, la cible entière visible ; le nombre et « sur 23 » en grand ; « Série 2 sur 3 ». Plus de chronomètre ni de rangée des séries." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01c-18-serie">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01c-18-serie"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Pendant le repos</p><h3>Un compte à rebours : les segments s'éteignent, « Prêt » en vert à zéro ; la série suivante et sa cible en grand.</h3></header>
+        <div class="pair single">
+          <figure class="after"><figcaption>Nouveau</figcaption><img src="2026-11-01c/19-repos-apres.png" alt="Pendant le repos : Un compte à rebours : les segments s'éteignent, « Prêt » en vert à zéro ; la série suivante et sa cible en grand." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01c-19-repos">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01c-19-repos"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Fin de séance</p><h3>Trois blocs : la cible, la suite, le coach (seulement quand une mesure le justifie) ; le reste dans « Détail de la séance » ; « Terminé ».</h3></header>
+        <div class="pair single">
+          <figure class="after"><figcaption>Nouveau</figcaption><img src="2026-11-01c/20-fin-apres.png" alt="Fin de séance : Trois blocs : la cible, la suite, le coach (seulement quand une mesure le justifie) ; le reste dans « Détail de la séance » ; « Terminé »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01c-20-fin">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01c-20-fin"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Coaching · Aujourd'hui</p><h3>« intensité soutenue » devient « effort normal », avec une petite jauge à 3 crans ; plus de puce.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01c/13-effort-avant.png" alt="Avant : « intensité soutenue » devient « effort normal », avec une petite jauge à 3 crans ; plus de puce." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01c/13-effort-apres.png" alt="Après : « intensité soutenue » devient « effort normal », avec une petite jauge à 3 crans ; plus de puce." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01c-13-effort">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01c-13-effort"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Coaching · jour de test</p><h3>Plus de pictogrammes ; ce qu'il faut faire en une phrase ; le chiffre à battre en grand ; « En savoir plus » explique le test.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01c/14-jour-de-test-avant.png" alt="Avant : Plus de pictogrammes ; ce qu'il faut faire en une phrase ; le chiffre à battre en grand ; « En savoir plus » explique le test." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01c/14-jour-de-test-apres.png" alt="Après : Plus de pictogrammes ; ce qu'il faut faire en une phrase ; le chiffre à battre en grand ; « En savoir plus » explique le test." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01c-14-jour-de-test">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01c-14-jour-de-test"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · 12 semaines</p><h3>Plus d'étoiles sur la courbe ; ton record de toujours est écrit au-dessus ; « reps par semaine ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01c/15-record-avant.png" alt="Avant : Plus d'étoiles sur la courbe ; ton record de toujours est écrit au-dessus ; « reps par semaine »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01c/15-record-apres.png" alt="Après : Plus d'étoiles sur la courbe ; ton record de toujours est écrit au-dessus ; « reps par semaine »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01c-15-record">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01c-15-record"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · Journal</p><h3>« total » devient « reps » : c'est le nombre de répétitions du jour.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01c/16-journal-avant.png" alt="Avant : « total » devient « reps » : c'est le nombre de répétitions du jour." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01c/16-journal-apres.png" alt="Après : « total » devient « reps » : c'est le nombre de répétitions du jour." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01c-16-journal">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01c-16-journal"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Cadran</p><h3>Plus de « caméra » ni de point seul sous la question de fatigue.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01c/17-fatigue-avant.png" alt="Avant : Plus de « caméra » ni de point seul sous la question de fatigue." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01c/17-fatigue-apres.png" alt="Après : Plus de « caméra » ni de point seul sous la question de fatigue." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01c-17-fatigue">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01c-17-fatigue"></textarea>
+          </label>
+        </div>
+      </article>
+  </section>
+
+  <section class="version" aria-labelledby="v-2026-11-01b">
+    <div style="display:grid;gap:4px">
+      <h2 id="v-2026-11-01b">1er novembre, soir</h2>
+      <p>Corrections de la recette du cycle 2 : 4 changements.</p>
+    </div>
+      <article class="change">
+        <header><p class="where">Coaching · carte Aujourd'hui</p><h3>Une séance terminée sous la cible est marquée « fait · cible non atteinte », avec la prochaine séance et ses cibles.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01b/09-seance-faite-avant.png" alt="Avant : Une séance terminée sous la cible est marquée « fait · cible non atteinte », avec la prochaine séance et ses cibles." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01b/09-seance-faite-apres.png" alt="Après : Une séance terminée sous la cible est marquée « fait · cible non atteinte », avec la prochaine séance et ses cibles." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01b-09-seance-faite">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01b-09-seance-faite"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Coaching · jour de test</p><h3>Le jour de test dit ce qu'il faut faire (« Série max »), ton dernier résultat et pourquoi le test est attendu.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01b/10-jour-de-test-avant.png" alt="Avant : Le jour de test dit ce qu'il faut faire (« Série max »), ton dernier résultat et pourquoi le test est attendu." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01b/10-jour-de-test-apres.png" alt="Après : Le jour de test dit ce qu'il faut faire (« Série max »), ton dernier résultat et pourquoi le test est attendu." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01b-10-jour-de-test">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01b-10-jour-de-test"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Cadran · jour de repos conseillé</p><h3>La raison du repos ne commence plus par un point isolé.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01b/11-repos-avant.png" alt="Avant : La raison du repos ne commence plus par un point isolé." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01b/11-repos-apres.png" alt="Après : La raison du repos ne commence plus par un point isolé." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01b-11-repos">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01b-11-repos"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Coaching · grand texte</p><h3>En grand texte, plus rien n'est coupé : « Aujourd'hui », l'intensité, et la frise dit « Cette semaine : progrès ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01b/12-grand-texte-plan-avant.png" alt="Avant : En grand texte, plus rien n'est coupé : « Aujourd'hui », l'intensité, et la frise dit « Cette semaine : progrès »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01b/12-grand-texte-plan-apres.png" alt="Après : En grand texte, plus rien n'est coupé : « Aujourd'hui », l'intensité, et la frise dit « Cette semaine : progrès »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01b-12-grand-texte-plan">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01b-12-grand-texte-plan"></textarea>
+          </label>
+        </div>
+      </article>
+  </section>
+
+  <section class="version" aria-labelledby="v-2026-11-01">
+    <div style="display:grid;gap:4px">
+      <h2 id="v-2026-11-01">1er novembre</h2>
+      <p>Revue de design sur les premières captures : 8 corrections.</p>
+    </div>
+      <article class="change">
+        <header><p class="where">Coaching · carte Aujourd'hui</p><h3>« soutenue » devient « intensité soutenue ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/01-intensite-avant.png" alt="Avant : « soutenue » devient « intensité soutenue »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/01-intensite-apres.png" alt="Après : « soutenue » devient « intensité soutenue »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-01-intensite">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-01-intensite"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Coaching · Chemin</p><h3>Le repère d'aujourd'hui ne masque plus « pompes d'affilée ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/02-chemin-avant.png" alt="Avant : Le repère d'aujourd'hui ne masque plus « pompes d'affilée »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/02-chemin-apres.png" alt="Après : Le repère d'aujourd'hui ne masque plus « pompes d'affilée »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-02-chemin">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-02-chemin"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · filtre</p><h3>« Σ » devient « Tous ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/03-tous-avant.png" alt="Avant : « Σ » devient « Tous »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/03-tous-apres.png" alt="Après : « Σ » devient « Tous »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-03-tous">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-03-tous"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · 12 semaines</p><h3>« cette semaine » n'est plus coupé.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/04-cette-semaine-avant.png" alt="Avant : « cette semaine » n'est plus coupé." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/04-cette-semaine-apres.png" alt="Après : « cette semaine » n'est plus coupé." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-04-cette-semaine">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-04-cette-semaine"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · 12 semaines</p><h3>Plus d'étoiles empilées sur les semaines de test.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/05-etoiles-avant.png" alt="Avant : Plus d'étoiles empilées sur les semaines de test." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/05-etoiles-apres.png" alt="Après : Plus d'étoiles empilées sur les semaines de test." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-05-etoiles">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-05-etoiles"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · 12 semaines</p><h3>« reps / sem. » devient « répétitions par semaine ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/06-repetitions-avant.png" alt="Avant : « reps / sem. » devient « répétitions par semaine »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/06-repetitions-apres.png" alt="Après : « reps / sem. » devient « répétitions par semaine »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-06-repetitions">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-06-repetitions"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Historique · Journal</p><h3>« Σ » devient « total » ; « auj. » devient la date du jour.</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/07-journal-avant.png" alt="Avant : « Σ » devient « total » ; « auj. » devient la date du jour." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/07-journal-apres.png" alt="Après : « Σ » devient « total » ; « auj. » devient la date du jour." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-07-journal">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-07-journal"></textarea>
+          </label>
+        </div>
+      </article>
+      <article class="change">
+        <header><p class="where">Cadran</p><h3>« Fatigue ? » n'est plus coupé ; « CAM 3D » devient « caméra ».</h3></header>
+        <div class="pair">
+          <figure><figcaption>Avant</figcaption><img src="2026-11-01/08-fatigue-avant.png" alt="Avant : « Fatigue ? » n'est plus coupé ; « CAM 3D » devient « caméra »." loading="lazy"></figure>
+          <figure class="after"><figcaption>Après</figcaption><img src="2026-11-01/08-fatigue-apres.png" alt="Après : « Fatigue ? » n'est plus coupé ; « CAM 3D » devient « caméra »." loading="lazy"></figure>
+        </div>
+        <div class="avis" data-id="2026-11-01-08-fatigue">
+          <div class="choices" role="group" aria-label="Ton avis">
+            <button type="button" class="ok" aria-pressed="false">Ça me va</button>
+            <button type="button" class="ko" aria-pressed="false">À revoir</button>
+          </div>
+          <label class="note">Ton commentaire (facultatif)
+            <textarea rows="2" id="note-2026-11-01-08-fatigue"></textarea>
+          </label>
+        </div>
+      </article>
+  </section>
+</main>
+
+<script>
+(function () {
+  var statusEl = document.getElementById("status");
+  function setStatus(t, warn) { statusEl.textContent = t; statusEl.classList.toggle("warn", !!warn); }
+  var state = {};
+  var db = null;
+  var cards = Array.prototype.slice.call(document.querySelectorAll(".avis"));
+  cards.forEach(function (card) { state[card.dataset.id] = { verdict: null, note: "" }; });
+
+  function render() {
+    cards.forEach(function (card) {
+      var s = state[card.dataset.id];
+      card.querySelector(".ok").setAttribute("aria-pressed", s.verdict === "ok" ? "true" : "false");
+      card.querySelector(".ko").setAttribute("aria-pressed", s.verdict === "ko" ? "true" : "false");
+      var ta = card.querySelector("textarea");
+      if (document.activeElement !== ta && ta.value !== s.note) ta.value = s.note;
+    });
+  }
+  var writing = {}, pending = {}, timers = {};
+  function save(id) {
+    try { localStorage.setItem("nouveautes", JSON.stringify(state)); } catch (e) {}
+    if (!db) return;
+    if (writing[id]) { pending[id] = true; return; }
+    writing[id] = true;
+    setStatus("Enregistrement…");
+    db.doc("avis/" + id).set({ verdict: state[id].verdict, note: state[id].note, updatedAt: new Date().toISOString() })
+      .then(function () { setStatus("Enregistré."); },
+            function () { setStatus("Pas enregistré pour l'instant. Dis-moi ton avis dans la conversation.", true); })
+      .then(function () { writing[id] = false; if (pending[id]) { pending[id] = false; save(id); } });
+  }
+  cards.forEach(function (card) {
+    var id = card.dataset.id;
+    card.querySelector(".ok").addEventListener("click", function () {
+      state[id].verdict = state[id].verdict === "ok" ? null : "ok"; render(); save(id); });
+    card.querySelector(".ko").addEventListener("click", function () {
+      state[id].verdict = state[id].verdict === "ko" ? null : "ko"; render(); save(id); });
+    card.querySelector("textarea").addEventListener("input", function (e) {
+      state[id].note = e.target.value; clearTimeout(timers[id]); timers[id] = setTimeout(function () { save(id); }, 900); });
+  });
+  try {
+    var saved = JSON.parse(localStorage.getItem("nouveautes") || "null");
+    if (saved) Object.keys(saved).forEach(function (k) { if (state[k]) state[k] = saved[k]; });
+  } catch (e) {}
+  render();
+  if (!window.claude || !window.claude.use) { setStatus("Tes avis restent sur cet appareil : dis-les-moi dans la conversation.", true); return; }
+  window.claude.use("db").then(function (handle) {
+    if (!handle) { setStatus("Tes avis restent sur cet appareil : dis-les-moi dans la conversation.", true); return; }
+    db = handle;
+    var loaded = false;
+    var timer = setTimeout(function () { if (!loaded) setStatus("Tes avis ne se chargent pas encore ; tu peux continuer.", true); }, 10000);
+    db.collection("avis").onSnapshot(function (snap) {
+      if (!snap.metadata.fromCache) { loaded = true; clearTimeout(timer); }
+      snap.docs.forEach(function (d) {
+        var data = d.data() || {};
+        if (!state[d.id]) return;
+        state[d.id].verdict = data.verdict === "ok" || data.verdict === "ko" ? data.verdict : null;
+        state[d.id].note = typeof data.note === "string" ? data.note : "";
+      });
+      render();
+      if (loaded && !statusEl.classList.contains("warn")) setStatus("Tes avis sont enregistrés ici.");
+    }, function () { clearTimeout(timer); db = null; setStatus("Tes avis ne peuvent plus être enregistrés ici. Dis-les-moi dans la conversation.", true); });
+  });
+})();
+</script>

@@ -104,16 +104,26 @@ struct FeelingScale: View {
     let caption: String
     let onSelect: (Int?) -> Void
 
+    private var captionText: some View {
+        Text(caption)
+            .font(theme.font(13))
+            .foregroundStyle(selection == nil ? theme.dim : theme.text)
+            .contentTransition(.opacity)
+    }
+
     var body: some View {
         VStack(spacing: 6) {
-            HStack {
-                MonitorLabel(title)
-                Spacer(minLength: 8)
-                Text(caption)
-                    .font(theme.font(11))
-                    .foregroundStyle(selection == nil ? theme.dim : theme.text)
-                    .lineLimit(1)
-                    .contentTransition(.opacity)
+            // Sur une ligne si elle tient, sinon la légende sous la question : jamais coupée
+            ViewThatFits(in: .horizontal) {
+                HStack {
+                    MonitorLabel(title)
+                    Spacer(minLength: 8)
+                    captionText.lineLimit(1)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    MonitorLabel(title)
+                    captionText
+                }
             }
             HStack(spacing: 4) {
                 ForEach(Array(values), id: \.self) { value in
@@ -122,8 +132,13 @@ struct FeelingScale: View {
                         withAnimation(.snappy(duration: 0.15)) { onSelect(chosen ? nil : value) }
                     } label: {
                         Text("\(value)")
-                            .font(theme.font(12, .bold))
+                            .font(theme.font(13, .bold))
                             .monospacedDigit()
+                            // 11 cases sur une ligne : le chiffre grandit jusqu'à une limite, puis
+                            // se réduit au lieu d'être coupé (« 9 … » en grand texte)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
                             .foregroundStyle(chosen ? theme.background : theme.text)
                             .frame(maxWidth: .infinity)
                             .frame(height: 44)
@@ -169,6 +184,6 @@ struct FatigueQuestion: View {
     }
 
     private var caption: String {
-        fatigue.map(Feeling.fatigueLabel) ?? "1 toujours fatigué · 5 très frais"
+        fatigue.map(Feeling.fatigueLabel) ?? "1 fatigué · 5 frais"
     }
 }

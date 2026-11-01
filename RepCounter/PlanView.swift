@@ -14,6 +14,44 @@ enum Intensity {
     static func word(_ level: Double) -> String {
         level < 0.3 ? "calme" : (level < 0.85 ? "soutenue" : "maximale")
     }
+
+    /// L'effort demandé, en mot de tous les jours : facile, normal, maximal.
+    static func effort(_ level: Double) -> String {
+        level < 0.3 ? "facile" : (level < 0.85 ? "normal" : "maximal")
+    }
+
+    /// Crans de la jauge d'effort (1 à 3).
+    static func notches(_ level: Double) -> Int {
+        level < 0.3 ? 1 : (level < 0.85 ? 2 : 3)
+    }
+}
+
+/// La jauge d'effort du jour : 3 crans (facile, normal, maximal) et le mot, « effort normal ».
+/// Une jauge seule ne dirait pas à quoi elle se rapporte : le mot est toujours là.
+struct EffortGauge: View {
+    @Environment(\.theme) private var theme
+    let level: Double
+    let color: Color
+
+    var body: some View {
+        let on = Intensity.notches(level)
+        HStack(spacing: 8) {
+            HStack(alignment: .bottom, spacing: 2) {
+                ForEach(0..<3, id: \.self) { index in
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(index < on ? color : theme.line)
+                        .frame(width: 5, height: CGFloat(7 + index * 4))
+                }
+            }
+            Text("effort \(Intensity.effort(level))")
+                .font(theme.font(15, .medium))
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Effort \(Intensity.effort(level)), \(on) sur 3")
+    }
 }
 
 extension TrainingPlan.Today {
@@ -55,6 +93,26 @@ extension TrainingPlan.Today {
     }
 }
 
+/// Une cible manquée se dit avec la part faite (avis de Vincent sur le cycle 3) : à 90 % ou
+/// plus, « presque » (l'écart est dans la variation normale d'un jour à l'autre,
+/// METHODE-TEST.md règle 10) ; en dessous, le pourcentage seul. Jamais en vert (§ 5).
+enum TargetShare {
+    static let nearly = 90
+
+    /// Sous l'étiquette « Cible » (le mot n'est pas répété) : « Atteinte ✓ »,
+    /// « Presque atteinte : 94 % », « Atteinte à 62 % ».
+    static func title(_ percent: Int?) -> String {
+        guard let percent else { return "Atteinte ✓" }
+        return percent >= nearly ? "Presque atteinte\u{00A0}: \(percent)\u{00A0}%" : "Atteinte à \(percent)\u{00A0}%"
+    }
+
+    /// Sous le cadran et dans le Coaching : « fait ✓ », « fait · presque (94 %) », « fait · 62 % de la cible ».
+    static func done(_ percent: Int?) -> String {
+        guard let percent else { return "fait ✓" }
+        return percent >= nearly ? "fait · presque (\(percent)\u{00A0}%)" : "fait · \(percent)\u{00A0}% de la cible"
+    }
+}
+
 extension TrainingPlan.Week {
     /// « P1 », « P2 bis », « A ».
     var short: String {
@@ -83,22 +141,12 @@ extension TrainingPlan.Week {
 }
 
 extension TrainingPlan {
-    /// La semaine en une ligne : « 2/4 · prochaine jeu. », « semaine faite 4/4 · prochaine lun. »,
-    /// « séance en plus · prochaine jeu. » (une séance faite aujourd'hui, un jour non prévu).
+    /// La suite, en une ligne : « test demain · prochaine lun. » un jour de repos (la raison du
+    /// repos d'abord), « prochaine demain » une fois la séance faite.
     var weekLine: String? {
-        let nextText = next.map { "prochaine \(Format.shortWeekday($0))" }
-        guard !days.isEmpty else { return nextText }
-        let done = days.filter { $0.sessions > 0 }.count
-        let extraToday = days.contains { $0.isToday && $0.sessions > 0 && !$0.planned }
-        let head: String
-        if extraToday {
-            head = "séance en plus"
-        } else if done >= perWeek {
-            head = "semaine faite \(done)/\(perWeek)"
-        } else {
-            head = "\(done)/\(perWeek)"
-        }
-        return [head, nextText].compactMap { $0 }.joined(separator: " · ")
+        if restReason == .beforeTest { return restReason?.short }
+        let nextText = next.map { "prochaine séance \(Format.dayDate($0))" }
+        return [restReason?.short, nextText].compactMap { $0 }.joined(separator: " · ")
     }
 
     /// L'intensité de la semaine en cours (jour de test : maximale).
@@ -109,7 +157,9 @@ extension TrainingPlan {
 }
 
 /// La ligne du jour sous le cadran, en veille : « aujourd'hui · 29 · 25 · 22 · repos 1:30 »,
-/// « fait ✓ · 2/4 · prochaine ven. », ou « repos · 2/4 · prochaine ven. ». Démarrer reste possible.
+/// « fait ✓ · prochaine demain » (« fait · cible non atteinte » sous le total prévu), ou
+/// « repos conseillé · test demain · prochaine lundi ».
+/// Démarrer reste possible.
 struct TodayLine: View {
     @Environment(\.theme) private var theme
     let plan: TrainingPlan
@@ -117,17 +167,38 @@ struct TodayLine: View {
     var body: some View {
         // En grandes tailles de texte : la version courte (sans le repos), puis sur deux lignes,
         // plutôt qu'un texte tronqué ou rétréci
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 4) { lead(plan.today.label); trail }
-            HStack(spacing: 4) { lead(plan.today.short); trail }
-            VStack(spacing: 2) { lead(plan.today.label); trail }
+        Group {
+            if plan.status == .due {
+                // Une ligne si elle tient ; sinon « aujourd'hui » au-dessus des cibles, jamais un
+                // mot coupé
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 4) { dueLead; dueLabel(plan.today.label) }
+                    HStack(spacing: 4) { dueLead; dueLabel(plan.today.short) }
+                    VStack(spacing: 2) {
+                        Text("aujourd'hui").foregroundStyle(theme.dim)
+                        dueLabel(plan.today.short)
+                    }
+                }
+            } else {
+                // Fait ou repos : le statut, puis la suite sur sa propre ligne
+                VStack(spacing: 4) {
+                    lead(plan.today.label)
+                    if let line = plan.weekLine { Text(symbols: line).foregroundStyle(theme.text) }
+                }
+            }
         }
-        .font(theme.font(12))
+        .font(theme.font(13))
         .multilineTextAlignment(.center)
         .accessibilityElement(children: .combine)
     }
 
-    /// « aujourd'hui · 29 · 25 · 22 », « fait ✓ » ou « repos ».
+    private var dueLead: some View { Text("aujourd'hui ·").foregroundStyle(theme.dim) }
+
+    private func dueLabel(_ label: String) -> some View {
+        Text(symbols: label).fontWeight(.bold).foregroundStyle(plan.today.color(theme))
+    }
+
+    /// « aujourd'hui · 29 · 25 · 22 », « fait ✓ », « fait · cible non atteinte » ou « repos conseillé ».
     @ViewBuilder
     private func lead(_ label: String) -> some View {
         switch plan.status {
@@ -137,20 +208,17 @@ struct TodayLine: View {
                 Text(symbols: label).fontWeight(.bold).foregroundStyle(plan.today.color(theme))
             }
         case .done:
-            Text(symbols: "fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
+            if plan.targetMissed {
+                // Pas de vert ni de ✓ : la cible n'est pas atteinte (skill reps-ux § 5)
+                Text(TargetShare.done(plan.targetPercent ?? 0)).fontWeight(.bold).foregroundStyle(theme.text)
+            } else {
+                Text(symbols: "fait ✓").fontWeight(.bold).foregroundStyle(theme.ok)
+            }
         case .rest:
-            Text("repos").fontWeight(.bold).foregroundStyle(theme.dim)
+            Text("repos conseillé").fontWeight(.bold).foregroundStyle(theme.dim)
         }
     }
 
-    /// La suite de la semaine, comme sous la rangée des jours du Coaching : « · 2/4 · prochaine
-    /// jeu. », « · semaine faite 4/4 · prochaine lun. », « · séance en plus · prochaine jeu. ».
-    @ViewBuilder
-    private var trail: some View {
-        if plan.status != .due, let line = plan.weekLine {
-            Text("· " + line).foregroundStyle(theme.text)
-        }
-    }
 }
 
 /// La ligne sous le cadran un jour de test (le cadran reste neutre) : « ◆ jour de test · série max ·
@@ -162,16 +230,16 @@ struct TestDayLine: View {
 
     var body: some View {
         Text(symbols: text)
-            .font(theme.font(12, .bold))
+            .font(theme.font(13, .bold))
             .foregroundStyle(plan.testOverdue ? theme.text : theme.max)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
     }
 
     private var text: String {
-        if let step = plan.testStep { return "◆ test \(step.number) / \(step.of) · série max" }
-        let last = plan.tests.last.map { " · dernier test \($0.value)" } ?? ""
-        return plan.testOverdue ? "! ◆ test à faire" + last : "◆ jour de test · série max" + last
+        if let step = plan.testStep { return "Test \(step.number) sur \(step.of) : ton niveau de départ" }
+        let last = plan.tests.last.map { " · à battre : \($0.value)" } ?? ""
+        return (plan.testOverdue ? "Test à faire" : "Jour de test") + last
     }
 }
 
@@ -182,6 +250,8 @@ struct SetRow: View {
     let planDay: WorkoutModel.PlanDay
     /// Séries faites dans cette séance.
     let done: [Int]
+    /// La cible affichée pour chaque série faite dans cette séance (réajustée).
+    var doneTargets: [Int?] = []
     /// Répétitions de la série en cours (nil pendant la récupération).
     let current: Int?
 
@@ -194,7 +264,7 @@ struct SetRow: View {
                 cell(index, all: all, next: next)
             }
         }
-        .font(theme.font(14, .bold))
+        .font(theme.font(15, .bold))
         .monospacedDigit()
         .lineLimit(1)
         .minimumScaleFactor(0.7)
@@ -205,8 +275,11 @@ struct SetRow: View {
     private func cell(_ index: Int, all: [Int], next: Int?) -> some View {
         let planned = index < planDay.session.sets ? planDay.session.targets[index] : nil
         if index < all.count {
-            // Sans cible (série au-delà du prévu) : ni ✓ ni vert
-            let reached = planned.map { all[index] >= $0 } ?? false
+            // Jugée sur la cible que le compteur affichait (réajustée) ; sans cible (série au-delà
+            // du prévu) : ni ✓ ni vert
+            let targets = planDay.earlierTargets + doneTargets
+            let shownTarget = (index < targets.count ? targets[index] : nil) ?? planned
+            let reached = shownTarget.map { all[index] >= $0 } ?? false
             Text(symbols: "\(all[index])\(reached ? " ✓" : "")").foregroundStyle(reached ? theme.ok : theme.text)
         } else if index == all.count {
             // La série en cours (ou la prochaine) : sa cible, réajustée
@@ -217,446 +290,448 @@ struct SetRow: View {
     }
 }
 
-// MARK: - Frise
+// MARK: - Le plan, en mots
 
-/// Le bloc sur sa frise (skill reps-ux, § 4 : jamais sur le cadran) : les semaines colorées par
-/// l'intensité (progression ambre, allégée bleue, test rouge), un point par séance (● faite,
-/// ○ prévue, ! manquée), et « tu es ici ».
-struct BlockFrise: View {
+extension TrainingPlan.RestReason {
+    /// La raison du repos conseillé, en une phrase (carte Aujourd'hui).
+    var explanation: String {
+        switch self {
+        case .beforeTest: return "Test demain : arrive frais."
+        case .persistentFatigue: return "Ta fatigue dure : récupère."
+        case .hardYesterday: return "Séance d'hier très difficile : récupère."
+        case .weeklyVolume: return "\(TrainingPlan.weeklySetCap) séries en 7 jours : récupère."
+        }
+    }
+
+    /// La même raison, vue d'aujourd'hui pour demain (« Demain, repos conseillé : … »).
+    var tomorrowExplanation: String {
+        switch self {
+        case .beforeTest: return "après-demain, c'est le test"
+        case .persistentFatigue: return "ta fatigue dure"
+        case .hardYesterday: return "ta séance d'aujourd'hui était très difficile"
+        case .weeklyVolume: return "tu auras fait \(TrainingPlan.weeklySetCap) séries en 7 jours"
+        }
+    }
+}
+
+extension TrainingPlan {
+    /// Le test de fin de bloc fait (le bloc suivant n'a pas encore commencé) ; nil sinon.
+    var blockTestDone: Test? {
+        tests.last.flatMap { $0.block == block && $0.date >= testDate ? $0 : nil }
+    }
+
+    /// Le lundi où commence le bloc suivant, une fois le test fait ; nil sinon.
+    var nextBlockStart: Date? {
+        guard let done = blockTestDone else { return nil }
+        let calendar = Calendar.current
+        return calendar.date(byAdding: .day, value: 7, to: Schedule.weekStart(done.date, calendar: calendar))
+    }
+
+    /// Bloc 1 : la première semaine sert à mesurer le niveau ; il reste 2 semaines de progression.
+    var progressionWeeksShown: Int { block == 1 ? Prescription.progressionWeeks - 1 : Prescription.progressionWeeks }
+
+    /// La semaine en cours est la première du bloc.
+    private var firstWeekOfBlock: Bool { weeks.first?.isCurrent ?? false }
+
+    /// La semaine refaite en cours : la raison, lue sur la semaine qu'elle refait.
+    private var redoneBecause: String? {
+        guard let current = currentWeek, current.isRedo,
+              let index = weeks.firstIndex(where: { $0.isCurrent }), index > 0 else { return nil }
+        return weeks[index - 1].redoReason
+    }
+
+    /// Les 2 tests de départ, en mots : « le 2e mercredi », « plus de place cette semaine ».
+    private var startNext: String? { startTests?.next.map { Format.dayDate($0) } }
+
+    /// Pourquoi l'app propose ce qu'elle propose aujourd'hui, et ce qui suit, en une ou deux
+    /// phrases de tous les jours (CLAUDE.md, « L'expérience » : comprendre, sans surprise). Les
+    /// changements du plan sont dits ici, le jour même.
+    var todayReason: String? {
+        if status == .rest, let restReason { return restReason.explanation }
+        // Séance du jour faite : seulement ce qui change pour la suite
+        if status == .done {
+            if let step = testStep {
+                if step.number == 1 {
+                    return startNext.map { "Test 1 fait. Le 2e : \($0)." } ?? "Test 1 fait : il fixe tes cibles."
+                }
+                return "Tests faits : tes cibles en partent."
+            }
+            if let done = blockTestDone, let start = nextBlockStart {
+                return "Test : \(done.value) d'affilée. Bloc \(block + 1) dès \(Format.dayDate(start))."
+            }
+            return nil
+        }
+        switch today {
+        case .comeback:
+            return nil
+        case .test:
+            if let step = testStep {
+                if step.number == 1 {
+                    let lastDay = startTests?.next.map { Schedule.isoWeekday($0, calendar: .current) == 5 } ?? false
+                    return lastDay ? "Test 1 sur 2 : ton niveau de départ. Dernier jour cette semaine."
+                        : "Test 1 sur 2 : ton niveau de départ."
+                }
+                return "Test 2 sur 2 : le meilleur compte."
+            }
+            if testOverdue {
+                let limit = Calendar.current.date(byAdding: .day, value: Int(Self.repriseDays), to: testDate) ?? testDate
+                return "À faire avant \(Format.dayDate(limit)) : le bloc suivant l'attend."
+            }
+            return "Fin du bloc : mesure ton progrès."
+        case .light:
+            return lightBecause ?? "Forme en baisse : séance légère."
+        case .deload:
+            return "Récupération : la moitié des séries avant le test."
+        case .reprise:
+            return "Reprise après une pause : séance allégée."
+        case .session:
+            if let done = blockTestDone, let start = nextBlockStart {
+                return "Test : \(done.value) d'affilée. Bloc \(block + 1) dès \(Format.dayDate(start))."
+            }
+            if let because = redoneBecause {
+                return "Semaine refaite : test décalé au \(Format.dayDate(testDate))."
+            }
+            guard case .progression(let index, _) = currentWeek?.kind else { return nil }
+            if block == 1, index == 0 {
+                if let start = startTests, start.done < 2 {
+                    return start.done == 0 ? "Pas de test cette semaine : tes séances calent tes cibles."
+                        : "1 test fait : tes cibles en partent."
+                }
+                return "Tes cibles partent de tes tests."
+            }
+            if block > 1, firstWeekOfBlock {
+                if let previous = tests.last, previous.block == block - 1 {
+                    return "Nouveau bloc : cibles depuis ton test (\(previous.value))."
+                }
+                if !missedTests.isEmpty, let level = currentMax {
+                    return "Nouveau bloc sans test : cibles depuis ton niveau (\(level))."
+                }
+            }
+            if let raise = maxRaise { return "Cibles relevées : tu as fait \(raise)." }
+            return nil
+        }
+    }
+}
+
+extension TrainingPlan {
+    /// En gros : « Semaine 2 sur 4 », « Test aujourd'hui », « Bloc 2 terminé ».
+    var whereAmITitle: String {
+        if nextBlockStart != nil { return "Bloc \(block) terminé" }
+        if testOverdue { return "Test à faire" }
+        if today == .test, testStep == nil { return "Test aujourd'hui" }
+        if let index = weeks.firstIndex(where: { $0.isCurrent }) { return "Semaine \(index + 1) sur \(weeks.count)" }
+        return "Bloc \(block)"
+    }
+
+    /// Dessous : « Bloc 2 · test de fin de bloc dans 16 jours », « Bloc 3 lundi 9 nov. ».
+    var whereAmISubtitle: String {
+        let calendar = Calendar.current
+        if let start = nextBlockStart { return "Bloc \(block + 1) dès \(Format.dayDate(start))" }
+        if testOverdue || (today == .test && testStep == nil) { return "Bloc \(block) · test de fin de bloc" }
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()), to: calendar.startOfDay(for: testDate)).day ?? 0
+        let when = days <= 1 ? Format.dayDate(testDate) : "dans \(days) jours"
+        return "Bloc \(block) · test de fin de bloc \(when)"
+    }
+
+    /// « Bloc 2 · semaine 2 sur 4 · test dans 16 jours », « Bloc 2 · test aujourd'hui »,
+    /// « Bloc 2 terminé · le bloc 3 commence lundi 9 nov. ».
+    var whereAmI: String {
+        let calendar = Calendar.current
+        if let start = nextBlockStart {
+            return "Bloc \(block) terminé · le bloc \(block + 1) commence \(Format.dayDate(start))"
+        }
+        if testOverdue { return "Bloc \(block) · test de fin de bloc à faire" }
+        if today == .test, testStep == nil { return "Bloc \(block) · test de fin de bloc aujourd'hui" }
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: Date()), to: calendar.startOfDay(for: testDate)).day ?? 0
+        let testText = days <= 0 ? "test de fin de bloc aujourd'hui"
+            : (days == 1 ? "test de fin de bloc demain" : "test de fin de bloc dans \(days) jours")
+        if let index = weeks.firstIndex(where: { $0.isCurrent }) {
+            return "Bloc \(block) · semaine \(index + 1) sur \(weeks.count) · \(testText)"
+        }
+        return "Bloc \(block) · \(testText)"
+    }
+}
+
+/// La frise du bloc : une case par semaine (sa couleur d'intensité, remplie jusqu'à aujourd'hui),
+/// le test au bout, et sous chaque case son but en un mot ; la semaine en cours est marquée
+/// « ▲ ». Se lit d'un coup d'œil : début ou fin de bloc, sans lire de date.
+struct PlanTimeline: View {
     @Environment(\.theme) private var theme
+    @Environment(\.dynamicTypeSize) private var typeSize
     let plan: TrainingPlan
-    var showsHere = true
-    /// Largeur réelle de « ▲ tu es ici » (elle grandit avec le texte) : la marque reste dans la frise.
-    @State private var hereWidth: CGFloat = 60
-    @ScaledMetric(relativeTo: .caption2) private var hereHeight: CGFloat = 14
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .bottom, spacing: 3) {
-                ForEach(Array(plan.weeks.enumerated()), id: \.offset) { _, week in
-                    segment(week)
-                }
-                VStack(spacing: 4) {
-                    Text(symbols: "◆").font(theme.font(8.5, .bold)).foregroundStyle(theme.max)
-                    Rectangle()
-                        .stroke(theme.max, lineWidth: 1.5)
-                        .frame(width: 9, height: 9)
-                        .rotationEffect(.degrees(45))
-                        .padding(.vertical, 1)
-                    Circle().stroke(theme.line, lineWidth: 1).frame(width: 6, height: 6)
-                }
-                .frame(width: 22)
-            }
-            if showsHere {
-                GeometryReader { geometry in
-                    Text(symbols: "▲ tu es ici")
-                        .font(theme.font(9))
-                        .foregroundStyle(theme.text)
-                        .fixedSize()
-                        .background(GeometryReader { label in
-                            Color.clear.preference(key: HereWidthKey.self, value: label.size.width)
-                        })
-                        .offset(x: min(max(herePosition * geometry.size.width - 6, 0), max(geometry.size.width - hereWidth, 0)))
-                }
-                .frame(height: hereHeight)
-                .onPreferenceChange(HereWidthKey.self) { hereWidth = $0 }
+        VStack(alignment: .leading, spacing: 8) {
+            bars
+            // En tailles d'accessibilité, les colonnes sont trop étroites pour un mot : seul le
+            // but de la semaine en cours est écrit, sur toute la largeur
+            if typeSize.isAccessibilitySize, let current = currentWord {
+                Text("Cette semaine : \(current.lowercased())")
+                    .font(theme.font(15, .semibold))
+                    .foregroundStyle(theme.text)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Bloc \(plan.block), \(plan.currentWeek?.name ?? "test"), test le \(Format.shortDate(plan.testDate))")
-        .accessibilityChartDescriptor(SeriesChartDescriptor(
-            title: "Bloc \(plan.block)", summary: "Test le \(Format.shortDate(plan.testDate))",
-            xTitle: "Semaine", yTitle: "Répétitions faites",
-            points: plan.weeks.enumerated().map { (label: "\($0.offset + 1) \($0.element.short)", value: Double($0.element.doneReps)) }))
+        .accessibilityLabel(plan.whereAmI)
     }
 
-    private func segment(_ week: TrainingPlan.Week) -> some View {
-        let color = theme.intensity(week.intensity)
-        let fill: Double = week.isPast ? 1 : (week.isCurrent ? dayShare(week) : 0)
-        return VStack(spacing: 4) {
-            Text(symbols: (week.isRedo ? "! " : "") + week.short)
-                .font(theme.font(8.5, week.isCurrent ? .bold : .regular))
-                .foregroundStyle(week.isCurrent ? theme.text : theme.dim)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2).stroke(week.isCurrent ? color : theme.line, lineWidth: 1)
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(color.opacity(week.isCurrent ? 1 : 0.55))
-                        .frame(width: geometry.size.width * fill)
+    private var currentWord: String? {
+        if plan.today == .test && plan.testStep == nil { return "Test" }
+        guard let index = plan.weeks.firstIndex(where: \.isCurrent) else { return nil }
+        return word(plan.weeks[index], index: index)
+    }
+
+    private var bars: some View {
+        HStack(alignment: .top, spacing: 4) {
+            ForEach(Array(plan.weeks.enumerated()), id: \.offset) { index, week in
+                column(word(week, index: index), fill: fill(week), color: theme.intensity(week.intensity),
+                       current: week.isCurrent)
+            }
+            // Le test, au bout
+            VStack(spacing: 4) {
+                Rectangle()
+                    .fill(plan.blockTestDone != nil ? theme.max : .clear)
+                    .overlay(Rectangle().stroke(theme.max, lineWidth: 1.5))
+                    .frame(width: 10, height: 10)
+                    .rotationEffect(.degrees(45))
+                    .frame(height: 12)
+                if !typeSize.isAccessibilitySize {
+                    label("Test", current: plan.today == .test && plan.testStep == nil)
                 }
             }
-            .frame(height: 10)
-            HStack(spacing: 3) {
-                ForEach(0..<max(week.plannedSessions, week.done), id: \.self) { index in
-                    if index >= week.done && week.isPast {
-                        Text(symbols: "!").font(theme.font(8, .bold)).foregroundStyle(theme.text).frame(width: 6, height: 6)
-                    } else {
-                        Circle()
-                            .fill(index < week.done ? theme.text : .clear)
-                            .overlay(Circle().stroke(index < week.done ? theme.text : theme.line, lineWidth: 1))
-                            .frame(width: 6, height: 6)
+            .frame(width: 32)
+        }
+    }
+
+    private func column(_ word: String, fill: Double, color: Color, current: Bool) -> some View {
+        VStack(spacing: 4) {
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3).fill(color.opacity(0.22))
+                    RoundedRectangle(cornerRadius: 3).fill(color).frame(width: geometry.size.width * fill)
+                    if current {
+                        RoundedRectangle(cornerRadius: 3).stroke(theme.text, lineWidth: 1.5)
                     }
                 }
             }
+            .frame(height: 14)
+            if !typeSize.isAccessibilitySize { label(word, current: current) }
         }
         .frame(maxWidth: .infinity)
     }
 
-    private func dayShare(_ week: TrainingPlan.Week) -> Double {
-        min(max(Date().timeIntervalSince(week.start) / (7 * 86_400), 0), 1)
+    private func label(_ text: String, current: Bool) -> some View {
+        Text(symbols: text)
+            .font(theme.font(13, current ? .bold : .regular))
+            .foregroundStyle(current ? theme.text : theme.dim)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
     }
 
-    /// Où l'on est sur la frise (0 … 1).
-    private var herePosition: CGFloat {
-        let count = Double(plan.weeks.count) + 0.4
-        if let index = plan.weeks.firstIndex(where: { $0.isCurrent }) {
-            return CGFloat((Double(index) + dayShare(plan.weeks[index])) / count)
+    /// Le but de la semaine en un mot.
+    private func word(_ week: TrainingPlan.Week, index: Int) -> String {
+        switch week.kind {
+        case .progression(let step, let redo):
+            if plan.block == 1, step == 0, !redo { return "Mesure" }
+            return redo ? "Refaite" : "Progrès"
+        case .deload: return "Repos"
+        case .reprise: return "Reprise"
         }
-        return CGFloat(Double(plan.weeks.count) / count)
+    }
+
+    /// Passée : pleine ; en cours : jusqu'à aujourd'hui ; à venir : vide.
+    private func fill(_ week: TrainingPlan.Week) -> Double {
+        if week.isPast { return 1 }
+        guard week.isCurrent else { return 0 }
+        return min(max(Date().timeIntervalSince(week.start) / (7 * 86_400), 0.08), 1)
     }
 }
 
-// MARK: - Jauge d'intensité
-
-/// L'intensité de la semaine en demi-cercle : un arc en dégradé (calme → maximal), une aiguille,
-/// les repères A (allégée), P (progression), ◆ (test). Ce n'est pas le cadran de comptage.
-struct IntensityGauge: View {
+/// « Ton plan », en tête du Coaching : où j'en suis en gros (« Semaine 2 sur 4 »), le test qui
+/// vient, la frise, et le détail des semaines sur demande. Une idée, peu de texte (skill reps-ux,
+/// « Typographie et espace »).
+struct PlanCard: View {
     @Environment(\.theme) private var theme
-    let level: Double
-
-    var body: some View {
-        Canvas { context, size in
-            let center = CGPoint(x: size.width / 2, y: size.height - 6)
-            let radius = min(size.width / 2, size.height) - 8
-            let angle = { (value: Double) -> Angle in .radians(.pi * (1 + value)) }
-            var arc = Path()
-            arc.addArc(center: center, radius: radius, startAngle: .radians(.pi), endAngle: .radians(2 * .pi), clockwise: false)
-            context.stroke(arc, with: .linearGradient(theme.intensityGradient,
-                                                       startPoint: CGPoint(x: center.x - radius, y: 0),
-                                                       endPoint: CGPoint(x: center.x + radius, y: 0)),
-                           style: StrokeStyle(lineWidth: 8, lineCap: .round))
-            for (value, mark) in [(0.1, "A"), (Intensity.work, "P"), (0.95, "◆")] {
-                let a = angle(value).radians
-                let point = CGPoint(x: center.x + CGFloat(cos(a)) * (radius - 15), y: center.y + CGFloat(sin(a)) * (radius - 15))
-                context.draw(Text(symbols: mark).font(theme.font(7)).foregroundStyle(theme.dim), at: point)
-            }
-            let a = angle(min(max(level, 0), 1)).radians
-            var needle = Path()
-            needle.move(to: center)
-            needle.addLine(to: CGPoint(x: center.x + CGFloat(cos(a)) * (radius - 4), y: center.y + CGFloat(sin(a)) * (radius - 4)))
-            context.stroke(needle, with: .color(theme.text), style: StrokeStyle(lineWidth: 2, lineCap: .round))
-            context.fill(Path(ellipseIn: CGRect(x: center.x - 3.5, y: center.y - 3.5, width: 7, height: 7)), with: .color(theme.text))
-        }
-        .accessibilityLabel("Intensité de la semaine : \(Intensity.word(level))")
-        .accessibilityChartDescriptor(SeriesChartDescriptor(
-            title: "Intensité de la semaine", summary: Intensity.word(level),
-            xTitle: "Semaine", yTitle: "Intensité",
-            points: [(label: "cette semaine", value: level * 100)], unit: " %", range: 0...100))
-    }
-}
-
-/// La largeur mesurée de « ▲ tu es ici ».
-private struct HereWidthKey: PreferenceKey {
-    static let defaultValue: CGFloat = 60
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
-// MARK: - Cartes du Coaching
-
-/// Le bloc en cours : « B2 · P3 », l'intensité en mots et en jauge, la date du test, la frise,
-/// la semaine jour par jour, et le prévu face au fait en barres.
-struct BlockCard: View {
-    @Environment(\.theme) private var theme
-    @Environment(\.dynamicTypeSize) private var typeSize
     let plan: TrainingPlan
-    let exercise: Exercise
-    /// Un jour de séance a été déplacé.
-    let onDaysChanged: () -> Void
 
     var body: some View {
-        let level = plan.weekIntensity
-        VStack(alignment: .leading, spacing: 12) {
-            CardHeader(symbol: "square.stack.3d.up.fill", title: "Bloc")
-            TipView(BlockTip())
-            // En tailles d'accessibilité, le texte et la jauge l'un sous l'autre
-            let layout = typeSize.isAccessibilitySize
-                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
-                : AnyLayout(HStackLayout(alignment: .center))
-            layout {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(symbols: "B\(plan.block) · \(plan.today == .test ? "◆" : (plan.currentWeek?.short ?? "◆"))")
-                        .font(theme.font(15, .bold))
-                        .foregroundStyle(theme.text)
-                    MonitorLabel("intensité \(Intensity.word(level))", color: theme.intensity(level))
-                    if plan.testOverdue {
-                        // Le test est à faire : le bloc suivant attend
-                        MonitorLabel("! ◆ test à faire · bloc \(plan.block + 1) en attente", color: theme.text)
-                    } else {
-                        MonitorLabel(plan.today == .test ? "◆ aujourd'hui" : "◆ \(Format.shortDate(plan.testDate))")
-                    }
-                    if let redo = plan.weeks.last(where: { $0.redoReason != nil }), plan.currentWeek?.kind != .deload {
-                        MonitorLabel("! \(redo.short) refaite · \(redo.redoReason ?? "")", color: theme.text)
-                    }
-                }
-                if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
-                IntensityGauge(level: level)
-                    .frame(width: 112, height: 64)
-            }
-            BlockFrise(plan: plan)
-            if !plan.days.isEmpty {
-                WeekDays(plan: plan, exercise: exercise, onChange: onDaysChanged)
-            }
-            WeekBars(plan: plan)
-        }
-        .coachingCard(theme)
-    }
-}
-
-/// La semaine en cours, L M M J V S D, en lecture seule : le placement est un choix de l'app ;
-/// « ✎ jours » ouvre la feuille qui le change (autant de jours que de séances par semaine). Une
-/// ligne dessous dit la suite (« 2/4 · prochaine jeu. »).
-struct WeekDays: View {
-    @Environment(\.theme) private var theme
-    @State private var editing = false
-    /// « Jours réinitialisés », une seule fois après une remise aux jours proposés.
-    @State private var showsResetNotice = false
-    let plan: TrainingPlan
-    let exercise: Exercise
-    let onChange: () -> Void
-    static let letters = ["L", "M", "M", "J", "V", "S", "D"]
-    /// Pour VoiceOver : « M » se lirait pareil pour mardi et mercredi.
-    static let names = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
-
-    var body: some View {
-        let spaced = plan.days.filter { $0.sessions >= 2 }
-        let color = theme.intensity(plan.weekIntensity)
-        VStack(alignment: .leading, spacing: 6) {
-            // La rangée affiche seulement : les jours se changent par « ✎ jours »
-            HStack(spacing: 4) {
-                ForEach(Array(plan.days.enumerated()), id: \.offset) { index, day in
-                    cell(index, day, color: color)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(accessibility(index, day))
-                }
-                Button { editing = true } label: {
-                    Label("jours", systemImage: "pencil")
-                        .font(theme.font(13, .semibold))
-                        .foregroundStyle(theme.primary)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Modifier les jours d'entraînement")
-            }
-            if let line = plan.weekLine {
-                Text(symbols: line)
-                    .font(theme.font(12))
+        VStack(alignment: .leading, spacing: 16) {
+            CardHeader(symbol: "calendar", title: "Ton plan", opens: true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(plan.whereAmITitle)
+                    .font(theme.font(22, .bold))
                     .foregroundStyle(theme.text)
-            }
-            if showsResetNotice {
-                Text("Jours réinitialisés : ils ne correspondaient plus à ton plan.")
-                    .font(theme.font(12))
+                Text(plan.whereAmISubtitle)
+                    .font(theme.font(15))
                     .foregroundStyle(theme.dim)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            if let day = spaced.last {
-                MonitorLabel("séries espacées · \(Format.weekdayOrDate(day.date))")
-            }
+            .accessibilityElement(children: .combine)
+            PlanTimeline(plan: plan)
         }
-        .onAppear {
-            // Le plan a ignoré des jours incohérents : l'avis reste affiché tant que la vue est là
-            if plan.daysReset { showsResetNotice = true }
-        }
-        .sheet(isPresented: $editing) {
-            DaysEditor(exercise: exercise, perWeek: plan.perWeek,
-                       chosen: Set(plan.days.enumerated().filter { $0.element.planned }.map { $0.offset + 1 })) {
-                onChange()
-            }
-            .environment(\.theme, theme)
-            .preferredColorScheme(theme.colorScheme)
-        }
-    }
-
-    /// Prévu : cercle épais de la couleur d'intensité de la semaine ; repos : la lettre seule ;
-    /// fait : cercle plein (plus petit un jour non prévu) ; manqué : « ! » ; aujourd'hui souligné.
-    private func cell(_ index: Int, _ day: TrainingPlan.Day, color: Color) -> some View {
-        let done = day.sessions > 0
-        return VStack(spacing: 3) {
-            Text(Self.letters[index])
-                .font(theme.font(10, day.isToday ? .bold : .regular))
-                .foregroundStyle(day.planned || done ? theme.text : theme.dim)
-            ZStack {
-                if day.missed {
-                    Text(symbols: "!").font(theme.font(12, .bold)).foregroundStyle(theme.text)
-                } else if done && day.planned {
-                    Circle().fill(color)
-                } else if done {
-                    Circle().fill(color).frame(width: 8, height: 8)
-                } else if day.planned {
-                    Circle().stroke(color, lineWidth: 2)
-                }
-            }
-            .frame(width: 14, height: 14)
-            Rectangle()
-                .fill(day.isToday ? theme.text : .clear)
-                .frame(width: 10, height: 2)
-        }
-        .frame(maxWidth: .infinity, minHeight: 44)
-    }
-
-    /// « lundi, prévu, fait », « mardi, repos », « jeudi, prévu, manqué, aujourd'hui ».
-    private func accessibility(_ index: Int, _ day: TrainingPlan.Day) -> String {
-        var parts = [Self.names[index], day.planned ? "prévu" : "repos"]
-        if day.sessions > 0 { parts.append(day.planned ? "fait" : "séance en plus") }
-        if day.missed { parts.append("manqué") }
-        if day.isToday { parts.append("aujourd'hui") }
-        return parts.joined(separator: ", ")
+        .coachingCard(theme)
+        .contentShape(Rectangle())
+        .accessibilityHint("Ouvre les semaines du bloc")
     }
 }
 
-/// « Jours d'entraînement » : les 7 jours cochables ; « Enregistrer » seulement quand le nombre de
-/// jours choisis est celui des séances par semaine du plan (on ne change pas ce nombre ici).
-private struct DaysEditor: View {
+/// Le détail du plan (page poussée depuis « Ton plan ») : le but du bloc, chaque semaine avec son
+/// but et ses dates, « tu es ici », le test et sa raison.
+struct PlanWeeksList: View {
     @Environment(\.theme) private var theme
-    @Environment(\.dismiss) private var dismiss
-    let exercise: Exercise
-    let perWeek: Int
-    @State var chosen: Set<Int>
-    let onSave: () -> Void
-
-    var body: some View {
-        List {
-            Section {
-                ForEach(1...7, id: \.self) { day in
-                    Button {
-                        if chosen.contains(day) { chosen.remove(day) } else { chosen.insert(day) }
-                    } label: {
-                        HStack {
-                            Text(WeekDays.names[day - 1].capitalized)
-                                .foregroundStyle(theme.text)
-                            Spacer()
-                            if chosen.contains(day) {
-                                Image(systemName: "checkmark")
-                                    .fontWeight(.semibold)
-                                    .foregroundStyle(theme.primary)
-                            }
-                        }
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                    }
-                    .accessibilityAddTraits(chosen.contains(day) ? .isSelected : [])
-                }
-            } header: {
-                Text("\(perWeek) séances / semaine · \(chosen.count) choisie\(chosen.count > 1 ? "s" : "")")
-            } footer: {
-                if chosen.count != perWeek {
-                    Text("Choisis \(perWeek) jours.")
-                }
-            }
-            Section {
-                Button("Revenir aux jours proposés") {
-                    Schedule.save(nil, for: exercise)
-                    onSave()
-                    dismiss()
-                }
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(theme.background.ignoresSafeArea())
-        .sensoryFeedback(.selection, trigger: chosen)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Annuler") { dismiss() }
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Enregistrer") {
-                    Schedule.save(Array(chosen), for: exercise)
-                    onSave()
-                    dismiss()
-                }
-                .disabled(chosen.count != perWeek)
-            }
-        }
-        .navigationTitle("Jours d'entraînement")
-        .navigationBarTitleDisplayMode(.inline)
-        .embeddedInNavigation()
-        .presentationDetents([.large])
-    }
-}
-
-private extension View {
-    /// La feuille a sa propre barre (Annuler, Enregistrer).
-    func embeddedInNavigation() -> some View { NavigationStack { self } }
-}
-
-/// Prévu face au fait (Swift Charts), une barre par semaine du bloc : barre pâle = prévu (couleur
-/// de l'intensité), pleine = fait, ✓ si atteint, ← pour la semaine en cours.
-struct WeekBars: View {
-    @Environment(\.theme) private var theme
-    @ScaledMetric(relativeTo: .body) private var height: CGFloat = 100
+    @Environment(\.dynamicTypeSize) private var typeSize
     let plan: TrainingPlan
 
-    private struct Bar: Identifiable {
+    private enum Moment { case past, current, future }
+
+    private struct Row: Identifiable {
         let id: Int
-        let week: TrainingPlan.Week
-        var reached: Bool { week.doneReps >= week.plannedReps && week.plannedReps > 0 }
-        /// ✓ atteint, ← en cours, ! manqué, ○ à venir.
-        var mark: String { reached ? "✓" : (week.isCurrent ? "←" : (week.isPast ? "!" : "○")) }
-        /// Nom unique sur l'axe (« P2 bis » peut suivre « P2 »).
-        var name: String { "\(id + 1) \(week.short)" }
+        let title: String
+        let detail: String
+        let when: String
+        let moment: Moment
+        let isTest: Bool
     }
 
     var body: some View {
-        let bars = plan.weeks.enumerated().map { Bar(id: $0.offset, week: $0.element) }
-        Chart(bars) { bar in
-            let color = theme.intensity(bar.week.intensity)
-            BarMark(x: .value("Semaine", bar.name), yStart: .value("Prévu", 0.0), yEnd: .value("Prévu", Double(bar.week.plannedReps)),
-                    width: .ratio(0.7))
-                .foregroundStyle(color.opacity(bar.week.intensity == Intensity.calm ? 0.18 : 0.28))
-                .cornerRadius(3)
-                .annotation(position: .top) {
-                    if bar.week.doneReps <= bar.week.plannedReps {
-                        Text(symbols: bar.mark)
-                            .font(theme.font(11, .bold))
-                            .foregroundStyle(bar.reached ? theme.ok : theme.text)
-                    }
-                }
-            if bar.week.doneReps > 0 {
-                BarMark(x: .value("Semaine", bar.name), yStart: .value("Fait", 0.0), yEnd: .value("Fait", Double(bar.week.doneReps)),
-                        width: .ratio(0.45))
-                    .foregroundStyle((bar.reached ? theme.ok : color).opacity(bar.week.isCurrent ? 0.95 : 0.8))
-                    .cornerRadius(2)
-                    .annotation(position: .top) {
-                        if bar.week.doneReps > bar.week.plannedReps {
-                            Text(symbols: bar.mark)
-                                .font(theme.font(11, .bold))
-                                .foregroundStyle(bar.reached ? theme.ok : theme.text)
-                        }
-                    }
-            }
-        }
-        .chartXAxis {
-            AxisMarks { value in
-                AxisValueLabel {
-                    if let name = value.as(String.self), let bar = bars.first(where: { $0.name == name }) {
-                        Text(bar.week.short)
-                            .fontWeight(bar.week.isCurrent ? .bold : .regular)
-                            .foregroundStyle(bar.week.isCurrent ? theme.text : theme.dim)
-                    }
+        VStack(alignment: .leading, spacing: 16) {
+            Text(headline)
+                .font(theme.font(17))
+                .foregroundStyle(theme.text)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(rows) { row in
+                    rowView(row)
                 }
             }
+            if plan.nextBlockStart == nil {
+                Text("Après le test, un nouveau bloc repart de ton nouveau niveau.")
+                    .font(theme.font(15))
+                    .foregroundStyle(theme.dim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .chartYAxis(.hidden)
-        .frame(height: height)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(accessibility)
+        .coachingCard(theme)
     }
 
-    private var accessibility: String {
-        guard let week = plan.currentWeek else { return "Prévu face au fait par semaine" }
-        return "Semaine en cours : \(week.doneReps) répétitions faites sur \(week.plannedReps) prévues"
+    /// « Bloc 2 : 3 semaines pour progresser, 1 pour récupérer, puis un test… »
+    private var headline: String {
+        plan.block == 1
+            ? "Bloc 1 : 1 semaine pour mesurer ton niveau, \(plan.progressionWeeksShown) pour progresser, 1 pour récupérer, puis un test qui mesure ton progrès."
+            : "Bloc \(plan.block) : \(plan.progressionWeeksShown) semaines pour progresser, 1 pour récupérer, puis un test qui mesure ton progrès."
+    }
+
+    private var rows: [Row] {
+        var list: [Row] = []
+        for (index, week) in plan.weeks.enumerated() {
+            let moment: Moment = week.isCurrent ? .current : (week.isPast ? .past : .future)
+            let when = "sem. du \(week.start.formatted(.dateTime.day().month(.abbreviated)))"
+            let doneText = week.done == 0 ? "aucune séance" : (week.done == 1 ? "1 séance" : "\(week.done) séances")
+            let title: String
+            var detail: String
+            switch week.kind {
+            case .progression(let step, let redo):
+                if plan.block == 1, step == 0, !redo {
+                    title = "Mesurer ton niveau"
+                    detail = startDetail(week)
+                } else {
+                    title = redo ? "Progresser (semaine refaite)" : "Progresser"
+                    detail = "cibles \(week.planned.label)"
+                }
+            case .deload:
+                title = "Récupérer"
+                detail = "la moitié des séries, pour arriver frais au test"
+            case .reprise:
+                title = "Reprendre après une pause"
+                detail = "séances allégées avant le test"
+            }
+            if moment == .past {
+                detail = week.redoReason.map { "refaite : \($0)" } ?? doneText
+            }
+            list.append(Row(id: index, title: title, detail: detail, when: when, moment: moment, isTest: false))
+        }
+        // Le test qui clôt le bloc
+        let tested = plan.blockTestDone
+        let testMoment: Moment = tested != nil ? .past : (plan.today == .test && plan.testStep == nil ? .current : .future)
+        let testDetail: String
+        if let tested {
+            testDetail = "fait : \(tested.value) d'affilée"
+        } else if plan.testOverdue {
+            testDetail = "à faire : le bloc suivant l'attend"
+        } else {
+            testDetail = "une série max : elle mesure ton progrès, et les cibles du bloc suivant en partent"
+        }
+        list.append(Row(id: plan.weeks.count, title: "Test", detail: testDetail,
+                        when: Format.dayDate(plan.testDate), moment: testMoment, isTest: true))
+        // Test fait : le bloc suivant, daté
+        if let start = plan.nextBlockStart {
+            list.append(Row(id: plan.weeks.count + 1, title: "Bloc \(plan.block + 1)",
+                            detail: "il part de ton test ; d'ici là, séances à tes nouvelles cibles",
+                            when: Format.dayDate(start), moment: .current, isTest: false))
+        }
+        return list
+    }
+
+    /// La première semaine du bloc 1 : les 2 tests de départ, annoncés avec leur jour.
+    private func startDetail(_ week: TrainingPlan.Week) -> String {
+        guard let start = plan.startTests else { return "tes cibles partent de tes tests de départ" }
+        switch (start.done, start.next) {
+        case (0, let next?): return "2 tests max à 2 jours d'écart ; le 1er \(Format.dayDate(next))"
+        case (0, nil): return "pas de test de départ (plus le temps cette semaine) : tes séances calent tes cibles"
+        case (1, let next?): return "test 1 fait ; le 2e \(Format.dayDate(next))"
+        case (1, nil): return "1 test fait ; plus de place pour le 2e : tes cibles partent de lui"
+        default: return "2 tests faits : tes cibles partent du meilleur"
+        }
+    }
+
+    private func rowView(_ row: Row) -> some View {
+        let current = row.moment == .current
+        // La semaine en cours se voit au fond teinté et à l'anneau ; la date sous le titre
+        let titleView = Text(row.title)
+            .font(theme.font(17, current ? .bold : .semibold))
+            .foregroundStyle(row.moment == .past ? theme.dim : theme.text)
+        let whenView = Text(row.when)
+            .font(theme.font(15))
+            .foregroundStyle(theme.dim)
+        return HStack(alignment: .top, spacing: 10) {
+            marker(row)
+                .frame(width: 14, height: 14)
+                .padding(.top, 3)
+            VStack(alignment: .leading, spacing: 2) {
+                titleView
+                whenView
+                if !row.detail.isEmpty {
+                    Text(row.detail)
+                        .font(theme.font(15))
+                        .foregroundStyle(row.moment == .past ? theme.dim : theme.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .background(current ? theme.primary.opacity(0.10) : .clear, in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(current ? "en cours" : "")
+    }
+
+    /// Fait : disque plein ; en cours : anneau épais ; à venir : anneau fin ; test : losange.
+    @ViewBuilder
+    private func marker(_ row: Row) -> some View {
+        if row.isTest {
+            Rectangle()
+                .fill(row.moment == .past ? theme.max : .clear)
+                .overlay(Rectangle().stroke(theme.max, lineWidth: 1.5))
+                .frame(width: 9, height: 9)
+                .rotationEffect(.degrees(45))
+        } else {
+            switch row.moment {
+            case .past: Circle().fill(theme.dim).frame(width: 10, height: 10)
+            case .current: Circle().stroke(theme.primary, lineWidth: 3).frame(width: 12, height: 12)
+            case .future: Circle().stroke(theme.line, lineWidth: 1.5).frame(width: 10, height: 10)
+            }
+        }
     }
 }
 
@@ -675,30 +750,25 @@ struct PathCard: View {
     let sessions: [SessionRecord]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 16) {
             CardHeader(symbol: "chart.line.uptrend.xyaxis", title: "Chemin")
             PathChart(plan: plan, exercise: exercise, sessions: sessions)
             // Une légende ne montre que ce qui est dessiné (skill reps-ux, § 9)
             let legend = self.legend
             Text(symbols: legend.map(\.symbol).joined(separator: " · "))
-                .font(theme.font(10))
+                .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .accessibilityLabel("Légende : " + legend.map(\.spoken).joined(separator: " ; "))
-            if plan.hasTest {
-                HStack {
-                    MonitorLabel(plan.testOverdue ? "! ◆ test à faire" : (plan.today == .test ? "◆ test aujourd'hui" : "◆ prochain test"))
-                    Spacer()
-                    MonitorLabel(Format.shortDate(plan.testDate))
-                }
-            }
+            // Le prochain test est dans « Ton plan » : une carte, une idée
             if let verdict = settledVerdict {
-                HStack {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(symbols: verdictSymbol(verdict))
-                        .font(theme.font(13, .bold))
+                        .font(theme.font(17, .bold))
                         .foregroundStyle(theme.text)
-                    Spacer()
                     if let projection = plan.projection, let goal = plan.goal {
-                        MonitorLabel("⌖ \(goal.target) vers le \(Format.shortDate(projection))")
+                        Text("À ce rythme, \(goal.target) vers le \(Format.shortDate(projection)).")
+                            .font(theme.font(15))
+                            .foregroundStyle(theme.dim)
                     }
                 }
             }
@@ -809,7 +879,8 @@ private struct PathChart: View {
         let low = (values.min() ?? 0) - 2, high = (values.max() ?? 10) + 2
         let chosen = selected.flatMap { date in points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) } }
 
-        return VStack(alignment: .leading, spacing: 4) {
+        // De l'espace sous le titre : le ▼ d'aujourd'hui se pose au-dessus du graphique
+        return VStack(alignment: .leading, spacing: 16) {
             MonitorLabel("\(exercise.shortTitle.lowercased()) d'affilée")
             Chart {
                 blockMarks(blockStarts)
@@ -838,8 +909,8 @@ private struct PathChart: View {
                 .foregroundStyle(theme.grid)
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .annotation(position: .bottom, alignment: .leading) {
-                    Text("B\(index + 1)")
-                        .font(theme.font(11, index == plan.blocks.count - 1 ? .bold : .regular))
+                    Text("bloc \(index + 1)")
+                        .font(theme.font(13, index == plan.blocks.count - 1 ? .bold : .regular))
                         .foregroundStyle(index == plan.blocks.count - 1 ? theme.text : theme.dim)
                 }
         }
@@ -853,7 +924,7 @@ private struct PathChart: View {
                 .foregroundStyle(theme.ok)
                 .annotation(position: .top, alignment: .trailing) {
                     Text(symbols: "⚑ \(goal.target)")
-                        .font(theme.font(11, .bold))
+                        .font(theme.font(13, .bold))
                         .foregroundStyle(theme.ok)
                 }
             if let goalDate = plan.shiftedGoalDate {
@@ -888,14 +959,14 @@ private struct PathChart: View {
             PointMark(x: .value("Date", test), y: .value("Répétitions", level(test)))
                 .symbol {
                     Image(systemName: "diamond")
-                        .font(theme.font(11))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.dim)
                 }
                 .annotation(position: .top, spacing: 0) {
                     // Test pas fait (manqué, ou en retard) : « ! »
                     if alerts.contains(test) {
                         Text(symbols: "!")
-                            .font(theme.font(10, .bold))
+                            .font(theme.font(13, .bold))
                             .foregroundStyle(theme.text)
                     }
                 }
@@ -909,12 +980,12 @@ private struct PathChart: View {
             PointMark(x: .value("Date", test.date), y: .value("Répétitions", Double(test.value)))
                 .symbol {
                     Image(systemName: "diamond.fill")
-                        .font(theme.font(12))
+                        .font(theme.font(13))
                         .foregroundStyle(theme.text)
                 }
                 .annotation(position: .topTrailing, spacing: 0) {
                     Text("\(test.value)")
-                        .font(theme.font(11, .bold))
+                        .font(theme.font(13, .bold))
                         .foregroundStyle(theme.text)
                 }
         }
@@ -933,7 +1004,7 @@ private struct PathChart: View {
             .lineStyle(StrokeStyle(lineWidth: 1.2))
             .annotation(position: .top, spacing: 0) {
                 Image(systemName: "arrowtriangle.down.fill")
-                    .font(theme.font(9))
+                    .font(theme.font(13))
                     .foregroundStyle(theme.primary)
             }
         if let chosen {
@@ -961,7 +1032,7 @@ private struct PathChart: View {
 extension View {
     /// Le cadre commun des cartes du Coaching.
     func coachingCard(_ theme: AppTheme) -> some View {
-        padding(14)
+        padding(20)
             .cardBackground(theme)
     }
 }
@@ -986,9 +1057,9 @@ struct PlanInfoView: View {
                     section("Le repos",
                             "Le tien : ton repos habituel pour l'exercice, arrondi à 15 s. La durée du repos ne change pas les gains de force (ACSM 2026). Des séries faites séparément dans la journée comptent dans la séance du jour, sans pénalité (« séries espacées ») ; la suivante repart de la cible de la série 1. L'ACSM ne les étudie pas : le plan ne les prévoit pas.")
                     section("Les jours",
-                            "Les séances sont espacées dans la semaine : 2 séances, lundi et jeudi ; 3, lundi, mercredi et vendredi. Touche un jour dans le Coaching pour le déplacer. Une séance faite un autre jour compte, et remplace la prochaine prévue. L'ACSM ne fixe pas l'espacement : ce placement est un choix de l'app.")
+                            "Pas de jours à choisir : une séance est courte et se glisse n'importe quand dans la journée. Chaque jour, l'app propose une séance, ou conseille un repos dans quatre cas : la veille du test ; en fatigue persistante (Meeusen et al. 2013) ; le lendemain d'une séance notée « Très difficile » (effort 7 ou plus) ; après 20 séries sur les 7 derniers jours (au-delà d'environ 18 à 20 séries par semaine, les gains décroissent, ACSM 2026, établi pour le volume musculaire). Un repos est une proposition : une séance faite ce jour-là compte. À volume égal, la fréquence change peu le résultat (Grgic et al. 2018, résumé). Moins de 2 séances en 7 jours : l'app rappelle le minimum (ACSM 2026 : « at least twice weekly »). La veille du test et les seuils de 7 et de 20 sont des choix de l'app.")
                     section("Le test",
-                            "Sourcé : le test recale ton niveau, et les cibles du bloc suivant en partent (ACSM 2026, p. 863 : « regular strength testing »). Le reste est un choix de l'app. Le jour de test est le premier jour de séance après la semaine allégée ; c'est toi qui le lances (« ◆ Lancer le test »), et seules les séries faites en mode test comptent. Un échauffement facile est conseillé, jamais compté : environ un tiers de ton dernier max, puis 2 minutes de repos. Le résultat est ta meilleure série en mode test ; une 2e tentative est possible après au moins 3 minutes, le meilleur des deux compte. La série s'arrête quand le compteur détecte la fin. Au bloc 1 (et à un nouveau bloc 1 après plus de 28 jours sans séance), 2 tests sur 2 jours de la première semaine, et le meilleur sert de départ. Un test lancé en semaine allégée compte et clôt le bloc ; lancé en semaine de progression, il ne clôt pas le bloc mais relève le max s'il le dépasse. Plusieurs tests : le meilleur, du premier test au début du bloc suivant. Lancé puis abandonné sans série : il reste à faire. Pas lancé : « à faire » à chaque jour de séance suivant, avec une séance allégée en attendant (elle compte comme séance, pas comme test) ; 7 jours après le jour prévu, le bloc suivant repart de ton dernier max, sans recalage. Plus de 7 jours sans séance : une semaine de reprise avant le test. Entre deux tests, un écart de moins d'environ 10 % se lit « dans la variation » (seuil provisoire ; principe : Hopkins). Entre deux tests, une série qui dépasse ton max le relève : le nouveau max est le nombre de répétitions faites (on ne suppose pas de réserve : on se trompe d'environ 1 répétition en l'estimant, Halperin et al. 2022 ; le test de fin de bloc mesure le reste), et les cibles suivent dès la séance suivante. Pas de mode test pour « Autre exercice ».")
+                            "Sourcé : le test recale ton niveau, et les cibles du bloc suivant en partent (ACSM 2026, p. 863 : « regular strength testing »). Le reste est un choix de l'app. Le jour de test est le lundi qui suit la semaine allégée ; c'est toi qui le lances (« ◆ Lancer le test »), et seules les séries faites en mode test comptent. Un échauffement facile est conseillé, jamais compté : environ un tiers de ton dernier max, puis 2 minutes de repos. Le résultat est ta meilleure série en mode test ; une 2e tentative est possible après au moins 3 minutes, le meilleur des deux compte. La série s'arrête quand le compteur détecte la fin. Au bloc 1 (et à un nouveau bloc 1 après plus de 28 jours sans séance), la première semaine mesure ton niveau : 2 tests à 2 jours d'écart, le 1er au plus tard le vendredi pour laisser la place au 2e ; le meilleur sert de départ. Sans test cette semaine-là, tes séances calent tes cibles (choix de l'app). Un test lancé en semaine allégée compte et clôt le bloc ; lancé en semaine de progression, il ne clôt pas le bloc mais relève le max s'il le dépasse. Plusieurs tests : le meilleur, du premier test au début du bloc suivant. Lancé puis abandonné sans série : il reste à faire. Pas lancé : « à faire » les jours suivants, avec une séance allégée en attendant (elle compte comme séance, pas comme test) ; 7 jours après le jour prévu, le bloc suivant repart de ton dernier max, sans recalage. Plus de 7 jours sans séance : une semaine de reprise avant le test. Entre deux tests, un écart de moins d'environ 10 % se lit « dans la variation » (seuil provisoire ; principe : Hopkins). Entre deux tests, une série qui dépasse ton max le relève : le nouveau max est le nombre de répétitions faites (on ne suppose pas de réserve : on se trompe d'environ 1 répétition en l'estimant, Halperin et al. 2022 ; le test de fin de bloc mesure le reste), et les cibles suivent dès la séance suivante. Pas de mode test pour « Autre exercice ».")
                     section("Après une longue absence",
                             "Après plus de 28 jours sans séance, le plan ne propose qu'une séance de reprise, libre : elle ouvre un nouveau bloc 1, ancré sur elle. Ce bloc commence, comme le tout premier, par 2 tests dans la première semaine ; sans ces tests, la semaine 1 calibre (les cibles suivent chaque séance), puis les cibles restent fixes jusqu'au test, sauf si une série relève le max. Le seuil de 28 jours et ce calibrage sont des choix de l'app.")
                     section("La progression",
@@ -998,13 +1069,13 @@ struct PlanInfoView: View {
                     section("La semaine allégée",
                             "7 jours à volume réduit : la moitié des séries, arrondie au-dessus (part choisie par l'app). Réduire le volume fait consensus (Bell et al. 2023) ; les athlètes de force allègent en moyenne 6,4 jours (Rogerson et al. 2024). L'ACSM ne traite pas des décharges.")
                     section("Quand ça décroche",
-                            "Une semaine de progression avec des séances manquées, ou deux séances en Forme basse, est refaite (deux fois au plus par bloc). Le test recule d'autant, et la date de l'objectif aussi. Forme basse aujourd'hui : séance légère, la moitié des séries. Ces règles sont des choix de l'app ; deux mesures plutôt qu'une, pour ne pas confondre une baisse et le bruit (Hopkins 2000) ; au-delà de 2 semaines de baisse, une semaine allégée (Meeusen et al. 2013).")
+                            "Une semaine de progression avec moins de 2 séances (une seule la semaine où le plan commence en cours de semaine), ou deux séances en Forme basse, est refaite (deux fois au plus par bloc). Le test recule d'autant, et la date de l'objectif aussi. Forme basse aujourd'hui : séance légère, la moitié des séries. Ces règles sont des choix de l'app ; deux mesures plutôt qu'une, pour ne pas confondre une baisse et le bruit (Hopkins 2000) ; au-delà de 2 semaines de baisse, une semaine allégée (Meeusen et al. 2013).")
                     section("Mesuré face à attendu",
                             "L'attendu est le rythme qu'il te faut pour aller de ton départ à ton objectif à la date choisie : ce n'est pas une prédiction, aucune courbe de progression au poids du corps n'est publiée. « En avance » ou « en retard » seulement après 3 tests, quand la pente de tes tests (Theil-Sen, intervalle à 99 %, Sen 1968) est sûrement au-dessus ou au-dessous du rythme nécessaire.")
                     section("Références",
-                            "Currier et al. (2026). Resistance training prescription for muscle function, hypertrophy and physical performance in healthy adults: an overview of reviews. Med Sci Sports Exerc 58(4):851–872. Bell et al. (2023), Sports Med Open 9:87. Rogerson et al. (2024), Sports Med Open 10:26. Meeusen et al. (2013), Med Sci Sports Exerc 45(1):186–205. Hopkins (2000), Sports Med 30(1):1–15. Sen (1968), J Am Stat Assoc 63:1379–1389. Halperin et al. (2022), Sports Med 52:377–390 (résumé).")
+                            "Currier et al. (2026). Resistance training prescription for muscle function, hypertrophy and physical performance in healthy adults: an overview of reviews. Med Sci Sports Exerc 58(4):851–872. Bell et al. (2023), Sports Med Open 9:87. Rogerson et al. (2024), Sports Med Open 10:26. Meeusen et al. (2013), Med Sci Sports Exerc 45(1):186–205. Hopkins (2000), Sports Med 30(1):1–15. Sen (1968), J Am Stat Assoc 63:1379–1389. Halperin et al. (2022), Sports Med 52:377–390 (résumé). Grgic et al. (2018), Sports Med 48(5):1207–1220 (résumé).")
                     section("Séance faite",
-                            "Une séance compte comme faite dès que le total prévu est atteint, même si les séries diffèrent un peu (choix de l'app).")
+                            "Une séance terminée compte comme faite. Chaque série est jugée sur la cible que le compteur affichait, réajustée si la série d'avant était sous la sienne : « fait ✓ » si toutes sont atteintes, sinon la part de la cible faite, chaque série comptant jusqu'à sa cible : « fait · presque (94 %) » à 90 % ou plus, sinon « fait · 62 % de la cible » (choix de l'app).")
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
@@ -1017,11 +1088,57 @@ struct PlanInfoView: View {
 
     private func section(_ title: String, _ text: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            MonitorLabel(title)
+            Text(title)
+                .font(theme.font(17, .bold))
+                .foregroundStyle(theme.text)
             Text(text)
-                .font(theme.font(13))
+                .font(theme.font(17))
                 .foregroundStyle(theme.text)
                 .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+/// « En savoir plus » du jour de test : à quoi sert le test, comment le faire, ce qui suit.
+/// Texte long permis ici : c'est une vue optionnelle (skill reps-ux, § 12). Sources :
+/// `Science/METHODE-TEST.md`, règles 1, 4, 5 et 10.
+struct TestInfoView: View {
+    @Environment(\.theme) private var theme
+    let plan: TrainingPlan
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                section("À quoi il sert",
+                        plan.testStep != nil
+                        ? "Il mesure ton niveau de départ. Tes cibles des 3 prochaines semaines en partiront : ni trop faciles, ni hors de portée."
+                        : "Il mesure ce que tu as gagné pendant le bloc. Tes cibles du bloc suivant en partiront : elles montent avec toi.")
+                section("Comment le faire",
+                        "Échauffe-toi avec une série facile, puis repose-toi 2 minutes ; l'app te le propose. Lance ensuite le test et fais le plus de répétitions possible, en une seule série, sans pause. Tu peux faire une 2e tentative après 3 minutes de repos : la meilleure compte.")
+                section("Comment lire le résultat",
+                        "D'un jour à l'autre, ton max varie naturellement d'environ 10 %. Un écart plus petit n'est ni un progrès ni un recul ; tes cibles suivent quand même ton résultat.")
+                if plan.testStep == nil {
+                    section("Si tu ne peux pas aujourd'hui",
+                            "Le test reste à faire les jours suivants. En attendant, une séance allégée t'est proposée.")
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
+        }
+        .background(theme.background.ignoresSafeArea())
+        .navigationTitle("Le test")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func section(_ title: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(theme.font(17, .semibold))
+                .foregroundStyle(theme.text)
+            Text(text)
+                .font(theme.font(17))
+                .foregroundStyle(theme.text)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
