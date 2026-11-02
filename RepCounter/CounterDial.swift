@@ -221,7 +221,6 @@ struct TunnelFace: View {
         let beyond = done > target || current >= laps
         let visible = beyond ? [current] : Array(current..<min(laps, current + Self.depth))
         ZStack {
-            TunnelFrame(segments: per)
             ForEach(visible.reversed(), id: \.self) { lap in
                 let rank = lap - current
                 let lapDone = min(max(done - lap * per, 0), per)
@@ -308,42 +307,5 @@ enum TunnelGeometry {
         path.addLine(to: point(i, gap, segments: segments, center: center, radius: n))
         path.closeSubpath()
         return path
-    }
-}
-
-/// La structure du tunnel, derrière les anneaux : des décagones de plus en plus petits et sombres
-/// vers le fond, et les arêtes qui filent vers le centre (le point de fuite).
-private struct TunnelFrame: View {
-    @Environment(\.theme) private var theme
-    let segments: Int
-    /// Anneaux de structure dessinés (au-delà des anneaux de la cible).
-    static let depth = 8
-
-    var body: some View {
-        Canvas { context, size in
-            let center = CGPoint(x: size.width / 2, y: size.height / 2)
-            let outer = Double(min(size.width, size.height) / 2 - 15)
-            let deepest = outer * Double(TunnelFace.scale(Self.depth))
-            // Les arêtes, du bord au fond
-            for edge in 0..<segments {
-                var ray = Path()
-                ray.move(to: TunnelGeometry.point(edge, 0, segments: segments, center: center, radius: outer))
-                ray.addLine(to: TunnelGeometry.point(edge, 0, segments: segments, center: center, radius: deepest))
-                context.stroke(ray, with: .color(theme.line.opacity(0.5)), lineWidth: 1)
-            }
-            // Les décagones, plus sombres en profondeur
-            for k in 0...Self.depth {
-                let radius = outer * Double(TunnelFace.scale(k))
-                var ring = Path()
-                ring.move(to: TunnelGeometry.point(0, 0, segments: segments, center: center, radius: radius))
-                for edge in 0..<segments {
-                    ring.addLine(to: TunnelGeometry.point(edge, 1, segments: segments, center: center, radius: radius))
-                }
-                ring.closeSubpath()
-                context.stroke(ring, with: .color(theme.line.opacity(0.7 * (1 - Double(k) / Double(Self.depth + 1)))), lineWidth: 1)
-            }
-        }
-        .padding(-12)
-        .accessibilityHidden(true)
     }
 }
