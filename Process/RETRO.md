@@ -68,3 +68,21 @@ le 3-2-1 et les animations ne se voient qu'en séance réelle, d'où son doute.
    Nouveautés, à la place de la seule image (cycle 4).
 2. Un chiffre affiché et le détail qui le justifie se vérifient ensemble, sur la même capture.
 3. Espaces insécables avant « % » et « : » dans tout texte qui peut passer à la ligne.
+
+## 02/11 : fin du cycle 4
+
+**Ce qui s'est passé** : 2 tours d'avis (3 « À revoir », puis aucun) ; le tunnel refait d'après
+une image de référence de Vincent, en 3 itérations. Un blocage : le quota de compilation GitHub
+épuisé (58 compilations en un jour), levé en rendant le dépôt public.
+
+**Ce qui a échappé** : la tendance « ▼ 53 % » sur une semaine pas finie (vue sur capture, pas
+signalée par Vincent : bon) ; un renommage des phases que Vincent n'a pas voulu (j'ai changé des
+mots qu'il comprenait : à demander avant, quand c'est un vocabulaire).
+
+**Ce que je change** :
+1. Je regroupe les commits : un lot de code = une compilation ; les documents partent avec (la CI
+   ne recompile plus pour des documents seuls).
+2. Avant de renommer un mot que l'utilisateur voit déjà, je le propose (un mot technique compris
+   n'est pas un défaut).
+3. Pour un rendu visuel ambitieux, je demande une image de référence dès le cadrage : elle a
+   débloqué le tunnel en une fois.
