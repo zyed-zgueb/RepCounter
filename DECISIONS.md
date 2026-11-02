@@ -5,6 +5,7 @@ Les plus récentes en haut. « V » = décidé par Vincent ; « B » = décidé 
 
 | Date | Décision | Par | Raison / source |
 |---|---|---|---|
+| 2026-11-02 | « Le compte était faux ? Signale-le » (lien vers GitHub en fin de séance) abandonné pour le moment ; `SourceCode.isPublic` reste à false. | V | Réponse de Vincent au cadrage du cycle 5. |
 | 2026-11-02 | Tunnel d'après l'image de Vincent : décagones à pans droits (pan du haut à plat), panneaux lumineux cernés d'un cadre sombre, fond sombre entre les anneaux ; pas d'arêtes ni d'anneaux de structure (Vincent : « pas indispensables, simplifie »). | V | Image de référence envoyée par Vincent le 02/11. |
 | 2026-11-02 | Avis du cycle 4 : (1) avec une cible, le chiffre de la série décompte (23… 0, puis « +2 »), « à faire sur 23 » ; sans cible, il compte ; (2) journal : plus de pointillés, « 0 » pour un jour sans séance ; (3) Chemin : petits pictos et légende ; chaque test coloré face à la ligne théorique (vert atteinte, orange à 90 % ou plus, rouge en dessous), une barre fine de l'écart et la valeur réelle. Le rouge d'un test raté déroge à la règle « pas de couleur d'alerte » (§ 5) : demande explicite de Vincent. | V | Avis de Vincent du 02/11 sur la page Nouveautés. |
 | 2026-11-02 | Les phases gardent leurs mots techniques (Construction, Surcharge, Décharge, Rebond…) ; chacune s'explique dans « En savoir plus sur les phases », sur la page État. | V | Vincent, en réponse au renommage proposé par le Builder. |

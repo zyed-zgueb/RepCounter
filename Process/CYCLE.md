@@ -106,6 +106,20 @@ aux Nouveautés (rétrospective du cycle 3).
 
 **Dehors** : compteur et écrans à chaud (faits au cycle 3), nouvel écran.
 
+## Cycle 5 : un compteur toujours juste
+
+**Statut** : lancé le 02/11 (accord de Vincent).
+
+**Objectif (vérifiable)** : (1) sur les enregistrements de Vincent au Développé épaules (3 séries
+au moins, nombre réel noté), le compte de l'app est exact, et `Simulation/benchmark.py` reste
+exact sur tout le corpus ; (2) app ouverte au passage de minuit, la ligne sous le cadran passe au
+nouveau jour (test Swift du plan, ou capture à une heure simulée).
+
+**Ce que Vincent vivra** : le Développé épaules compte juste ; la ligne du jour n'est jamais celle
+de la veille.
+
+**Dehors** : nouvel écran ; « Le compte était faux ? Signale-le » (abandonné le 02/11).
+
 ## Feuille de route (décidée par le Builder le 01/11)
 
 Chaque cycle : **maquette visuelle** au cadrage (si un écran change) → construction → relecture
@@ -125,7 +139,7 @@ L'ordre suit les besoins de l'utilisateur (contrôle, compréhension, charge men
 Vincent à la recette peut l'avancer ou le changer.
 
 ## Backlog
-- Dépôt public depuis le 02/11 : l'app sait afficher un lien « Code source » (Réglages) et « Le compte était faux ? Signale-le » (fin de séance, ouvre GitHub), aujourd'hui masqués (`SourceCode.isPublic`). À proposer à Vincent : question d'utilisateur final.
+- Lien « Code source » (Réglages), masqué (`SourceCode.isPublic`). « Le compte était faux ? Signale-le » : abandonné par Vincent le 02/11.
 - Vidéos courtes des écrans animés (tunnel, repos) produites par la CI et jointes aux Nouveautés (rétrospective du cycle 3).
 - **Cycle 3 proposé : la fin de séance, comme un coach.** Recette du cycle 1 : « grosse
   densité d'infos, surcharge cognitive ». Ce que Vincent veut y voir (31/10) :
