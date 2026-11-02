@@ -83,7 +83,7 @@ struct HistoryView: View {
         case .activity:
             HistoryDetailView(title: "Progrès") {
                 if let exercise { EndurancePanel(stats: stats, exercise: exercise) }
-                HistoryPanel(title: "Répétitions / semaine", symbol: "chart.bar") {
+                HistoryPanel(title: "Reps par semaine", symbol: "chart.bar") {
                     VolumeBars(volumes: stats.lastWeeks(12).map { stats.volume(inWeek: $0) })
                 }
                 HistoryPanel(title: "Régularité", symbol: "calendar") { RegularityCalendar(stats: stats) }
@@ -99,7 +99,7 @@ struct HistoryView: View {
                 .foregroundStyle(theme.line)
             MonitorLabel("Aucune séance")
             Text("Tes séances s'afficheront ici.")
-                .font(theme.font(13))
+                .font(theme.font(17))
                 .foregroundStyle(theme.dim)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 280)
@@ -235,7 +235,7 @@ private struct WeeksCard: View {
         HistoryPanel(title: "12 semaines", symbol: "chart.bar.fill", opens: true, accessory: {
             if let verdict {
                 Text(symbols: verdict)
-                    .font(theme.font(13, .bold))
+                    .font(theme.font(15, .bold))
                     // Une tendance n'est pas une atteinte (§ 5) : couleur de texte, ▲ = ▼ portent le sens
                     .foregroundStyle(theme.text)
             }
@@ -337,8 +337,8 @@ private struct WeeksChart: View {
             MonitorLabel("série max")
             if points.count < 2 {
                 // Une courbe demande deux semaines : en attendant, un état en cours
-                Text("\(points.count) / 2 semaines")
-                    .font(theme.font(13))
+                Text("La courbe apparaît après 2 semaines.")
+                    .font(theme.font(15))
                     .foregroundStyle(theme.dim)
                     .frame(maxWidth: .infinity)
                     .frame(height: lineHeight)
@@ -375,7 +375,9 @@ private struct WeeksChart: View {
                 }
                 .frame(height: lineHeight)
             }
-            MonitorLabel(trend.map { "reps par semaine · " + Format.trend($0, unit: " %") } ?? "reps par semaine")
+            // Pas de pourcentage ici : la semaine en cours n'est pas finie (un lundi, « ▼ 53 % »
+            // trompait) ; la tendance établie est en tête de carte
+            MonitorLabel("reps par semaine")
             Chart {
                 ForEach(Array(volumes.enumerated()), id: \.offset) { index, value in
                     BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", Double(value)), width: .fixed(12))
@@ -440,7 +442,7 @@ private struct VolumeBars: View {
                     .foregroundStyle(theme.dim.opacity(0.7))
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
                     .annotation(position: .top, alignment: .leading) {
-                        Text("moy. \(Int(mean.rounded()))")
+                        Text("moyenne \(Int(mean.rounded()))")
                             .font(theme.font(13))
                             .foregroundStyle(theme.dim)
                     }
@@ -607,10 +609,10 @@ struct SessionDetailView: View {
                         SetBarsChart(session: session)
                     }
                     if sets.contains(where: { $0.repDurations.count >= 2 }) {
-                        HistoryPanel(title: "Rythme", symbol: "metronome", accessory: { MonitorLabel("s / rep") }) {
+                        HistoryPanel(title: "Rythme", symbol: "metronome", accessory: { MonitorLabel("secondes par rep") }) {
                             RhythmChart(sets: sets)
                             Text("Durée de chaque répétition")
-                                .font(theme.font(13))
+                                .font(theme.font(15))
                                 .foregroundStyle(theme.dim)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -632,8 +634,8 @@ struct SessionDetailView: View {
         let targeted = sets.filter { $0.target != nil }
         if !targeted.isEmpty {
             let reached = targeted.filter { $0.reps >= ($0.target ?? .max) }.count
-            Text(symbols: "\(reached) / \(targeted.count) ✓")
-                .font(theme.font(13, .bold))
+            Text("\(reached) cible\(reached > 1 ? "s" : "") sur \(targeted.count)")
+                .font(theme.font(15, .bold))
                 .foregroundStyle(reached == targeted.count ? theme.ok : theme.text)
         }
     }
@@ -680,7 +682,7 @@ struct SessionDetailView: View {
                 }
                 if let previous {
                     let delta = session.totalReps - previous.totalReps
-                    line("vs \(Format.dayName(previous.start))",
+                    line("Depuis \(Format.dayName(previous.start))",
                          delta == 0 ? "= \(previous.totalReps)" : Format.trend(Double(delta)),
                          color: theme.text)
                 }
@@ -693,7 +695,7 @@ struct SessionDetailView: View {
             MonitorLabel(label)
             Spacer()
             Text(symbols: value)
-                .font(theme.font(13, .bold))
+                .font(theme.font(15, .bold))
                 .foregroundStyle(color)
                 .monospacedDigit()
         }

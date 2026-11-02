@@ -124,7 +124,7 @@ struct EndurancePanel: View {
                                 .font(theme.font(22, .bold))
                                 .foregroundStyle(theme.text)
                             Text("en 4 semaines")
-                                .font(theme.font(13))
+                                .font(theme.font(15))
                                 .foregroundStyle(theme.dim)
                                 .padding(.top, -6)
                         } else if let first, curve.points.count >= 2 {
@@ -134,7 +134,7 @@ struct EndurancePanel: View {
                                 .font(theme.font(22, .bold))
                                 .foregroundStyle(theme.text)
                             Text("depuis le \(Format.shortDate(first.date))")
-                                .font(theme.font(13))
+                                .font(theme.font(15))
                                 .foregroundStyle(theme.dim)
                                 .padding(.top, -6)
                         }
@@ -159,12 +159,12 @@ struct EndurancePanel: View {
                     MonitorLabel("8 semaines")
                     Spacer()
                     Text(verdict.kind == .pending || verdict.kind == .unreliable ? verdict.title : "\(verdict.title) · \(Format.signedDecimal(verdict.weeklySlope)) par semaine")
-                        .font(theme.font(13, .bold))
+                        .font(theme.font(15, .bold))
                         .foregroundStyle(verdictColor(verdict, theme: theme))
                 }
             }
             Text(caption(score: score, assessment: assessment))
-                .font(theme.font(13))
+                .font(theme.font(15))
                 .foregroundStyle(theme.dim)
                 .fixedSize(horizontal: false, vertical: true)
         }

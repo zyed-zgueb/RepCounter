@@ -730,15 +730,15 @@ private struct GoalHeader: View {
                 if current >= goal.target, let next = GoalInvitation.proposal(current) {
                     // L'objectif suivant : même règle que la proposition (+20 %, choix de l'app)
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(symbols: "suivant · \(current) → \(next) ?")
-                            .font(theme.font(13, .medium))
+                        Text("Prochain objectif : \(next) ?")
+                            .font(theme.font(15, .medium))
                             .foregroundStyle(theme.text)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                             .accessibilityLabel("Objectif suivant : \(current) à \(next) ?")
                         Spacer(minLength: 8)
                         Button(action: onNext) {
-                            Text(symbols: "⌖ Fixer")
+                            Text("Fixer")
                                 .font(theme.font(15, .semibold))
                                 .foregroundStyle(theme.primary)
                                 .padding(.horizontal, 14)
@@ -805,7 +805,7 @@ private struct GoalMenu: View {
                     .font(theme.font(15, .bold))
                     .foregroundStyle(theme.text)
                 Text("Le plan s'arrête. Ton historique reste.")
-                    .font(theme.font(13))
+                    .font(theme.font(15))
                     .foregroundStyle(theme.dim)
                     .padding(.bottom, 8)
                 HStack(spacing: 8) {
@@ -843,9 +843,9 @@ private struct GoalMenu: View {
         Button(action: action) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(symbols: symbol).font(theme.font(15, .bold)).foregroundStyle(theme.text).frame(width: 18)
-                Text(title).font(theme.font(13, .bold)).foregroundStyle(theme.text)
+                Text(title).font(theme.font(17, .bold)).foregroundStyle(theme.text)
                 Spacer()
-                Text(consequence).font(theme.font(13)).foregroundStyle(theme.dim)
+                Text(consequence).font(theme.font(15)).foregroundStyle(theme.dim)
             }
             .padding(.vertical, 10)
             .overlay(alignment: .top) { Rectangle().fill(theme.line).frame(height: 1) }
@@ -869,14 +869,14 @@ private struct StateCard: View {
         VStack(alignment: .leading, spacing: 16) {
             CardHeader(symbol: "waveform.path.ecg", title: "État", opens: true) {
                 Text(symbols: (phase.isAlert ? "! " : "") + phase.title)
-                    .font(theme.font(13, .bold))
+                    .font(theme.font(15, .bold))
                     .foregroundStyle(theme.text)
             }
             HStack {
                 MonitorLabel("Forme")
                 Spacer()
                 Text(forms.last.map { "\(Int($0.percent.rounded())) %" } ?? formPending)
-                    .font(theme.font(13, .bold))
+                    .font(theme.font(15, .bold))
                     .foregroundStyle(forms.isEmpty ? theme.dim : theme.text)
             }
             if forms.count >= 2 {
@@ -902,7 +902,7 @@ private struct StateCard: View {
 
     private var formPending: String {
         if !stats.countingIsReliable { return "comptage à fiabiliser" }
-        return "\(min(stats.measuredSessionCount, FormResult.baselineSessions)) / \(FormResult.baselineSessions)"
+        return "en calcul : \(min(stats.measuredSessionCount, FormResult.baselineSessions)) séances sur \(FormResult.baselineSessions)"
     }
 
     private func formAccessibility(_ result: FormResult?) -> String {
@@ -1035,13 +1035,13 @@ private struct GoalEditor: View {
                 if mode != .target {
                     Toggle(isOn: $hasDate.animation()) {
                         Text("Date")
-                            .font(theme.font(13, .bold))
+                            .font(theme.font(17, .bold))
                             .foregroundStyle(theme.text)
                     }
                     .tint(theme.primary)
                     if hasDate {
                         DatePicker("Pour le", selection: $date, in: Date()..., displayedComponents: .date)
-                            .font(theme.font(13))
+                            .font(theme.font(17))
                             .foregroundStyle(theme.text)
                     }
                     if mode == .date {

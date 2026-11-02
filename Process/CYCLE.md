@@ -89,6 +89,23 @@ Remplace « un segment par répétition jusqu'à 40 ».
   fondent dans le fond du tunnel. Le nombre et « sur N » restent au centre, en grand ; la
   profondeur est limitée pour ne pas les gêner.
 
+## Cycle 4 : le Coaching et l'Historique allégés
+
+**Statut** : recette acceptée le 02/11 (« je valide tout »), avec le tunnel en décagones ; fusionné dans `main`.
+
+**Objectif (vérifiable)** : sur les captures du haut et du bas du Coaching et de l'Historique (et
+de leurs pages de détail), plus aucun texte lu à 13 pt (13 seulement pour les libellés de
+graphique), plus aucune abréviation ni symbole seul, une idée par carte, et les longues
+explications dans des « En savoir plus ».
+
+**Ce que Vincent vivra** : des textes plus grands et plus simples sur le Coaching et l'Historique ;
+les explications au bon endroit, sur demande.
+
+**Outillage** : captures du bas des pages ; vidéos des écrans animés (tunnel, fin du repos) jointes
+aux Nouveautés (rétrospective du cycle 3).
+
+**Dehors** : compteur et écrans à chaud (faits au cycle 3), nouvel écran.
+
 ## Feuille de route (décidée par le Builder le 01/11)
 
 Chaque cycle : **maquette visuelle** au cadrage (si un écran change) → construction → relecture
@@ -108,6 +125,7 @@ L'ordre suit les besoins de l'utilisateur (contrôle, compréhension, charge men
 Vincent à la recette peut l'avancer ou le changer.
 
 ## Backlog
+- Dépôt public depuis le 02/11 : l'app sait afficher un lien « Code source » (Réglages) et « Le compte était faux ? Signale-le » (fin de séance, ouvre GitHub), aujourd'hui masqués (`SourceCode.isPublic`). À proposer à Vincent : question d'utilisateur final.
 - Vidéos courtes des écrans animés (tunnel, repos) produites par la CI et jointes aux Nouveautés (rétrospective du cycle 3).
 - **Cycle 3 proposé : la fin de séance, comme un coach.** Recette du cycle 1 : « grosse
   densité d'infos, surcharge cognitive ». Ce que Vincent veut y voir (31/10) :
@@ -127,7 +145,7 @@ Vincent à la recette peut l'avancer ou le changer.
 - Abréviations restantes (audit UX du 01/11) : « réf. 2 / 3 », « +3 vs mardi 27 », « reps / sem. »,
   « moy. 64 » ; légende du chemin sans « ⚑ », « ▼ », « ! » ; formules de la page Endurance.
 - Le point de couleur sur l'icône Coaching garde « séance prévue » un jour de repos conseillé.
-- Journal : les pointillés des jours sans séance sont trop pâles pour être vus (recette du cycle 1).
+- ~~Journal : pointillés trop pâles~~ : faits au cycle 4.
 - Rafraîchir la ligne du jour au passage de minuit, app ouverte (aucun observateur aujourd'hui ;
   relecture du cycle 1).
 - Audit complet de la planification. Les textes intégraux restent bloqués par le réseau de

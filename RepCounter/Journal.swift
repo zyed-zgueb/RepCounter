@@ -43,7 +43,7 @@ struct JournalHoursSettings: View {
                 .frame(height: 32)
                 .accessibilityLabel("Journée affichée de \(JournalHours.spoken(start)) à \(JournalHours.spoken(end))")
             Text(symbols: "Hors de ces heures, une séance se place au bord, marquée ‹ ou ›.")
-                .font(theme.font(13))
+                .font(theme.font(15))
                 .foregroundStyle(theme.dim)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -52,7 +52,7 @@ struct JournalHoursSettings: View {
     private func stepper(_ label: String, value: Int, minus: @escaping () -> Void, plus: @escaping () -> Void) -> some View {
         HStack {
             Text(label.uppercased())
-                .font(theme.font(13, .bold))
+                .font(theme.font(15, .bold))
                 .foregroundStyle(theme.text)
             Spacer()
             Button(action: minus) { Text(symbols: "‹").font(theme.font(17, .bold)).frame(width: 44, height: 44).contentShape(Rectangle()) }
@@ -97,7 +97,7 @@ private struct DayRangeBar: View {
 /// Le journal de l'historique (skill reps-ux, § 9) : une ligne par jour, aujourd'hui en haut ;
 /// en abscisse l'heure (plage des Réglages, graduée toutes les 3 h). Chaque séance est posée à son
 /// heure en silhouette (une barre fine par série, verte si sa cible est atteinte), ★ si record ;
-/// le total du jour à droite (Σ). Jour sans séance : pointillés (jamais « manqué » : pas de jours
+/// le total du jour à droite (Σ). Jour sans séance : « 0 » (jamais « manqué » : pas de jours
 /// prévus, METHODE-JOURS.md). Lignes alternées, aujourd'hui teinté, un filet sous chaque lundi.
 /// Toucher une silhouette ouvre la séance.
 struct JournalCard: View {
@@ -144,7 +144,7 @@ struct JournalCard: View {
             }
             if let first = stats.sessions.last, let oldest = days.last, stats.calendar.startOfDay(for: first.start) < oldest {
                 Button("+ 28 jours") { withAnimation { shownDays += 28 } }
-                    .font(theme.font(13, .bold))
+                    .font(theme.font(15, .bold))
                     .foregroundStyle(theme.primary)
                     .frame(maxWidth: .infinity, minHeight: 44)
                     .contentShape(Rectangle())
@@ -297,15 +297,6 @@ struct JournalCard: View {
                         .frame(width: 1, height: rowHeight)
                         .position(x: labelWidth + width * share(minutes), y: rowHeight / 2)
                 }
-                if sessions.isEmpty {
-                    if day < stats.calendar.startOfDay(for: stats.now) {
-                        Path { path in
-                            path.move(to: CGPoint(x: labelWidth, y: rowHeight / 2))
-                            path.addLine(to: CGPoint(x: labelWidth + width, y: rowHeight / 2))
-                        }
-                        .stroke(theme.line, style: StrokeStyle(lineWidth: 1, dash: [1, 4]))
-                    }
-                }
                 // Posées à leur heure de début ; une séance qui en chevauche une autre se décale juste
                 // après elle (pas d'empilement)
                 ForEach(placements(sessions, width: width), id: \.session.persistentModelID) { placement in
@@ -322,7 +313,8 @@ struct JournalCard: View {
                     .frame(width: labelWidth, alignment: .leading)
                     .padding(.leading, 2)
                 Spacer()
-                Text(total > 0 ? "\(total)" : "")
+                // Jour sans séance : « 0 », rien d'autre (avis de Vincent : les pointillés ne servaient à rien)
+                Text(total > 0 || day < stats.calendar.startOfDay(for: stats.now) ? "\(total)" : "")
                     .font(theme.font(13, isToday ? .bold : .regular))
                     .foregroundStyle(isToday ? theme.text : theme.dim)
                     .monospacedDigit()

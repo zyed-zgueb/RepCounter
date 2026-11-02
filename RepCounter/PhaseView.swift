@@ -67,19 +67,7 @@ struct PhasePanel: View {
         let loads = stats.weeklyLoads(all: all)
         VStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    MonitorLabel("Phase")
-                    Spacer()
-                    Button { showsInfo = true } label: {
-                        Image(systemName: "info.circle")
-                            .font(theme.font(17, .regular))
-                            .foregroundStyle(theme.dim)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("À propos des phases")
-                }
-                .padding(.vertical, -6)
+                MonitorLabel("Phase")
                 Text(symbols: phase.marked.uppercased())
                     .font(theme.font(22, .bold))
                     .foregroundStyle(phase.kind == .pending || phase.kind == .unreliable ? theme.dim : phase.color(theme))
@@ -88,6 +76,14 @@ struct PhasePanel: View {
                 Text(phase.action())
                     .font(theme.font(17))
                     .foregroundStyle(theme.text)
+                // Les mots des phases restent techniques (choix de Vincent) : chacun s'explique ici
+                Button { showsInfo = true } label: {
+                    Text("En savoir plus sur les phases")
+                        .font(theme.font(15, .semibold))
+                        .foregroundStyle(theme.primary)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
                 if phase.kind == .deloadAdvised {
                     Button("Commencer la décharge") {
                         Deloads.start()
@@ -198,10 +194,10 @@ struct PhaseInfoView: View {
                         ForEach(Self.phases, id: \.0) { title, rule in
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(title)
-                                    .font(theme.font(13, .bold))
+                                    .font(theme.font(15, .bold))
                                     .foregroundStyle(theme.text)
                                 Text(rule)
-                                    .font(theme.font(13))
+                                    .font(theme.font(15))
                                     .foregroundStyle(theme.dim)
                                     .lineSpacing(3)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -219,7 +215,7 @@ struct PhaseInfoView: View {
                         MonitorLabel("Références")
                         ForEach(Self.references, id: \.self) { reference in
                             Text(reference)
-                                .font(theme.font(13))
+                                .font(theme.font(15))
                                 .foregroundStyle(theme.dim)
                                 .lineSpacing(3)
                                 .fixedSize(horizontal: false, vertical: true)

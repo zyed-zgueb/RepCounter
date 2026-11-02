@@ -466,6 +466,8 @@ struct VerticalScroll<Content: View>: View {
             content()
                 .containerRelativeFrame(.horizontal)
         }
+        // Mode capture (CI) : le bas de la page, pour relire tout l'écran
+        .defaultScrollAnchor(Capture.showsBottom ? .bottom : .top)
         .bounceOnlyIfNeeded()
     }
 }

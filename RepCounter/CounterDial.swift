@@ -95,6 +95,7 @@ private struct SegmentRing: View {
             let gap = 0.07
             let glow = min(theme.glow, 1)
             func tile(_ i: Int) -> Path {
+                if shaded { return TunnelGeometry.panel(i, segments: segments, center: center, outer: outer, inner: inner) }
                 let start = Double(i) / Double(segments) * 2 * .pi - .pi / 2 + gap
                 let end = Double(i + 1) / Double(segments) * 2 * .pi - .pi / 2 - gap
                 var path = Path()
@@ -127,7 +128,8 @@ private struct SegmentRing: View {
                 for i in 0..<min(lit, count) {
                     layer.fill(tile(i), with: .color(color))
                     if shaded {
-                        layer.stroke(tile(i), with: .color(.white.opacity(0.18)), lineWidth: 1)
+                        // Le cadre sombre du panneau (image de Vincent) : la lumière vient du panneau
+                        layer.stroke(tile(i), with: .color(.black.opacity(0.45)), lineWidth: 2)
                     }
                 }
             }
@@ -209,7 +211,11 @@ struct TunnelFace: View {
     static let seam: CGFloat = 0.02
 
     /// Échelle de l'anneau de rang k (0 : devant).
-    static func scale(_ rank: Int) -> CGFloat { 1 / (1 + CGFloat(rank) * step) }
+    static func scale(_ rank: Int) -> CGFloat { scale(CGFloat(rank)) }
+    static func scale(_ rank: CGFloat) -> CGFloat { 1 / (1 + rank * step) }
+    /// Ce dont la caméra avance pendant un tour, en part d'un anneau : à chaque répétition on
+    /// entre un peu dans le tunnel ; le reste du cran se fait d'un coup à la dizaine.
+    static let creep: CGFloat = 0.3
 
     var body: some View {
         let per = CounterDial.segmentsPerLap
@@ -218,6 +224,8 @@ struct TunnelFace: View {
         let current = max(0, done - 1) / per
         let beyond = done > target || current >= laps
         let visible = beyond ? [current] : Array(current..<min(laps, current + Self.depth))
+        // La caméra avance à chaque répétition du tour en cours (Réduire les animations : immobile)
+        let progress = reduceMotion ? 0 : CGFloat(min(max(done - current * per, 0), per)) / CGFloat(per) * Self.creep
         ZStack {
             ForEach(visible.reversed(), id: \.self) { lap in
                 let rank = lap - current
@@ -230,14 +238,19 @@ struct TunnelFace: View {
                 let thickness = 1 - Self.scale(rank + 1) / Self.scale(rank) - Self.seam
                 SegmentRing(lit: lapDone, segments: per, color: ringColor,
                             goalSegment: nil, drawn: segments, thickness: thickness,
-                            unlit: ringColor.opacity(0.3), shaded: true)
-                    .brightness(-0.06 * Double(rank))
-                    .opacity((pale ? 0.5 : 1) * (1 - 0.12 * Double(rank)))
-                    .scaleEffect(Self.scale(rank))
-                    .transition(reduceMotion ? .opacity : .scale(scale: 1.25).combined(with: .opacity))
+                            unlit: ringColor.opacity(rank == 0 ? 0.3 : 0.5), shaded: true)
+                    // Le fond se voit : la cible entière doit se lire (un léger voile seulement, et un
+                    // flou à partir du 3e anneau)
+                    .brightness(-0.03 * Double(rank))
+                    .opacity((pale ? 0.5 : 1) * (1 - 0.08 * Double(rank)))
+                    .blur(radius: rank >= 3 ? 0.6 : 0)
+                    .scaleEffect(Self.scale(CGFloat(rank) - progress))
+                    .transition(reduceMotion ? .opacity : .asymmetric(insertion: .scale(scale: 0.6).combined(with: .opacity),
+                                                                      removal: .scale(scale: 1.6).combined(with: .opacity)))
             }
         }
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.85), value: current)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.35), value: done)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(done) sur \(target)")
     }
@@ -277,5 +290,33 @@ struct RestLedFace: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(remaining <= 0 ? "Repos fait" : "Repos : \(Int(remaining.rounded(.up))) secondes restantes")
+    }
+}
+
+/// La géométrie du tunnel (image de Vincent) : des décagones à pans droits, le pan du haut à
+/// plat ; chaque panneau est un quadrilatère entre deux décagones, avec un petit vide de cadre.
+enum TunnelGeometry {
+    /// Le point du décagone de rayon `radius` (rayon des sommets) à la fraction `t` du pan `edge`.
+    static func point(_ edge: Int, _ t: Double, segments: Int, center: CGPoint, radius: Double) -> CGPoint {
+        let step = 2 * Double.pi / Double(segments)
+        // Pan 0 centré en haut : ses sommets à −90° ± une demi-portion
+        let a0 = -Double.pi / 2 - step / 2 + Double(edge) * step
+        let a1 = a0 + step
+        let p0 = CGPoint(x: center.x + radius * cos(a0), y: center.y + radius * sin(a0))
+        let p1 = CGPoint(x: center.x + radius * cos(a1), y: center.y + radius * sin(a1))
+        return CGPoint(x: p0.x + (p1.x - p0.x) * t, y: p0.y + (p1.y - p0.y) * t)
+    }
+
+    /// Le panneau `i` entre le décagone extérieur et l'intérieur, en retrait de son cadre.
+    static func panel(_ i: Int, segments: Int, center: CGPoint, outer: Double, inner: Double) -> Path {
+        let gap = 0.07
+        let o = outer - (outer - inner) * 0.08, n = inner + (outer - inner) * 0.08
+        var path = Path()
+        path.move(to: point(i, gap, segments: segments, center: center, radius: o))
+        path.addLine(to: point(i, 1 - gap, segments: segments, center: center, radius: o))
+        path.addLine(to: point(i, 1 - gap, segments: segments, center: center, radius: n))
+        path.addLine(to: point(i, gap, segments: segments, center: center, radius: n))
+        path.closeSubpath()
+        return path
     }
 }

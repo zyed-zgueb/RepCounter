@@ -790,7 +790,8 @@ extension WorkoutModel {
     /// Ne sert qu'au mode capture (`-captureDemo YES`, RepCounterApp.swift).
     func showCaptureState(_ name: String) {
         sensors.stop()
-        clock?.invalidate()
+        // Les vidéos (animations) gardent l'horloge : le repos défile
+        if !name.hasSuffix("Video") { clock?.invalidate() }
         let start = Date().addingTimeInterval(-300)
         func set(_ number: Int, _ reps: Int, target: Int, at offset: TimeInterval) -> WorkoutSet {
             WorkoutSet(number: number, reps: reps, duration: Double(reps) * 1.6, cadence: 1.6,
@@ -820,6 +821,26 @@ extension WorkoutModel {
             lastRepDate = Date()
             sessionEnd = Date()
             phase = .finished
+        case "serieVideo":
+            // Une série qui avance d'elle-même : une répétition toutes les 0,6 s, de 6 à 26
+            // (cible 23) ; on voit le tunnel avancer à 10 et 20, puis passer au vert
+            phase = .active
+            sets = [set(1, 28, target: 28, at: 0)]
+            state = .counting
+            setReps = 6
+            lastRepDate = Date()
+            Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] timer in
+                guard let self, self.setReps < 26 else { return timer.invalidate() }
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { self.setReps += 1 }
+                self.repPulse += 1
+            }
+        case "reposVideo":
+            // Les 5 dernières secondes d'un repos de 1:30 : le 3-2-1, puis « Prêt »
+            phase = .active
+            sets = [set(1, 28, target: 28, at: 0)]
+            state = .searching
+            setReps = 0
+            lastRepDate = Date().addingTimeInterval(-85)
         default:
             break
         }

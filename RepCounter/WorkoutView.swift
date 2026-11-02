@@ -217,7 +217,7 @@ struct WorkoutView: View {
             switch Capture.screen {
             case "coaching", "planWeeks": showsCoaching = true
             case "history": showsHistory = true
-            case "serie", "repos", "fin":
+            case "serie", "repos", "fin", "serieVideo", "reposVideo":
                 // Pendant la série, pendant le repos, fin de séance : sans capteur
                 try? await Task.sleep(for: .seconds(1))
                 model.showCaptureState(Capture.screen ?? "")
@@ -496,7 +496,9 @@ struct WorkoutView: View {
                 // (après l'échauffement d'un test, jamais vert : rien n'est atteint, § 5)
                 Dial(face: RestLedFace(remaining: remaining, total: planned, color: color)) { side in
                     VStack(spacing: side * 0.03) {
-                        Text(done && !warmupRest ? "Prêt" : Format.clock(remaining))
+                        // Secondes arrondies au-dessus : « 0:01 » jusqu'au bout, puis « Prêt » (jamais « 0:00 »
+                        // avec une lumière encore allumée) ; le 3-2-1 sonore tombe sur 0:03, 0:02, 0:01
+                        Text(done && !warmupRest ? "Prêt" : Format.clock(remaining.rounded(.up)))
                             .font(theme.dialFont(side * 0.24, .bold))
                             .foregroundStyle(color)
                             .monospacedDigit()
@@ -627,21 +629,30 @@ struct WorkoutView: View {
     /// Pendant la série : « sur N » (objectif de la série) et une pastille par dizaine.
     private func dialCount(side: CGFloat, counting: Bool) -> some View {
         VStack(spacing: 4) {
-            Text(counting ? "\(model.setReps)" : (model.tentative > 0 ? "\(model.tentative)" : "–"))
+            // Avec une cible, le chiffre décompte ce qui reste (23, 22… 0), puis « +2 » au-delà ;
+            // sans cible, il compte (avis de Vincent sur la vidéo du tunnel)
+            let remaining = counting ? seriesTarget.map { $0 - model.setReps } : nil
+            Text(counting ? (remaining.map { $0 >= 0 ? "\($0)" : "+\(-$0)" } ?? "\(model.setReps)")
+                 : (model.tentative > 0 ? "\(model.tentative)" : "–"))
                 .font(theme.dialFont(side * 0.36, .bold))
                 .tracking(-side * 0.01)
-                .foregroundStyle(counting ? theme.text : (model.tentative > 0 ? theme.primary.opacity(0.5) : theme.dim))
+                .foregroundStyle(counting ? ((remaining ?? 1) <= 0 ? theme.ok : theme.text)
+                                 : (model.tentative > 0 ? theme.primary.opacity(0.5) : theme.dim))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
-                .contentTransition(.numericText())
+                .contentTransition(.numericText(countsDown: remaining != nil))
                 .scaleEffect(bump && !reduceMotion ? 1.08 : 1)
                 .opacity(bump && reduceMotion ? 0.75 : 1)
+                .accessibilityLabel(remaining.map { $0 > 0 ? "\($0) à faire, \(model.setReps) faites" : "\(model.setReps) faites, cible atteinte" } ?? "\(model.setReps)")
             if counting, let target = seriesTarget {
-                Text("sur \(target)")
-                    .font(theme.font(22, .semibold))
+                // Ce que veut dire le chiffre : « à faire sur 23 », « cible atteinte », « en plus »
+                Text(model.setReps < target ? "à faire sur \(target)" : (model.setReps == target ? "cible atteinte" : "en plus"))
+                    .font(theme.font(17, .semibold))
                     .foregroundStyle(model.setReps >= target ? theme.ok : theme.dim)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             } else if counting, model.testStage == .test {
                 MonitorLabel("test", color: theme.max)
             } else if counting, model.testStage == .warmup {
@@ -1585,7 +1596,7 @@ private struct SessionSummary: View {
             return summaryStat("Forme", "séries courtes", pending: true)
         }
         let collected = min(earlier(record).filter { $0.formMeasure != nil }.count + 1, FormResult.baselineSessions)
-        return summaryStat("Forme", "réf. \(collected) / \(FormResult.baselineSessions)", pending: true)
+        return summaryStat("Forme", "en calcul : \(collected) sur \(FormResult.baselineSessions)", pending: true)
     }
 
     /// Séances précédentes du même exercice.
@@ -1607,7 +1618,7 @@ private struct SessionSummary: View {
         HStack(spacing: 10) {
             if let previous = before.first {
                 let delta = record.totalReps - previous.totalReps
-                pill("\(Format.trend(Double(delta))) vs \(Format.dayName(previous.start))",
+                pill("\(Format.trend(Double(delta))) depuis \(Format.dayName(previous.start))",
                      color: theme.text)
             } else {
                 pill("Première séance", color: theme.primary)
