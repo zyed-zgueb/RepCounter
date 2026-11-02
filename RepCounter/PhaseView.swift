@@ -7,14 +7,14 @@ extension TrainingPhase {
         switch kind {
         case .pending: return "En cours"
         case .unreliable: return "Analyse suspendue"
-        case .building: return "En forme"
-        case .overreaching: return "Charge trop forte"
+        case .building: return "Construction"
+        case .overreaching: return "Surcharge"
         case .lowForm: return "Forme basse"
         case .comeback: return "Reprise"
-        case .deloadAdvised: return "Semaine légère conseillée"
-        case .deload: return "Semaine légère"
+        case .deloadAdvised: return "Décharge conseillée"
+        case .deload: return "Décharge"
         case .rest: return "Pause"
-        case .rebound: return "Prêt pour un record"
+        case .rebound: return "Rebond"
         case .persistentFatigue: return "Fatigue persistante"
         }
     }
@@ -67,19 +67,7 @@ struct PhasePanel: View {
         let loads = stats.weeklyLoads(all: all)
         VStack(spacing: 20) {
             VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    MonitorLabel("Phase")
-                    Spacer()
-                    Button { showsInfo = true } label: {
-                        Image(systemName: "info.circle")
-                            .font(theme.font(17, .regular))
-                            .foregroundStyle(theme.dim)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel("À propos des phases")
-                }
-                .padding(.vertical, -6)
+                MonitorLabel("Phase")
                 Text(symbols: phase.marked.uppercased())
                     .font(theme.font(22, .bold))
                     .foregroundStyle(phase.kind == .pending || phase.kind == .unreliable ? theme.dim : phase.color(theme))
@@ -88,6 +76,14 @@ struct PhasePanel: View {
                 Text(phase.action())
                     .font(theme.font(17))
                     .foregroundStyle(theme.text)
+                // Les mots des phases restent techniques (choix de Vincent) : chacun s'explique ici
+                Button { showsInfo = true } label: {
+                    Text("En savoir plus sur les phases")
+                        .font(theme.font(15, .semibold))
+                        .foregroundStyle(theme.primary)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
                 if phase.kind == .deloadAdvised {
                     Button("Commencer la décharge") {
                         Deloads.start()
@@ -236,15 +232,15 @@ struct PhaseInfoView: View {
     }
 
     private static let phases: [(String, String)] = [
-        ("En forme", "Forme dans ta variation habituelle."),
-        ("Charge trop forte", "Deux séances de suite sous ta forme habituelle, après une semaine plus chargée que les 4 d'avant."),
+        ("Construction", "Forme dans ta variation habituelle."),
+        ("Surcharge", "Deux séances de suite sous ta forme habituelle, après une semaine plus chargée que les 4 d'avant."),
         ("Forme basse", "La même baisse, sans hausse de charge : sommeil, stress, maladie…"),
         ("Reprise", "Une baisse juste après une pause : le niveau revient en s'entraînant."),
-        ("Semaine légère conseillée", "La baisse dure depuis 2 semaines."),
-        ("Semaine légère", "Une semaine à volume réduit, commencée d'une touche."),
+        ("Décharge conseillée", "La baisse dure depuis 2 semaines."),
+        ("Décharge", "Une semaine à volume réduit, commencée d'une touche."),
         ("Pause", "Plus de 7 jours sans séance."),
-        ("Prêt pour un record", "Après une charge trop forte ou une semaine légère, la forme revient au moins à ton niveau, ou un record tombe."),
-        ("Fatigue persistante", "La baisse continue après une semaine légère ou une pause."),
+        ("Rebond", "Après une surcharge ou une décharge, la forme revient au moins à ton niveau, ou un record tombe."),
+        ("Fatigue persistante", "La baisse continue après une décharge ou une pause."),
     ]
 
     private static let references = [

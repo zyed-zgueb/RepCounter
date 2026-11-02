@@ -685,9 +685,9 @@ extension HistoryStats {
                                      persistentFatigue: kind == .persistentFatigue,
                                      legacyBefore: TrainingPlan.announcedTestSince, now: now, calendar: calendar)
         if kind == .deload {
-            plan?.lightBecause = "Semaine légère en cours : séance légère."
+            plan?.lightBecause = "Décharge en cours : séance légère."
         } else if kind == .deloadAdvised {
-            plan?.lightBecause = "Forme en baisse depuis 2 semaines : séance légère."
+            plan?.lightBecause = "Décharge conseillée : séance légère."
         }
         return plan
     }
