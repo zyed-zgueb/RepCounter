@@ -211,7 +211,11 @@ struct TunnelFace: View {
     static let seam: CGFloat = 0.02
 
     /// Échelle de l'anneau de rang k (0 : devant).
-    static func scale(_ rank: Int) -> CGFloat { 1 / (1 + CGFloat(rank) * step) }
+    static func scale(_ rank: Int) -> CGFloat { scale(CGFloat(rank)) }
+    static func scale(_ rank: CGFloat) -> CGFloat { 1 / (1 + rank * step) }
+    /// Ce dont la caméra avance pendant un tour, en part d'un anneau : à chaque répétition on
+    /// entre un peu dans le tunnel ; le reste du cran se fait d'un coup à la dizaine.
+    static let creep: CGFloat = 0.15
 
     var body: some View {
         let per = CounterDial.segmentsPerLap
@@ -220,6 +224,8 @@ struct TunnelFace: View {
         let current = max(0, done - 1) / per
         let beyond = done > target || current >= laps
         let visible = beyond ? [current] : Array(current..<min(laps, current + Self.depth))
+        // La caméra avance à chaque répétition du tour en cours (Réduire les animations : immobile)
+        let progress = reduceMotion ? 0 : CGFloat(min(max(done - current * per, 0), per)) / CGFloat(per) * Self.creep
         ZStack {
             ForEach(visible.reversed(), id: \.self) { lap in
                 let rank = lap - current
@@ -233,13 +239,17 @@ struct TunnelFace: View {
                 SegmentRing(lit: lapDone, segments: per, color: ringColor,
                             goalSegment: nil, drawn: segments, thickness: thickness,
                             unlit: ringColor.opacity(0.3), shaded: true)
-                    .brightness(-0.06 * Double(rank))
-                    .opacity((pale ? 0.5 : 1) * (1 - 0.12 * Double(rank)))
-                    .scaleEffect(Self.scale(rank))
-                    .transition(reduceMotion ? .opacity : .scale(scale: 1.25).combined(with: .opacity))
+                    // Le brouillard du fond : plus sombre, plus transparent, un peu flou
+                    .brightness(-0.08 * Double(rank))
+                    .opacity((pale ? 0.5 : 1) * (1 - 0.14 * Double(rank)))
+                    .blur(radius: rank >= 2 ? CGFloat(rank - 1) * 0.8 : 0)
+                    .scaleEffect(Self.scale(CGFloat(rank) - progress))
+                    .transition(reduceMotion ? .opacity : .asymmetric(insertion: .scale(scale: 0.6).combined(with: .opacity),
+                                                                      removal: .scale(scale: 1.6).combined(with: .opacity)))
             }
         }
         .animation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.85), value: current)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.35), value: done)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(done) sur \(target)")
     }
