@@ -14,6 +14,16 @@ les lit au début de chaque cycle et à chaque livraison ; un « À revoir » es
 Les captures complètes de chaque version sont archivées par la CI sur la branche `ci-captures`
 (un dossier par version : date et commit ; `latest/` pour la dernière).
 
+## 02/11 : cycle 4, Coaching et Historique allégés
+
+| # | Écran | Ce qui change | Extraits |
+|---|---|---|---|
+| — | Série, repos | Vidéos du tunnel et de la fin du repos | `2026-11-02/tunnel.mp4`, `fin-du-repos.mp4` |
+| 27 | Coaching, Chemin | Plus de losanges ni de drapeau ; « aujourd'hui », « objectif 40 » | `2026-11-02/27-chemin` |
+| 28 | Historique, 12 semaines | Plus de pourcentage trompeur sur la semaine en cours | `2026-11-02/28-semaines` |
+| 29 | Historique, Journal | Pointillés visibles | `2026-11-02/29-journal` |
+| — | Coaching, Historique | Textes lus à 15 ou 17 ; abréviations en mots ; « En savoir plus sur les phases » | (sans extrait) |
+
 ## 01/11 (nuit, fin) : tes 2 derniers « À revoir » du cycle 3
 
 | # | Écran | Ce qui change | Extraits |
