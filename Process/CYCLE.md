@@ -91,7 +91,7 @@ Remplace « un segment par répétition jusqu'à 40 ».
 
 ## Cycle 4 : le Coaching et l'Historique allégés
 
-**Statut** : lancé le 01/11 (accord de Vincent).
+**Statut** : avis tous « Ça me va » le 02/11 ; recette sur l'iPhone en cours (`Process/RECETTE-CYCLE-4.md`).
 
 **Objectif (vérifiable)** : sur les captures du haut et du bas du Coaching et de l'Historique (et
 de leurs pages de détail), plus aucun texte lu à 13 pt (13 seulement pour les libellés de
