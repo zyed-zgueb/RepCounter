@@ -215,7 +215,7 @@ struct TunnelFace: View {
     static func scale(_ rank: CGFloat) -> CGFloat { 1 / (1 + rank * step) }
     /// Ce dont la caméra avance pendant un tour, en part d'un anneau : à chaque répétition on
     /// entre un peu dans le tunnel ; le reste du cran se fait d'un coup à la dizaine.
-    static let creep: CGFloat = 0.15
+    static let creep: CGFloat = 0.3
 
     var body: some View {
         let per = CounterDial.segmentsPerLap
@@ -238,11 +238,12 @@ struct TunnelFace: View {
                 let thickness = 1 - Self.scale(rank + 1) / Self.scale(rank) - Self.seam
                 SegmentRing(lit: lapDone, segments: per, color: ringColor,
                             goalSegment: nil, drawn: segments, thickness: thickness,
-                            unlit: ringColor.opacity(0.3), shaded: true)
-                    // Le brouillard du fond : plus sombre, plus transparent, un peu flou
-                    .brightness(-0.08 * Double(rank))
-                    .opacity((pale ? 0.5 : 1) * (1 - 0.14 * Double(rank)))
-                    .blur(radius: rank >= 2 ? CGFloat(rank - 1) * 0.8 : 0)
+                            unlit: ringColor.opacity(rank == 0 ? 0.3 : 0.5), shaded: true)
+                    // Le fond se voit : la cible entière doit se lire (un léger voile seulement, et un
+                    // flou à partir du 3e anneau)
+                    .brightness(-0.03 * Double(rank))
+                    .opacity((pale ? 0.5 : 1) * (1 - 0.08 * Double(rank)))
+                    .blur(radius: rank >= 3 ? 0.6 : 0)
                     .scaleEffect(Self.scale(CGFloat(rank) - progress))
                     .transition(reduceMotion ? .opacity : .asymmetric(insertion: .scale(scale: 0.6).combined(with: .opacity),
                                                                       removal: .scale(scale: 1.6).combined(with: .opacity)))
