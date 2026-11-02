@@ -14,6 +14,14 @@ les lit au début de chaque cycle et à chaque livraison ; un « À revoir » es
 Les captures complètes de chaque version sont archivées par la CI sur la branche `ci-captures`
 (un dossier par version : date et commit ; `latest/` pour la dernière).
 
+## 02/11 (suite) : tes 3 « À revoir » du cycle 4
+
+| # | Écran | Ce qui change | Extraits |
+|---|---|---|---|
+| 30 | Série | Le chiffre décompte (« 6 à faire sur 23 »), « +2 » au-delà ; vidéo | `2026-11-02b/30-decompte`, `tunnel.mp4` |
+| 31 | Historique, Journal | « 0 » au lieu des pointillés | `2026-11-02b/31-journal` |
+| 32 | Coaching, Chemin | Pictos et légende ; tests colorés face à la ligne théorique | `2026-11-02b/32-chemin` |
+
 ## 02/11 : cycle 4, Coaching et Historique allégés
 
 | # | Écran | Ce qui change | Extraits |
