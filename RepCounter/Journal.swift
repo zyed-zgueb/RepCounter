@@ -303,7 +303,7 @@ struct JournalCard: View {
                             path.move(to: CGPoint(x: labelWidth, y: rowHeight / 2))
                             path.addLine(to: CGPoint(x: labelWidth + width, y: rowHeight / 2))
                         }
-                        .stroke(theme.line, style: StrokeStyle(lineWidth: 1, dash: [1, 4]))
+                        .stroke(theme.dim.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, dash: [2, 4]))
                     }
                 }
                 // Posées à leur heure de début ; une séance qui en chevauche une autre se décale juste

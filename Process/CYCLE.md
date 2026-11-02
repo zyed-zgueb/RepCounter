@@ -144,7 +144,7 @@ Vincent à la recette peut l'avancer ou le changer.
 - Abréviations restantes (audit UX du 01/11) : « réf. 2 / 3 », « +3 vs mardi 27 », « reps / sem. »,
   « moy. 64 » ; légende du chemin sans « ⚑ », « ▼ », « ! » ; formules de la page Endurance.
 - Le point de couleur sur l'icône Coaching garde « séance prévue » un jour de repos conseillé.
-- Journal : les pointillés des jours sans séance sont trop pâles pour être vus (recette du cycle 1).
+- ~~Journal : pointillés trop pâles~~ : faits au cycle 4.
 - Rafraîchir la ligne du jour au passage de minuit, app ouverte (aucun observateur aujourd'hui ;
   relecture du cycle 1).
 - Audit complet de la planification. Les textes intégraux restent bloqués par le réseau de
