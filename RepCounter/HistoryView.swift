@@ -375,7 +375,9 @@ private struct WeeksChart: View {
                 }
                 .frame(height: lineHeight)
             }
-            MonitorLabel(trend.map { "reps par semaine · " + Format.trend($0, unit: " %") } ?? "reps par semaine")
+            // Pas de pourcentage ici : la semaine en cours n'est pas finie (un lundi, « ▼ 53 % »
+            // trompait) ; la tendance établie est en tête de carte
+            MonitorLabel("reps par semaine")
             Chart {
                 ForEach(Array(volumes.enumerated()), id: \.offset) { index, value in
                     BarMark(x: .value("Semaine", Double(index)), y: .value("Répétitions", Double(value)), width: .fixed(12))

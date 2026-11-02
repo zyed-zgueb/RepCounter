@@ -835,12 +835,12 @@ extension WorkoutModel {
                 self.repPulse += 1
             }
         case "reposVideo":
-            // Les 8 dernières secondes d'un repos de 1:30 : le 3-2-1, puis « Prêt »
+            // Les 5 dernières secondes d'un repos de 1:30 : le 3-2-1, puis « Prêt »
             phase = .active
             sets = [set(1, 28, target: 28, at: 0)]
             state = .searching
             setReps = 0
-            lastRepDate = Date().addingTimeInterval(-82)
+            lastRepDate = Date().addingTimeInterval(-85)
         default:
             break
         }

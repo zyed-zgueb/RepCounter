@@ -7,14 +7,14 @@ extension TrainingPhase {
         switch kind {
         case .pending: return "En cours"
         case .unreliable: return "Analyse suspendue"
-        case .building: return "Construction"
-        case .overreaching: return "Surcharge"
+        case .building: return "En forme"
+        case .overreaching: return "Charge trop forte"
         case .lowForm: return "Forme basse"
         case .comeback: return "Reprise"
-        case .deloadAdvised: return "Décharge conseillée"
-        case .deload: return "Décharge"
+        case .deloadAdvised: return "Semaine légère conseillée"
+        case .deload: return "Semaine légère"
         case .rest: return "Pause"
-        case .rebound: return "Rebond"
+        case .rebound: return "Prêt pour un record"
         case .persistentFatigue: return "Fatigue persistante"
         }
     }
@@ -236,15 +236,15 @@ struct PhaseInfoView: View {
     }
 
     private static let phases: [(String, String)] = [
-        ("Construction", "Forme dans ta variation habituelle."),
-        ("Surcharge", "Deux séances de suite sous ta forme habituelle, après une semaine plus chargée que les 4 d'avant."),
+        ("En forme", "Forme dans ta variation habituelle."),
+        ("Charge trop forte", "Deux séances de suite sous ta forme habituelle, après une semaine plus chargée que les 4 d'avant."),
         ("Forme basse", "La même baisse, sans hausse de charge : sommeil, stress, maladie…"),
         ("Reprise", "Une baisse juste après une pause : le niveau revient en s'entraînant."),
-        ("Décharge conseillée", "La baisse dure depuis 2 semaines."),
-        ("Décharge", "Une semaine à volume réduit, commencée d'une touche."),
+        ("Semaine légère conseillée", "La baisse dure depuis 2 semaines."),
+        ("Semaine légère", "Une semaine à volume réduit, commencée d'une touche."),
         ("Pause", "Plus de 7 jours sans séance."),
-        ("Rebond", "Après une surcharge ou une décharge, la forme revient au moins à ton niveau, ou un record tombe."),
-        ("Fatigue persistante", "La baisse continue après une décharge ou une pause."),
+        ("Prêt pour un record", "Après une charge trop forte ou une semaine légère, la forme revient au moins à ton niveau, ou un record tombe."),
+        ("Fatigue persistante", "La baisse continue après une semaine légère ou une pause."),
     ]
 
     private static let references = [
