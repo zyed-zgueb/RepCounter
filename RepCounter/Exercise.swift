@@ -126,6 +126,10 @@ enum Exercise: String, CaseIterable, Identifiable {
     /// bout de la traction ou de la poussée, à l'autre extrême (tractions, développé, biceps,
     /// rowing). Les abdos comptent au sommet par le gyroscope (début de la redescente), et
     /// l'accélération verticale toujours à son creux, au sommet du geste.
+    /// La caméra ne regarde que le haut du corps (tête, épaules, coudes, poignets) : les hanches
+    /// et les jambes peuvent sortir de l'image (demande de Vincent, développé épaules).
+    var upperBodyOnly: Bool { self == .press }
+
     var countsAtFarEnd: Bool { [.pullups, .press, .curls, .row].contains(self) }
 
     /// La caméra n'est allumée que si l'exercice en a besoin.

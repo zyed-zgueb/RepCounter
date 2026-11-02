@@ -14,8 +14,11 @@ enum PlacementKind {
     case cameraFront
     /// Rowing à la caméra : pareil, mais de profil.
     case cameraSide
+    /// Développé à la caméra : face à soi, le haut du corps seul (tête, épaules, bras) ; les
+    /// hanches et les jambes peuvent sortir de l'image.
+    case cameraUpper
 
-    var usesCamera: Bool { self == .cameraFront || self == .cameraSide }
+    var usesCamera: Bool { self == .cameraFront || self == .cameraSide || self == .cameraUpper }
 }
 
 extension Exercise {
@@ -24,7 +27,8 @@ extension Exercise {
         switch self {
         case .pushups: return .floor
         case .crunches: return .chest
-        case .curls, .press: return countsWithCamera ? .cameraFront : nil
+        case .curls: return countsWithCamera ? .cameraFront : nil
+        case .press: return countsWithCamera ? .cameraUpper : nil
         case .row: return countsWithCamera ? .cameraSide : nil
         default: return nil
         }
@@ -97,6 +101,10 @@ final class PlacementMonitor {
         /// Rapport largeur des épaules / torse : de face au-dessus, de profil en dessous.
         static let frontShoulderRatio: CGFloat = 0.4
         static let sideShoulderRatio: CGFloat = 0.35
+        /// Haut du corps : largeur des épaules en part de la hauteur de l'image (trop loin en
+        /// dessous, trop près au-dessus). Premières valeurs, à régler sur les enregistrements.
+        static let shouldersMin: CGFloat = 0.12
+        static let shouldersMax: CGFloat = 0.4
     }
 
     let kind: PlacementKind
@@ -128,7 +136,7 @@ final class PlacementMonitor {
         switch kind {
         case .floor: status = floor(frame, gravity: gravity)
         case .chest: status = chest(gravity: gravity)
-        case .cameraFront, .cameraSide: status = camera(frame, gravity: gravity)
+        case .cameraFront, .cameraSide, .cameraUpper: status = camera(frame, gravity: gravity)
         }
 
         status.handled = rotation > Tuning.handlingRotation
@@ -197,10 +205,11 @@ final class PlacementMonitor {
         let light = luminance.map { $0 >= Tuning.minLuminance } ?? true
         let skeleton = Self.skeleton(frame.extras["joints"])
         let body = Body(skeleton)
-        let framing = framingInstruction(body)
+        let framing = kind == .cameraUpper ? upperFramingInstruction(body) : framingInstruction(body)
 
         var status = PlacementStatus(checks: [PlacementCheck(title: "iPhone stable", done: upright && still),
-                                              PlacementCheck(title: kind == .cameraSide ? "Toi de profil, en entier" : "Toi en entier",
+                                              PlacementCheck(title: kind == .cameraSide ? "Toi de profil, en entier"
+                                                                : (kind == .cameraUpper ? "Tête, épaules et bras visibles" : "Toi en entier"),
                                                              done: framing == nil),
                                               PlacementCheck(title: "Assez de lumière", done: light)],
                                      skeleton: skeleton)
@@ -290,6 +299,25 @@ final class PlacementMonitor {
         if !armsVisible {
             return "Recule d'un pas"
         }
+        return nil
+    }
+
+    /// Haut du corps (développé) : la tête, les deux épaules, les deux bras ; les hanches et les
+    /// jambes peuvent manquer ou toucher le bord (nil : cadrage bon).
+    private func upperFramingInstruction(_ body: Body) -> String? {
+        guard let left = body.point(.leftShoulder), let right = body.point(.rightShoulder) else {
+            return "Mets-toi face à l'iPhone"
+        }
+        let upper: [Joint] = [.nose, .neck, .leftShoulder, .rightShoulder, .leftElbow, .rightElbow, .leftWrist, .rightWrist]
+        // Seul le haut du corps doit rester dans l'image (les poignets montent au-dessus de la tête)
+        let touchesEdge = upper.compactMap { body.point($0) }.contains { $0.y < 0.02 || $0.x < 0.02 || $0.x > 0.98 }
+        let width = abs(left.x - right.x) * Self.imageAspect
+        if width > Tuning.shouldersMax || touchesEdge { return "Recule d'un pas" }
+        if width < Tuning.shouldersMin { return "Approche d'un pas" }
+        let center = (left.x + right.x) / 2
+        if center < Tuning.centerMargin { return "Décale-toi vers ta droite" }
+        if center > 1 - Tuning.centerMargin { return "Décale-toi vers ta gauche" }
+        if !(body.arm(left: true) && body.arm(left: false)) { return "Montre tes deux bras" }
         return nil
     }
 

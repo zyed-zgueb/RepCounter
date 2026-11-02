@@ -20,6 +20,10 @@ struct PlacementGuide {
                 let arm = exercise == .press ? "qui pousse" : (exercise == .row ? "qui tire" : "qui travaille")
                 return [Point("Dans le brassard"), Point("Sur l'avant-bras \(arm)"), Point("Bien serré")]
             }
+            if exercise == .press {
+                // Le haut du corps suffit : les jambes peuvent sortir de l'image
+                return [Point("Debout, à hauteur de poitrine"), Point("À un grand pas"), Point("Tête et bras dans l'image")]
+            }
             if exercise == .row {
                 return [Point("Debout, à hauteur de taille"), Point("À deux grands pas, de profil"),
                         Point("Bras qui tire côté iPhone")]

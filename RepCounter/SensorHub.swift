@@ -28,7 +28,7 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
     private let motion = CMMotionManager()
     private let poseRequest = VNDetectHumanBodyPoseRequest()
     private let faceRequest = VNDetectFaceRectanglesRequest()
-    private let poseExtractor = PoseFeatureExtractor()
+    private let poseExtractor: PoseFeatureExtractor
     private var latestDepth: [Float]?
     private var lastDepthMean: Float = 0
     /// Distances mesurées au centre (10e, 50e, 90e centiles), part mesurable, moyenne.
@@ -39,8 +39,9 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
         return operationQueue
     }()
 
-    init(sources: Set<SignalSource>) {
+    init(sources: Set<SignalSource>, upperBody: Bool = false) {
         activeSources = sources
+        poseExtractor = PoseFeatureExtractor(upperBody: upperBody)
         usesCamera = !sources.isDisjoint(with: [.depth, .pixels, .face, .pose])
         super.init()
     }
@@ -196,7 +197,8 @@ final class SensorHub: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, A
                 for (joint, point) in recognized where point.confidence > 0.3 { points[joint] = point.location }
             }
             let aspect = CGFloat(CVPixelBufferGetWidth(pixelBuffer)) / CGFloat(max(CVPixelBufferGetHeight(pixelBuffer), 1))
-            if points.count >= 8, let features = poseExtractor.features(from: points, aspect: aspect) {
+            // Haut du corps : tête, épaules, bras suffisent (5 articulations) ; sinon le corps entier
+            if points.count >= (poseExtractor.upperBody ? 5 : 8), let features = poseExtractor.features(from: points, aspect: aspect) {
                 values[.pose] = features
             }
             // Articulations vues, pour la mise en place (cadrage) : x, y en coordonnées d'image,

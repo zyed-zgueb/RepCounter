@@ -323,7 +323,7 @@ final class WorkoutModel: ObservableObject {
         countsWithCamera = !Set(counter.sources).isDisjoint(with: [.depth, .pixels, .face, .pose])
         placementKind = exercise.placementKind
         placementMonitor = placementKind.map { PlacementMonitor(kind: $0) }
-        sensors = SensorHub(sources: Set(counter.sources))
+        sensors = SensorHub(sources: Set(counter.sources), upperBody: exercise.upperBodyOnly)
         sensors.onFrame = { [weak self] frame in self?.handle(frame) }
     }
 
