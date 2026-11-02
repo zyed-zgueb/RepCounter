@@ -95,6 +95,7 @@ private struct SegmentRing: View {
             let gap = 0.07
             let glow = min(theme.glow, 1)
             func tile(_ i: Int) -> Path {
+                if shaded { return TunnelGeometry.panel(i, segments: segments, center: center, outer: outer, inner: inner) }
                 let start = Double(i) / Double(segments) * 2 * .pi - .pi / 2 + gap
                 let end = Double(i + 1) / Double(segments) * 2 * .pi - .pi / 2 - gap
                 var path = Path()
@@ -127,7 +128,8 @@ private struct SegmentRing: View {
                 for i in 0..<min(lit, count) {
                     layer.fill(tile(i), with: .color(color))
                     if shaded {
-                        layer.stroke(tile(i), with: .color(.white.opacity(0.18)), lineWidth: 1)
+                        // Le cadre sombre du panneau (image de Vincent) : la lumière vient du panneau
+                        layer.stroke(tile(i), with: .color(.black.opacity(0.45)), lineWidth: 2)
                     }
                 }
             }
@@ -219,6 +221,7 @@ struct TunnelFace: View {
         let beyond = done > target || current >= laps
         let visible = beyond ? [current] : Array(current..<min(laps, current + Self.depth))
         ZStack {
+            TunnelFrame(segments: per)
             ForEach(visible.reversed(), id: \.self) { lap in
                 let rank = lap - current
                 let lapDone = min(max(done - lap * per, 0), per)
@@ -277,5 +280,70 @@ struct RestLedFace: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(remaining <= 0 ? "Repos fait" : "Repos : \(Int(remaining.rounded(.up))) secondes restantes")
+    }
+}
+
+/// La géométrie du tunnel (image de Vincent) : des décagones à pans droits, le pan du haut à
+/// plat ; chaque panneau est un quadrilatère entre deux décagones, avec un petit vide de cadre.
+enum TunnelGeometry {
+    /// Le point du décagone de rayon `radius` (rayon des sommets) à la fraction `t` du pan `edge`.
+    static func point(_ edge: Int, _ t: Double, segments: Int, center: CGPoint, radius: Double) -> CGPoint {
+        let step = 2 * Double.pi / Double(segments)
+        // Pan 0 centré en haut : ses sommets à −90° ± une demi-portion
+        let a0 = -Double.pi / 2 - step / 2 + Double(edge) * step
+        let a1 = a0 + step
+        let p0 = CGPoint(x: center.x + radius * cos(a0), y: center.y + radius * sin(a0))
+        let p1 = CGPoint(x: center.x + radius * cos(a1), y: center.y + radius * sin(a1))
+        return CGPoint(x: p0.x + (p1.x - p0.x) * t, y: p0.y + (p1.y - p0.y) * t)
+    }
+
+    /// Le panneau `i` entre le décagone extérieur et l'intérieur, en retrait de son cadre.
+    static func panel(_ i: Int, segments: Int, center: CGPoint, outer: Double, inner: Double) -> Path {
+        let gap = 0.07
+        let o = outer - (outer - inner) * 0.08, n = inner + (outer - inner) * 0.08
+        var path = Path()
+        path.move(to: point(i, gap, segments: segments, center: center, radius: o))
+        path.addLine(to: point(i, 1 - gap, segments: segments, center: center, radius: o))
+        path.addLine(to: point(i, 1 - gap, segments: segments, center: center, radius: n))
+        path.addLine(to: point(i, gap, segments: segments, center: center, radius: n))
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// La structure du tunnel, derrière les anneaux : des décagones de plus en plus petits et sombres
+/// vers le fond, et les arêtes qui filent vers le centre (le point de fuite).
+private struct TunnelFrame: View {
+    @Environment(\.theme) private var theme
+    let segments: Int
+    /// Anneaux de structure dessinés (au-delà des anneaux de la cible).
+    static let depth = 8
+
+    var body: some View {
+        Canvas { context, size in
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let outer = Double(min(size.width, size.height) / 2 - 15)
+            let deepest = outer * Double(TunnelFace.scale(Self.depth))
+            // Les arêtes, du bord au fond
+            for edge in 0..<segments {
+                var ray = Path()
+                ray.move(to: TunnelGeometry.point(edge, 0, segments: segments, center: center, radius: outer))
+                ray.addLine(to: TunnelGeometry.point(edge, 0, segments: segments, center: center, radius: deepest))
+                context.stroke(ray, with: .color(theme.line.opacity(0.5)), lineWidth: 1)
+            }
+            // Les décagones, plus sombres en profondeur
+            for k in 0...Self.depth {
+                let radius = outer * Double(TunnelFace.scale(k))
+                var ring = Path()
+                ring.move(to: TunnelGeometry.point(0, 0, segments: segments, center: center, radius: radius))
+                for edge in 0..<segments {
+                    ring.addLine(to: TunnelGeometry.point(edge, 1, segments: segments, center: center, radius: radius))
+                }
+                ring.closeSubpath()
+                context.stroke(ring, with: .color(theme.line.opacity(0.7 * (1 - Double(k) / Double(Self.depth + 1)))), lineWidth: 1)
+            }
+        }
+        .padding(-12)
+        .accessibilityHidden(true)
     }
 }

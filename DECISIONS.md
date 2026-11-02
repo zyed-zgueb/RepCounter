@@ -5,6 +5,7 @@ Les plus récentes en haut. « V » = décidé par Vincent ; « B » = décidé 
 
 | Date | Décision | Par | Raison / source |
 |---|---|---|---|
+| 2026-11-02 | Tunnel d'après l'image de Vincent : décagones à pans droits (pan du haut à plat), panneaux lumineux cernés d'un cadre sombre, paroi sombre entre les anneaux avec ses arêtes vers le centre, et des décagones de structure de plus en plus petits jusqu'au fond (ils ne comptent rien : seuls les panneaux comptent). | V | Image de référence envoyée par Vincent le 02/11. |
 | 2026-11-02 | Avis du cycle 4 : (1) avec une cible, le chiffre de la série décompte (23… 0, puis « +2 »), « à faire sur 23 » ; sans cible, il compte ; (2) journal : plus de pointillés, « 0 » pour un jour sans séance ; (3) Chemin : petits pictos et légende ; chaque test coloré face à la ligne théorique (vert atteinte, orange à 90 % ou plus, rouge en dessous), une barre fine de l'écart et la valeur réelle. Le rouge d'un test raté déroge à la règle « pas de couleur d'alerte » (§ 5) : demande explicite de Vincent. | V | Avis de Vincent du 02/11 sur la page Nouveautés. |
 | 2026-11-02 | Les phases gardent leurs mots techniques (Construction, Surcharge, Décharge, Rebond…) ; chacune s'explique dans « En savoir plus sur les phases », sur la page État. | V | Vincent, en réponse au renommage proposé par le Builder. |
 | 2026-11-02 | **Dépôt rendu public** : la compilation sur Mac devient gratuite et illimitée ; le code est lisible par tous. | V | Quota gratuit de GitHub épuisé le 01/11 (58 compilations, minutes macOS comptées 10 fois). |
