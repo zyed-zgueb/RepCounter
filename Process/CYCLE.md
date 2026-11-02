@@ -125,6 +125,7 @@ L'ordre suit les besoins de l'utilisateur (contrôle, compréhension, charge men
 Vincent à la recette peut l'avancer ou le changer.
 
 ## Backlog
+- Dépôt public depuis le 02/11 : l'app sait afficher un lien « Code source » (Réglages) et « Le compte était faux ? Signale-le » (fin de séance, ouvre GitHub), aujourd'hui masqués (`SourceCode.isPublic`). À proposer à Vincent : question d'utilisateur final.
 - Vidéos courtes des écrans animés (tunnel, repos) produites par la CI et jointes aux Nouveautés (rétrospective du cycle 3).
 - **Cycle 3 proposé : la fin de séance, comme un coach.** Recette du cycle 1 : « grosse
   densité d'infos, surcharge cognitive ». Ce que Vincent veut y voir (31/10) :
