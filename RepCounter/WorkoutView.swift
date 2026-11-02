@@ -629,21 +629,30 @@ struct WorkoutView: View {
     /// Pendant la série : « sur N » (objectif de la série) et une pastille par dizaine.
     private func dialCount(side: CGFloat, counting: Bool) -> some View {
         VStack(spacing: 4) {
-            Text(counting ? "\(model.setReps)" : (model.tentative > 0 ? "\(model.tentative)" : "–"))
+            // Avec une cible, le chiffre décompte ce qui reste (23, 22… 0), puis « +2 » au-delà ;
+            // sans cible, il compte (avis de Vincent sur la vidéo du tunnel)
+            let remaining = counting ? seriesTarget.map { $0 - model.setReps } : nil
+            Text(counting ? (remaining.map { $0 >= 0 ? "\($0)" : "+\(-$0)" } ?? "\(model.setReps)")
+                 : (model.tentative > 0 ? "\(model.tentative)" : "–"))
                 .font(theme.dialFont(side * 0.36, .bold))
                 .tracking(-side * 0.01)
-                .foregroundStyle(counting ? theme.text : (model.tentative > 0 ? theme.primary.opacity(0.5) : theme.dim))
+                .foregroundStyle(counting ? ((remaining ?? 1) <= 0 ? theme.ok : theme.text)
+                                 : (model.tentative > 0 ? theme.primary.opacity(0.5) : theme.dim))
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
-                .contentTransition(.numericText())
+                .contentTransition(.numericText(countsDown: remaining != nil))
                 .scaleEffect(bump && !reduceMotion ? 1.08 : 1)
                 .opacity(bump && reduceMotion ? 0.75 : 1)
+                .accessibilityLabel(remaining.map { $0 > 0 ? "\($0) à faire, \(model.setReps) faites" : "\(model.setReps) faites, cible atteinte" } ?? "\(model.setReps)")
             if counting, let target = seriesTarget {
-                Text("sur \(target)")
-                    .font(theme.font(22, .semibold))
+                // Ce que veut dire le chiffre : « à faire sur 23 », « cible atteinte », « en plus »
+                Text(model.setReps < target ? "à faire sur \(target)" : (model.setReps == target ? "cible atteinte" : "en plus"))
+                    .font(theme.font(17, .semibold))
                     .foregroundStyle(model.setReps >= target ? theme.ok : theme.dim)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             } else if counting, model.testStage == .test {
                 MonitorLabel("test", color: theme.max)
             } else if counting, model.testStage == .warmup {

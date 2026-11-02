@@ -759,6 +759,15 @@ struct PathCard: View {
                 .font(theme.font(13))
                 .foregroundStyle(theme.dim)
                 .accessibilityLabel("Légende : " + legend.map(\.spoken).joined(separator: " ; "))
+            // Le code couleur des tests, seulement quand un test est dessiné
+            if plan.tests.contains(where: { $0.date >= (plan.goal?.created ?? plan.anchor) }) {
+                (Text("test : ") + Text("vert").foregroundColor(theme.ok) + Text(" atteint · ")
+                 + Text("orange").foregroundColor(theme.warn) + Text(" de peu · ")
+                 + Text("rouge").foregroundColor(theme.alarm) + Text(" raté"))
+                    .font(theme.font(13))
+                    .foregroundStyle(theme.dim)
+                    .accessibilityHidden(true)
+            }
             // Le prochain test est dans « Ton plan » : une carte, une idée
             if let verdict = settledVerdict {
                 VStack(alignment: .leading, spacing: 4) {
@@ -779,14 +788,17 @@ struct PathCard: View {
     /// Les entrées de la légende, seulement pour ce que le chemin dessine.
     private var legend: [(symbol: String, spoken: String)] {
         var items: [(symbol: String, spoken: String)] = []
-        if plan.goal != nil || !plan.tests.isEmpty { items.append(("● départ et tests", "gros points : départ et tests")) }
+        if plan.goal != nil { items.append(("● départ", "gros point : départ")) }
         // Les points dessinés : les séances depuis le début, hors séances de test
         let start = plan.goal?.created ?? plan.anchor
         let tests = Set(plan.tests.map(\.date))
         if sessions.contains(where: { $0.start >= start && !tests.contains($0.start) && !$0.isTest && $0.bestSet > 0 }) {
-            items.append(("• séances", "petits points : séances"))
+            items.append(("• tes perfs", "petits points : tes vraies performances"))
         }
-        if plan.shiftedGoalDate != nil { items.append(("┄ chemin prévu", "pointillés : chemin prévu jusqu'à l'objectif")) }
+        if plan.tests.contains(where: { $0.date >= start }) || plan.hasTest {
+            items.append(("◆ test", "losange : test ; vert s'il atteint la ligne théorique, orange s'il la rate de peu, rouge sinon"))
+        }
+        if plan.shiftedGoalDate != nil { items.append(("┄ ligne théorique", "pointillés : ligne théorique jusqu'à l'objectif")) }
         return items
     }
 
@@ -954,22 +966,43 @@ private struct PathChart: View {
                 .foregroundStyle(theme.primary.opacity(0.8))
                 .symbolSize(14)
         }
-        // Plus de losange pour les tests à venir (peu compréhensible, avis de Vincent) : le prochain
-        // test, daté, est dans « Ton plan »
+        // Les tests à venir : un petit losange creux sur la ligne théorique (avis de Vincent : les
+        // petits pictos, avec la légende dessous)
+        ForEach(upcoming, id: \.self) { test in
+            PointMark(x: .value("Date", test), y: .value("Répétitions", level(test)))
+                .symbol {
+                    Image(systemName: "diamond")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(theme.dim)
+                }
+        }
     }
 
     /// Les tests faits depuis le début de l'axe (◆ pleins, chiffrés) et le départ ●.
     @ChartContentBuilder
     private func testMarks(from start: Date) -> some ChartContent {
+        // Chaque test face à la ligne théorique (avis de Vincent) : vert s'il l'atteint, orange s'il
+        // la rate de peu (90 % ou plus, comme la cible d'une séance), rouge sinon ; une barre fine
+        // va de la ligne au résultat, et la valeur réelle est écrite
         ForEach(plan.tests.filter { $0.date >= start }, id: \.date) { test in
+            let expected = plan.expected(at: test.date)
+            let color = testColor(test.value, expected: expected)
+            if let expected, Double(test.value) < expected {
+                RuleMark(x: .value("Date", test.date),
+                         yStart: .value("Répétitions", Double(test.value)), yEnd: .value("Répétitions", expected))
+                    .foregroundStyle(color.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+            }
             PointMark(x: .value("Date", test.date), y: .value("Répétitions", Double(test.value)))
-                // Un gros point plein, comme le départ : ce sont tes mesures
-                .foregroundStyle(theme.text)
-                .symbolSize(60)
-                .annotation(position: .topTrailing, spacing: 0) {
+                .symbol {
+                    Image(systemName: "diamond.fill")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(color)
+                }
+                .annotation(position: .bottomTrailing, spacing: 0) {
                     Text("\(test.value)")
                         .font(theme.font(13, .bold))
-                        .foregroundStyle(theme.text)
+                        .foregroundStyle(color)
                 }
         }
         if let goal = plan.goal {
@@ -977,6 +1010,14 @@ private struct PathChart: View {
                 .foregroundStyle(theme.text)
                 .symbolSize(60)
         }
+    }
+
+    /// La couleur d'un test face à la ligne théorique : vert atteinte, orange à 90 % ou plus, rouge en dessous.
+    private func testColor(_ value: Int, expected: Double?) -> Color {
+        guard let expected, expected > 0 else { return theme.text }
+        let share = Double(value) / expected
+        if share >= 1 { return theme.ok }
+        return share * 100 >= Double(TargetShare.nearly) ? theme.warn : theme.alarm
     }
 
     /// Aujourd'hui ▼, et la séance choisie au doigt.
