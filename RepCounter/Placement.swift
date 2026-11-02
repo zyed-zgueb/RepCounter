@@ -306,14 +306,15 @@ final class PlacementMonitor {
     /// jambes peuvent manquer ou toucher le bord (nil : cadrage bon).
     private func upperFramingInstruction(_ body: Body) -> String? {
         guard let left = body.point(.leftShoulder), let right = body.point(.rightShoulder) else {
-            return "Mets-toi face à l'iPhone"
+            // Rien ou presque de vu : le plus souvent, trop loin (essai de Vincent à 2,5 m)
+            return body.visibleCount < 3 ? "Approche-toi : 1 m environ" : "Mets-toi face à l'iPhone"
         }
         let upper: [Joint] = [.nose, .neck, .leftShoulder, .rightShoulder, .leftElbow, .rightElbow, .leftWrist, .rightWrist]
         // Seul le haut du corps doit rester dans l'image (les poignets montent au-dessus de la tête)
         let touchesEdge = upper.compactMap { body.point($0) }.contains { $0.y < 0.02 || $0.x < 0.02 || $0.x > 0.98 }
         let width = abs(left.x - right.x) * Self.imageAspect
         if width > Tuning.shouldersMax || touchesEdge { return "Recule d'un pas" }
-        if width < Tuning.shouldersMin { return "Approche d'un pas" }
+        if width < Tuning.shouldersMin { return "Approche-toi : 1 m environ" }
         let center = (left.x + right.x) / 2
         if center < Tuning.centerMargin { return "Décale-toi vers ta droite" }
         if center > 1 - Tuning.centerMargin { return "Décale-toi vers ta gauche" }

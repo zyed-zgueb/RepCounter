@@ -22,7 +22,8 @@ struct PlacementGuide {
             }
             if exercise == .press {
                 // Le haut du corps suffit : les jambes peuvent sortir de l'image
-                return [Point("Debout, à hauteur de poitrine"), Point("À un grand pas"), Point("Tête et bras dans l'image")]
+                // Une distance en mètres : « un grand pas » était trop vague (essai de Vincent à 2,5 m)
+                return [Point("iPhone debout, face à toi"), Point("À 1 m de toi environ"), Point("Tête et bras dans l'image")]
             }
             if exercise == .row {
                 return [Point("Debout, à hauteur de taille"), Point("À deux grands pas, de profil"),
